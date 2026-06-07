@@ -322,6 +322,19 @@ export function VisualiserApp() {
               </a>
               .
             </p>
+            <p className="mt-2 text-xs">
+              <a
+                href="https://tailoredquote.co.uk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted hover:underline"
+              >
+                Visualised images powered by{" "}
+                <span className="font-semibold text-ink">Tailored</span>
+                <span className="font-semibold text-[#2563eb]">Quote</span>
+                <span className="font-semibold text-muted">.co.uk</span>
+              </a>
+            </p>
           </div>
 
           <div className="space-y-4">
