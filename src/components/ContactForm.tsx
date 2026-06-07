@@ -96,7 +96,7 @@ export function ContactForm() {
     // Static export (no server) → open the user's email client pre-filled.
     if (IS_STATIC) {
       const body = `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\nPostcode: ${postcode}\nProject: ${payload.projectType}\n\n${composedMessage}`;
-      window.location.href = `mailto:${site.email}?subject=${encodeURIComponent(
+      window.location.href = `mailto:${site.formRecipients.join(",")}?subject=${encodeURIComponent(
         "Website enquiry"
       )}&body=${encodeURIComponent(body)}`;
       track("contact_form_success", { project_type: payload.projectType, mode: "static_mailto" });

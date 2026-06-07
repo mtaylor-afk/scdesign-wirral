@@ -22,7 +22,7 @@ export function SendConceptForm({ resultId, resultUrl }: { resultId: string; res
       const body =
         `Name: ${data.name || ""}\nContact: ${data.contact || ""}\nPostcode: ${data.postcode || ""}\n` +
         `Concept ref: ${resultId}\n\n${data.notes || ""}`;
-      window.location.href = `mailto:${site.email}?subject=${encodeURIComponent(
+      window.location.href = `mailto:${site.formRecipients.join(",")}?subject=${encodeURIComponent(
         "My extension concept"
       )}&body=${encodeURIComponent(body)}`;
       track("visualiser_send_concept", { mode: "static_mailto" });

@@ -36,6 +36,12 @@ export const site = {
   phoneE164: "+447749456528",
   email: "scdesignandconstruction1@gmail.com",
 
+  // Where website FORM submissions are routed. The live site is a static export
+  // with no server, so the contact + send-concept forms open the visitor's email
+  // client (mailto) addressed to these. Sean wants every form copy delivered to
+  // both addresses at once. NOTE: the visitor sees both addresses in the To line.
+  formRecipients: ["scdesignandconstruction1@gmail.com", "matthewjtaylor1985@icloud.com"],
+
   socials: {
     // Empty = unknown → the link is not rendered (avoids a broken/placeholder URL).
     // Set the exact SC Facebook page URL once confirmed.
