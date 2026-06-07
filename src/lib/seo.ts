@@ -153,20 +153,39 @@ export function faqJsonLd(faqs: { q: string; a: string }[]) {
   };
 }
 
+const MONTHS = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+];
+/** "June 2026" → "2026-06" (valid schema.org Date). undefined if unparseable. */
+function monthYearToIso(s?: string): string | undefined {
+  if (!s) return undefined;
+  const m = s.trim().toLowerCase().match(/^([a-z]+)\s+(\d{4})$/);
+  if (!m) return undefined;
+  const i = MONTHS.indexOf(m[1]);
+  return i < 0 ? undefined : `${m[2]}-${String(i + 1).padStart(2, "0")}`;
+}
+
 export function articleJsonLd(opts: {
   title: string;
   description: string;
   path: string;
   reviewed?: string;
 }) {
+  const url = `${siteUrl}${opts.path}`;
+  const iso = monthYearToIso(opts.reviewed);
   return {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: opts.title,
     description: opts.description,
-    url: `${siteUrl}${opts.path}`,
-    author: { "@type": "Organization", name: site.name, url: siteUrl },
-    publisher: { "@type": "Organization", name: site.name, url: siteUrl },
+    url,
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    // Sean is the named author/reviewer — safe Person ref (no ARB/RIBA claims).
+    author: { "@type": "Person", "@id": `${siteUrl}/about#sean-corser`, name: site.contactName },
+    publisher: { "@id": `${siteUrl}/#business` },
+    // dateModified only when the stated review month parses — never fabricated.
+    ...(iso ? { dateModified: iso } : {}),
   };
 }
 

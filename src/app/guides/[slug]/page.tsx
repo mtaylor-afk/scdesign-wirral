@@ -7,6 +7,8 @@ import { FAQList } from "@/components/ui/FAQItem";
 import { JsonLd } from "@/components/JsonLd";
 import { guides, getGuide } from "@/lib/guides";
 import { services } from "@/lib/services";
+import { locations } from "@/lib/locations";
+import { ReviewedBy } from "@/components/ui/ReviewedBy";
 import { cta } from "@/lib/site";
 import { pageMeta, breadcrumbJsonLd, faqJsonLd, articleJsonLd } from "@/lib/seo";
 
@@ -38,13 +40,59 @@ function relatedLabel(href: string) {
   if (g) return g.navLabel ?? g.title;
   const s = services.find((ss) => `/services/${ss.slug}` === href);
   if (s) return s.title;
+  const l = locations.find((ll) => `/areas/${ll.slug}` === href);
+  if (l) return `${l.name} (area we cover)`;
   return href.replace(/^\//, "").replace(/-/g, " ").replace(/\//g, " · ");
+}
+
+// Practical "what to send Sean" checklist — shown on every guide.
+const sendToSean = [
+  "Your property postcode (so we can check the local planning context)",
+  "A few photos of the area, inside and out",
+  "An estate-agent floorplan or any existing drawings, if you have them",
+  "A short description of what you'd like to achieve",
+  "Any letters from the council or your builder asking for drawings",
+];
+
+// Genuinely-useful official sources, chosen per guide category. URLs verified live.
+const OFFICIAL = {
+  planningPortal: { label: "Planning Portal", href: "https://www.planningportal.co.uk/" },
+  govPlanning: {
+    label: "GOV.UK — planning permission",
+    href: "https://www.gov.uk/planning-permission-england-wales",
+  },
+  govBuildingRegs: {
+    label: "GOV.UK — building regulations approval",
+    href: "https://www.gov.uk/building-regulations-approval",
+  },
+  wirralPlanning: {
+    label: "Wirral Council — planning & building control",
+    href: "https://www.wirral.gov.uk/planning-and-building",
+  },
+  arb: { label: "Architects Registration Board (ARB)", href: "https://arb.org.uk/" },
+} as const;
+
+function officialLinksFor(category?: string): { label: string; href: string }[] {
+  switch (category) {
+    case "planning":
+      return [OFFICIAL.planningPortal, OFFICIAL.govPlanning, OFFICIAL.wirralPlanning];
+    case "building-regs":
+      return [OFFICIAL.govBuildingRegs, OFFICIAL.planningPortal];
+    case "conservation":
+      return [OFFICIAL.wirralPlanning, OFFICIAL.planningPortal];
+    case "choosing":
+      return [OFFICIAL.arb];
+    default:
+      return [];
+  }
 }
 
 export default async function GuidePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const guide = getGuide(slug);
   if (!guide) notFound();
+
+  const official = officialLinksFor(guide.category);
 
   return (
     <>
@@ -76,7 +124,6 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
           />
           <h1 className="text-balance text-4xl sm:text-5xl">{guide.title}</h1>
           <p className="mt-5 text-pretty text-lg text-muted">{guide.intro}</p>
-          <p className="mt-3 text-xs text-muted">Last reviewed: {guide.reviewed}</p>
         </Container>
       </Section>
 
@@ -91,6 +138,11 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
               <p className="mt-2 text-pretty text-ink-soft">{guide.summary}</p>
             </div>
           )}
+
+          {/* Author / reviewer attribution (E-E-A-T) */}
+          <div className="mt-6">
+            <ReviewedBy date={guide.reviewed} />
+          </div>
 
           {/* Table of contents */}
           {guide.sections.length > 2 && (
@@ -119,6 +171,24 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
                 ))}
               </div>
             ))}
+          </div>
+
+          {/* What to send Sean */}
+          <div className="mt-10 rounded-[var(--radius)] border border-line bg-paper-card p-5">
+            <h2 className="text-xl">What to send Sean</h2>
+            <p className="mt-2 text-sm text-muted">
+              A few details are enough for an honest first view — with no obligation:
+            </p>
+            <ul className="mt-3 space-y-2">
+              {sendToSean.map((t) => (
+                <li key={t} className="flex gap-3 text-pretty text-muted">
+                  <span className="mt-1 shrink-0 text-accent-strong" aria-hidden>
+                    ◆
+                  </span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
           </div>
 
           {/* Advisory note */}
@@ -157,6 +227,30 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
               </li>
             ))}
           </ul>
+
+          {official.length > 0 && (
+            <>
+              <h2 className="mt-12 text-xl">Useful official sources</h2>
+              <ul className="mt-4 space-y-2 text-sm">
+                {official.map((o) => (
+                  <li key={o.href}>
+                    <a
+                      href={o.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent-strong underline"
+                    >
+                      {o.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-muted">
+                External links open in a new tab. Always confirm your specific project with the
+                relevant authority.
+              </p>
+            </>
+          )}
         </Container>
       </Section>
 
