@@ -31,6 +31,16 @@ const trustPoints = [
   },
 ];
 
+// Owner-confirmable details. We publish each only once it's verified — never a
+// claim we can't back up (ARB/RIBA, memberships, insurance all stay pending here).
+const credentialsTodo = [
+  "Relevant design qualifications — to be confirmed",
+  "Professional memberships, if any — to be confirmed",
+  "Professional indemnity and public liability insurance — to be confirmed",
+  "Companies House registration number, if it is to be shown — to be confirmed",
+  "Whether to publish a business address or remain service-area only — to be confirmed",
+];
+
 export default function AboutPage() {
   return (
     <>
@@ -125,19 +135,28 @@ export default function AboutPage() {
       <Section tone="card">
         <Container className="max-w-3xl">
           <Card>
-            <h2 className="text-lg">Titles, qualifications &amp; insurance</h2>
+            <h2 className="text-xl">Qualifications, insurance &amp; professional details</h2>
             <p className="mt-2 text-pretty text-muted">
               SC Design &amp; Construction provides architectural design and drawing services. We do
               not describe ourselves as registered architects unless ARB registration is expressly
               confirmed — &ldquo;architect&rdquo; is a title protected by law in the UK.
             </p>
-            {/* TODO (real business input): add confirmed qualifications, professional
-                memberships and insurance (e.g. professional indemnity / public liability)
-                once verified. Do NOT claim these until confirmed. */}
-            <p className="mt-3 text-sm text-muted">
-              Confirmed qualifications, professional memberships and insurance details will be added
-              here once verified.
+            <p className="mt-3 text-pretty text-muted">
+              We&apos;d rather publish details once they&apos;re confirmed than make claims we
+              can&apos;t back up. The following will be added here as they&apos;re verified:
             </p>
+            <ul className="mt-4 space-y-2.5">
+              {credentialsTodo.map((c) => (
+                <li key={c} className="flex gap-3 text-pretty text-muted">
+                  <span className="mt-1 shrink-0 text-accent-strong" aria-hidden>
+                    ◆
+                  </span>
+                  <span>{c}</span>
+                </li>
+              ))}
+            </ul>
+            {/* TODO (real business input): replace each item above with the confirmed
+                detail once verified. Do NOT claim any of these until confirmed. */}
           </Card>
         </Container>
       </Section>
