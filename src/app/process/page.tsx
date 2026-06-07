@@ -113,7 +113,7 @@ export default function ProcessPage() {
 
       <Section>
         <Container className="max-w-3xl">
-          <ol className="space-y-8">
+          <ol className="list-none space-y-8">
             {stages.map((s, i) => (
               <li key={s.title} className="relative border-l border-line pl-8">
                 <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">

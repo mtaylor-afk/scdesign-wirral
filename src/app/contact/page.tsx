@@ -85,10 +85,10 @@ export default function ContactPage() {
 
               <Card>
                 <h2 className="text-lg">What happens next</h2>
-                <ol className="mt-2 space-y-2 text-sm text-muted">
-                  <li>1. Sean reads your message and any photos.</li>
-                  <li>2. We come back to you with an honest first view.</li>
-                  <li>3. If it&apos;s a fit, we talk through the design approach.</li>
+                <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted">
+                  <li>Sean reads your message and any photos.</li>
+                  <li>We come back to you with an honest first view.</li>
+                  <li>If it&apos;s a fit, we talk through the design approach.</li>
                 </ol>
               </Card>
             </aside>
