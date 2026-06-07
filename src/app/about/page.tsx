@@ -96,9 +96,9 @@ export default function AboutPage() {
             professional drawings that let builders quote accurately and work with confidence.
           </p>
 
-          <h2 className="pt-2 text-2xl text-ink">A note on the company name</h2>
+          <h2 className="pt-2 text-2xl text-ink">A note on the business name</h2>
           <p>
-            Despite the company name, this website is focused on architectural design and drawing
+            Despite the business name, this website is focused on architectural design and drawing
             services. We do not carry out the building work ourselves; our role is to help you design
             the project and prepare the drawings needed for planning, building control and builder
             quotations.
