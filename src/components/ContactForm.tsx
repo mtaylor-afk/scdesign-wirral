@@ -58,6 +58,7 @@ export function ContactForm() {
     e.preventDefault();
     setStatus("submitting");
     setError("");
+    track("contact_form_submit");
     const form = e.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
 
@@ -76,6 +77,7 @@ export function ContactForm() {
     function fail(msg: string) {
       setStatus("error");
       setError(msg);
+      track("contact_form_error", { reason: "validation" });
     }
 
     const composedMessage = buildMessage(data);
@@ -97,7 +99,7 @@ export function ContactForm() {
       window.location.href = `mailto:${site.email}?subject=${encodeURIComponent(
         "Website enquiry"
       )}&body=${encodeURIComponent(body)}`;
-      track("contact_submit", { project_type: payload.projectType, mode: "static_mailto" });
+      track("contact_form_success", { project_type: payload.projectType, mode: "static_mailto" });
       setStatus("success");
       form.reset();
       return;
@@ -111,12 +113,13 @@ export function ContactForm() {
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Something went wrong");
-      track("contact_submit", { project_type: payload.projectType });
+      track("contact_form_success", { project_type: payload.projectType });
       form.reset();
       router.push("/contact/thank-you");
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      track("contact_form_error", { reason: "submit" });
     }
   }
 
