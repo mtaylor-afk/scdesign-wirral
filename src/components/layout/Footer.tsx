@@ -115,7 +115,7 @@ export function Footer() {
               ))}
             </ul>
           </div>
-          <p className="mt-4 text-xs text-paper/50">
+          <p className="mt-4 text-center text-xs text-paper/50">
             <a
               href="https://tailoredquote.co.uk"
               target="_blank"
