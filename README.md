@@ -1,6 +1,7 @@
-# SC Design & Construction Ltd — website + AI Extension Concept Visualiser
+# SC Design & Construction — website + AI Extension Concept Visualiser
 
-Premium, mobile-first website for **SC Design & Construction Ltd** (Sean Corser, Wallasey/Wirral),
+Premium, mobile-first website for **SC Design & Construction** (Sean Corser, Wallasey/Wirral — a
+**sole trader**, not a limited company),
 an **architectural design** practice (design only — no construction), plus an AI "Extension Concept
 Visualiser" lead magnet.
 
@@ -84,7 +85,6 @@ private bucket → short-lived signed URL → result UI (before/after, download,
 ## Pre-launch checklist (outstanding client decisions)
 
 - [ ] Confirm ARB registration status (use of the bare title "architect").
-- [ ] Confirm Companies House number (then set `companiesHouseNumber` in `src/lib/site.ts`).
 - [ ] Decide whether to publish the CH45 6TR address (`addressIsPublic` in `src/lib/site.ts`).
 - [ ] Supply real project photos to replace clearly-marked placeholders.
 - [ ] Confirm Resend sender domain + verify it.

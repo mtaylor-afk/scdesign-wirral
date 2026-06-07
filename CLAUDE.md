@@ -46,7 +46,9 @@ repository — the repo is only being used here as a convenient testing host.
 
 ## Project Notes
 
-**Project:** Premium website for **SC Design & Construction Ltd** (Sean Corser, Wallasey/Wirral) + an AI "Extension Concept Visualiser" lead magnet.
+**Project:** Premium website for **SC Design & Construction** (Sean Corser, Wallasey/Wirral) + an AI "Extension Concept Visualiser" lead magnet.
+
+> **Legal entity:** Sean trades as a **SOLE TRADER** under the business name "SC Design & Construction". There is **NO limited company** — never append "Ltd"/"Limited", never claim a Companies House registration, and never display a company number anywhere. (`site.name` is the bare business name; the `companiesHouseNumber` field has been removed.)
 
 ### Confirmed client decisions
 - **Service stance: DESIGN-ONLY** (architectural design + planning drawings). The business does **NOT** carry out construction — never make build/construction claims.
@@ -59,7 +61,7 @@ repository — the repo is only being used here as a convenient testing host.
 ### Hard rules (carried from the brief)
 - No fake testimonials / no invented certifications.
 - Do not publish CH45 6TR address unless approved (`site.addressIsPublic = false` by default → service-area wording).
-- Companies House number omitted until the correct entity is confirmed.
+- **Sole trader, NOT a limited company** — never use "Ltd"/"Limited" or a Companies House number (a sole trader has none).
 - No thin/duplicate location pages — each of the 12 must be unique.
 - Visualiser output is a **concept only**, never presented as buildable/planning-ready.
 - No non-consented analytics; server-side rate limiting only; Sharp on Node runtime (never Edge).
@@ -134,7 +136,7 @@ A focused pass on the already-mature site (no rebuild). What it added/changed:
 - **Linking:** service→priority-area links; area→guides + honest per-area "case studies coming soon" + ReviewCta. **`Location.noindex`** flag is the owner switch for the 5 wider areas (liverpool/chester/crosby/ellesmere-port/neston) — default unset → indexed.
 - **Forms:** contact funnel events `contact_form_submit | _success | _error` (replaced `contact_submit`).
 - **Config knobs:** `NEXT_PUBLIC_GOOGLE_REVIEW_URL` (blank→placeholder) and `NEXT_PUBLIC_NOINDEX` (documented in `.env.example` / `.env.production`).
-- **Owner TODOs (never invent):** GBP + Google review URL · address publish-vs-service-area · Companies House no. · Sean's quals/memberships/insurance · confirm "18+ years" · profile photo · real projects/images/permission · real reviews · keep wider areas indexed? · analytics provider + consent. (See also `LOCAL_SEO_CHECKLIST.md`.)
+- **Owner TODOs (never invent):** GBP + Google review URL · address publish-vs-service-area · Sean's quals/memberships/insurance · confirm "18+ years" · profile photo · real projects/images/permission · real reviews · keep wider areas indexed? · analytics provider + consent. (See also `LOCAL_SEO_CHECKLIST.md`.) _(No Companies House number — sole trader.)_
 
 #### Domain go-live polish (June 2026 — links, form routing, TailoredQuote attribution; all live)
 Small targeted pass after `scdesignwirral.co.uk` went live. In-repo changes (built, pushed to `main`, verified live):
@@ -163,4 +165,4 @@ Small targeted pass after `scdesignwirral.co.uk` went live. In-repo changes (bui
 - **Data-driven content rule:** services/areas/guides are authored in `src/lib/*.ts` arrays (rich optional fields) and rendered by one template each. To add a page, add a data entry — the template, nav dropdown and sitemap pick it up automatically. Keep planning/conservation claims hedged ("often/may", "confirm with Wirral Council/your local authority"); never invent projects/reviews/quals; never use "architect" as the business title.
 
 ### Outstanding client decisions (block full launch)
-Own domain + Vercel deploy · ARB registration status · correct Companies House number · publish CH45 6TR vs service-area-only · real project photos + permissioned reviews · Google Business Profile + real Facebook URL · analytics (Plausible) domain + Turnstile/Resend/Gemini/Supabase keys.
+Own domain + Vercel deploy · ARB registration status · publish CH45 6TR vs service-area-only · real project photos + permissioned reviews · Google Business Profile + real Facebook URL · analytics (Plausible) domain + Turnstile/Resend/Gemini/Supabase keys.

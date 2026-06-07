@@ -35,7 +35,7 @@ export function Footer() {
           <div className="font-display text-xl">SC Design &amp; Construction</div>
           <p className="mt-3 max-w-xs text-sm text-paper/60">{site.positioning}</p>
           <p className="mt-4 max-w-xs text-sm text-paper/50">
-            Despite the company name, this site is for architectural{" "}
+            Despite the business name, this site is for architectural{" "}
             <strong className="font-medium text-paper/70">design and drawing services</strong> — we
             don&apos;t carry out the building work ourselves.
           </p>
@@ -103,9 +103,7 @@ export function Footer() {
         <div className="mx-auto max-w-6xl px-5 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3 text-xs text-paper/50 sm:flex-row sm:items-center sm:justify-between">
             <p>
-              © {year} {site.name}
-              {site.companiesHouseNumber ? ` · Company No. ${site.companiesHouseNumber}` : ""}.
-              Architectural design only — we do not carry out construction.
+              © {year} {site.name}. Architectural design only — we do not carry out construction.
             </p>
             <ul className="flex flex-wrap gap-4">
               {footerLegalLinks.map((l) => (

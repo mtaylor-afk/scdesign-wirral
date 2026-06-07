@@ -10,7 +10,10 @@
  */
 
 export const site = {
-  name: "SC Design & Construction Ltd",
+  // Sean Corser trades as a SOLE TRADER under the business name "SC Design &
+  // Construction" — there is NO limited company. Never append "Ltd"/"Limited"
+  // and never claim a Companies House registration (a sole trader has none).
+  name: "SC Design & Construction",
   shortName: "SC Design & Construction",
   contactName: "Sean Corser",
 
@@ -48,10 +51,6 @@ export const site = {
     facebook: "",
     instagram: "https://www.instagram.com/sc.architectural.design",
   },
-
-  // Companies House number intentionally omitted until the correct registered
-  // entity is confirmed (Liverpool vs Wallasey ambiguity flagged in Stage 0).
-  companiesHouseNumber: "" as string,
 
   // Google review link — set NEXT_PUBLIC_GOOGLE_REVIEW_URL once the Google
   // Business Profile is verified. Blank → the UI shows a placeholder, never a

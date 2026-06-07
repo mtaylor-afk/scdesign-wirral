@@ -162,6 +162,6 @@ aria-expanded accessible. `IS_STATIC` already provides mailto fallbacks.
 
 ## TODO placeholders this upgrade will surface (need real client input)
 ARB registration status · professional indemnity / public liability insurance ·
-qualifications & memberships · Companies House number · publish CH45 6TR or not ·
+qualifications & memberships · publish CH45 6TR or not ·
 real project photos + case studies · permissioned reviews + Google review link ·
 real Facebook URL · Sean headshot.

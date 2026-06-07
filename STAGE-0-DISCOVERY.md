@@ -1,5 +1,5 @@
 # Stage 0 — Discovery, Risk Review & Final Build Brief
-## SC Design & Construction Ltd website + Extension Concept Visualiser
+## SC Design & Construction website + Extension Concept Visualiser
 
 **Status:** Stage 0 deliverable. **No code written.** Awaiting client approval before Stage 1.
 **Prepared:** June 2026. **Location of project:** `/sc/` only (independent of the TailoredQuote app in this repo).
@@ -28,7 +28,7 @@ These are **blockers** — most affect copy, legal exposure, or NAP and cannot b
 
 1. **Domain name** (and who controls DNS).
 2. **Repo + branch** — currently building under `/sc/` on branch `claude/sc-clause-file-9bP8D`. Confirm if a standalone repo is wanted later.
-3. **Companies House number** — there's a known ambiguity between a Liverpool-registered entity and the Wallasey-presented business. The wrong number in the footer is a legal/trust risk. **Confirm the exact registered entity + number, or omit until confirmed.**
+3. **Companies House number** — ~~there's a known ambiguity between a Liverpool-registered entity and the Wallasey-presented business~~ **[RESOLVED June 2026: Sean is a SOLE TRADER — there is no limited company and no Companies House number. Never display "Ltd"/"Limited" or a company number.]**
 4. **CH45 6TR address** — publish full address, or present **service-area only**? (Affects NAP, schema, map, GBP alignment.)
 5. **"Architect" / "architectural design" wording** — "architect" is a **legally protected title (UK Architects Act 1997)**. May Sean use "architectural design / architectural drawings", or must we use "design / design drawings / building design"? **Default to the safe wording unless confirmed.**
 6. **Service stance** — design-only, construction-only, or **design-and-build**? This rewrites the positioning and every services page. (The brief's headline assumes design-and-build.)
@@ -139,7 +139,7 @@ Premium architectural design · no generic-template feel · excellent mobile (32
 ## 8. Risk register
 
 **Critical**
-- Wrong Companies House number / wrong public NAP → legal + trust + local-SEO damage.
+- Wrong public NAP → legal + trust + local-SEO damage. (No Companies House number applies — sole trader.)
 - Implying "architect"/RIBA status when not registered (Architects Act 1997).
 - Claiming services Sean doesn't provide (design vs build mismatch).
 - Visualiser output presented as buildable/planning-ready.
@@ -203,7 +203,7 @@ Each implementation stage ends with the required validation report (build/lint/t
 1. Domain name + DNS control?
 2. Standalone repo wanted, or keep building under `/sc/` on this branch?
 3. **Design-only, construction-only, or design-and-build?**
-4. Correct **Companies House number** (or omit for now)?
+4. ~~Correct **Companies House number**?~~ [RESOLVED: sole trader — none.]
 5. Publish CH45 6TR address, or **service-area only**?
 6. May we use **"architectural design / drawings"**, or stick to **"design / building design"**?
 7. Testimonials/reviews — usable? With names/permission?

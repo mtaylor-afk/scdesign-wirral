@@ -16,7 +16,7 @@ _Last updated: June 2026. Scope: the SC architectural-design site under `/sc/`._
 **Deliberately not done (correct calls):**
 - No fake reviews / `AggregateRating` schema (none until real, permissioned reviews exist).
 - No thin/duplicate location or service×location pages.
-- Companies House number + exact Facebook URL omitted until confirmed.
+- Exact Facebook URL omitted until confirmed. (No Companies House number — sole trader, not a limited company.)
 - The test deployment on `tailoredquote.co.uk/sc/site` is `noindex` (borrowed domain) — the real, indexable site is the future own-domain Vercel deploy.
 
 ## Improvements shipped in this pass
@@ -72,6 +72,6 @@ _Last updated: June 2026. Scope: the SC architectural-design site under `/sc/`._
 
 ## Things blocking full launch (need client input)
 - Own domain + Vercel deploy (so the site is indexable with working forms/visualiser server).
-- ARB status (confirms safe use of "architect"), Companies House number, public-address decision.
+- ARB status (confirms safe use of "architect"), public-address decision.
 - Real project photography + permissioned reviews.
 - Google Business Profile claim + the real Facebook URL.

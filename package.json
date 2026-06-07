@@ -2,7 +2,7 @@
   "name": "sc-design-construction",
   "version": "0.1.0",
   "private": true,
-  "description": "SC Design & Construction Ltd — premium design-led website + AI Extension Concept Visualiser",
+  "description": "SC Design & Construction — premium design-led website + AI Extension Concept Visualiser",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

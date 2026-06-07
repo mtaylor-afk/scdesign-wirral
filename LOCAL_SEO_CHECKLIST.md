@@ -1,4 +1,4 @@
-# Local SEO Checklist — SC Design & Construction Ltd
+# Local SEO Checklist — SC Design & Construction
 
 Internal owner checklist (not a public page). Covers Google Business Profile
 (GBP), citations and the consistency that local ranking depends on. Pair this
@@ -11,8 +11,10 @@ Use this exact information on the website, GBP, and every directory/citation.
 Inconsistent NAP (name, address, phone) is one of the most common local-SEO
 problems.
 
-- **Business name:** SC Design & Construction Ltd
-  - Use the real registered name. **Do not** keyword-stuff it (e.g. not
+- **Business name:** SC Design & Construction
+  - Sean trades as a **sole trader** under this business name — there is **no
+    limited company**, so never append "Ltd"/"Limited" and never quote a
+    Companies House number. **Do not** keyword-stuff it (e.g. not
     "SC Design & Construction | Architectural Designer Wirral").
 - **Contact:** Sean Corser
 - **Phone:** 07749 456528 (display) / +447749456528 (tel:)

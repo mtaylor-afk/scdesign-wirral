@@ -37,7 +37,6 @@ const credentialsTodo = [
   "Relevant design qualifications — to be confirmed",
   "Professional memberships, if any — to be confirmed",
   "Professional indemnity and public liability insurance — to be confirmed",
-  "Companies House registration number, if it is to be shown — to be confirmed",
   "Whether to publish a business address or remain service-area only — to be confirmed",
 ];
 

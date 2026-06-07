@@ -16,7 +16,7 @@ export function LegalLayout({
         <h1 className="text-4xl">{title}</h1>
         <p className="mt-3 text-sm text-muted">Last updated: {updated}</p>
         <div className="mt-4 rounded-[var(--radius)] border border-accent-soft bg-accent-soft/40 p-4 text-sm text-ink-soft">
-          This policy explains how SC Design &amp; Construction Ltd handles website enquiries,
+          This policy explains how SC Design &amp; Construction handles website enquiries,
           cookies and visualiser use. It is reviewed periodically as the website and services
           evolve, and is provided for information — it is not legal advice.
         </div>
