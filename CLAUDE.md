@@ -122,6 +122,20 @@ Delete `api/sc-visualise.js`, revert the single additive `vercel.json` line, rev
 - **Index-safety:** the live own-domain deploy (`scdesignwirral.co.uk`, Cloudflare Pages) is **indexable**. Indexing is controlled by an explicit `NEXT_PUBLIC_NOINDEX` flag (`src/lib/base.ts`, decoupled from `IS_STATIC`) — set it to `1` only for preview/non-production builds, and the layout + `pageMeta` then emit `noindex,nofollow`. `robots.txt` allows crawling (disallows only `/api/` + `/components-preview`) and references the sitemap. Legal pages (privacy / cookie / visualiser-terms) stay crawlable via footer links but are excluded from `sitemap.xml`.
 - Full review + roadmap: **`sc/SEO-PLAN.md`** (GBP, real photos/reviews, next guide + service sub-pages, measurement).
 
+#### Final SEO gap-closure pass (June 2026 — phases 1–10, all live)
+A focused pass on the already-mature site (no rebuild). What it added/changed:
+- **Indexing:** explicit `NEXT_PUBLIC_NOINDEX` flag (see Index-safety above); legal pages dropped from `sitemap.ts` (still crawlable). Validated: 56 indexable pages all carry title+description+self-canonical (prod host only); 114 JSON-LD blocks valid; **0** fake Review/AggregateRating.
+- **Trust/polish:** contact + thank-you "what happens next" use real `<ol>` numbering (no manual numbers); `ui/LegalLayout.tsx` banner is live-safe wording (no "draft/before launch").
+- **Reviews:** `ui/ReviewCta.tsx` (Google button only when `site.googleReviewUrl` set, else honest placeholder) on home/contact/footer/reviews; `/reviews` rebuilt (themes, not fake quotes). `google_review_click` tracked.
+- **Schema:** `personJsonLd()` (Sean, ARB-safe — **no** ARB/RIBA/quals/insurance) on `/about`; `articleJsonLd()` now has Person author + `mainEntityOfPage` + parsed `dateModified`.
+- **Guides:** `ui/ReviewedBy.tsx` + "What to send Sean" checklist + category-driven official-source links (verified URLs only).
+- **Projects:** 6 named draft placeholders with the exact "details to be added once homeowner permission…" note; `Project` type extended; real list stays empty (no draft pages indexed).
+- **About:** qualifications/insurance/company-number/address owner-checklist (pending, never claimed).
+- **Linking:** service→priority-area links; area→guides + honest per-area "case studies coming soon" + ReviewCta. **`Location.noindex`** flag is the owner switch for the 5 wider areas (liverpool/chester/crosby/ellesmere-port/neston) — default unset → indexed.
+- **Forms:** contact funnel events `contact_form_submit | _success | _error` (replaced `contact_submit`).
+- **Config knobs:** `NEXT_PUBLIC_GOOGLE_REVIEW_URL` (blank→placeholder) and `NEXT_PUBLIC_NOINDEX` (documented in `.env.example` / `.env.production`).
+- **Owner TODOs (never invent):** GBP + Google review URL · address publish-vs-service-area · Companies House no. · Sean's quals/memberships/insurance · confirm "18+ years" · profile photo · real projects/images/permission · real reviews · keep wider areas indexed? · analytics provider + consent. (See also `LOCAL_SEO_CHECKLIST.md`.)
+
 ### Deployment & how to view it (no own domain yet)
 - **Static export** for GitHub Pages: `./scripts/build-static.sh` → writes `sc/site/` (env-driven `output: export` + `basePath=/sc/site` + `trailingSlash`; API routes moved aside during the build). `next.config.ts` reads `SC_STATIC_EXPORT` / `NEXT_PUBLIC_BASE_PATH` / `NEXT_PUBLIC_STATIC` / `NEXT_PUBLIC_SITE_URL`.
 - **`src/lib/base.ts`** — `withBase()` prefixes raw asset/anchor paths; `IS_STATIC` toggles the no-server form fallbacks (contact + send-concept open a prefilled email).
