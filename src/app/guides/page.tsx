@@ -1,0 +1,71 @@
+import Link from "next/link";
+import { Container, Section, SectionHeading, Card } from "@/components/ui";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { CTASection } from "@/components/ui/CTASection";
+import { JsonLd } from "@/components/JsonLd";
+import { guides, guideCategories } from "@/lib/guides";
+import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
+
+export const metadata = pageMeta({
+  title: "Guides — Planning, Building Regs & Home Design in Wirral",
+  description:
+    "Plain-English guides for Wirral homeowners on planning permission, building regulations, architectural design costs, conservation areas and choosing the right help.",
+  path: "/guides",
+});
+
+export default function GuidesPage() {
+  return (
+    <>
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Guides", path: "/guides" },
+        ])}
+      />
+      <Section tone="card" className="pt-16">
+        <Container className="max-w-3xl">
+          <Breadcrumbs
+            items={[
+              { name: "Home", path: "/" },
+              { name: "Guides", path: "/guides" },
+            ]}
+          />
+          <h1 className="text-balance text-4xl sm:text-5xl">Helpful guides for your project</h1>
+          <p className="mt-5 text-pretty text-lg text-muted">
+            Honest, plain-English answers to the questions Wirral homeowners ask most — planning,
+            building regulations, costs, conservation areas and how the design stage works.
+          </p>
+        </Container>
+      </Section>
+
+      {guideCategories.map((cat, idx) => {
+        const group = guides.filter((g) => g.category === cat.key);
+        if (group.length === 0) return null;
+        return (
+          <Section key={cat.key} tone={idx % 2 === 0 ? "paper" : "card"}>
+            <Container>
+              <SectionHeading eyebrow={cat.label} title={cat.label} intro={cat.blurb} />
+              <div className="mt-8 grid gap-5 sm:grid-cols-2">
+                {group.map((g) => (
+                  <Link key={g.slug} href={`/guides/${g.slug}`} className="group block">
+                    <Card hover className="flex h-full flex-col">
+                      <h3 className="text-xl">{g.title}</h3>
+                      <p className="mt-3 flex-1 text-pretty text-muted">
+                        {g.summary ?? g.description}
+                      </p>
+                      <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong transition-[gap] group-hover:gap-2.5">
+                        Read the guide <span aria-hidden>→</span>
+                      </span>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </Container>
+          </Section>
+        );
+      })}
+
+      <CTASection />
+    </>
+  );
+}

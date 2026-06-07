@@ -1,0 +1,145 @@
+import { Container, Section, StatCard, Card } from "@/components/ui";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { CTASection } from "@/components/ui/CTASection";
+import { JsonLd } from "@/components/JsonLd";
+import { site } from "@/lib/site";
+import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
+
+export const metadata = pageMeta({
+  title: "About — Architectural Designer in Wirral",
+  description:
+    "Led by Sean Corser, SC Design & Construction is a Wallasey-based architectural design studio with 18+ years' experience helping Wirral homeowners design extensions and lofts.",
+  path: "/about",
+});
+
+const trustPoints = [
+  {
+    title: "Design-only, builder-independent advice",
+    body: "Because we don't carry out the building work, our advice stays focused on getting your design right — not on selling you a build.",
+  },
+  {
+    title: "Local to Wirral",
+    body: "Based in Wallasey, we understand the local housing and planning context, and we're easy to reach by phone or WhatsApp.",
+  },
+  {
+    title: "Clear, buildable drawings",
+    body: "Our drawings let builders quote accurately against the same information, so you compare like with like and the build matches what you agreed.",
+  },
+  {
+    title: "18+ years of experience",
+    body: "From simple rear extensions to whole-home reconfigurations, we bring practical knowledge and a genuine eye for design.",
+  },
+];
+
+export default function AboutPage() {
+  return (
+    <>
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "About", path: "/about" },
+        ])}
+      />
+      <Section tone="card" className="pt-16">
+        <Container className="max-w-3xl">
+          <Breadcrumbs
+            items={[
+              { name: "Home", path: "/" },
+              { name: "About", path: "/about" },
+            ]}
+          />
+          <h1 className="text-balance text-4xl sm:text-5xl">
+            Local architectural design you can talk to
+          </h1>
+          <p className="mt-5 text-pretty text-lg text-muted">
+            Led by {site.contactName}, SC Design &amp; Construction is a Wallasey-based architectural
+            design studio with {site.yearsExperience}+ years of experience designing homes across
+            Wirral.
+          </p>
+        </Container>
+      </Section>
+
+      <Section>
+        <Container className="max-w-3xl space-y-6 text-pretty text-lg text-muted">
+          <h2 className="text-2xl text-ink">Meet Sean</h2>
+          <p>
+            {site.contactName} has spent {site.yearsExperience}+ years helping homeowners turn ideas
+            into clear, well-considered designs. The approach is simple: good home design starts with
+            a proper conversation. Every property and every family is different, so we take the time
+            to understand how you actually live before putting pen to paper.
+          </p>
+          {/* TODO (real business input): add Sean's headshot and a short personal bio. */}
+          <p>
+            From the period terraces of Wallasey and Birkenhead to the larger plots of Heswall and
+            West Kirby, Sean knows the kinds of homes Wirral homeowners live in — and the planning
+            context that shapes what&apos;s achievable.
+          </p>
+
+          <h2 className="pt-2 text-2xl text-ink">Our philosophy</h2>
+          <p>
+            We focus purely on design — exploring what&apos;s possible, shaping the concept, and
+            preparing clear, accurate architectural drawings for planning and building regulations.
+            We don&apos;t carry out the building work ourselves, which keeps our advice focused on
+            getting the design right for you. When you&apos;re ready to build, you&apos;ll have
+            professional drawings that let builders quote accurately and work with confidence.
+          </p>
+
+          <h2 className="pt-2 text-2xl text-ink">A note on the company name</h2>
+          <p>
+            Despite the company name, this website is focused on architectural design and drawing
+            services. We do not carry out the building work ourselves; our role is to help you design
+            the project and prepare the drawings needed for planning, building control and builder
+            quotations.
+          </p>
+        </Container>
+      </Section>
+
+      <Section tone="card" className="py-12">
+        <Container>
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+            <StatCard value={`${site.yearsExperience}+`} label="Years' experience" />
+            <StatCard value="Wallasey" label="Based on Wirral" />
+            <StatCard value="Design" label="Concept to drawings" />
+            <StatCard value="Local" label="Wirral &amp; nearby" />
+          </div>
+        </Container>
+      </Section>
+
+      <Section>
+        <Container>
+          <h2 className="text-2xl">Why homeowners involve us early</h2>
+          <div className="mt-8 grid gap-5 sm:grid-cols-2">
+            {trustPoints.map((t) => (
+              <Card key={t.title}>
+                <h3 className="text-lg">{t.title}</h3>
+                <p className="mt-2 text-pretty text-muted">{t.body}</p>
+              </Card>
+            ))}
+          </div>
+        </Container>
+      </Section>
+
+      <Section tone="card">
+        <Container className="max-w-3xl">
+          <Card>
+            <h2 className="text-lg">Titles, qualifications &amp; insurance</h2>
+            <p className="mt-2 text-pretty text-muted">
+              SC Design &amp; Construction provides architectural design and drawing services. We do
+              not describe ourselves as registered architects unless ARB registration is expressly
+              confirmed — &ldquo;architect&rdquo; is a title protected by law in the UK.
+            </p>
+            {/* TODO (real business input): add confirmed qualifications, professional
+                memberships and insurance (e.g. professional indemnity / public liability)
+                once verified. Do NOT claim these until confirmed. */}
+            <p className="mt-3 text-sm text-muted">
+              Confirmed qualifications, professional memberships and insurance details will be added
+              here once verified.
+            </p>
+          </Card>
+        </Container>
+      </Section>
+
+      <CTASection heading="Let's talk about your home" />
+    </>
+  );
+}

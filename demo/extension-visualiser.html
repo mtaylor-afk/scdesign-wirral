@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex,nofollow" />
+<title>Extension Concept Visualiser — SC Design &amp; Construction</title>
+<style>
+  :root{
+    --ink:#1c1d1f; --paper:#f7f5f1; --card:#fffefb; --line:#e4e0d8;
+    --muted:#6f6f73; --accent:#b9743f; --accent2:#a45f2d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%}
+  .wrap{max-width:760px;margin:0 auto;padding:18px 16px 60px}
+  header{display:flex;flex-direction:column;gap:2px;margin-bottom:14px}
+  .brand{font-weight:700;letter-spacing:.04em}
+  .brand span{color:var(--accent2)}
+  h1{font-size:24px;margin:8px 0 4px;line-height:1.15}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px;
+    box-shadow:0 12px 30px rgba(28,29,31,.05)}
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 6px}
+  select,button,input[type=file]{font:inherit}
+  select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    border:none;border-radius:999px;padding:13px 18px;font-weight:600;cursor:pointer}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:active{background:var(--accent2)}
+  .btn-ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn-dark{background:var(--ink);color:var(--paper)}
+  .drop{border:2px dashed var(--line);border-radius:14px;background:#fff;
+    aspect-ratio:3/2;display:flex;align-items:center;justify-content:center;text-align:center;
+    color:var(--muted);cursor:pointer;overflow:hidden;position:relative}
+  .drop img{width:100%;height:100%;object-fit:cover}
+  .hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+  /* before/after stage */
+  .stage{position:relative;width:100%;aspect-ratio:3/2;border-radius:14px;overflow:hidden;
+    border:1px solid var(--line);background:#000;touch-action:none;user-select:none}
+  .stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  #afterC{} /* base */
+  #beforeC{} /* clipped on top */
+  .handle{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.95);
+    left:50%;transform:translateX(-1px);z-index:5;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+  .handle::after{content:"⇆";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:38px;height:38px;border-radius:50%;background:#fff;color:#1c1d1f;display:flex;
+    align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);font-size:16px}
+  .tag{position:absolute;top:10px;z-index:6;font-size:11px;font-weight:700;letter-spacing:.06em;
+    color:#fff;background:rgba(0,0,0,.45);padding:4px 9px;border-radius:999px}
+  .tag-b{left:10px}.tag-a{right:10px}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  .full{grid-column:1 / -1}
+  .disclaimer{font-size:12px;color:var(--muted);background:#f0e2d6;border:1px solid #e7d3c2;
+    border-radius:10px;padding:10px 12px;margin-top:14px;line-height:1.5}
+  .foot{font-size:12px;color:var(--muted);text-align:center;margin-top:22px;line-height:1.6}
+  .foot a{color:var(--accent2)}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">SC Design <span>&amp; Construction</span></div>
+  </header>
+
+  <h1>Extension Concept Visualiser</h1>
+  <p class="sub">See a quick before &amp; after of how an extension could look on a home — right here on your phone. No sign-up, nothing to install.</p>
+
+  <!-- STEP 1: choose / upload -->
+  <div class="card" id="setup">
+    <label for="photo">1. Add a photo of the house</label>
+    <div class="drop" id="drop">
+      <div id="dropText">Tap to take or choose a photo<br><span class="hint">or use the built-in sample below</span></div>
+      <img id="preview" class="hidden" alt="Selected house photo" />
+    </div>
+    <input id="photo" type="file" accept="image/*" capture="environment" class="hidden" />
+    <div class="actions" style="margin-top:12px">
+      <button class="btn btn-ghost" id="sampleBtn" type="button">Use sample house</button>
+      <button class="btn btn-ghost" id="changeBtn" type="button">Change photo</button>
+    </div>
+
+    <div style="height:14px"></div>
+    <div class="row">
+      <div>
+        <label for="ptype">2. Project type</label>
+        <select id="ptype">
+          <option value="rear">Rear extension</option>
+          <option value="side">Side extension</option>
+          <option value="wraparound">Wraparound extension</option>
+          <option value="loft">Loft conversion (dormer)</option>
+          <option value="conservatory">Conservatory / orangery</option>
+          <option value="porch">Porch</option>
+        </select>
+      </div>
+      <div>
+        <label for="storeys">Storeys</label>
+        <select id="storeys">
+          <option value="single">Single storey</option>
+          <option value="two">Two storey</option>
+        </select>
+      </div>
+    </div>
+    <div style="height:12px"></div>
+    <div class="row">
+      <div>
+        <label for="style">Style</label>
+        <select id="style">
+          <option value="modern">Modern (glass &amp; dark frames)</option>
+          <option value="warm">Warm contemporary (timber)</option>
+          <option value="rendered">Rendered (white)</option>
+          <option value="brick">Brick match</option>
+        </select>
+      </div>
+      <div>
+        <label for="side">Position</label>
+        <select id="side">
+          <option value="right">Right side</option>
+          <option value="left">Left side</option>
+          <option value="centre">Across the back</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="height:14px"></div>
+    <details id="aiBox" style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff">
+      <summary style="cursor:pointer;font-weight:600;font-size:14px">⚡ Use a real AI render (optional — paste your own key)</summary>
+      <div style="margin-top:12px">
+        <div class="row">
+          <div>
+            <label for="aiProvider">AI provider</label>
+            <select id="aiProvider">
+              <option value="openai">OpenAI — gpt-image-1</option>
+              <option value="gemini">Google — gemini-2.5-flash-image</option>
+            </select>
+          </div>
+          <div>
+            <label for="aiKey">API key</label>
+            <input id="aiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-… or AIza…"
+              style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)" />
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--muted)">
+          <input type="checkbox" id="aiRemember" /> Remember on this device for this session only
+        </label>
+        <p class="hint" style="margin-top:8px">
+          ⚠️ The key is used <strong>directly from your browser</strong> and stored only on this
+          device — never uploaded to us, never committed to the site. Use a personal/test key:
+          pasting a key in a browser is fine for your own testing but not for a public website.
+        </p>
+      </div>
+    </details>
+
+    <div style="height:14px"></div>
+    <button class="btn btn-primary full" id="goBtn" type="button">Create before &amp; after →</button>
+    <p class="hint">Tip: a clear, fairly straight-on photo of the back or side of the house works best. With no key it makes an instant in-browser concept; with a key it produces a real AI render.</p>
+  </div>
+
+  <!-- STEP 2: result -->
+  <div class="card hidden" id="result">
+    <div class="stage" id="stage">
+      <span class="tag tag-b">BEFORE</span>
+      <span class="tag tag-a">AFTER · concept</span>
+      <canvas id="afterC"></canvas>
+      <canvas id="beforeC"></canvas>
+      <div class="handle" id="handle"></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-dark" id="downloadBtn" type="button">Download after image</button>
+      <button class="btn btn-ghost" id="againBtn" type="button">Start again</button>
+    </div>
+    <div class="disclaimer">
+      This is a <strong>concept visualisation</strong> for inspiration only — not an architectural
+      drawing, structural or planning advice, or confirmation that the design can be built. SC
+      Design &amp; Construction would review the property properly before giving real advice.
+    </div>
+  </div>
+
+  <!-- REAL examples (genuine TailoredQuote AI before/after outputs) -->
+  <div class="card" id="realCard">
+    <label for="example">Real before &amp; after examples</label>
+    <p class="hint" style="margin:0 0 10px">Genuine AI outputs generated with the TailoredQuote engine — drag to compare.</p>
+    <select id="example">
+      <option value="househront">House front — new windows &amp; composite door</option>
+      <option value="conservatory">Conservatory — new warm tiled roof</option>
+      <option value="garage">Garage — new anthracite door</option>
+      <option value="kitchen">Kitchen-diner — open-plan island</option>
+    </select>
+    <div style="height:12px"></div>
+    <div class="stage" id="rstage">
+      <span class="tag tag-b">BEFORE</span>
+      <span class="tag tag-a">AFTER · AI</span>
+      <img id="rafter" alt="After — AI render" />
+      <img id="rbefore" alt="Before photo" />
+      <div class="handle" id="rhandle"></div>
+    </div>
+    <p class="hint" style="margin-top:10px">These are real outputs of exterior/interior renovations. A true “extension added” render is produced the same way once the AI engine key is connected.</p>
+  </div>
+
+  <p class="foot">
+    Concept visualisation by <strong>SC Design &amp; Construction</strong> · powered by TailoredQuote<br>
+    Runs entirely in your browser — your photo never leaves your device.
+  </p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var MAXW = 1280;            // working resolution
+  var WM = "Concept visualisation by SC Design & Construction · powered by TailoredQuote";
+
+  var els = {
+    drop: document.getElementById('drop'),
+    dropText: document.getElementById('dropText'),
+    preview: document.getElementById('preview'),
+    photo: document.getElementById('photo'),
+    sampleBtn: document.getElementById('sampleBtn'),
+    changeBtn: document.getElementById('changeBtn'),
+    styleSel: document.getElementById('style'),
+    sideSel: document.getElementById('side'),
+    ptypeSel: document.getElementById('ptype'),
+    storeysSel: document.getElementById('storeys'),
+    goBtn: document.getElementById('goBtn'),
+    setup: document.getElementById('setup'),
+    result: document.getElementById('result'),
+    stage: document.getElementById('stage'),
+    afterC: document.getElementById('afterC'),
+    beforeC: document.getElementById('beforeC'),
+    handle: document.getElementById('handle'),
+    downloadBtn: document.getElementById('downloadBtn'),
+    againBtn: document.getElementById('againBtn'),
+    aiProvider: document.getElementById('aiProvider'),
+    aiKey: document.getElementById('aiKey'),
+    aiRemember: document.getElementById('aiRemember')
+  };
+
+  var currentImg = null;   // HTMLImageElement (the "before")
+  var currentFile = null;  // original File/Blob if uploaded
+  var usingSample = false;
+
+  /* ---------- restore remembered key (this session only) ---------- */
+  try {
+    var savedKey = sessionStorage.getItem('sc_ai_key');
+    var savedProv = sessionStorage.getItem('sc_ai_provider');
+    if (savedKey) { els.aiKey.value = savedKey; els.aiRemember.checked = true; }
+    if (savedProv) els.aiProvider.value = savedProv;
+  } catch(_) {}
+
+  /* ---------- input handling ---------- */
+  els.drop.addEventListener('click', function(){ els.photo.click(); });
+  els.changeBtn.addEventListener('click', function(){ els.photo.click(); });
+  els.photo.addEventListener('change', function(e){
+    var f = e.target.files && e.target.files[0];
+    if(!f) return;
+    currentFile = f;
+    var url = URL.createObjectURL(f);
+    loadImage(url, false);
+  });
+  els.sampleBtn.addEventListener('click', function(){
+    var c = buildSampleHouse();
+    currentFile = null;
+    loadImage(c.toDataURL('image/jpeg', 0.92), true);
+  });
+
+  function loadImage(src, sample){
+    var img = new Image();
+    img.onload = function(){
+      currentImg = img; usingSample = sample;
+      els.preview.src = src;
+      els.preview.classList.remove('hidden');
+      els.dropText.classList.add('hidden');
+    };
+    img.onerror = function(){ alert("Sorry, that image could not be loaded. Please try another."); };
+    img.src = src;
+  }
+
+  /* ---------- a built-in sample house (so it works with zero uploads) ---------- */
+  function buildSampleHouse(){
+    var w = 1200, h = 800;
+    var c = document.createElement('canvas'); c.width=w; c.height=h;
+    var x = c.getContext('2d');
+    // sky
+    var sky = x.createLinearGradient(0,0,0,h*0.62);
+    sky.addColorStop(0,'#cfe0ec'); sky.addColorStop(1,'#eaf1f5');
+    x.fillStyle=sky; x.fillRect(0,0,w,h*0.62);
+    // ground / lawn
+    var g = x.createLinearGradient(0,h*0.6,0,h);
+    g.addColorStop(0,'#bcae8e'); g.addColorStop(1,'#a89b6f');
+    x.fillStyle=g; x.fillRect(0,h*0.6,w,h*0.4);
+    // patio strip
+    x.fillStyle='#cfc7b6'; x.fillRect(0,h*0.74,w,h*0.10);
+    // main house block
+    var hx=320, hy=250, hw=520, hh=330;
+    x.fillStyle='#e7e1d6'; x.fillRect(hx,hy,hw,hh);
+    // roof
+    x.fillStyle='#6f5b4b';
+    x.beginPath(); x.moveTo(hx-30,hy); x.lineTo(hx+hw/2,hy-130); x.lineTo(hx+hw+30,hy); x.closePath(); x.fill();
+    // door
+    x.fillStyle='#8a7c66'; x.fillRect(hx+hw/2-35,hy+hh-150,70,150);
+    // windows
+    x.fillStyle='#b9cdd6';
+    x.fillRect(hx+60,hy+70,110,90); x.fillRect(hx+hw-170,hy+70,110,90);
+    x.fillRect(hx+60,hy+200,110,90);
+    x.strokeStyle='#5b5346'; x.lineWidth=4;
+    x.strokeRect(hx+60,hy+70,110,90); x.strokeRect(hx+hw-170,hy+70,110,90);
+    x.strokeRect(hx+60,hy+200,110,90); x.strokeRect(hx+hw/2-35,hy+hh-150,70,150);
+    // chimney
+    x.fillStyle='#7a6655'; x.fillRect(hx+hw-110,hy-90,46,90);
+    return c;
+  }
+
+  /* ---------- fit + draw ---------- */
+  function fit(img){
+    var w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    var scale = Math.min(1, MAXW / w);
+    return { w: Math.round(w*scale), h: Math.round(h*scale) };
+  }
+
+  function drawBefore(ctx,w,h){
+    ctx.clearRect(0,0,w,h);
+    ctx.drawImage(currentImg,0,0,w,h);
+  }
+
+  function palette(style){
+    switch(style){
+      case 'warm':     return {wall:'#caa97e',frame:'#5a4631',glass1:'#e9eef0',glass2:'#cdd9dd',edge:'#3f3322'};
+      case 'rendered': return {wall:'#f1efe9',frame:'#cfcabd',glass1:'#dfe8ec',glass2:'#c4d2d8',edge:'#b6b1a4'};
+      case 'brick':    return {wall:'#b06a4f',frame:'#4a3a30',glass1:'#e4ebee',glass2:'#c6d4d9',edge:'#3a2c24'};
+      default:         return {wall:'#3c4147',frame:'#23272b',glass1:'#dfeaf0',glass2:'#aebfc9',edge:'#1a1d20'}; // modern
+    }
+  }
+
+  function drawAfter(ctx,w,h,style,side,ptype,storeys){
+    ptype = ptype || 'rear';
+    storeys = storeys || 'single';
+    // base photo
+    ctx.clearRect(0,0,w,h);
+    ctx.drawImage(currentImg,0,0,w,h);
+
+    var p = palette(style);
+
+    // Specialist shapes draw + return; extensions fall through.
+    if(ptype==='loft'){ drawLoftDormer(ctx,w,h,p); warmGrade(ctx,w,h); drawWatermark(ctx,w,h); return; }
+    if(ptype==='conservatory'){ drawConservatory(ctx,w,h,p,side); warmGrade(ctx,w,h); drawWatermark(ctx,w,h); return; }
+    if(ptype==='porch'){ drawPorch(ctx,w,h,p); warmGrade(ctx,w,h); drawWatermark(ctx,w,h); return; }
+
+    var two = storeys==='two';
+    // extension footprint (anchored to lower portion of the frame)
+    var extH = h*(two?0.52:0.34);
+    var topY = h - extH - h*0.04;      // small gap above ground
+    var botY = h - h*0.05;
+    var extW, x0;
+    if(ptype==='wraparound'){ extW = w*0.80; x0 = (w-extW)/2; }
+    else if(side==='centre'){ extW = w*0.74; x0 = (w-extW)/2; }
+    else if(side==='left'){ extW = w*0.46; x0 = w*0.05; }
+    else { extW = w*0.46; x0 = w*0.49; }
+    var x1 = x0 + extW;
+
+    // ground shadow
+    ctx.save();
+    ctx.globalAlpha=0.22; ctx.fillStyle='#000';
+    ctx.beginPath();
+    ctx.ellipse(x0+extW*0.52, botY+8, extW*0.56, h*0.03, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // slight fake perspective: far edge a touch higher
+    var farLift = h*0.03;
+    var leftTop  = side==='left'  ? topY+farLift : topY;
+    var rightTop = side==='right' ? topY+farLift : topY;
+    if(side==='centre'){ leftTop=topY; rightTop=topY; }
+
+    // wall body
+    ctx.fillStyle=p.wall;
+    ctx.beginPath();
+    ctx.moveTo(x0,leftTop); ctx.lineTo(x1,rightTop); ctx.lineTo(x1,botY); ctx.lineTo(x0,botY);
+    ctx.closePath(); ctx.fill();
+
+    // flat-roof fascia
+    ctx.fillStyle=p.edge;
+    ctx.beginPath();
+    ctx.moveTo(x0,leftTop); ctx.lineTo(x1,rightTop);
+    ctx.lineTo(x1,rightTop+Math.max(8,h*0.018)); ctx.lineTo(x0,leftTop+Math.max(8,h*0.018));
+    ctx.closePath(); ctx.fill();
+
+    // glazing area (big sliding/bi-fold doors)
+    var gpad = extW*0.06;
+    var gx0 = x0+gpad, gx1 = x1-gpad;
+    var gTop = (leftTop+rightTop)/2 + extH*0.16;
+    var gBot = botY - extH*0.10;
+    var glass = ctx.createLinearGradient(gx0,gTop,gx1,gBot);
+    glass.addColorStop(0,p.glass1); glass.addColorStop(0.55,p.glass2); glass.addColorStop(1,p.glass1);
+    ctx.fillStyle=glass;
+    ctx.fillRect(gx0,gTop,gx1-gx0,gBot-gTop);
+
+    // mullions
+    ctx.strokeStyle=p.frame; ctx.lineWidth=Math.max(2,extW*0.012);
+    ctx.strokeRect(gx0,gTop,gx1-gx0,gBot-gTop);
+    var panels = side==='centre'?6:4;
+    for(var i=1;i<panels;i++){
+      var mx = gx0 + (gx1-gx0)*(i/panels);
+      ctx.beginPath(); ctx.moveTo(mx,gTop); ctx.lineTo(mx,gBot); ctx.stroke();
+    }
+    // transom
+    var ty = gTop + (gBot-gTop)*0.32;
+    ctx.beginPath(); ctx.moveTo(gx0,ty); ctx.lineTo(gx1,ty); ctx.stroke();
+
+    // glass reflection highlight
+    ctx.save();
+    ctx.globalAlpha=0.18; ctx.fillStyle='#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(gx0,gTop); ctx.lineTo(gx0+(gx1-gx0)*0.4,gTop);
+    ctx.lineTo(gx0+(gx1-gx0)*0.18,gBot); ctx.lineTo(gx0,gBot);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    // subtle warm grade over whole "after"
+    ctx.save();
+    ctx.globalAlpha=0.10;
+    var grade=ctx.createLinearGradient(0,0,0,h);
+    grade.addColorStop(0,'#ffd9a0'); grade.addColorStop(1,'#7a5a32');
+    ctx.fillStyle=grade; ctx.fillRect(0,0,w,h);
+    ctx.restore();
+
+    // two-storey: add a row of upper windows on the blank upper wall
+    if(storeys==='two'){
+      var uy = topY + extH*0.12, uh = extH*0.26, n = ptype==='wraparound'?4:3;
+      ctx.fillStyle=glass; ctx.strokeStyle=p.frame; ctx.lineWidth=Math.max(2,extW*0.01);
+      for(var u=0;u<n;u++){
+        var uw = extW*0.18, ux = x0 + extW*(0.07 + u*(0.86/n));
+        ctx.fillRect(ux,uy,uw,uh); ctx.strokeRect(ux,uy,uw,uh);
+        ctx.beginPath(); ctx.moveTo(ux+uw/2,uy); ctx.lineTo(ux+uw/2,uy+uh); ctx.stroke();
+      }
+    }
+
+    drawWatermark(ctx,w,h);
+  }
+
+  function warmGrade(ctx,w,h){
+    ctx.save(); ctx.globalAlpha=0.10;
+    var g=ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,'#ffd9a0'); g.addColorStop(1,'#7a5a32');
+    ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.restore();
+  }
+
+  function drawLoftDormer(ctx,w,h,p){
+    // dormer in the upper third
+    var dw=w*0.30, dh=h*0.20, x0=w*0.36, y0=h*0.15;
+    ctx.fillStyle=p.wall; ctx.fillRect(x0,y0,dw,dh);
+    ctx.fillStyle=p.edge; ctx.fillRect(x0-6,y0-8,dw+12,10);
+    var gx=x0+dw*0.12, gy=y0+dh*0.22, gw=dw*0.76, gh=dh*0.60;
+    var gl=ctx.createLinearGradient(gx,gy,gx+gw,gy+gh); gl.addColorStop(0,p.glass1); gl.addColorStop(1,p.glass2);
+    ctx.fillStyle=gl; ctx.fillRect(gx,gy,gw,gh);
+    ctx.strokeStyle=p.frame; ctx.lineWidth=Math.max(2,dw*0.02); ctx.strokeRect(gx,gy,gw,gh);
+    ctx.beginPath(); ctx.moveTo(gx+gw/2,gy); ctx.lineTo(gx+gw/2,gy+gh); ctx.stroke();
+  }
+
+  function drawConservatory(ctx,w,h,p,side){
+    var extW=w*0.46, x0 = side==='left'? w*0.05 : (side==='centre'? (w-extW)/2 : w*0.49);
+    var botY=h-h*0.05, topY=h-h*0.40, ridge=topY-h*0.07, x1=x0+extW;
+    // shadow
+    ctx.save(); ctx.globalAlpha=0.20; ctx.fillStyle='#000';
+    ctx.beginPath(); ctx.ellipse(x0+extW*0.52,botY+8,extW*0.55,h*0.03,0,0,Math.PI*2); ctx.fill(); ctx.restore();
+    // glazed box
+    var gl=ctx.createLinearGradient(x0,topY,x1,botY); gl.addColorStop(0,p.glass1); gl.addColorStop(0.5,p.glass2); gl.addColorStop(1,p.glass1);
+    ctx.fillStyle=gl; ctx.fillRect(x0,topY,extW,botY-topY);
+    // pitched glass roof
+    ctx.beginPath(); ctx.moveTo(x0,topY); ctx.lineTo((x0+x1)/2,ridge); ctx.lineTo(x1,topY); ctx.closePath(); ctx.fillStyle=p.glass2; ctx.fill();
+    // frames
+    ctx.strokeStyle=p.frame; ctx.lineWidth=Math.max(2,extW*0.012);
+    ctx.strokeRect(x0,topY,extW,botY-topY);
+    for(var i=1;i<5;i++){ var mx=x0+extW*(i/5); ctx.beginPath(); ctx.moveTo(mx,topY); ctx.lineTo(mx,botY); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(x0,topY); ctx.lineTo((x0+x1)/2,ridge); ctx.lineTo(x1,topY); ctx.stroke();
+  }
+
+  function drawPorch(ctx,w,h,p){
+    // small porch centred at the front
+    var pw=w*0.20, ph=h*0.30, x0=(w-pw)/2, botY=h-h*0.06, topY=botY-ph;
+    ctx.save(); ctx.globalAlpha=0.20; ctx.fillStyle='#000';
+    ctx.beginPath(); ctx.ellipse(x0+pw*0.5,botY+6,pw*0.6,h*0.02,0,0,Math.PI*2); ctx.fill(); ctx.restore();
+    ctx.fillStyle=p.wall; ctx.fillRect(x0,topY,pw,ph);
+    // pitched roof
+    ctx.fillStyle=p.edge; ctx.beginPath(); ctx.moveTo(x0-8,topY); ctx.lineTo(x0+pw/2,topY-h*0.07); ctx.lineTo(x0+pw+8,topY); ctx.closePath(); ctx.fill();
+    // door + side glazing
+    ctx.fillStyle=p.frame; ctx.fillRect(x0+pw*0.32,topY+ph*0.28,pw*0.36,ph*0.72);
+    var gl=ctx.createLinearGradient(x0,topY,x0+pw,botY); gl.addColorStop(0,p.glass1); gl.addColorStop(1,p.glass2);
+    ctx.fillStyle=gl; ctx.fillRect(x0+pw*0.06,topY+ph*0.30,pw*0.20,ph*0.66); ctx.fillRect(x0+pw*0.74,topY+ph*0.30,pw*0.20,ph*0.66);
+  }
+
+  function drawWatermark(ctx,w,h){
+    var fs=Math.max(12,Math.round(w/62));
+    ctx.font='600 '+fs+'px -apple-system,Arial,sans-serif';
+    var tw=ctx.measureText(WM).width;
+    var pad=Math.round(w*0.018);
+    var bw=Math.min(w-pad*2,tw+pad*2), bh=fs*1.9;
+    var bx=w-pad-bw, by=h-pad-bh;
+    ctx.save();
+    ctx.globalAlpha=0.42; ctx.fillStyle='#000';
+    roundRect(ctx,bx,by,bw,bh,bh/2); ctx.fill();
+    ctx.globalAlpha=0.95; ctx.fillStyle='#fff';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(WM, bx+bw-pad, by+bh/2);
+    ctx.restore();
+  }
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+
+  /* ---------- generate ---------- */
+  function showResult(){
+    els.setup.classList.add('hidden');
+    els.result.classList.remove('hidden');
+    setPos(50);
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function setAfterTag(text){
+    var t = els.stage.querySelector('.tag-a');
+    if(t) t.textContent = text;
+  }
+
+  els.goBtn.addEventListener('click', function(){ runGenerate(); });
+
+  async function runGenerate(){
+    if(!currentImg){ alert("Please add a photo or tap 'Use sample house' first."); return; }
+    var key = (els.aiKey.value || '').trim();
+
+    // No key → instant in-browser concept overlay.
+    if(!key){
+      var dim = fit(currentImg);
+      [els.beforeC, els.afterC].forEach(function(cv){ cv.width=dim.w; cv.height=dim.h; });
+      drawBefore(els.beforeC.getContext('2d'), dim.w, dim.h);
+      drawAfter(els.afterC.getContext('2d'), dim.w, dim.h, els.styleSel.value, els.sideSel.value, els.ptypeSel.value, els.storeysSel.value);
+      setAfterTag('AFTER · concept');
+      showResult();
+      return;
+    }
+
+    // Key present → real AI render directly from the browser.
+    var origText = els.goBtn.textContent;
+    els.goBtn.disabled = true;
+    els.goBtn.textContent = 'Generating real AI render… (10–30s)';
+    try {
+      // persist key for this session if requested
+      try {
+        if(els.aiRemember.checked){ sessionStorage.setItem('sc_ai_key', key); sessionStorage.setItem('sc_ai_provider', els.aiProvider.value); }
+        else { sessionStorage.removeItem('sc_ai_key'); sessionStorage.removeItem('sc_ai_provider'); }
+      } catch(_){}
+
+      var blob = await getCurrentBlob();
+      var prompt = buildAiPrompt();
+      var b64 = els.aiProvider.value === 'gemini'
+        ? await geminiEdit(blob, prompt, key)
+        : await openaiEdit(blob, prompt, key);
+
+      var aiImg = await loadDataImage('data:image/png;base64,' + b64);
+      var dw = Math.min(MAXW, aiImg.naturalWidth || aiImg.width);
+      var dh = Math.round((aiImg.naturalHeight || aiImg.height) * (dw / (aiImg.naturalWidth || aiImg.width)));
+      [els.beforeC, els.afterC].forEach(function(cv){ cv.width=dw; cv.height=dh; });
+      coverDraw(els.beforeC.getContext('2d'), currentImg, dw, dh);
+      var ax = els.afterC.getContext('2d');
+      ax.drawImage(aiImg, 0, 0, dw, dh);
+      drawWatermark(ax, dw, dh);
+      setAfterTag('AFTER · AI');
+      showResult();
+    } catch(err){
+      alert('Real AI render failed:\n' + (err && err.message ? err.message : err) +
+        '\n\nFalling back to the instant in-browser concept. (Check the key is valid and has image access, or try the other provider.)');
+      var d2 = fit(currentImg);
+      [els.beforeC, els.afterC].forEach(function(cv){ cv.width=d2.w; cv.height=d2.h; });
+      drawBefore(els.beforeC.getContext('2d'), d2.w, d2.h);
+      drawAfter(els.afterC.getContext('2d'), d2.w, d2.h, els.styleSel.value, els.sideSel.value, els.ptypeSel.value, els.storeysSel.value);
+      setAfterTag('AFTER · concept');
+      showResult();
+    } finally {
+      els.goBtn.disabled = false;
+      els.goBtn.textContent = origText;
+    }
+  }
+
+  /* ---------- AI helpers ---------- */
+  function buildAiPrompt(){
+    var styleMap = { modern:'modern glass and dark-framed', warm:'warm contemporary timber', rendered:'white rendered', brick:'matching-brick' };
+    var sideMap  = { right:'on the right side', left:'on the left side', centre:'across the rear' };
+    var s = styleMap[els.styleSel.value] || 'modern';
+    var pos = sideMap[els.sideSel.value] || 'on the rear';
+    var storeys = els.storeysSel.value === 'two' ? 'two-storey' : 'single-storey';
+    var pt = els.ptypeSel.value;
+    var feature;
+    if(pt==='loft') feature = 'a loft conversion with a ' + (els.styleSel.value==='rendered'?'rendered':'tile-hung') + ' dormer added to the roof';
+    else if(pt==='conservatory') feature = 'a ' + s + ' conservatory / orangery with a glazed roof ' + pos;
+    else if(pt==='porch') feature = 'a tasteful ' + s + ' front porch over the entrance';
+    else if(pt==='wraparound') feature = 'a ' + storeys + ' ' + s + ' wraparound extension around the rear and side';
+    else if(pt==='side') feature = 'a ' + storeys + ' ' + s + ' side extension on the side of the house';
+    else feature = 'a ' + storeys + ' ' + s + ' rear extension ' + pos;
+    return 'Edit this photograph of a UK residential house to show a realistic concept of ' + feature + '. '
+      + 'Preserve the existing house structure, proportions, roofline, windows and the exact camera angle and framing. '
+      + 'Only add or modify the relevant area; do not invent fantasy architecture, and do not change neighbouring properties, the sky or the road. '
+      + 'Keep materials, scale and detailing believable for a UK home, photographed in the same conditions.';
+  }
+  function pickSize(){
+    var w = currentImg.naturalWidth || currentImg.width, h = currentImg.naturalHeight || currentImg.height;
+    var ar = w / h;
+    if(ar > 1.2) return '1536x1024';
+    if(ar < 0.83) return '1024x1536';
+    return '1024x1024';
+  }
+  function getCurrentBlob(){
+    if(currentFile) return Promise.resolve(currentFile);
+    return new Promise(function(resolve){
+      var dim = fit(currentImg);
+      var c = document.createElement('canvas'); c.width=dim.w; c.height=dim.h;
+      c.getContext('2d').drawImage(currentImg,0,0,dim.w,dim.h);
+      c.toBlob(function(b){ resolve(b); }, 'image/png');
+    });
+  }
+  function blobToB64(blob){
+    return new Promise(function(resolve,reject){
+      var r = new FileReader();
+      r.onload = function(){ resolve(String(r.result).split(',')[1]); };
+      r.onerror = reject; r.readAsDataURL(blob);
+    });
+  }
+  function loadDataImage(src){
+    return new Promise(function(resolve,reject){
+      var i = new Image(); i.onload=function(){resolve(i);}; i.onerror=function(){reject(new Error('could not decode AI image'));}; i.src=src;
+    });
+  }
+  function coverDraw(ctx, img, w, h){
+    var iw = img.naturalWidth||img.width, ih = img.naturalHeight||img.height;
+    var s = Math.max(w/iw, h/ih), dw=iw*s, dh=ih*s;
+    ctx.drawImage(img, (w-dw)/2, (h-dh)/2, dw, dh);
+  }
+  async function openaiEdit(blob, prompt, key){
+    var fd = new FormData();
+    fd.append('image', blob, 'house.png');
+    fd.append('model', 'gpt-image-1');
+    fd.append('prompt', prompt);
+    fd.append('n', '1');
+    fd.append('size', pickSize());
+    fd.append('input_fidelity', 'high');
+    var res = await fetch('https://api.openai.com/v1/images/edits', {
+      method:'POST', headers:{ 'Authorization':'Bearer ' + key }, body: fd
+    });
+    if(!res.ok) throw new Error('OpenAI ' + res.status + ' — ' + (await res.text()).slice(0,180));
+    var j = await res.json();
+    var b64 = j && j.data && j.data[0] && j.data[0].b64_json;
+    if(!b64) throw new Error('OpenAI returned no image');
+    return b64;
+  }
+  async function geminiEdit(blob, prompt, key){
+    var b64in = await blobToB64(blob);
+    var body = { contents:[{ parts:[ {text:prompt}, {inline_data:{ mime_type: blob.type || 'image/png', data:b64in }} ] }] };
+    var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + encodeURIComponent(key), {
+      method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body)
+    });
+    if(!res.ok) throw new Error('Gemini ' + res.status + ' — ' + (await res.text()).slice(0,180));
+    var j = await res.json();
+    var parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+    for(var i=0;i<parts.length;i++){ var inl = parts[i].inline_data || parts[i].inlineData; if(inl && inl.data) return inl.data; }
+    throw new Error('Gemini returned no image (it may have refused this photo)');
+  }
+
+  els.againBtn.addEventListener('click', function(){
+    els.result.classList.add('hidden');
+    els.setup.classList.remove('hidden');
+  });
+
+  els.downloadBtn.addEventListener('click', function(){
+    var url = els.afterC.toDataURL('image/jpeg', 0.92);
+    var a=document.createElement('a');
+    a.href=url; a.download='sc-extension-concept.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  /* ---------- before/after slider ---------- */
+  function setPos(pct){
+    pct=Math.max(0,Math.min(100,pct));
+    els.beforeC.style.clipPath='inset(0 '+(100-pct)+'% 0 0)';
+    els.handle.style.left=pct+'%';
+  }
+  function fromX(clientX){
+    var r=els.stage.getBoundingClientRect();
+    setPos(((clientX-r.left)/r.width)*100);
+  }
+  var dragging=false;
+  els.stage.addEventListener('pointerdown',function(e){dragging=true;fromX(e.clientX);els.stage.setPointerCapture(e.pointerId);});
+  els.stage.addEventListener('pointermove',function(e){if(dragging)fromX(e.clientX);});
+  els.stage.addEventListener('pointerup',function(){dragging=false;});
+  els.stage.addEventListener('pointercancel',function(){dragging=false;});
+})();
+
+/* ---------- real before/after examples gallery ---------- */
+(function(){
+  var sel=document.getElementById('example');
+  if(!sel) return;
+  var rb=document.getElementById('rbefore'), ra=document.getElementById('rafter'),
+      st=document.getElementById('rstage'), h=document.getElementById('rhandle');
+  function setPos(p){p=Math.max(0,Math.min(100,p)); rb.style.clipPath='inset(0 '+(100-p)+'% 0 0)'; h.style.left=p+'%';}
+  function fromX(x){var r=st.getBoundingClientRect();setPos(((x-r.left)/r.width)*100);}
+  function load(){var k=sel.value; ra.src='real/'+k+'-after.jpg'; rb.src='real/'+k+'-before.jpg'; setPos(50);}
+  var drag=false;
+  st.addEventListener('pointerdown',function(e){drag=true;fromX(e.clientX);st.setPointerCapture(e.pointerId);});
+  st.addEventListener('pointermove',function(e){if(drag)fromX(e.clientX);});
+  st.addEventListener('pointerup',function(){drag=false;});
+  st.addEventListener('pointercancel',function(){drag=false;});
+  sel.addEventListener('change',load);
+  load();
+})();
+</script>
+</body>
+</html>

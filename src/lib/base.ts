@@ -1,0 +1,19 @@
+/**
+ * Base-path + static-export helpers.
+ *
+ * For the GitHub Pages static export the site is served under a sub-path
+ * (e.g. /sc/site) and there is no server, so:
+ *  - raw asset/anchor paths must be prefixed with the basePath, and
+ *  - the contact + send-concept forms fall back to email/WhatsApp.
+ *
+ * In the normal (Vercel) build both are empty/false, so behaviour is unchanged.
+ */
+export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+export const IS_STATIC = process.env.NEXT_PUBLIC_STATIC === "1";
+
+/** Prefix an absolute internal path ("/x") with the basePath. Leaves
+ *  data: URLs, http(s), mailto:, tel: and hash links untouched. */
+export function withBase(path: string): string {
+  if (!path) return path;
+  return path.startsWith("/") && !path.startsWith("//") ? BASE_PATH + path : path;
+}

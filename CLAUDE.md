@@ -1,0 +1,120 @@
+# SC — Project Rules for Claude
+
+This is an **independent project** that lives in the `/sc/` folder. It is
+unrelated to the TailoredQuote application that occupies the rest of this
+repository — the repo is only being used here as a convenient testing host.
+
+## Scope & Isolation (MANDATORY)
+
+1. **This `CLAUDE.md` governs the `/sc/` project ONLY.** It does not apply to
+   anything outside the `/sc/` folder.
+2. **Never edit the root `/CLAUDE.md`** (the TailoredQuote project rules) or any
+   file outside `/sc/` as part of work on this project. The TailoredQuote rules
+   do not apply here, and this project's rules do not apply there.
+3. **Keep all SC work inside `/sc/`.** New files, assets, and subfolders for this
+   project go under `/sc/`. Do not scatter SC files into the repo root.
+
+## Working Conventions
+
+- Branch: develop on `claude/sc-clause-file-9bP8D` (the current branch for this
+  project) unless told otherwise.
+- Commit messages: clear and descriptive; scope them to the `sc/` changes.
+- Ask before making assumptions when a requirement is ambiguous.
+
+## Project Notes
+
+**Project:** Premium website for **SC Design & Construction Ltd** (Sean Corser, Wallasey/Wirral) + an AI "Extension Concept Visualiser" lead magnet.
+
+### Confirmed client decisions
+- **Service stance: DESIGN-ONLY** (architectural design + planning drawings). The business does **NOT** carry out construction — never make build/construction claims.
+- **Wording: "architect / architectural design" IS approved** by the client. Lead with "architectural design / architectural drawings".
+  - ⚠️ **LEGAL FLAG (Architects Act 1997):** the bare title *"architect"* is protected — only an **ARB-registered** person may use it. "Architectural design / designer / drawings" is the safe form. **Confirm Sean's ARB registration before launch** if the bare title is used anywhere.
+
+### Stack (verified June 2026)
+- Next.js **16.x** (App Router, TS, Tailwind **v4**, ESLint) · Vercel · Supabase (DB/Storage/rate-limit/leads — service-role key **server-only**) · Resend (email, abstracted) · Plausible (consent-gated) · Cloudflare Turnstile · Visualiser API on **Node runtime** + **Sharp 0.34** · AI = `gemini-2.5-flash-image` (Replicate fallback deferred).
+
+### Hard rules (carried from the brief)
+- No fake testimonials / no invented certifications.
+- Do not publish CH45 6TR address unless approved (`site.addressIsPublic = false` by default → service-area wording).
+- Companies House number omitted until the correct entity is confirmed.
+- No thin/duplicate location pages — each of the 12 must be unique.
+- Visualiser output is a **concept only**, never presented as buildable/planning-ready.
+- No non-consented analytics; server-side rate limiting only; Sharp on Node runtime (never Edge).
+- Never expose the Supabase service-role key or any API key client-side.
+
+### Content rules
+- **Service area wording:** always "**Wirral and the surrounding areas**" (or "across Wirral"). **Never** "20-mile radius" / "20 miles" — removed globally (the user's directive). `site.serviceArea` is the single source of truth; don't hardcode radius copy.
+- Social links render only when a real URL is set (`site.socials.facebook` is `""` until confirmed — empty links are not rendered).
+- Guides + planning content carry an advisory "general guidance for England, confirm with your local authority" note.
+
+### Current sitemap (~60 routes — upgraded June 2026)
+The full site-upgrade plan + outcomes is in **`sc/SITE-UPGRADE-PLAN.md`**.
+- Marketing: `/` · `/services` (+ **10** service detail) · `/portfolio` · `/process` · `/about` · `/faqs` · `/contact` · `/contact/thank-you` (noindex) · `/projects` (+ `/projects/[slug]` template, off-route until real projects exist) · `/reviews`
+- **Services (10):** house-extensions, loft-conversions, residential-design, planning-building-regulations (hub) + planning-drawings-wirral, building-regulations-drawings-wirral, permitted-development-wirral, lawful-development-certificate-wirral, garage-conversion-drawings-wirral, conservation-area-design-wirral. Each carries rich structured fields (`whoFor`/`included`/`notIncluded`/`planningRoute`/`buildingRegsRoute`/`sendFirst`/`localConsiderations`/`relatedServices`/`relatedGuides`); grouped by `category` (design/planning) on the hub + a "which service do I need?" table.
+- **Areas:** `/areas` hub + **20** unique local pages, `tier`-split **core Wirral (15)** vs **wider (5)**. New core pages: new-brighton, moreton, upton, greasby, oxton, port-sunlight, eastham, prenton (Oxton + Port Sunlight conservation-hedged). Each has `propertyContext`/`localPlanning`/`relevantServices`/`nearby`.
+- **Guides (SEO):** `/guides` hub (grouped by `category`) + **11** guides. New: planning-drawings-vs-building-regulations-drawings, permitted-development-rights-wirral, lawful-development-certificate-explained, what-drawings-do-builders-need, how-long-does-planning-permission-take-wirral, conservation-area-extensions-wirral, loft-conversion-building-regulations. Each has summary box + TOC.
+- Visualiser: `/visualiser` (+ `/visualiser-terms`) — page now has H1 + above/below disclaimers + consent/rights note.
+- Legal: `/privacy-policy` · `/cookie-policy`
+- Internal: `/components-preview` (noindex)
+- Generated: `sitemap.xml`, `robots.txt`, `opengraph-image`, `icon.svg`
+
+### Global components/SEO added in the upgrade
+- **Nav** = grouped dropdowns (Services/Areas/Guides) — accessible (`aria-expanded`/`aria-controls`, button-driven, Esc + outside-click close); children derive from the data arrays. **Footer** = 5 columns (design services / planning services / explore / contact + "despite the name…" reassurance). **`MobileCtaBar`** = sticky bottom Call/WhatsApp/Send-idea (< lg, below the consent dialog). **`Breadcrumbs`** UI component on every inner page (paired with `breadcrumbJsonLd`).
+- **SEO helpers:** `pageMeta` now returns `title:{absolute}` (kills the double-brand bug) + supports per-page `metaTitle`/`metaDescription` (on Service/Location/Guide). `webSiteJsonLd()` added (in layout alongside the `@id`-linked `ProfessionalService`); `localBusinessJsonLd` areaServed expanded to the full town list + `serviceType`. Every page has exactly one H1 (pages that used `SectionHeading` as the title were fixed: contact/faqs/process/about + the hubs).
+- **Contact form** expanded (postcode\*, area, project type/stage, has-builder, timescale, budget, preferred contact); extra fields fold into the message so the API/DB stay unchanged; server path redirects to `/contact/thank-you`; static path keeps the mailto fallback.
+- **Trust:** `lib/projects.ts` (real list **empty** — never invent; placeholders are labelled "coming soon"); `/reviews` shows "coming soon" + a Google-review CTA that only renders once a real URL is set. Portfolio relabelled "Project examples & design visualisations", AI items all labelled illustrative.
+- **Image SEO:** `BeforeAfterSlider` imgs carry `width`/`height`/`loading`/`decoding` + a `priority` opt-out (home hero is eager).
+- `LOCAL_SEO_CHECKLIST.md` — internal GBP/citations/NAP doc.
+
+### Visualiser — LIVE photoreal AI render (primary path since June 2026)
+The `/visualiser` page (H1 + browser title **"See your idea come to life"**) produces a **photorealistic** extension render via OpenAI `gpt-image-1`, shown as the original and proposed images **side by side** on the result step. The old in-browser canvas overlay is retained ONLY as an automatic fallback. Runs with **zero owner action** by reusing TailoredQuote's existing infrastructure (explicitly owner-authorised for image-generation purposes — it does not affect TailoredQuote).
+
+- **Backend: `api/sc-visualise.js`** (repo-ROOT, NOT `/sc/`). The one authorised exception to the "/sc/-only" rule — Vercel only deploys serverless functions from the root `/api/`, so the function lives there while all UI/source stays in `/sc/`. Fully isolated: imports only `openai`, touches no TailoredQuote function/RPC/table, and is called cross-origin from the static SC site (the same static→`q-cbuild1.vercel.app` pattern the TQ demo uses). Deploys automatically on push to `claude/quote-builder-wv-construction-dwtaw` (Vercel production tracks that branch — confirmed live).
+  - **OpenAI key resolution:** env `OPENAI_API_KEY` → fallback to `client_accounts.openai_key` read via `SUPABASE_SERVICE_ROLE_KEY` (read-only), mirroring the live TQ demo functions. TQ stores its key in the DB, not the env var, so the **DB fallback is what actually resolves** (health check returns `keyConfigured:true, envKey:false, serviceKey:true`). Reuses the SAME existing key — nothing to configure.
+  - **CORS** locked to `tailoredquote.co.uk` (+ www + `q-cbuild1.vercel.app`). Best-effort in-memory rate limit (12/IP/hour, 200/day). `maxDuration:120` registered in root `vercel.json` (additive; no existing TQ entry changed).
+  - **gpt-image-1 call:** `images.edit` with `input_fidelity:'high'`, `quality:'medium'`, at a **native size matching the input aspect ratio** (`pickNativeSize`/`pickOutputSize` → 1024², 1536×1024, 1024×1536) to avoid the documented room-shrinkage artefact. Returns base64; **the source photo is held in memory only, never persisted.**
+  - **`GET` health check:** `https://q-cbuild1.vercel.app/api/sc-visualise` → `{ok, service, keyConfigured, envKey, serviceKey, ts}`.
+- **Frontend** (`src/components/visualiser/VisualiserApp.tsx` + `src/lib/concept-canvas.ts` + `src/lib/visualiser-options.ts`): `presizeToNative()` cover-fits the photo to a native size (also used as the displayed "before"), POSTs JSON `{imageBase64,mime,size,projectType,storeys,style,notes,email,phone}` to `NEXT_PUBLIC_SC_VISUALISER_ENDPOINT` (defaults to the deployed URL, baked into the static export at build time), renders **side by side** (original | proposed), watermarks on download via `addWatermark()`, and **automatically falls back to the in-browser canvas concept** (`renderConcept`) if the endpoint errors/refuses so the page never breaks. Loading copy warns it can take up to a minute.
+- **Contact capture (required email + optional phone):** the upload form has an **Email address** field (required, hint "This is where your results will be sent.") and an optional **Telephone** field. `generate()` will NOT process the form until the email passes a basic format check (`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`); the phone is never required. The server re-validates the email (returns `400 invalid_email` if missing/malformed) as defence-in-depth. Both values are sent in the POST body.
+- **Upload UX:** the photo box supports drag-and-drop plus two explicit buttons — **Take a photo** (a hidden input carrying `accept="image/*" capture="environment"` so phones/tablets open the camera app directly; desktop ignores `capture` and shows a file picker) and **Choose from library** (`fileInput`). **There is no "sample photo" option** (removed June 2026 — do not re-add). The free-text field is labelled **"Give me more detail of what you want"** (was "Notes (optional)"). The **"Concept visualisation only."** disclaimer box lives on `src/app/visualiser/page.tsx` **below** the `<VisualiserApp />` (i.e. under the Generate button), not in the hero — and the hero top padding is tightened (`pt-8`) so the page sits higher.
+- Output is always watermarked "Concept visualisation by SC Design & Construction · powered by TailoredQuote".
+
+#### Email workflow (every render — `api/sc-visualise.js` via the shared iCloud SMTP mailer `api/_lib/icloud-mailer.js`)
+- **On success → internal copy:** emails the **prompt + `before.jpg` + `after.png`** (attached) plus the **lead's email + phone**, form fields / output size / IP / user agent to **`matthewjtaylor1985@icloud.com`** AND **`scdesignandconstruction@outlook.com`** (`emailType: sc_visualiser_copy`).
+- **On success → customer result:** emails the visitor (the email they entered) their **`before` + `proposed-concept.png`** (attached) plus **Sean Corser's contact details** (SC Design & Construction · 07749 456528 · scdesignandconstruction1@gmail.com) and the concept-only disclaimer. **No prompt, no form/option data** is included (`emailType: sc_visualiser_customer`, `SEAN_CONTACT` const). Sent via `emailCustomerResult()`, awaited + `.catch()` so a mail failure never breaks the render.
+- **On any server-side failure** (`server_misconfigured` / model refusal / exception): emails a full diagnostic report — stage, HTTP + OpenAI error status, error message + stack, prompt, form fields, input dimensions/bytes, IP, user agent, and the **failed input photo attached** (`emailType: sc_visualiser_error`).
+- Recipients are the `NOTIFY_RECIPIENTS` const in `api/sc-visualise.js`. Emails are **awaited** (Vercel tears down the function after the HTTP response, so fire-and-forget would be cancelled) but wrapped in `.catch()` so a mail failure can never break the render. Both log to TQ's `sent_emails` table (visible on the admin Sent Emails page).
+- **Deliverability note:** sends are from `mail@tailoredquote.co.uk` via iCloud SMTP. `@icloud.com` inboxes fine; `@outlook.com` may junk the first few from a new-sender pattern — mark "not junk" / add to safe senders once.
+- The client-side canvas *fallback* render does NOT email (the server function isn't involved). Only real server renders + server failures notify.
+
+#### Legacy (present but unused by the live site)
+- Standalone `demo/extension-visualiser.html` — BYO-key OpenAI/Gemini in-browser visualiser.
+- Gemini server route `src/app/api/visualise/route.ts` (Node + Sharp + Gemini + Supabase) — kept for a future standalone SC Vercel deploy; excluded from the static export.
+
+#### Rollback (owner-authorised feature)
+Delete `api/sc-visualise.js`, revert the single additive `vercel.json` line, revert the `/sc/` source edits (`src/components/visualiser/VisualiserApp.tsx`, `src/app/visualiser/page.tsx`, `src/lib/concept-canvas.ts`, `src/lib/visualiser-options.ts`, `.env.example`), and rebuild `sc/site`. The only TailoredQuote-shared touches are: the additive `vercel.json` line, the read-only DB key lookup, and the shared (rate-capped) OpenAI key + SMTP mailer. The function cannot alter TQ behaviour.
+
+### SEO
+- Per-page metadata + canonical + OG/Twitter; JSON-LD: ProfessionalService, Service, Article (guides), BreadcrumbList, FAQPage. `sitemap.ts` + `robots.ts` (env-aware).
+- **Index-safety:** in static-export mode every page is forced `noindex,nofollow` (layout + `pageMeta`, `IS_STATIC`) and `robots.txt` is Disallow-all — because the test build is hosted on the borrowed `tailoredquote.co.uk` domain. The real own-domain/Vercel deploy is the indexable one.
+- Full review + roadmap: **`sc/SEO-PLAN.md`** (GBP, real photos/reviews, next guide + service sub-pages, measurement).
+
+### Deployment & how to view it (no own domain yet)
+- **Static export** for GitHub Pages: `./scripts/build-static.sh` → writes `sc/site/` (env-driven `output: export` + `basePath=/sc/site` + `trailingSlash`; API routes moved aside during the build). `next.config.ts` reads `SC_STATIC_EXPORT` / `NEXT_PUBLIC_BASE_PATH` / `NEXT_PUBLIC_STATIC` / `NEXT_PUBLIC_SITE_URL`.
+- **`src/lib/base.ts`** — `withBase()` prefixes raw asset/anchor paths; `IS_STATIC` toggles the no-server form fallbacks (contact + send-concept open a prefilled email).
+- **Live viewing** (GitHub Pages serves only `main` + `claude/quote-builder-wv-construction-dwtaw`): develop on `claude/sc-clause-file-9bP8D`, then **publish** by copying `/sc/` onto `claude/quote-builder-wv-construction-dwtaw` (additive, `/sc/` only) → deploys via `.github/workflows/pages.yml`.
+  - Test hub: `https://tailoredquote.co.uk/sc/index.html` · Full site: `…/sc/site/` · Visualiser: `…/sc/demo/extension-visualiser.html`
+- The normal `npm run validate` (Vercel build, API routes intact) and the static export must both stay green.
+
+### Standalone artefacts (static, no build — under `/sc/`)
+- `index.html` — mobile test hub (links to full site + visualiser, 8 real before/after sliders).
+- `demo/extension-visualiser.html` — self-contained visualiser (canvas concept + bring-your-own-key real AI).
+- `demo/real/` + `public/examples/` — genuine before/after example image pairs (illustrative, not SC's own projects).
+
+### Structure
+- `src/app` (App Router pages + `api/` route handlers + sitemap/robots/opengraph), `src/components` (`ui/` incl. `Breadcrumbs`, `layout/` incl. `MobileCtaBar`, `visualiser/`), `src/lib` (site, services, locations, faqs, guides, **projects**, seo, base, supabase, email, ratelimit, concept-canvas, consent, nav), `supabase/migrations`, `scripts/build-static.sh`, `project-templates/case-study-page.tsx.txt` (restore-to-route template).
+- Docs: `sc/SITE-UPGRADE-PLAN.md` (June 2026 upgrade plan + outcomes), `sc/LOCAL_SEO_CHECKLIST.md` (GBP/NAP), `sc/STAGE-0-DISCOVERY.md`, `sc/SEO-PLAN.md`, `sc/README.md`, `sc/demo/README.md`.
+- **Data-driven content rule:** services/areas/guides are authored in `src/lib/*.ts` arrays (rich optional fields) and rendered by one template each. To add a page, add a data entry — the template, nav dropdown and sitemap pick it up automatically. Keep planning/conservation claims hedged ("often/may", "confirm with Wirral Council/your local authority"); never invent projects/reviews/quals; never use "architect" as the business title.
+
+### Outstanding client decisions (block full launch)
+Own domain + Vercel deploy · ARB registration status · correct Companies House number · publish CH45 6TR vs service-area-only · real project photos + permissioned reviews · Google Business Profile + real Facebook URL · analytics (Plausible) domain + Turnstile/Resend/Gemini/Supabase keys.

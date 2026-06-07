@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex,nofollow" />
+<title>SC Design &amp; Construction — test hub</title>
+<style>
+  :root{--ink:#1c1d1f;--paper:#f7f5f1;--card:#fffefb;--line:#e4e0d8;--muted:#6f6f73;--accent:#b9743f;--accent2:#a45f2d}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+  .wrap{max-width:840px;margin:0 auto;padding:20px 16px 64px}
+  .brand{font-weight:700;letter-spacing:.04em}.brand span{color:var(--accent2)}
+  h1{font-size:30px;line-height:1.12;margin:10px 0 6px}
+  h2{font-size:20px;margin:30px 0 12px}
+  .sub{color:var(--muted);margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 12px 30px rgba(28,29,31,.05)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:999px;
+    padding:14px 22px;font-weight:600;cursor:pointer;text-decoration:none;font-size:16px}
+  .btn-primary{background:var(--accent);color:#fff}.btn-ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .row{display:flex;flex-wrap:wrap;gap:10px}
+  .grid{display:grid;gap:16px}
+  @media(min-width:680px){.grid-2{grid-template-columns:1fr 1fr}}
+  .ba{position:relative;width:100%;aspect-ratio:3/2;border-radius:14px;overflow:hidden;border:1px solid var(--line);
+    background:#000;touch-action:none;user-select:none}
+  .ba img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .ba .bImg{z-index:2}
+  .ba .handle{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.95);left:50%;z-index:3;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+  .ba .handle::after{content:"⇆";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;
+    background:#fff;color:#1c1d1f;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  .tag{position:absolute;top:10px;z-index:4;font-size:11px;font-weight:700;letter-spacing:.06em;color:#fff;background:rgba(0,0,0,.5);padding:4px 9px;border-radius:999px}
+  .tag-b{left:10px}.tag-a{right:10px}
+  .cap{font-size:13px;color:var(--muted);margin:8px 2px 0}
+  .hint{font-size:13px;color:var(--muted);line-height:1.6}
+  ul{padding-left:18px;line-height:1.7;color:var(--muted)}
+  a{color:var(--accent2)}
+  .note{font-size:12px;color:var(--muted);background:#f0e2d6;border:1px solid #e7d3c2;border-radius:10px;padding:10px 12px;margin-top:10px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">SC Design <span>&amp; Construction</span> · test hub</div>
+  <h1>Before &amp; after extension visualiser</h1>
+  <p class="sub">A quick place to test everything on your phone — no sign-in, nothing to install.</p>
+
+  <div class="card">
+    <div class="row">
+      <a class="btn btn-primary" href="site/">Browse the full website →</a>
+      <a class="btn btn-ghost" href="demo/extension-visualiser.html">Open the visualiser</a>
+      <a class="btn btn-ghost" href="#real">Real AI examples ↓</a>
+    </div>
+    <p class="hint" style="margin-top:12px">
+      The visualiser makes an <strong>instant in-browser concept</strong> from any photo with no setup.
+      Open the <em>“Use a real AI render”</em> panel inside it and paste your own OpenAI or Google
+      key to produce a <strong>real AI render</strong> on your own photo.
+    </p>
+  </div>
+
+  <h2 id="real">Real AI before &amp; after</h2>
+  <p class="hint" style="margin-top:-4px">Genuine outputs from the TailoredQuote AI engine. Drag each slider to compare.</p>
+
+  <div class="grid grid-2" style="margin-top:14px">
+    <div>
+      <div class="ba" data-before="demo/real/househront-before.jpg" data-after="demo/real/househront-after.jpg">
+        <span class="tag tag-b">BEFORE</span><span class="tag tag-a">AFTER · AI</span>
+      </div>
+      <p class="cap">House front — new windows &amp; composite door</p>
+    </div>
+    <div>
+      <div class="ba" data-before="demo/real/conservatory-before.jpg" data-after="demo/real/conservatory-after.jpg">
+        <span class="tag tag-b">BEFORE</span><span class="tag tag-a">AFTER · AI</span>
+      </div>
+      <p class="cap">Conservatory — new warm tiled roof</p>
+    </div>
+    <div>
+      <div class="ba" data-before="demo/real/garage-before.jpg" data-after="demo/real/garage-after.jpg">
+        <span class="tag tag-b">BEFORE</span><span class="tag tag-a">AFTER · AI</span>
+      </div>
+      <p class="cap">Garage — new anthracite door</p>
+    </div>
+    <div>
+      <div class="ba" data-before="demo/real/kitchen-before.jpg" data-after="demo/real/kitchen-after.jpg">
+        <span class="tag tag-b">BEFORE</span><span class="tag tag-a">AFTER · AI</span>
+      </div>
+      <p class="cap">Kitchen-diner — open-plan island</p>
+    </div>
+    <div>
+      <div class="ba" data-before="demo/real/bathroom-before.jpg" data-after="demo/real/bathroom-after.jpg">
+        <span class="tag tag-b">BEFORE</span><span class="tag tag-a">AFTER · AI</span>
+      </div>
+      <p class="cap">Bathroom — full refit</p>
+    </div>
+    <div>
+      <div class="ba" data-before="demo/real/fireplace-before.jpg" data-after="demo/real/fireplace-after.jpg">
+        <span class="tag tag-b">BEFORE</span><span class="tag tag-a">AFTER · AI</span>
+      </div>
+      <p class="cap">Lounge — media wall with feature fire</p>
+    </div>
+    <div>
+      <div class="ba" data-before="demo/real/driveway-before.jpg" data-after="demo/real/driveway-after.jpg">
+        <span class="tag tag-b">BEFORE</span><span class="tag tag-a">AFTER · AI</span>
+      </div>
+      <p class="cap">Driveway — new resin-bound surface</p>
+    </div>
+  </div>
+  <p class="note">These are real renovation outputs shown as illustrative examples — not SC’s own completed projects. A true “extension added” render is produced the same way once an AI key is connected in the visualiser.</p>
+
+  <h2>What’s in this build</h2>
+  <div class="card">
+    <ul>
+      <li>Full premium website source (Next.js): home, services ×4, portfolio, process, about, FAQs, contact, 12 area pages, legal pages.</li>
+      <li>In-browser before/after visualiser (instant concept) + optional real AI render via your own key.</li>
+      <li>Local SEO: metadata, JSON-LD, sitemap, robots; consent banner + privacy-friendly analytics.</li>
+    </ul>
+    <p class="hint">
+      The full website needs a build to preview; this page + the visualiser run with no build at all.
+      Reference docs in the repo: <code>sc/STAGE-0-DISCOVERY.md</code>, <code>sc/README.md</code>,
+      <code>sc/demo/README.md</code>.
+    </p>
+  </div>
+
+  <p class="hint" style="text-align:center;margin-top:24px">
+    SC Design &amp; Construction · architectural design across Wirral<br>
+    Concept visualisations powered by TailoredQuote.
+  </p>
+</div>
+
+<script>
+(function(){
+  function initBA(el){
+    var before = el.getAttribute('data-before'), after = el.getAttribute('data-after');
+    var a = new Image(); a.alt='After'; a.src=after;
+    var b = new Image(); b.alt='Before'; b.className='bImg'; b.src=before;
+    el.insertBefore(a, el.firstChild);
+    el.insertBefore(b, el.firstChild);
+    var handle = document.createElement('div'); handle.className='handle'; el.appendChild(handle);
+    function setPos(p){ p=Math.max(0,Math.min(100,p)); b.style.clipPath='inset(0 '+(100-p)+'% 0 0)'; handle.style.left=p+'%'; }
+    function fromX(x){ var r=el.getBoundingClientRect(); setPos(((x-r.left)/r.width)*100); }
+    var drag=false;
+    el.addEventListener('pointerdown',function(e){drag=true;fromX(e.clientX);el.setPointerCapture(e.pointerId);});
+    el.addEventListener('pointermove',function(e){if(drag)fromX(e.clientX);});
+    el.addEventListener('pointerup',function(){drag=false;});
+    el.addEventListener('pointercancel',function(){drag=false;});
+    setPos(50);
+  }
+  var nodes = document.querySelectorAll('.ba');
+  for(var i=0;i<nodes.length;i++) initBA(nodes[i]);
+})();
+</script>
+</body>
+</html>
