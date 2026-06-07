@@ -16,6 +16,13 @@ export type Location = {
 
   /* ---- Optional rich fields (drive the v2 area-page template) ---- */
   tier?: "core" | "wider"; // core = Wirral, wider = surrounding (default core)
+  /**
+   * Set true to drop this area from search (noindex) AND the sitemap. DEFAULT:
+   * unset → indexed. This is the owner-decision switch for the WIDER areas
+   * (liverpool, chester, crosby, ellesmere-port, neston) — they are kept indexed
+   * for now; flip to `noindex: true` per area once the owner decides.
+   */
+  noindex?: boolean;
   metaTitle?: string;
   metaDescription?: string;
   propertyContext?: string[]; // paragraphs about local housing stock

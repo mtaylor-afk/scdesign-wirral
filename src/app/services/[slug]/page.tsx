@@ -7,6 +7,7 @@ import { FAQList } from "@/components/ui/FAQItem";
 import { JsonLd } from "@/components/JsonLd";
 import { services, getService } from "@/lib/services";
 import { guides } from "@/lib/guides";
+import { locations } from "@/lib/locations";
 import { cta } from "@/lib/site";
 import { pageMeta, breadcrumbJsonLd, serviceJsonLd, faqJsonLd } from "@/lib/seo";
 
@@ -34,6 +35,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 function relatedServiceCards(slugs: string[] = []) {
   return slugs.map((s) => getService(s)).filter((s): s is NonNullable<typeof s> => Boolean(s));
 }
+
+// Priority Wirral areas linked from every service page (service → area linking).
+const priorityAreaSlugs = [
+  "wallasey", "birkenhead", "bebington", "oxton", "port-sunlight",
+  "heswall", "west-kirby", "new-brighton", "hoylake", "moreton",
+];
+const priorityAreas = priorityAreaSlugs
+  .map((s) => locations.find((l) => l.slug === s))
+  .filter((l): l is NonNullable<typeof l> => Boolean(l));
 
 function BulletList({ items }: { items: string[] }) {
   return (
@@ -234,6 +244,27 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           </Container>
         </Section>
       )}
+
+      <Section tone="card">
+        <Container className="max-w-3xl">
+          <h2 className="text-xl">Areas we cover</h2>
+          <p className="mt-2 text-sm text-muted">
+            {service.short} for homeowners across Wirral, including:
+          </p>
+          <ul className="mt-4 flex flex-wrap gap-2.5">
+            {priorityAreas.map((a) => (
+              <li key={a.slug}>
+                <Link
+                  href={`/areas/${a.slug}`}
+                  className="inline-flex rounded-full border border-line bg-paper-card px-4 py-2 text-sm text-ink-soft hover:border-accent hover:text-accent-strong"
+                >
+                  {a.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Container>
+      </Section>
 
       <CTASection />
     </>

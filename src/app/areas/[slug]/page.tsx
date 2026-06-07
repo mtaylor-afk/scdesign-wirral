@@ -7,6 +7,8 @@ import { FAQList } from "@/components/ui/FAQItem";
 import { JsonLd } from "@/components/JsonLd";
 import { locations, getLocation } from "@/lib/locations";
 import { services, getService } from "@/lib/services";
+import { guides } from "@/lib/guides";
+import { ReviewCta } from "@/components/ui/ReviewCta";
 import { cta, site } from "@/lib/site";
 import { pageMeta, breadcrumbJsonLd, serviceJsonLd, faqJsonLd } from "@/lib/seo";
 
@@ -25,6 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       loc.metaDescription ??
       `Architectural design, house extensions, loft conversions and planning drawings for ${loc.name} homeowners. ${site.yearsExperience}+ years' experience, based on Wirral.`,
     path: `/areas/${slug}`,
+    noindex: loc.noindex,
   });
 }
 
@@ -54,6 +57,24 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
   const nearby = (loc.nearby
     ?.map((s) => locations.find((l) => l.slug === s))
     .filter(Boolean) as typeof locations) ?? locations.filter((l) => l.slug !== slug).slice(0, 6);
+
+  // Cornerstone guides linked from every area page (+ conservation guide for
+  // conservation-sensitive areas).
+  const guideSlugs = loc.relevantServices?.includes("conservation-area-design-wirral")
+    ? [
+        "do-i-need-planning-permission-for-an-extension",
+        "do-i-need-building-regulations-approval",
+        "what-drawings-do-builders-need",
+        "conservation-area-extensions-wirral",
+      ]
+    : [
+        "do-i-need-planning-permission-for-an-extension",
+        "do-i-need-building-regulations-approval",
+        "what-drawings-do-builders-need",
+      ];
+  const helpfulGuides = guideSlugs
+    .map((s) => guides.find((g) => g.slug === s))
+    .filter((g): g is NonNullable<typeof g> => Boolean(g));
 
   return (
     <>
@@ -156,6 +177,35 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
               </li>
             ))}
           </ul>
+        </Container>
+      </Section>
+
+      <Section>
+        <Container className="max-w-3xl space-y-8">
+          <div>
+            <h2 className="text-xl">Helpful guides</h2>
+            <ul className="mt-4 flex flex-wrap gap-2.5">
+              {helpfulGuides.map((g) => (
+                <li key={g.slug}>
+                  <Link
+                    href={`/guides/${g.slug}`}
+                    className="inline-flex rounded-full border border-line bg-paper-card px-4 py-2 text-sm text-ink-soft hover:border-accent hover:text-accent-strong"
+                  >
+                    {g.navLabel ?? g.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-[var(--radius)] border border-dashed border-line bg-paper-card p-5">
+            <h2 className="text-lg">Case studies in {loc.name}</h2>
+            <p className="mt-2 text-pretty text-muted">
+              {`Case studies for ${loc.name} will be added once homeowner permission is confirmed — we never publish a project without the homeowner's agreement.`}
+            </p>
+          </div>
+
+          <ReviewCta />
         </Container>
       </Section>
 

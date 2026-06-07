@@ -50,6 +50,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     });
   }
   for (const l of locations) {
+    if (l.noindex) continue; // owner-flagged areas stay out of the sitemap
     entries.push({
       url: `${siteUrl}/areas/${l.slug}`,
       lastModified: now,
