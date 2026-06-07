@@ -4,6 +4,29 @@ This is an **independent project** that lives in the `/sc/` folder. It is
 unrelated to the TailoredQuote application that occupies the rest of this
 repository — the repo is only being used here as a convenient testing host.
 
+> **NOTE (standalone repo, verified June 2026):** This GitHub repo
+> `mtaylor-afk/scdesign-wirral` is the **live standalone site** — there is no
+> `/sc/` subfolder or TailoredQuote monorepo in this clone. The older
+> "Deployment / GitHub Pages / `sc/site` / publish-to-branch" notes further
+> down are monorepo history and do **not** apply here; use the deployment
+> section immediately below.
+
+## Working process & deployment (this clone)
+
+- **Hosting:** Cloudflare Pages, which builds from `main` on every push
+  (`npm run build` → static export in `out/`). Live at
+  https://scdesignwirral.co.uk — deploys land in ~15–60s.
+- **Local clone:** `C:\dev\scdesign-wirral` (kept outside OneDrive). Node 20
+  (matches `.nvmrc`).
+- **Update workflow (simple edits):** for text / colour / content changes →
+  edit → `git commit` → `git push origin main`. Cloudflare rebuilds and
+  deploys automatically (~30s). No local rebuild or live-site polling is
+  needed for these.
+- **Build-check first (`npm run build`)** only for structural changes: new or
+  changed components, routing/config, or dependencies. If a build ever fails,
+  Cloudflare keeps the **last good version** live, so a bad push never takes
+  the site down.
+
 ## Scope & Isolation (MANDATORY)
 
 1. **This `CLAUDE.md` governs the `/sc/` project ONLY.** It does not apply to
