@@ -3,7 +3,7 @@ import { site } from "./site";
 import { NOINDEX } from "./base";
 
 export const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://www.example.com";
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://scdesignwirral.co.uk";
 
 type PageMetaInput = {
   title: string;
