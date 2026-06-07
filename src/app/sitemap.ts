@@ -22,9 +22,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/faqs",
     "/contact",
     "/visualiser",
-    "/visualiser-terms",
-    "/privacy-policy",
-    "/cookie-policy",
+    // Legal pages (privacy, cookie, visualiser-terms) are intentionally excluded
+    // from the sitemap — still crawlable via footer links, just not promoted.
   ];
 
   const entries: MetadataRoute.Sitemap = staticPaths.map((p) => ({

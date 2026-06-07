@@ -119,7 +119,7 @@ Delete `api/sc-visualise.js`, revert the single additive `vercel.json` line, rev
 
 ### SEO
 - Per-page metadata + canonical + OG/Twitter; JSON-LD: ProfessionalService, Service, Article (guides), BreadcrumbList, FAQPage. `sitemap.ts` + `robots.ts` (env-aware).
-- **Index-safety:** in static-export mode every page is forced `noindex,nofollow` (layout + `pageMeta`, `IS_STATIC`) and `robots.txt` is Disallow-all — because the test build is hosted on the borrowed `tailoredquote.co.uk` domain. The real own-domain/Vercel deploy is the indexable one.
+- **Index-safety:** the live own-domain deploy (`scdesignwirral.co.uk`, Cloudflare Pages) is **indexable**. Indexing is controlled by an explicit `NEXT_PUBLIC_NOINDEX` flag (`src/lib/base.ts`, decoupled from `IS_STATIC`) — set it to `1` only for preview/non-production builds, and the layout + `pageMeta` then emit `noindex,nofollow`. `robots.txt` allows crawling (disallows only `/api/` + `/components-preview`) and references the sitemap. Legal pages (privacy / cookie / visualiser-terms) stay crawlable via footer links but are excluded from `sitemap.xml`.
 - Full review + roadmap: **`sc/SEO-PLAN.md`** (GBP, real photos/reviews, next guide + service sub-pages, measurement).
 
 ### Deployment & how to view it (no own domain yet)

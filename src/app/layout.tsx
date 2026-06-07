@@ -10,7 +10,7 @@ import { ClickTracking } from "@/components/ClickTracking";
 import { JsonLd } from "@/components/JsonLd";
 import { localBusinessJsonLd, webSiteJsonLd, siteUrl } from "@/lib/seo";
 import { site } from "@/lib/site";
-import { IS_STATIC } from "@/lib/base";
+import { NOINDEX } from "@/lib/base";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -33,8 +33,9 @@ export const metadata: Metadata = {
   description: site.positioning,
   applicationName: site.name,
   authors: [{ name: site.name }],
-  // Static export is a test deployment on a borrowed domain — keep it out of search.
-  robots: IS_STATIC ? { index: false, follow: false } : undefined,
+  // Indexing is controlled explicitly via NEXT_PUBLIC_NOINDEX (set only for
+  // preview / non-production builds). The live own-domain deploy is indexable.
+  robots: NOINDEX ? { index: false, follow: false } : { index: true, follow: true },
   // favicon is provided by the file-based convention (app/icon.svg).
 };
 

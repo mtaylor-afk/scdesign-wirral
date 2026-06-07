@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { site } from "./site";
+import { NOINDEX } from "./base";
 
 export const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://www.example.com";
@@ -21,8 +22,9 @@ export function pageMeta({ title, description, path, noindex }: PageMetaInput): 
     title: { absolute: fullTitle },
     description,
     alternates: { canonical: url },
-    // Static export is a TEST deployment on a borrowed domain — never index it.
-    robots: noindex ? { index: false, follow: false } : undefined,
+    // Explicit per-page robots so indexability never depends on metadata-merge
+    // behaviour. NEXT_PUBLIC_NOINDEX forces noindex for preview/non-prod builds.
+    robots: noindex || NOINDEX ? { index: false, follow: false } : { index: true, follow: true },
     openGraph: {
       title: fullTitle,
       description,
