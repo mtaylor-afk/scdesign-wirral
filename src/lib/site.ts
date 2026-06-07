@@ -46,6 +46,11 @@ export const site = {
   // Companies House number intentionally omitted until the correct registered
   // entity is confirmed (Liverpool vs Wallasey ambiguity flagged in Stage 0).
   companiesHouseNumber: "" as string,
+
+  // Google review link — set NEXT_PUBLIC_GOOGLE_REVIEW_URL once the Google
+  // Business Profile is verified. Blank → the UI shows a placeholder, never a
+  // broken link. NEVER pair with invented reviews or AggregateRating schema.
+  googleReviewUrl: process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL || "",
 } as const;
 
 /** WhatsApp deep link with an optional prefilled message. */

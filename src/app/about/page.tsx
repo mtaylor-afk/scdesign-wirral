@@ -3,7 +3,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
 import { JsonLd } from "@/components/JsonLd";
 import { site } from "@/lib/site";
-import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
+import { pageMeta, breadcrumbJsonLd, personJsonLd } from "@/lib/seo";
 
 export const metadata = pageMeta({
   title: "About — Architectural Designer in Wirral",
@@ -35,10 +35,13 @@ export default function AboutPage() {
   return (
     <>
       <JsonLd
-        data={breadcrumbJsonLd([
-          { name: "Home", path: "/" },
-          { name: "About", path: "/about" },
-        ])}
+        data={[
+          breadcrumbJsonLd([
+            { name: "Home", path: "/" },
+            { name: "About", path: "/about" },
+          ]),
+          personJsonLd(),
+        ]}
       />
       <Section tone="card" className="pt-16">
         <Container className="max-w-3xl">

@@ -182,3 +182,20 @@ export function serviceJsonLd(name: string, description: string, path: string) {
     url: `${siteUrl}${path}`,
   };
 }
+
+/**
+ * Person JSON-LD for Sean Corser. SAFE FIELDS ONLY — no ARB/RIBA, qualifications,
+ * memberships or insurance until verified by the owner (Architects Act 1997:
+ * never imply the protected title "architect"). "Architectural designer" is safe.
+ */
+export function personJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "@id": `${siteUrl}/about#sean-corser`,
+    name: site.contactName,
+    jobTitle: "Architectural designer",
+    worksFor: { "@id": `${siteUrl}/#business` },
+    url: `${siteUrl}/about`,
+  };
+}
