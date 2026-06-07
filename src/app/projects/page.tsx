@@ -13,6 +13,20 @@ export const metadata = pageMeta({
   path: "/projects",
 });
 
+// What a real, permissioned case study will set out — shown so the placeholders
+// read as an honest "here's what's coming", not as completed work.
+const caseStudyIncludes = [
+  "The general area (never a full street address)",
+  "The property type",
+  "The project type",
+  "The homeowner's brief",
+  "The constraints we worked with",
+  "The planning route taken",
+  "The drawings prepared",
+  "The outcome",
+  "What other homeowners can learn from it",
+];
+
 export default function ProjectsPage() {
   const hasReal = projects.length > 0;
   return (
@@ -74,17 +88,39 @@ export default function ProjectsPage() {
               title="Real project case studies are on the way"
               intro="We're preparing detailed, permissioned case studies of real Wirral projects. These placeholders show the kind of work we'll feature — they are not completed projects."
             />
-            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {projectPlaceholders.map((p) => (
                 <Card key={p.title} className="flex h-full flex-col border-dashed">
                   <div className="flex aspect-[4/3] items-center justify-center rounded-md bg-paper text-3xl text-muted-soft">
                     ✎
                   </div>
-                  <h3 className="mt-4 text-base">{p.title}</h3>
+                  <span className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
+                    Coming soon
+                  </span>
+                  <h3 className="mt-1 text-base">{p.title}</h3>
                   <p className="mt-1 text-sm text-muted">{p.note}</p>
                 </Card>
               ))}
             </div>
+
+            <div className="mt-12">
+              <h2 className="text-2xl">What each case study will include</h2>
+              <p className="mt-2 text-pretty text-muted">
+                When a homeowner is happy for us to share their project, each case study will set out
+                the full story — honestly, and only with their permission:
+              </p>
+              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                {caseStudyIncludes.map((c) => (
+                  <li key={c} className="flex gap-3 text-pretty text-muted">
+                    <span className="mt-1 shrink-0 text-accent-strong" aria-hidden>
+                      ◆
+                    </span>
+                    <span>{c}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
             <div className="mt-10 rounded-[var(--radius)] border border-line bg-paper-card p-6">
               <h2 className="text-lg">In the meantime — concept visualisations</h2>
               <p className="mt-2 text-pretty text-muted">
