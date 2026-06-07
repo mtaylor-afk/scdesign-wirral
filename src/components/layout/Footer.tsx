@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReviewCta } from "@/components/ui/ReviewCta";
 import { site, whatsappLink, defaultWhatsAppMessage } from "@/lib/site";
 import {
   footerDesignServices,
@@ -60,6 +61,8 @@ export function Footer() {
               </a>
             )}
           </div>
+
+          <ReviewCta tone="footer" />
         </div>
 
         <LinkCol heading="Design services" links={footerDesignServices} />

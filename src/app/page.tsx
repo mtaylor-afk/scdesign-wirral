@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Container, Section, LinkButton, StatCard, SectionHeading, Card } from "@/components/ui";
 import { CTASection } from "@/components/ui/CTASection";
+import { ReviewCta } from "@/components/ui/ReviewCta";
 import { BeforeAfterSlider } from "@/components/ui/BeforeAfterSlider";
 import { FAQList } from "@/components/ui/FAQItem";
 import { JsonLd } from "@/components/JsonLd";
@@ -298,6 +299,13 @@ export default function HomePage() {
               See all FAQs
             </Link>
           </p>
+        </Container>
+      </Section>
+
+      {/* REVIEWS PROMPT */}
+      <Section>
+        <Container className="max-w-2xl">
+          <ReviewCta />
         </Container>
       </Section>
 

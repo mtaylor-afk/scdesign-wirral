@@ -1,6 +1,7 @@
 import { Container, Section, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ContactForm } from "@/components/ContactForm";
+import { ReviewCta } from "@/components/ui/ReviewCta";
 import { JsonLd } from "@/components/JsonLd";
 import { site, whatsappLink, defaultWhatsAppMessage } from "@/lib/site";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
@@ -91,6 +92,8 @@ export default function ContactPage() {
                   <li>If it&apos;s a fit, we talk through the design approach.</li>
                 </ol>
               </Card>
+
+              <ReviewCta />
             </aside>
           </div>
         </Container>

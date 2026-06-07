@@ -1,20 +1,41 @@
-import { Container, Section, SectionHeading, Card, LinkButton } from "@/components/ui";
+import { Container, Section, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
+import { ReviewCta } from "@/components/ui/ReviewCta";
 import { JsonLd } from "@/components/JsonLd";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 
 export const metadata = pageMeta({
-  title: "Architectural Design Reviews Wirral",
+  title: "Reviews for SC Design & Construction — Architectural Design Wirral",
   description:
-    "Reviews from homeowners who've worked with SC Design & Construction. Genuine reviews only — if you've worked with us, we'd be grateful for an honest Google review.",
+    "Genuine homeowner feedback for SC Design & Construction will be published here as it's available, with permission. Worked with Sean? Leave an honest Google review.",
   path: "/reviews",
 });
 
-// TODO (real business input): paste the live Google review link here once the
-// Google Business Profile is set up. Until then the button is not rendered —
-// we never link to a placeholder, and we never invent reviews.
-const GOOGLE_REVIEW_URL = "";
+// Themes a genuine review would naturally cover — listed as topics, NOT as
+// invented testimonial quotes. We never fabricate reviews or ratings.
+const reviewThemes: { title: string; body: string }[] = [
+  {
+    title: "Communication",
+    body: "How clearly Sean explained the options, kept in touch and answered questions in plain English.",
+  },
+  {
+    title: "Clarity of the drawings",
+    body: "Whether the drawings were clear and accurate enough for planning, building control and builders to work from.",
+  },
+  {
+    title: "Help with the planning route",
+    body: "How much the guidance helped in understanding the planning and building-regulations route for their project.",
+  },
+  {
+    title: "Builder quotation pack",
+    body: "Whether the drawing pack let builders quote like-for-like, so prices could be compared fairly.",
+  },
+  {
+    title: "Local Wirral knowledge",
+    body: "How useful Sean's knowledge of local homes and the Wirral planning context proved to be.",
+  },
+];
 
 export default function ReviewsPage() {
   return (
@@ -33,40 +54,50 @@ export default function ReviewsPage() {
               { name: "Reviews", path: "/reviews" },
             ]}
           />
-          <h1 className="text-balance text-4xl sm:text-5xl">Reviews</h1>
+          <h1 className="text-balance text-4xl sm:text-5xl">
+            Reviews for SC Design &amp; Construction
+          </h1>
           <p className="mt-5 text-pretty text-lg text-muted">
-            We&apos;d rather show a handful of genuine reviews than a wall of invented ones. As we
-            publish verified feedback from Wirral homeowners, it will appear here.
+            We&apos;d rather show a handful of genuine reviews than a wall of invented ones. As
+            homeowners give their permission, their honest feedback will be published here. In the
+            meantime, here&apos;s how you can help — and what genuine reviews tend to focus on.
           </p>
         </Container>
       </Section>
 
       <Section>
-        <Container className="max-w-3xl">
+        <Container className="max-w-3xl space-y-6">
+          {/* Leave a review — Google button if configured, honest placeholder if not */}
+          <ReviewCta />
+
+          {/* Recently worked with Sean? */}
           <Card>
-            <h2 className="text-xl">Reviews coming soon</h2>
+            <h2 className="text-xl">Recently worked with Sean?</h2>
             <p className="mt-2 text-pretty text-muted">
-              We&apos;re gathering honest feedback from recent clients, with their permission. Check
-              back soon — or get in touch and we&apos;ll happily put you in contact with previous
-              homeowners where we can.
+              If SC Design &amp; Construction has helped with your extension, loft conversion or
+              planning drawings, an honest review genuinely helps other Wirral homeowners decide who
+              to trust with their project. We&apos;re grateful for a few minutes of your time — good
+              or bad, your feedback helps us improve too.
             </p>
-            {GOOGLE_REVIEW_URL && (
-              <div className="mt-5">
-                <LinkButton href={GOOGLE_REVIEW_URL} external>
-                  Leave a Google review
-                </LinkButton>
-              </div>
-            )}
           </Card>
 
-          <Card className="mt-6">
-            <h2 className="text-xl">Worked with SC Design &amp; Construction?</h2>
+          {/* What future reviews will cover — themes, not quotes */}
+          <div>
+            <h2 className="text-2xl">What genuine reviews tend to cover</h2>
             <p className="mt-2 text-pretty text-muted">
-              If we&apos;ve helped with your project, an honest review genuinely helps other Wirral
-              homeowners decide. We&apos;ll share our Google review link here as soon as it&apos;s
-              live.
+              These are the things homeowners usually comment on — shown as topics, not as
+              testimonials. We won&apos;t publish a review until it&apos;s real and shared with
+              permission.
             </p>
-          </Card>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {reviewThemes.map((t) => (
+                <Card key={t.title}>
+                  <h3 className="text-lg">{t.title}</h3>
+                  <p className="mt-2 text-sm text-muted">{t.body}</p>
+                </Card>
+              ))}
+            </div>
+          </div>
         </Container>
       </Section>
 

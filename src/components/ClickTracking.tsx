@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { track } from "./Analytics";
+import { site } from "@/lib/site";
 
 /**
  * Consent-gated conversion click tracking. Attaches one delegated listener and
@@ -17,7 +18,9 @@ export function ClickTracking() {
       if (!anchor) return;
       const href = anchor.getAttribute("href") || "";
 
-      if (href.startsWith("tel:")) {
+      if (site.googleReviewUrl && href === site.googleReviewUrl) {
+        track("google_review_click");
+      } else if (href.startsWith("tel:")) {
         track("phone_click");
       } else if (href.startsWith("mailto:")) {
         track("email_click");
