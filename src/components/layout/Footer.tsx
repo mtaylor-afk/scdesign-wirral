@@ -100,21 +100,36 @@ export function Footer() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-6 text-xs text-paper/50 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <p>
-            © {year} {site.name}
-            {site.companiesHouseNumber ? ` · Company No. ${site.companiesHouseNumber}` : ""}.
-            Architectural design only — we do not carry out construction.
+        <div className="mx-auto max-w-6xl px-5 py-6 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-3 text-xs text-paper/50 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              © {year} {site.name}
+              {site.companiesHouseNumber ? ` · Company No. ${site.companiesHouseNumber}` : ""}.
+              Architectural design only — we do not carry out construction.
+            </p>
+            <ul className="flex flex-wrap gap-4">
+              {footerLegalLinks.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="hover:text-white">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="mt-4 text-xs text-paper/50">
+            <a
+              href="https://tailoredquote.co.uk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-paper/60 hover:underline"
+            >
+              Visualised images powered by{" "}
+              <span className="font-semibold text-paper">Tailored</span>
+              <span className="font-semibold text-[#2563eb]">Quote</span>
+              <span className="font-semibold text-paper/50">.co.uk</span>
+            </a>
           </p>
-          <ul className="flex flex-wrap gap-4">
-            {footerLegalLinks.map((l) => (
-              <li key={l.href}>
-                <Link href={l.href} className="hover:text-white">
-                  {l.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
         </div>
       </div>
     </footer>
