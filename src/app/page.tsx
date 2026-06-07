@@ -69,7 +69,7 @@ export default function HomePage() {
                 Architectural design · {site.serviceArea}
               </p>
               <h1 className="text-balance text-4xl leading-[1.08] sm:text-5xl lg:text-[3.4rem]">
-                Architectural Designer in Wirral for Extensions, Loft Conversions &amp; Planning
+                <span className="text-[#2563eb]">Architectural Designer</span> in Wirral for Extensions, Loft Conversions &amp; Planning
                 Drawings
               </h1>
               <p className="mt-5 max-w-xl text-pretty text-lg text-muted">
