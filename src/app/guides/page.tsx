@@ -1,10 +1,20 @@
 import Link from "next/link";
-import { Container, Section, SectionHeading, Card } from "@/components/ui";
+import { Container, Section, SectionHeading, Card, Badge } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
 import { JsonLd } from "@/components/JsonLd";
-import { guides, guideCategories } from "@/lib/guides";
+import { guides, guideCategories, type Guide } from "@/lib/guides";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
+
+// Short badge labels per section (the full category labels are too long for a chip).
+const categoryBadge: Record<NonNullable<Guide["category"]>, string> = {
+  planning: "Planning",
+  "pd-ldc": "PD & LDC",
+  "building-regs": "Building regs",
+  project: "Project",
+  "cost-process": "Costs & process",
+  "local-buying": "Local & buying",
+};
 
 export const metadata = pageMeta({
   title: "Guides — Planning, Building Regs & Home Design in Wirral",
@@ -39,7 +49,7 @@ export default function GuidesPage() {
       </Section>
 
       {guideCategories.map((cat, idx) => {
-        const group = guides.filter((g) => g.category === cat.key);
+        const group = guides.filter((g) => g.category === cat.key && !g.draft);
         if (group.length === 0) return null;
         return (
           <Section key={cat.key} tone={idx % 2 === 0 ? "paper" : "card"}>
@@ -49,7 +59,8 @@ export default function GuidesPage() {
                 {group.map((g) => (
                   <Link key={g.slug} href={`/guides/${g.slug}`} className="group block">
                     <Card hover className="flex h-full flex-col">
-                      <h3 className="text-xl">{g.title}</h3>
+                      <Badge className="self-start">{categoryBadge[cat.key]}</Badge>
+                      <h3 className="mt-3 text-xl">{g.title}</h3>
                       <p className="mt-3 flex-1 text-pretty text-muted">
                         {g.summary ?? g.description}
                       </p>

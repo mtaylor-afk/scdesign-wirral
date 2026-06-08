@@ -25,6 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: guide.metaTitle ?? guide.title,
     description: guide.description,
     path: `/guides/${slug}`,
+    noindex: guide.draft, // incomplete drafts are noindex (and excluded from the sitemap)
   });
 }
 
@@ -55,10 +56,12 @@ function relatedLabel(href: string) {
 // Practical "what to send Sean" checklist — shown on every guide.
 const sendToSean = [
   "Your property postcode (so we can check the local planning context)",
-  "A few photos of the area, inside and out",
+  "A few photos of the area affected, inside and outside",
   "An estate-agent floorplan or any existing drawings, if you have them",
   "A short description of what you'd like to achieve",
-  "Any letters from the council or your builder asking for drawings",
+  "Any council, building-control or builder letters or emails, if relevant",
+  "Whether the property is in a conservation area, listed, or has an Article 4 direction, if you know",
+  "Whether you already have planning permission, building-control comments or builder quotes",
 ];
 
 // Genuinely-useful official sources, chosen per guide category. URLs verified live.
@@ -79,16 +82,20 @@ const OFFICIAL = {
   arb: { label: "Architects Registration Board (ARB)", href: "https://arb.org.uk/" },
 } as const;
 
+// Fallback official-source links by category. A guide can override these with its
+// own `officialSources` array for page-specific sources.
 function officialLinksFor(category?: string): { label: string; href: string }[] {
   switch (category) {
     case "planning":
       return [OFFICIAL.planningPortal, OFFICIAL.govPlanning, OFFICIAL.wirralPlanning];
+    case "pd-ldc":
+      return [OFFICIAL.planningPortal, OFFICIAL.govPlanning, OFFICIAL.wirralPlanning];
     case "building-regs":
-      return [OFFICIAL.govBuildingRegs, OFFICIAL.planningPortal];
-    case "conservation":
-      return [OFFICIAL.wirralPlanning, OFFICIAL.planningPortal];
-    case "choosing":
-      return [OFFICIAL.arb];
+      return [OFFICIAL.govBuildingRegs, OFFICIAL.planningPortal, OFFICIAL.wirralPlanning];
+    case "project":
+      return [OFFICIAL.planningPortal, OFFICIAL.wirralPlanning];
+    case "local-buying":
+      return [OFFICIAL.wirralPlanning, OFFICIAL.govPlanning];
     default:
       return [];
   }
@@ -99,7 +106,12 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
   const guide = getGuide(slug);
   if (!guide) notFound();
 
-  const official = officialLinksFor(guide.category);
+  // Per-guide sources take priority over the category fallback.
+  const official = guide.officialSources ?? officialLinksFor(guide.category);
+  // Optional mid-page (Zone B) contextual CTA target.
+  const ctaService = guide.ctaService
+    ? services.find((s) => `/services/${s.slug}` === guide.ctaService)
+    : undefined;
 
   return (
     <>
@@ -146,6 +158,20 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
             </div>
           )}
 
+          {/* CTA Zone A — early contact nudge */}
+          <div className="mt-6 rounded-[var(--radius)] border border-accent-soft bg-accent-soft/30 p-5">
+            <p className="text-pretty text-ink-soft">
+              Not sure which route applies to your property? Send Sean your postcode, a few photos
+              and a short description for an honest first view — with no obligation.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <LinkButton href={cta.primary.href}>{cta.primary.label}</LinkButton>
+              <LinkButton href={cta.whatsapp.href} variant="ghost" external>
+                {cta.whatsapp.label}
+              </LinkButton>
+            </div>
+          </div>
+
           {/* Author / reviewer attribution (E-E-A-T) */}
           <div className="mt-6">
             <ReviewedBy date={guide.reviewed} />
@@ -176,6 +202,37 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
                     {p}
                   </p>
                 ))}
+                {s.table && (
+                  <div className="mt-5 overflow-x-auto">
+                    <table className="w-full min-w-[34rem] border-collapse text-left text-sm">
+                      {s.table.caption && (
+                        <caption className="mb-2 text-left text-sm text-muted">
+                          {s.table.caption}
+                        </caption>
+                      )}
+                      <thead>
+                        <tr className="border-b border-line">
+                          {s.table.headers.map((h) => (
+                            <th key={h} scope="col" className="py-2 pr-4 font-semibold text-ink">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {s.table.rows.map((row, ri) => (
+                          <tr key={ri} className="border-b border-line/60 align-top">
+                            {row.map((cell, ci) => (
+                              <td key={ci} className="py-2.5 pr-4 text-pretty text-muted">
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -205,11 +262,26 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
             project with your local authority. Last reviewed {guide.reviewed}.
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <LinkButton href={cta.primary.href}>{cta.primary.label}</LinkButton>
-            <LinkButton href={cta.visualiser.href} variant="ghost">
-              {cta.visualiser.label}
-            </LinkButton>
+          {/* CTA Zone B — mid-page, context-specific to the relevant service */}
+          <div className="mt-10 rounded-[var(--radius)] border border-line bg-paper-card p-5">
+            {ctaService && (
+              <p className="text-pretty text-ink-soft">
+                Need {ctaService.title.toLowerCase()}? We can prepare them — clear, coordinated and
+                ready for builders and building control.
+              </p>
+            )}
+            <div className={ctaService ? "mt-4 flex flex-wrap gap-3" : "flex flex-wrap gap-3"}>
+              <LinkButton href={cta.primary.href}>{cta.primary.label}</LinkButton>
+              {ctaService ? (
+                <LinkButton href={`/services/${ctaService.slug}`} variant="ghost">
+                  See our {ctaService.title} service
+                </LinkButton>
+              ) : (
+                <LinkButton href={cta.visualiser.href} variant="ghost">
+                  {cta.visualiser.label}
+                </LinkButton>
+              )}
+            </div>
           </div>
         </Container>
       </Section>

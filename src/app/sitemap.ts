@@ -42,6 +42,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     });
   }
   for (const g of guides) {
+    if (g.draft) continue; // incomplete guides stay out of the sitemap (and are noindex)
     entries.push({
       url: `${siteUrl}/guides/${g.slug}`,
       lastModified: now,

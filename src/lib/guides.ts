@@ -10,16 +10,30 @@ export type Guide = {
   title: string; // page <h1> / <title>
   description: string; // meta description (120–160)
   intro: string;
-  sections: { heading: string; body: string[] }[];
+  // Each section is an H2 + paragraphs, with an optional responsive comparison table.
+  sections: {
+    heading: string;
+    body: string[];
+    table?: { caption?: string; headers: string[]; rows: string[][] };
+  }[];
   faqs: { q: string; a: string }[];
   related: string[]; // related service/area/guide paths
   reviewed: string;
 
-  /* ---- Optional rich fields (drive the v2 guide template + hub grouping) ---- */
+  /* ---- Optional rich fields (drive the guide template + hub grouping) ---- */
   navLabel?: string; // short label for the nav dropdown
-  category?: "planning" | "building-regs" | "cost-process" | "choosing" | "conservation";
+  category?:
+    | "planning" // Planning permission & applications
+    | "pd-ldc" // Permitted development & lawful development
+    | "building-regs" // Building regulations & building control
+    | "project" // Project-specific (extensions, lofts, garages, conservation)
+    | "cost-process" // Costs, builders & process
+    | "local-buying"; // Local checks & buying/selling
   summary?: string; // one-paragraph "in short" box
   metaTitle?: string; // exact <title> keyword phrase (brand appended by pageMeta)
+  officialSources?: { label: string; href: string }[]; // per-guide sources (overrides category fallback)
+  ctaService?: string; // /services/... path for the mid-page contextual CTA (Zone B)
+  draft?: boolean; // incomplete → noindex + excluded from sitemap, hub and nav
 };
 
 export const guides: Guide[] = [
@@ -196,7 +210,10 @@ export const guides: Guide[] = [
   {
     slug: "architect-vs-architectural-designer",
     navLabel: "Architect vs designer",
-    category: "choosing",
+    category: "cost-process",
+    officialSources: [
+      { label: "Architects Registration Board (ARB)", href: "https://arb.org.uk/" },
+    ],
     title: "Architect vs Architectural Designer — What's the Difference?",
     description:
       "Architect, architectural designer, architectural technologist — what the titles mean in the UK, what each does for a home project, and how to choose the right help for your extension or loft.",
@@ -309,7 +326,7 @@ export const guides: Guide[] = [
   {
     slug: "permitted-development-rights-wirral",
     navLabel: "Permitted development in Wirral",
-    category: "planning",
+    category: "pd-ldc",
     title: "Permitted Development Rights in Wirral: A Homeowner's Guide",
     description:
       "What permitted development means for Wirral homeowners, the limits that apply to extensions and loft conversions, and why a lawful development certificate can be worth having.",
@@ -360,7 +377,7 @@ export const guides: Guide[] = [
   {
     slug: "lawful-development-certificate-explained",
     navLabel: "Lawful development certificate",
-    category: "planning",
+    category: "pd-ldc",
     title: "What Is a Lawful Development Certificate?",
     description:
       "A lawful development certificate explained for homeowners — what it is, why people get one, and how it differs from planning permission. General guidance for England.",
@@ -513,7 +530,7 @@ export const guides: Guide[] = [
   {
     slug: "conservation-area-extensions-wirral",
     navLabel: "Conservation area extensions",
-    category: "conservation",
+    category: "project",
     title: "Extending a Home in a Wirral Conservation Area",
     description:
       "How extending a home in a Wirral conservation area differs — reduced permitted development, sensitive design, and why a well-justified application matters. General guidance.",
@@ -628,27 +645,32 @@ export const guideCategories: { key: NonNullable<Guide["category"]>; label: stri
   [
     {
       key: "planning",
-      label: "Planning permission",
-      blurb: "When you need it, when you don't, and how long it takes.",
+      label: "Planning permission & applications",
+      blurb: "When you need it, what to submit, and what changes after approval.",
+    },
+    {
+      key: "pd-ldc",
+      label: "Permitted development & lawful development",
+      blurb: "Building without a full application — and proving it's lawful.",
     },
     {
       key: "building-regs",
-      label: "Building regulations",
+      label: "Building regulations & building control",
       blurb: "The 'how it's built' approvals most projects need.",
     },
     {
+      key: "project",
+      label: "Project-specific guides",
+      blurb: "Extensions, lofts, garages and conservation-area homes.",
+    },
+    {
       key: "cost-process",
-      label: "Costs & process",
-      blurb: "What design costs, and what builders need to quote.",
+      label: "Costs, builders & process",
+      blurb: "What design costs, briefing a designer, and builder quote packs.",
     },
     {
-      key: "choosing",
-      label: "Choosing the right help",
-      blurb: "Understanding titles and how to choose a designer.",
-    },
-    {
-      key: "conservation",
-      label: "Conservation & local",
-      blurb: "Extending sensitively in Wirral's protected areas.",
+      key: "local-buying",
+      label: "Local checks & buying or selling",
+      blurb: "Wirral conservation checks, pre-application advice and property paperwork.",
     },
   ];
