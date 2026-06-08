@@ -14,8 +14,9 @@
   --color-muted: #6f6f73; /* muted grey body text */
   --color-muted-soft: #9a9a9e;
 
-  --color-accent: #b9743f; /* warm terracotta accent */
-  --color-accent-strong: #a45f2d;
+  --color-accent: #b9743f; /* warm terracotta accent (decorative / on dark only — fails AA as a button bg under white text) */
+  --color-accent-strong: #a45f2d; /* AA-safe accent for white text on light surfaces (4.94:1) */
+  --color-accent-deep: #8f4f24; /* darker accent for button hover (6.34:1 under white) */
   --color-accent-soft: #f0e2d6;
 
   --color-success: #3f7d57;

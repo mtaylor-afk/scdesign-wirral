@@ -124,7 +124,7 @@ export function Footer() {
             >
               Visualised images powered by{" "}
               <span className="font-semibold text-paper">Tailored</span>
-              <span className="font-semibold text-[#2563eb]">Quote</span>
+              <span className="font-semibold text-[#7aa2f7]">Quote</span>
               <span className="font-semibold text-paper/50">.co.uk</span>
             </a>
           </p>

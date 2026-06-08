@@ -11,7 +11,7 @@ export function ServiceCard({
   href: string;
 }) {
   return (
-    <Link href={href} className="group block focus-visible:outline-none">
+    <Link href={href} className="group block">
       <Card hover className="flex h-full flex-col">
         <h3 className="text-xl">{title}</h3>
         <p className="mt-3 flex-1 text-pretty text-muted">{blurb}</p>

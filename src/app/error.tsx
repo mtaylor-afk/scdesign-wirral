@@ -19,7 +19,7 @@ export default function Error({
         <button
           type="button"
           onClick={reset}
-          className="inline-flex h-11 items-center rounded-full bg-accent px-5 text-sm font-medium text-white hover:bg-accent-strong"
+          className="inline-flex h-11 items-center rounded-full bg-accent-strong px-5 text-sm font-medium text-white hover:bg-accent-deep"
         >
           Try again
         </button>

@@ -42,6 +42,13 @@ function relatedLabel(href: string) {
   if (s) return s.title;
   const l = locations.find((ll) => `/areas/${ll.slug}` === href);
   if (l) return `${l.name} (area we cover)`;
+  const staticLabels: Record<string, string> = {
+    "/process": "Our design process",
+    "/about": "About SC Design",
+    "/contact": "Contact Sean",
+    "/visualiser": "Extension Concept Visualiser",
+  };
+  if (staticLabels[href]) return staticLabels[href];
   return href.replace(/^\//, "").replace(/-/g, " ").replace(/\//g, " · ");
 }
 

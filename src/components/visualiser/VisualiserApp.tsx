@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Card } from "@/components/ui";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { SendConceptForm } from "./SendConceptForm";
@@ -44,6 +44,15 @@ export function VisualiserApp() {
   // Separate input carrying `capture` so mobile devices open the camera app
   // directly (desktop browsers ignore `capture` and fall back to a file picker).
   const cameraInput = useRef<HTMLInputElement>(null);
+
+  // Release the upload preview's object URL when the component unmounts (e.g. the
+  // user navigates away mid-flow) so the blob isn't held in memory until the tab
+  // closes. acceptFile/reset already revoke the previous URL on replacement.
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
 
   // Basic email format check — mirrors the server-side guard. The form will not
   // process without a valid email (that's where the result is emailed).

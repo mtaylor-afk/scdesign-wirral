@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const fieldBase =
-  "w-full rounded-[var(--radius)] border border-line bg-white px-4 py-3 text-ink placeholder:text-muted-soft focus-visible:outline-2 focus-visible:outline-accent";
+  "w-full rounded-[var(--radius)] border border-line bg-white px-4 py-3 text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-accent";
 
 export function Field({
   label,
@@ -37,7 +37,8 @@ export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
 }
 
 export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select {...props} className={cn(fieldBase, "appearance-none bg-white", props.className)} />
-  );
+  // Keep the native dropdown chevron (no `appearance-none`) so the control reads
+  // as a select across Chrome/Safari/Firefox/Edge; a reset with no replacement
+  // caret made it look like a plain text box.
+  return <select {...props} className={cn(fieldBase, "pr-9", props.className)} />;
 }

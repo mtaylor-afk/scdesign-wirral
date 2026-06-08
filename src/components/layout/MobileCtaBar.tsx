@@ -11,7 +11,11 @@ import { site, whatsappLink, defaultWhatsAppMessage } from "@/lib/site";
 export function MobileCtaBar() {
   return (
     <>
-      <div aria-hidden className="h-16 lg:hidden" />
+      <div
+        aria-hidden
+        className="lg:hidden"
+        style={{ height: "calc(4rem + env(safe-area-inset-bottom))" }}
+      />
       <div
         className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-line bg-paper/95 backdrop-blur-md lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
@@ -38,7 +42,7 @@ export function MobileCtaBar() {
         </a>
         <Link
           href="/contact"
-          className="flex flex-col items-center justify-center gap-0.5 bg-accent py-2.5 text-xs font-semibold text-white"
+          className="flex flex-col items-center justify-center gap-0.5 bg-accent-strong py-2.5 text-xs font-semibold text-white"
         >
           <span aria-hidden className="text-base">
             ✉️

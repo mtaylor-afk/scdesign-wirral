@@ -42,7 +42,7 @@ const base =
   "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60 disabled:pointer-events-none";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-white hover:bg-accent-strong",
+  primary: "bg-accent-strong text-white hover:bg-accent-deep",
   secondary: "bg-ink text-paper hover:bg-ink-soft",
   ghost: "bg-transparent text-ink border border-line hover:bg-paper-card",
   light: "bg-white text-ink hover:bg-paper border border-line",

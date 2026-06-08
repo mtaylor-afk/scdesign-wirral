@@ -52,8 +52,13 @@ export function BeforeAfterSlider({
         onMouseMove={(e) => dragging.current && setFromClientX(e.clientX)}
         onMouseUp={() => (dragging.current = false)}
         onMouseLeave={() => (dragging.current = false)}
-        onTouchStart={(e) => setFromClientX(e.touches[0].clientX)}
-        onTouchMove={(e) => setFromClientX(e.touches[0].clientX)}
+        onTouchStart={(e) => {
+          dragging.current = true;
+          setFromClientX(e.touches[0].clientX);
+        }}
+        onTouchMove={(e) => dragging.current && setFromClientX(e.touches[0].clientX)}
+        onTouchEnd={() => (dragging.current = false)}
+        onTouchCancel={() => (dragging.current = false)}
       >
         {/* AFTER (full) */}
         {after ? (

@@ -12,6 +12,8 @@ export function Nav() {
   const [menu, setMenu] = useState<string | null>(null); // desktop dropdown label
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const prevOpen = useRef(false);
 
   // Lock body scroll while the mobile menu is open.
   useEffect(() => {
@@ -21,13 +23,23 @@ export function Nav() {
     };
   }, [open]);
 
-  // Close desktop dropdown on outside click / Escape.
+  // Return focus to the toggle when the mobile menu closes (but not on first
+  // mount), so keyboard users aren't dropped at the top of the document.
+  useEffect(() => {
+    if (prevOpen.current && !open) toggleRef.current?.focus();
+    prevOpen.current = open;
+  }, [open]);
+
+  // Close desktop dropdown AND the mobile menu on outside click / Escape.
   useEffect(() => {
     function onDown(e: MouseEvent) {
       if (navRef.current && !navRef.current.contains(e.target as Node)) setMenu(null);
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setMenu(null);
+      if (e.key === "Escape") {
+        setMenu(null);
+        setOpen(false);
+      }
     }
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -132,7 +144,7 @@ export function Nav() {
         <div className="hidden lg:block">
           <Link
             href={cta.primary.href}
-            className="inline-flex h-10 items-center rounded-full bg-accent px-5 text-sm font-medium text-white transition-colors hover:bg-accent-strong"
+            className="inline-flex h-10 items-center rounded-full bg-accent-strong px-5 text-sm font-medium text-white transition-colors hover:bg-accent-deep"
           >
             {cta.primary.label}
           </Link>
@@ -140,6 +152,7 @@ export function Nav() {
 
         {/* Mobile toggle */}
         <button
+          ref={toggleRef}
           type="button"
           className="inline-flex h-10 w-10 items-center justify-center rounded-md text-ink lg:hidden"
           aria-label={open ? "Close menu" : "Open menu"}
@@ -196,7 +209,7 @@ export function Nav() {
             <li className="pt-2">
               <Link
                 href={cta.primary.href}
-                className="block rounded-full bg-accent px-5 py-3 text-center text-base font-medium text-white"
+                className="block rounded-full bg-accent-strong px-5 py-3 text-center text-base font-medium text-white transition-colors hover:bg-accent-deep"
                 onClick={() => setOpen(false)}
               >
                 {cta.primary.label}

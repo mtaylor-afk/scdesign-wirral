@@ -28,7 +28,7 @@ export function ConsentBanner() {
         <button
           type="button"
           onClick={() => setConsent("accepted")}
-          className="inline-flex h-10 items-center rounded-full bg-accent px-5 text-sm font-medium text-white hover:bg-accent-strong"
+          className="inline-flex h-10 items-center rounded-full bg-accent-strong px-5 text-sm font-medium text-white hover:bg-accent-deep"
         >
           Accept
         </button>

@@ -33,7 +33,7 @@ export function ReviewCta({ tone = "card" }: { tone?: "card" | "footer" }) {
             Leave a Google review
           </a>
         ) : (
-          <p className="mt-1 text-xs text-paper/40">{PLACEHOLDER}</p>
+          <p className="mt-1 text-xs text-paper/60">{PLACEHOLDER}</p>
         )}
       </div>
     );
