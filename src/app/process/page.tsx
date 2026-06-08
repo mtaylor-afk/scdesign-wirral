@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Container, Section, Card, LinkButton } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
@@ -159,6 +160,33 @@ export default function ProcessPage() {
               ))}
             </ul>
           </Card>
+
+          <h2 className="mt-10 text-xl">Helpful guides</h2>
+          <ul className="mt-4 flex flex-wrap gap-2.5">
+            {[
+              {
+                label: "How to brief a designer",
+                href: "/guides/how-to-brief-architectural-designer-extension",
+              },
+              {
+                label: "Builder quote pack checklist",
+                href: "/guides/builder-quote-drawing-pack-checklist",
+              },
+              {
+                label: "After planning permission",
+                href: "/guides/after-planning-permission-next-steps",
+              },
+            ].map((g) => (
+              <li key={g.href}>
+                <Link
+                  href={g.href}
+                  className="inline-flex rounded-full border border-line bg-paper-card px-4 py-2 text-sm text-ink-soft hover:border-accent hover:text-accent-strong"
+                >
+                  {g.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </Container>
       </Section>
 

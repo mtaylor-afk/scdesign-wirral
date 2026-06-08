@@ -2,7 +2,6 @@
 
 import { services } from "./services";
 import { locations } from "./locations";
-import { guides } from "./guides";
 
 export type NavLink = { label: string; href: string };
 export type NavNode = NavLink & { children?: NavLink[] };
@@ -32,12 +31,33 @@ export const primaryNav: NavNode[] = [
     ],
   },
   {
+    // Curated to the most commercially + homeowner-useful guides (not auto-sliced):
+    // the full set lives on the /guides hub and via in-page links.
     label: "Guides",
     href: "/guides",
     children: [
-      ...guides
-        .slice(0, 6)
-        .map((g) => ({ label: g.navLabel ?? g.title, href: `/guides/${g.slug}` })),
+      {
+        label: "Do I need planning permission?",
+        href: "/guides/do-i-need-planning-permission-for-an-extension",
+      },
+      { label: "Do I need building regs?", href: "/guides/do-i-need-building-regulations-approval" },
+      {
+        label: "Full Plans vs Building Notice",
+        href: "/guides/full-plans-vs-building-notice-wirral",
+      },
+      {
+        label: "Planning application drawings",
+        href: "/guides/wirral-householder-planning-application-drawings-checklist",
+      },
+      {
+        label: "Planning vs Lawful Development Certificate",
+        href: "/guides/planning-permission-vs-lawful-development-certificate",
+      },
+      {
+        label: "Garage conversion rules",
+        href: "/guides/garage-conversion-planning-building-regulations-wirral",
+      },
+      { label: "After planning permission", href: "/guides/after-planning-permission-next-steps" },
       { label: "All guides", href: "/guides" },
     ],
   },

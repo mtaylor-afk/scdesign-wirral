@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Container, Section, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ContactForm } from "@/components/ContactForm";
@@ -91,6 +92,20 @@ export default function ContactPage() {
                   <li>We come back to you with an honest first view.</li>
                   <li>If it&apos;s a fit, we talk through the design approach.</li>
                 </ol>
+              </Card>
+
+              <Card>
+                <h2 className="text-lg">Not sure what to send?</h2>
+                <p className="mt-2 text-sm text-muted">
+                  Our quick guide explains exactly what helps — and what you don&apos;t need to worry
+                  about yet.
+                </p>
+                <Link
+                  href="/guides/how-to-brief-architectural-designer-extension"
+                  className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong"
+                >
+                  How to brief a designer <span aria-hidden>→</span>
+                </Link>
               </Card>
 
               <ReviewCta />

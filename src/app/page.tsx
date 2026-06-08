@@ -56,6 +56,30 @@ const drawingsHelp: { term: string; body: string; href: string; cta: string }[] 
   },
 ];
 
+// A small selection of the most useful homeowner guides for the homepage.
+const homeGuides: { title: string; blurb: string; href: string }[] = [
+  {
+    title: "Full Plans vs Building Notice",
+    blurb: "The two building-control routes — and which suits an extension, loft or garage conversion.",
+    href: "/guides/full-plans-vs-building-notice-wirral",
+  },
+  {
+    title: "Planning application drawings",
+    blurb: "What drawings and documents a Wirral householder application needs to be valid.",
+    href: "/guides/wirral-householder-planning-application-drawings-checklist",
+  },
+  {
+    title: "Garage conversion rules",
+    blurb: "Planning and building-regulations basics before you convert a garage in Wirral.",
+    href: "/guides/garage-conversion-planning-building-regulations-wirral",
+  },
+  {
+    title: "After planning permission",
+    blurb: "The next steps once you're approved: building regs, calculations and builder quotes.",
+    href: "/guides/after-planning-permission-next-steps",
+  },
+];
+
 export default function HomePage() {
   return (
     <>
@@ -306,6 +330,35 @@ export default function HomePage() {
       <Section>
         <Container className="max-w-2xl">
           <ReviewCta />
+        </Container>
+      </Section>
+
+      {/* HELPFUL HOMEOWNER GUIDES */}
+      <Section tone="card">
+        <Container>
+          <SectionHeading
+            eyebrow="Homeowner guides"
+            title="Helpful homeowner guides"
+            intro="Plain-English answers to the planning and building-control questions Wirral homeowners ask most — written to help you decide before you get in touch."
+          />
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {homeGuides.map((g) => (
+              <Link key={g.href} href={g.href} className="group block">
+                <Card hover className="flex h-full flex-col">
+                  <h3 className="text-lg">{g.title}</h3>
+                  <p className="mt-2 flex-1 text-pretty text-sm text-muted">{g.blurb}</p>
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong transition-[gap] group-hover:gap-2.5">
+                    Read the guide <span aria-hidden>→</span>
+                  </span>
+                </Card>
+              </Link>
+            ))}
+          </div>
+          <div className="mt-8">
+            <LinkButton href="/guides" variant="ghost">
+              See all homeowner guides
+            </LinkButton>
+          </div>
         </Container>
       </Section>
 

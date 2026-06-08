@@ -139,6 +139,9 @@ export const services: Service[] = [
       "/guides/do-i-need-planning-permission-for-an-extension",
       "/guides/do-i-need-building-regulations-approval",
       "/guides/what-drawings-do-builders-need",
+      "/guides/rear-side-wraparound-extension-planning-rules",
+      "/guides/how-to-brief-architectural-designer-extension",
+      "/guides/after-planning-permission-next-steps",
     ],
   },
   {
@@ -239,6 +242,7 @@ export const services: Service[] = [
     relatedServices: ["building-regulations-drawings-wirral", "planning-drawings-wirral"],
     relatedGuides: [
       "/guides/loft-conversion-building-regulations",
+      "/guides/loft-conversion-stairs-head-height-fire-safety",
       "/guides/do-i-need-planning-permission-for-an-extension",
     ],
   },
@@ -520,6 +524,9 @@ export const services: Service[] = [
     relatedGuides: [
       "/guides/planning-drawings-vs-building-regulations-drawings",
       "/guides/do-i-need-planning-permission-for-an-extension",
+      "/guides/wirral-householder-planning-application-drawings-checklist",
+      "/guides/invalid-planning-application-drawings-wirral",
+      "/guides/planning-permission-vs-lawful-development-certificate",
     ],
   },
   {
@@ -601,6 +608,9 @@ export const services: Service[] = [
     relatedGuides: [
       "/guides/do-i-need-building-regulations-approval",
       "/guides/loft-conversion-building-regulations",
+      "/guides/full-plans-vs-building-notice-wirral",
+      "/guides/after-planning-permission-next-steps",
+      "/guides/structural-calculations-vs-architectural-drawings",
     ],
   },
   {
@@ -826,7 +836,11 @@ export const services: Service[] = [
       },
     ],
     relatedServices: ["building-regulations-drawings-wirral", "house-extensions", "permitted-development-wirral"],
-    relatedGuides: ["/guides/do-i-need-building-regulations-approval", "/guides/permitted-development-rights-wirral"],
+    relatedGuides: [
+      "/guides/garage-conversion-planning-building-regulations-wirral",
+      "/guides/do-i-need-building-regulations-approval",
+      "/guides/permitted-development-rights-wirral",
+    ],
   },
   {
     slug: "conservation-area-design-wirral",
@@ -903,7 +917,11 @@ export const services: Service[] = [
       },
     ],
     relatedServices: ["house-extensions", "planning-drawings-wirral", "residential-design"],
-    relatedGuides: ["/guides/conservation-area-extensions-wirral", "/guides/do-i-need-planning-permission-for-an-extension"],
+    relatedGuides: [
+      "/guides/check-wirral-conservation-area-map",
+      "/guides/conservation-area-extensions-wirral",
+      "/guides/do-i-need-planning-permission-for-an-extension",
+    ],
   },
 ];
 
