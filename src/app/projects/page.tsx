@@ -84,7 +84,7 @@ export default function ProjectsPage() {
         <Section>
           <Container>
             <SectionHeading
-              eyebrow="Coming soon"
+              eyebrow="In preparation"
               title="Real project case studies are on the way"
               intro="We're preparing detailed, permissioned case studies of real Wirral projects. These placeholders show the kind of work we'll feature — they are not completed projects."
             />
@@ -95,7 +95,7 @@ export default function ProjectsPage() {
                     ✎
                   </div>
                   <span className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
-                    Coming soon
+                    In preparation
                   </span>
                   <h3 className="mt-1 text-base">{p.title}</h3>
                   <p className="mt-1 text-sm text-muted">{p.note}</p>

@@ -303,12 +303,13 @@ export default function HomePage() {
             <Card className="flex h-full flex-col border-dashed">
               <h3 className="text-xl">Real project case studies</h3>
               <p className="mt-2 flex-1 text-pretty text-muted">
-                Detailed, permissioned case studies of real Wirral projects are being prepared —
-                with the brief, the design response, the planning route and the drawings.
+                Detailed case studies of real Wirral projects are being prepared and will be added
+                once homeowner permission is in place — with the brief, the design response, the
+                planning route and the drawings.
               </p>
               <div className="mt-4">
                 <LinkButton href="/projects" variant="ghost">
-                  Real projects (coming soon)
+                  Real project examples
                 </LinkButton>
               </div>
             </Card>

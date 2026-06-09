@@ -80,7 +80,7 @@ export const defaultWhatsAppMessage =
 
 /** Canonical CTA copy used across the site. */
 export const cta = {
-  primary: { label: "Send Sean your project idea", href: "/contact" },
+  primary: { label: "Send Your Project Details", href: "/contact" },
   whatsapp: { label: "WhatsApp Sean", href: whatsappLink(defaultWhatsAppMessage) },
   visualiser: { label: "Try the Extension Concept Visualiser", href: "/visualiser" },
   call: { label: "Call Sean", href: `tel:${site.phoneE164}` },
