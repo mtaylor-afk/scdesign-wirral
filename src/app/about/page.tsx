@@ -31,14 +31,6 @@ const trustPoints = [
   },
 ];
 
-// Owner-confirmable details. We publish each only once it's verified — never a
-// claim we can't back up (ARB/RIBA, memberships, insurance all stay pending here).
-const credentialsTodo = [
-  "Relevant design qualifications — to be confirmed",
-  "Professional memberships, if any — to be confirmed",
-  "Professional indemnity and public liability insurance — to be confirmed",
-];
-
 export default function AboutPage() {
   return (
     <>
@@ -152,21 +144,9 @@ export default function AboutPage() {
               confirmed — &ldquo;architect&rdquo; is a title protected by law in the UK.
             </p>
             <p className="mt-3 text-pretty text-muted">
-              We&apos;d rather publish details once they&apos;re confirmed than make claims we
-              can&apos;t back up. The following will be added here as they&apos;re verified:
+              Professional and insurance details can be provided on request where relevant to your
+              project.
             </p>
-            <ul className="mt-4 space-y-2.5">
-              {credentialsTodo.map((c) => (
-                <li key={c} className="flex gap-3 text-pretty text-muted">
-                  <span className="mt-1 shrink-0 text-accent-strong" aria-hidden>
-                    ◆
-                  </span>
-                  <span>{c}</span>
-                </li>
-              ))}
-            </ul>
-            {/* TODO (real business input): replace each item above with the confirmed
-                detail once verified. Do NOT claim any of these until confirmed. */}
           </Card>
         </Container>
       </Section>
