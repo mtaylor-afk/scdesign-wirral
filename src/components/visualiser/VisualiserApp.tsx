@@ -324,8 +324,9 @@ export function VisualiserApp() {
               </button>
             </div>
             <p className="mt-3 text-xs text-muted">
-              By uploading you confirm you have the right to use this image. Your photo is processed
-              to create the concept and is not stored afterwards. See the{" "}
+              By uploading you confirm you have the right to use this image. Your source photo is used
+              only to create the concept and isn&apos;t stored afterwards; the concept itself is kept
+              briefly so we can show and send it to you. See the{" "}
               <a href={withBase("/visualiser-terms")} className="underline">
                 visualiser terms
               </a>
