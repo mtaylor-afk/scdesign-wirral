@@ -10,12 +10,21 @@
  */
 
 export const site = {
-  // Sean Corser trades as a SOLE TRADER under the business name "SC Design &
-  // Construction" — there is NO limited company. Never append "Ltd"/"Limited"
-  // and never claim a Companies House registration (a sole trader has none).
-  name: "SC Design & Construction",
+  // LEGAL ENTITY: registered company "SC Design & Construction Ltd" (England &
+  // Wales, company no. 11511225, incorporated 10 Aug 2018, status Active). `name`
+  // is the full legal name (footer copyright / legal pages / JSON-LD / OG
+  // siteName); `shortName` is the display brand used in the nav logo and
+  // page-title suffixes (deliberately without "Ltd").
+  name: "SC Design & Construction Ltd",
   shortName: "SC Design & Construction",
   contactName: "Sean Corser",
+
+  // Companies House registration — shown in the footer + legal/policy pages to
+  // meet UK company-website disclosure. The registered office (below) is the
+  // Liverpool address on the public register; the visible contact address is the
+  // Wallasey trading office (see `address` / `addressDisplay`).
+  companiesHouseNumber: "11511225",
+  registeredOffice: "Seymour Chambers, 92 London Road, Liverpool, L3 5NW",
 
   // Positioning (architectural design, design-only — no construction)
   tagline: "Architectural design for extensions, loft conversions and planning across Wirral.",
@@ -23,16 +32,18 @@ export const site = {
     "From first idea to planning-ready architectural drawings — bespoke home design for Wirral homeowners.",
   yearsExperience: 18,
 
-  // NAP — address treated as SERVICE-AREA ONLY by default (Stage 0 decision pending).
-  // Set addressIsPublic = true only once the client confirms it can be published.
+  // NAP — the Wallasey TRADING/contact address (distinct from the registered
+  // office above). Confirmed public by the owner. `region` stays the county
+  // (Merseyside) for schema addressRegion; `addressDisplay` is the visible block.
   address: {
-    street: "Ripon Rd",
+    street: "20 Ripon Road",
     town: "Wallasey",
     region: "Merseyside",
     postcode: "CH45 6TR",
     country: "GB",
   },
-  addressIsPublic: false,
+  addressDisplay: "20 Ripon Road, Wallasey, Wirral, CH45 6TR",
+  addressIsPublic: true,
   serviceArea: "Wirral and the surrounding areas",
 
   phoneDisplay: "07749 456528",

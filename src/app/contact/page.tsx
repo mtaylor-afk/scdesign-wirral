@@ -78,6 +78,18 @@ export default function ContactPage() {
               </Card>
 
               <Card>
+                <h2 className="text-lg">Our office</h2>
+                <address className="mt-2 text-sm not-italic text-muted">
+                  {site.name}
+                  <br />
+                  {site.addressDisplay}
+                </address>
+                <p className="mt-2 text-xs text-muted">
+                  Registered in England &amp; Wales no. {site.companiesHouseNumber}.
+                </p>
+              </Card>
+
+              <Card>
                 <h2 className="text-lg">Service area</h2>
                 <p className="mt-2 text-sm text-muted">
                   Based in Wallasey, working across {site.serviceArea}. We work to your property, so

@@ -37,7 +37,6 @@ const credentialsTodo = [
   "Relevant design qualifications — to be confirmed",
   "Professional memberships, if any — to be confirmed",
   "Professional indemnity and public liability insurance — to be confirmed",
-  "Whether to publish a business address or remain service-area only — to be confirmed",
 ];
 
 export default function AboutPage() {
@@ -96,9 +95,9 @@ export default function AboutPage() {
             professional drawings that let builders quote accurately and work with confidence.
           </p>
 
-          <h2 className="pt-2 text-2xl text-ink">A note on the business name</h2>
+          <h2 className="pt-2 text-2xl text-ink">A note on the company name</h2>
           <p>
-            Despite the business name, this website is focused on architectural design and drawing
+            Despite the company name, this website is focused on architectural design and drawing
             services. We do not carry out the building work ourselves; our role is to help you design
             the project and prepare the drawings needed for planning, building control and builder
             quotations.
@@ -134,8 +133,20 @@ export default function AboutPage() {
       <Section tone="card">
         <Container className="max-w-3xl">
           <Card>
-            <h2 className="text-xl">Qualifications, insurance &amp; professional details</h2>
-            <p className="mt-2 text-pretty text-muted">
+            <h2 className="text-xl">Company details, qualifications &amp; insurance</h2>
+            <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
+              <dt className="font-semibold text-ink">Registered name</dt>
+              <dd className="text-muted">{site.name}</dd>
+              <dt className="font-semibold text-ink">Company number</dt>
+              <dd className="text-muted">
+                {site.companiesHouseNumber} (registered in England &amp; Wales)
+              </dd>
+              <dt className="font-semibold text-ink">Registered office</dt>
+              <dd className="text-muted">{site.registeredOffice}</dd>
+              <dt className="font-semibold text-ink">Trading address</dt>
+              <dd className="text-muted">{site.addressDisplay}</dd>
+            </dl>
+            <p className="mt-4 text-pretty text-muted">
               SC Design &amp; Construction provides architectural design and drawing services. We do
               not describe ourselves as registered architects unless ARB registration is expressly
               confirmed — &ldquo;architect&rdquo; is a title protected by law in the UK.

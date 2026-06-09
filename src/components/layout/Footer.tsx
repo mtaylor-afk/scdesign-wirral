@@ -35,7 +35,7 @@ export function Footer() {
           <div className="font-display text-xl">SC Design &amp; Construction</div>
           <p className="mt-3 max-w-xs text-sm text-paper/60">{site.positioning}</p>
           <p className="mt-4 max-w-xs text-sm text-paper/50">
-            Despite the business name, this site is for architectural{" "}
+            Despite the company name, this site is for architectural{" "}
             <strong className="font-medium text-paper/70">design and drawing services</strong> — we
             don&apos;t carry out the building work ourselves.
           </p>
@@ -94,7 +94,8 @@ export function Footer() {
                 {site.email}
               </a>
             </li>
-            <li className="pt-1 text-paper/60">Architectural design across {site.serviceArea}.</li>
+            <li className="pt-1 text-paper/70">{site.addressDisplay}</li>
+            <li className="text-paper/60">Architectural design across {site.serviceArea}.</li>
           </ul>
         </div>
       </div>
@@ -115,6 +116,10 @@ export function Footer() {
               ))}
             </ul>
           </div>
+          <p className="mt-3 text-xs text-paper/50">
+            {site.name} · Registered in England &amp; Wales no. {site.companiesHouseNumber} ·
+            Registered office: {site.registeredOffice}.
+          </p>
           <p className="mt-4 text-center text-xs text-paper/50">
             <a
               href="https://tailoredquote.co.uk"
