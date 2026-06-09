@@ -52,13 +52,18 @@ export default function ContactPage() {
                 <h2 className="text-lg">Quick contact</h2>
                 <ul className="mt-4 space-y-3 text-sm">
                   <li>
-                    <a href={`tel:${site.phoneE164}`} className="font-medium text-accent-strong">
+                    <a
+                      href={`tel:${site.phoneE164}`}
+                      data-conversion="phone-click"
+                      className="font-medium text-accent-strong"
+                    >
                       Call {site.phoneDisplay}
                     </a>
                   </li>
                   <li>
                     <a
                       href={whatsappLink(defaultWhatsAppMessage)}
+                      data-conversion="whatsapp-click"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-medium text-accent-strong"
@@ -69,6 +74,7 @@ export default function ContactPage() {
                   <li>
                     <a
                       href={`mailto:${site.email}`}
+                      data-conversion="email-click"
                       className="break-all font-medium text-accent-strong"
                     >
                       {site.email}

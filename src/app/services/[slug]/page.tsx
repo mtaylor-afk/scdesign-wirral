@@ -266,7 +266,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
         </Container>
       </Section>
 
-      <CTASection />
+      <CTASection track="service-cta" />
     </>
   );
 }

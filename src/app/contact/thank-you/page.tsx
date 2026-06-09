@@ -40,8 +40,15 @@ export default function ThankYouPage() {
               quickest way to give us a feel for your project.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
-              <LinkButton href={`tel:${site.phoneE164}`}>Call {site.phoneDisplay}</LinkButton>
-              <LinkButton href={whatsappLink(defaultWhatsAppMessage)} variant="ghost" external>
+              <LinkButton href={`tel:${site.phoneE164}`} track="phone-click">
+                Call {site.phoneDisplay}
+              </LinkButton>
+              <LinkButton
+                href={whatsappLink(defaultWhatsAppMessage)}
+                variant="ghost"
+                external
+                track="whatsapp-click"
+              >
                 WhatsApp Sean
               </LinkButton>
             </div>

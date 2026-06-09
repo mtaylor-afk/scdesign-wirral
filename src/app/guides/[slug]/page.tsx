@@ -333,7 +333,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
         </Container>
       </Section>
 
-      <CTASection />
+      <CTASection track="guide-cta" />
     </>
   );
 }

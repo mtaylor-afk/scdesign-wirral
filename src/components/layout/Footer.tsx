@@ -75,13 +75,18 @@ export function Footer() {
           </h2>
           <ul className="mt-4 space-y-2 text-sm">
             <li>
-              <a href={`tel:${site.phoneE164}`} className="text-paper/80 hover:text-white">
+              <a
+                href={`tel:${site.phoneE164}`}
+                data-conversion="phone-click"
+                className="text-paper/80 hover:text-white"
+              >
                 {site.phoneDisplay}
               </a>
             </li>
             <li>
               <a
                 href={whatsappLink(defaultWhatsAppMessage)}
+                data-conversion="whatsapp-click"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-paper/80 hover:text-white"
@@ -90,7 +95,11 @@ export function Footer() {
               </a>
             </li>
             <li>
-              <a href={`mailto:${site.email}`} className="break-all text-paper/80 hover:text-white">
+              <a
+                href={`mailto:${site.email}`}
+                data-conversion="email-click"
+                className="break-all text-paper/80 hover:text-white"
+              >
                 {site.email}
               </a>
             </li>

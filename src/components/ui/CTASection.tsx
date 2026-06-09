@@ -4,9 +4,12 @@ import { cta, whatsappLink, defaultWhatsAppMessage } from "@/lib/site";
 export function CTASection({
   heading = "Ready to talk about your project?",
   sub = "Send Sean a few photos and a short description of what you'd like to do. You'll get an honest first view with no obligation.",
+  track = "contact-cta",
 }: {
   heading?: string;
   sub?: string;
+  /** Conversion label for the primary button (e.g. service-cta / area-cta / guide-cta). */
+  track?: string;
 }) {
   return (
     <Section tone="ink">
@@ -16,7 +19,7 @@ export function CTASection({
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-pretty text-paper/70">{sub}</p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <LinkButton href={cta.primary.href} variant="primary" size="lg">
+          <LinkButton href={cta.primary.href} variant="primary" size="lg" track={track}>
             {cta.primary.label}
           </LinkButton>
           <LinkButton
@@ -24,6 +27,7 @@ export function CTASection({
             variant="light"
             size="lg"
             external
+            track="whatsapp-click"
           >
             {cta.whatsapp.label}
           </LinkButton>

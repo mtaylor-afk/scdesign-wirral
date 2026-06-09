@@ -79,7 +79,7 @@ export function SendConceptForm({ resultId, resultUrl }: { resultId: string; res
           {error}
         </p>
       )}
-      <Button type="submit" disabled={status === "submitting"}>
+      <Button type="submit" disabled={status === "submitting"} data-conversion="visualiser-submit">
         {status === "submitting" ? "Sending…" : "Send this concept to Sean"}
       </Button>
     </form>

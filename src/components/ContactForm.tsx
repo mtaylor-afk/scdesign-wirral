@@ -7,7 +7,7 @@ import { Field, Input, Textarea, Select } from "@/components/ui/form";
 import { Button } from "@/components/ui";
 import { track } from "@/components/Analytics";
 import { IS_STATIC, withBase } from "@/lib/base";
-import { site } from "@/lib/site";
+import { site, cta } from "@/lib/site";
 
 const projectTypes = [
   "House extension",
@@ -266,8 +266,13 @@ export function ContactForm() {
         </p>
       )}
 
-      <Button type="submit" size="lg" disabled={status === "submitting"}>
-        {status === "submitting" ? "Sending…" : "Send Sean your project idea"}
+      <Button
+        type="submit"
+        size="lg"
+        disabled={status === "submitting"}
+        data-conversion="contact-submit"
+      >
+        {status === "submitting" ? "Sending…" : cta.primary.label}
       </Button>
     </form>
   );

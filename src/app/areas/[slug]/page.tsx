@@ -212,6 +212,7 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
       <CTASection
         heading={`Designing a project in ${loc.name}?`}
         sub={`Send Sean your ${loc.name} postcode and a few photos — you'll get an honest first view with no obligation.`}
+        track="area-cta"
       />
     </>
   );

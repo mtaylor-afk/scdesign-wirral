@@ -104,7 +104,7 @@ export default function HomePage() {
                 planning-ready drawings, building-regulations drawings and builder-quotation packs.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <LinkButton href={cta.primary.href} size="lg">
+                <LinkButton href={cta.primary.href} size="lg" track="contact-cta">
                   {cta.primary.label}
                 </LinkButton>
                 <LinkButton
@@ -112,13 +112,18 @@ export default function HomePage() {
                   variant="ghost"
                   size="lg"
                   external
+                  track="whatsapp-click"
                 >
                   {cta.whatsapp.label}
                 </LinkButton>
               </div>
               <p className="mt-4 text-sm text-muted">
                 Prefer to picture it first?{" "}
-                <Link href="/visualiser" className="font-medium text-accent-strong underline">
+                <Link
+                  href="/visualiser"
+                  data-conversion="visualiser-start"
+                  className="font-medium text-accent-strong underline"
+                >
                   Try the Extension Concept Visualiser
                 </Link>
               </p>
@@ -256,7 +261,7 @@ export default function HomePage() {
                 Concept visualisation only — not an architectural drawing or planning advice.
               </p>
               <div className="mt-7">
-                <LinkButton href="/visualiser" variant="primary" size="lg">
+                <LinkButton href="/visualiser" variant="primary" size="lg" track="visualiser-start">
                   {cta.visualiser.label}
                 </LinkButton>
               </div>

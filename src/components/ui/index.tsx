@@ -80,6 +80,7 @@ export function LinkButton({
   size = "md",
   className,
   external,
+  track,
 }: {
   href: string;
   children: ReactNode;
@@ -87,6 +88,8 @@ export function LinkButton({
   size?: Size;
   className?: string;
   external?: boolean;
+  /** Optional passive conversion hook, rendered as data-conversion="…". */
+  track?: string;
 }) {
   const cls = cn(base, variants[variant], sizes[size], className);
   if (
@@ -99,6 +102,7 @@ export function LinkButton({
       <a
         href={href}
         className={cls}
+        data-conversion={track}
         target={href.startsWith("http") ? "_blank" : undefined}
         rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
       >
@@ -107,7 +111,7 @@ export function LinkButton({
     );
   }
   return (
-    <Link href={href} className={cls}>
+    <Link href={href} className={cls} data-conversion={track}>
       {children}
     </Link>
   );

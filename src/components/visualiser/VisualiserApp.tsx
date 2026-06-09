@@ -435,7 +435,13 @@ export function VisualiserApp() {
               </p>
             )}
 
-            <Button size="lg" onClick={generate} disabled={!preview} className="w-full sm:w-auto">
+            <Button
+              size="lg"
+              onClick={generate}
+              disabled={!preview}
+              className="w-full sm:w-auto"
+              data-conversion="visualiser-start"
+            >
               Generate my concept
             </Button>
           </div>
