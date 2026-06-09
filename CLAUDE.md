@@ -46,9 +46,9 @@ repository — the repo is only being used here as a convenient testing host.
 
 ## Project Notes
 
-**Project:** Premium website for **SC Design & Construction** (Sean Corser, Wallasey/Wirral) + an AI "Extension Concept Visualiser" lead magnet.
+**Project:** Premium website for **SC Design & Construction Ltd** (Sean Corser, Wallasey/Wirral) + an AI "Extension Concept Visualiser" lead magnet.
 
-> **Legal entity:** Sean trades as a **SOLE TRADER** under the business name "SC Design & Construction". There is **NO limited company** — never append "Ltd"/"Limited", never claim a Companies House registration, and never display a company number anywhere. (`site.name` is the bare business name; the `companiesHouseNumber` field has been removed.)
+> **Legal entity (confirmed June 2026):** Registered company **SC Design & Construction Ltd** — England & Wales, **company no. 11511225**, incorporated 10 Aug 2018, status **Active** (verified on the Companies House public register). `site.name` is the full legal name (footer copyright / legal pages / JSON-LD / OG siteName); `site.shortName` = "SC Design & Construction" is the display brand (nav logo + page-title suffixes, deliberately no "Ltd"). The **registered office** on the public register is in Liverpool (Seymour Chambers, 92 London Road, Liverpool, L3 5NW); the **published trading/contact address** is 20 Ripon Road, Wallasey, Wirral, CH45 6TR. (This REVERSES the earlier "sole trader, no Ltd" note that was previously here.)
 
 ### Confirmed client decisions
 - **Service stance: DESIGN-ONLY** (architectural design + planning drawings). The business does **NOT** carry out construction — never make build/construction claims.
@@ -60,8 +60,8 @@ repository — the repo is only being used here as a convenient testing host.
 
 ### Hard rules (carried from the brief)
 - No fake testimonials / no invented certifications.
-- Do not publish CH45 6TR address unless approved (`site.addressIsPublic = false` by default → service-area wording).
-- **Sole trader, NOT a limited company** — never use "Ltd"/"Limited" or a Companies House number (a sole trader has none).
+- Address IS published (`site.addressIsPublic = true`): trading address 20 Ripon Road, Wallasey, CH45 6TR (distinct from the Liverpool registered office).
+- **Registered LTD company** — use "SC Design & Construction Ltd" + company no. 11511225 in formal placements (footer / legal pages / JSON-LD). Keep the display brand "SC Design & Construction" (no "Ltd") in the nav logo + page titles.
 - No thin/duplicate location pages — each of the 12 must be unique.
 - Visualiser output is a **concept only**, never presented as buildable/planning-ready.
 - No non-consented analytics; server-side rate limiting only; Sharp on Node runtime (never Edge).
@@ -136,7 +136,7 @@ A focused pass on the already-mature site (no rebuild). What it added/changed:
 - **Linking:** service→priority-area links; area→guides + honest per-area "case studies coming soon" + ReviewCta. **`Location.noindex`** flag is the owner switch for the 5 wider areas (liverpool/chester/crosby/ellesmere-port/neston) — default unset → indexed.
 - **Forms:** contact funnel events `contact_form_submit | _success | _error` (replaced `contact_submit`).
 - **Config knobs:** `NEXT_PUBLIC_GOOGLE_REVIEW_URL` (blank→placeholder) and `NEXT_PUBLIC_NOINDEX` (documented in `.env.example` / `.env.production`).
-- **Owner TODOs (never invent):** GBP + Google review URL · address publish-vs-service-area · Sean's quals/memberships/insurance · confirm "18+ years" · profile photo · real projects/images/permission · real reviews · keep wider areas indexed? · analytics provider + consent. (See also `LOCAL_SEO_CHECKLIST.md`.) _(No Companies House number — sole trader.)_
+- **Owner TODOs (never invent):** GBP + Google review URL · Sean's quals/memberships/insurance · confirm "18+ years" · profile photo · real projects/images/permission · real reviews · keep wider areas indexed? · analytics provider + consent. (See also `LOCAL_SEO_CHECKLIST.md`.)
 
 #### Domain go-live polish (June 2026 — links, form routing, TailoredQuote attribution; all live)
 Small targeted pass after `scdesignwirral.co.uk` went live. In-repo changes (built, pushed to `main`, verified live):
@@ -147,8 +147,9 @@ Small targeted pass after `scdesignwirral.co.uk` went live. In-repo changes (bui
   - **Result email styling:** add a prominent link to `https://scdesignwirral.co.uk` at the TOP of the customer result email; add a bottom line "Image generation powered by TailoredQuote.co.uk" linking to the site, using the same wordmark style as above.
   - **Recipients (owner: "keep all three"):** `NOTIFY_RECIPIENTS` should become gmail + icloud + outlook (i.e. **add** `scdesignandconstruction1@gmail.com` to the existing `matthewjtaylor1985@icloud.com` + `scdesignandconstruction@outlook.com`). Customer-result email (sent to the visitor) is unaffected.
 
-#### Sole-trader entity + footer attribution + full QA pass (June 2026 — all live)
-- **"Ltd" removed everywhere (Sean is a sole trader, no limited company):** `site.name` "SC Design & Construction Ltd" → "SC Design & Construction" (cascades to footer, page titles, OpenGraph `siteName`, all JSON-LD). Removed the `companiesHouseNumber` field + the footer "Company No." line + the About page Companies-House checklist item; legal-pages "Ltd" wording dropped; "company name" → "business name" (footer + About). Standing rule now at the top of these Project Notes. Verified 0 `Ltd`/`Company No`/`Companies House` in `out/`.
+#### Sole-trader entity + footer attribution + full QA pass (June 2026)
+> ⚠️ **The ENTITY part of this entry was LATER REVERSED** — the owner confirmed the registered company SC Design & Construction Ltd (no. 11511225). See "Ltd entity adopted + address published" below. The footer-attribution + full-QA-pass parts of this entry still stand.
+- **"Ltd" removed everywhere (at the time believed a sole trader — since corrected):** `site.name` "SC Design & Construction Ltd" → "SC Design & Construction" (cascades to footer, page titles, OpenGraph `siteName`, all JSON-LD). Removed the `companiesHouseNumber` field + the footer "Company No." line + the About page Companies-House checklist item; legal-pages "Ltd" wording dropped; "company name" → "business name" (footer + About). Standing rule now at the top of these Project Notes. Verified 0 `Ltd`/`Company No`/`Companies House` in `out/`.
 - **TailoredQuote attribution in the global footer (site-wide, centred):** the "Visualised images powered by **TailoredQuote.co.uk**" wordmark link now also sits in `Footer.tsx`'s bottom bar (centre-aligned) so it shows on every page. Dark-footer colour adaptation: `Tailored` = `text-paper`, `.co.uk` = `text-paper/50`; `Quote` started at `#2563eb` but failed AA on `bg-ink` (3.26:1) so is now **`#7aa2f7`** (6.7:1). The visualiser-page wordmark on light bg keeps `#2563eb`.
 - **Full QA review (multi-agent, adversarially verified — 11 confirmed fixes, 11 false positives rejected):**
   - **Contrast (WCAG AA):** primary CTA buttons used `bg-accent` `#b9743f` + white = 3.73:1 (fail) site-wide → switched to `bg-accent-strong` `#a45f2d` (4.94:1) with a NEW `--color-accent-deep #8f4f24` hover token (6.34:1), applied to the shared `Button` primary variant + the hardcoded copies (Nav ×2, MobileCtaBar, ConsentBanner, error, process step badge). Form placeholders `--color-muted-soft` (2.80:1) → `--color-muted` (5.15:1). Footer review-CTA placeholder `text-paper/40` → `/60`. **Design rule learned:** `--color-accent` `#b9743f` is AA only on *dark* surfaces / decorative use; use `--color-accent-strong` for white text or text on light, and the lighter `--color-accent` for accent text on `bg-ink` (e.g. `page.tsx` visualiser-teaser eyebrow, correctly left as `text-accent` = 4.56:1).
@@ -167,6 +168,13 @@ Added a researched, people-first guide cluster (not a Blog; no thin service×tow
 - **Adversarial QA** (one agent per new guide): 0 high, 1 medium + 8 low — all fixed (de-duplicated the loft-stairs guide vs `loft-conversion-building-regulations`, the planning-vs-LDC FAQ vs `lawful-development-certificate-explained`, and the conservation-map line vs `conservation-area-extensions-wirral`; softened "price it accurately"/"buildable"/"always"; removed the unverified "26" count).
 - **Verified:** `tsc`+ESLint+build clean (79 pages); 15/15 in sitemap with production canonicals; **0** Review/AggregateRating schema; 0 broken internal `/guides`+`/services` links (34 checked); ARB "architect" mentions only in the existing architect-vs-designer explainer; /process+/contact numbering still correct.
 - **Draft mechanism** built but unused (all 15 complete + indexable). To unpublish a future guide: set `draft: true` → noindex + out of sitemap/hub/nav.
+
+#### Ltd entity adopted + address published (June 2026 — all live)
+Owner confirmed the business is the registered company **SC Design & Construction Ltd (no. 11511225)** and asked to publish a physical address — **reversing** the earlier sole-trader pass. Verified the number on Companies House (Active, incorporated 10 Aug 2018).
+- **`site.ts`:** `name` → full legal name; re-added `companiesHouseNumber: "11511225"` + `registeredOffice` (Liverpool); `address.street` → "20 Ripon Road" (owner wrote "Rippon" — corrected to the real spelling via postcode lookup) + `addressDisplay`; `addressIsPublic: true`. `shortName` unchanged (display brand).
+- **Display:** footer shows the Ltd copyright + a registered-details disclosure line (name · no. 11511225 · Liverpool registered office) + the Wallasey trading address; the visible NAP/contact address is **Wallasey** (contact "Our office" card, footer); legal pages + About show the registered details. `localBusinessJsonLd` now emits the Wallasey `PostalAddress` (via `addressIsPublic`).
+- **Owner decisions:** Wallasey shown as the contact address, Liverpool registered office only in the small legal line; "Ltd" in formal placements only (nav logo + page titles keep "SC Design & Construction"). **Design-only positioning preserved** (the company's registered SIC codes include construction — flagged to the owner, not changed). Confirm the house number "20" is correct.
+- Verified: build clean; JSON-LD `PostalAddress` = 20 Ripon Road/Wallasey/CH45 6TR; "…Ltd" + no. 11511225 render in footer/legal/About/contact; **0** remaining "sole trader" assertions repo-wide.
 
 #### DEFERRED (planning only, not started) — visitor/error logging + admin panel (June 2026)
 Owner asked what's needed before commissioning an in-site admin panel that logs visitors + errors. Analysis to carry forward when the work is picked up:

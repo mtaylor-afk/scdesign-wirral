@@ -16,7 +16,7 @@ _Last updated: June 2026. Scope: the SC architectural-design site under `/sc/`._
 **Deliberately not done (correct calls):**
 - No fake reviews / `AggregateRating` schema (none until real, permissioned reviews exist).
 - No thin/duplicate location or service×location pages.
-- Exact Facebook URL omitted until confirmed. (No Companies House number — sole trader, not a limited company.)
+- Exact Facebook URL omitted until confirmed. (Registered company SC Design & Construction Ltd, company no. 11511225.)
 - The test deployment on `tailoredquote.co.uk/sc/site` is `noindex` (borrowed domain) — the real, indexable site is the future own-domain Vercel deploy.
 
 ## Improvements shipped in this pass

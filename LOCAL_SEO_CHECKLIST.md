@@ -11,18 +11,18 @@ Use this exact information on the website, GBP, and every directory/citation.
 Inconsistent NAP (name, address, phone) is one of the most common local-SEO
 problems.
 
-- **Business name:** SC Design & Construction
-  - Sean trades as a **sole trader** under this business name — there is **no
-    limited company**, so never append "Ltd"/"Limited" and never quote a
-    Companies House number. **Do not** keyword-stuff it (e.g. not
-    "SC Design & Construction | Architectural Designer Wirral").
+- **Business name:** SC Design & Construction Ltd (registered company no. 11511225,
+  England & Wales). The display brand "SC Design & Construction" is fine for the GBP /
+  branding; use the full "Ltd" name where the legal entity is stated. **Do not**
+  keyword-stuff it (e.g. not "SC Design & Construction | Architectural Designer Wirral").
 - **Contact:** Sean Corser
 - **Phone:** 07749 456528 (display) / +447749456528 (tel:)
 - **Email:** scdesignandconstruction1@gmail.com
 - **Service area:** Wirral and the surrounding areas (Wallasey base)
-  - Decide whether to publish the Ripon Rd, CH45 6TR address or run as a
-    service-area business. The site is currently service-area-only
-    (`site.addressIsPublic = false`). Be consistent with GBP.
+  - **Trading address (published):** 20 Ripon Road, Wallasey, Wirral, CH45 6TR
+    (`site.addressIsPublic = true`). NOTE the Companies House **registered office** is
+    different (Seymour Chambers, 92 London Road, Liverpool, L3 5NW) — keep the GBP / NAP
+    on the Wallasey trading address, consistently across all citations.
 
 ## Google Business Profile (GBP)
 
