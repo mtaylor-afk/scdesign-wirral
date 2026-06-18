@@ -47,37 +47,8 @@ export function pickNativeSize(width: number, height: number): { size: NativeSiz
   return { size: "1024x1024", w: 1024, h: 1024 }; // square-ish
 }
 
-export type VisualiserOptions = {
-  projectType: string;
-  storeys: string;
-  style: string;
-  notes: string;
-};
-
-/**
- * Build a structure-preserving image-edit prompt. Deliberately conservative:
- * keep the existing house, UK residential context, no fantasy architecture,
- * don't restyle neighbouring properties.
- */
-export function buildPrompt(opts: VisualiserOptions): string {
-  const project = PROJECT_TYPES.find((p) => p.value === opts.projectType)?.label || "extension";
-  const storey = STOREYS.find((s) => s.value === opts.storeys)?.label || "single storey";
-  const style = STYLES.find((s) => s.value === opts.style)?.label || "modern";
-
-  const notes = opts.notes?.trim() ? ` Additional homeowner notes: ${opts.notes.trim()}.` : "";
-
-  return [
-    "Edit this photograph of a UK residential house to show a realistic concept of a",
-    `${storey.toLowerCase()} ${project.toLowerCase()} in a ${style.toLowerCase()} style.`,
-    "CRITICAL RULES:",
-    "- Preserve the existing house structure, proportions, roofline, windows and viewpoint as much as possible.",
-    "- Keep the same camera angle and the same overall framing as the input photo.",
-    "- Only add or modify the extension area; do not invent fantasy architecture.",
-    "- Do not change or restyle neighbouring properties, the sky, the road or unrelated surroundings.",
-    "- Keep materials, scale and detailing believable for a UK home.",
-    "- The result must look like a plausible real extension, photographed in the same conditions.",
-    notes,
-  ]
-    .join(" ")
-    .trim();
-}
+// NOTE: the image-edit PROMPT is built server-side in the visualiser backend
+// (api/sc-visualise.js, TailoredQuote repo) — see CLAUDE.md "Visualiser". The
+// former client-side buildPrompt() was dead code (never imported, never sent —
+// the POST body carries only the option keys + notes) and has been removed so
+// there is no misleading second copy of the prompt logic.
