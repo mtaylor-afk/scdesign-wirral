@@ -8,7 +8,7 @@ import { pageMeta, breadcrumbJsonLd, personJsonLd } from "@/lib/seo";
 export const metadata = pageMeta({
   title: "About — Sean Corser MCIAT, Architectural Designer",
   description:
-    "SC Design Wirral is led by Sean Corser MCIAT, a Chartered Architectural Technologist (BSc Architectural Science) with 15+ years designing homes for families across Wirral, Cheshire, Merseyside and North Wales. Design only; we work with trusted builders.",
+    "SC Design Wirral is led by Sean Corser MCIAT, a Chartered Architectural Technologist (BSc Architectural Science) with 15+ years designing homes for families across Wirral and selected surrounding areas. Design only — we prepare drawings so you can approach builders for like-for-like quotations.",
   path: "/about",
 });
 
@@ -78,7 +78,7 @@ export default function AboutPage() {
             The approach is simple: good home design starts with a proper conversation. Every property
             and every family is different, so Sean takes the time to understand how you actually live —
             from the period terraces of Wallasey and Birkenhead to the larger plots of Heswall and West
-            Kirby, and out across Cheshire and North Wales — before putting pen to paper.
+            Kirby, and selected surrounding areas — before putting pen to paper.
           </p>
 
           <h2 className="pt-2 text-2xl text-ink">Design-led, with the right people to build it</h2>
@@ -86,9 +86,8 @@ export default function AboutPage() {
             We focus purely on design — exploring what&apos;s possible, shaping the concept and
             preparing clear, accurate drawings for planning and building regulations. We don&apos;t
             carry out the building work ourselves, which keeps our advice impartial and focused on
-            getting your design right. When you&apos;re ready to build, we can recommend{" "}
-            <strong className="text-ink">trusted, certified contractors (including WV Construction
-            Ltd)</strong> to price and build from the drawings, and we work alongside a{" "}
+            getting your design right. When you&apos;re ready to build, you can use the drawings to
+            approach builders for like-for-like quotations, and we work alongside a{" "}
             <strong className="text-ink">structural engineer</strong> for any calculations your project
             needs.
           </p>
@@ -137,7 +136,7 @@ export default function AboutPage() {
             <Card>
               <h2 className="text-xl">What we don&apos;t do</h2>
               <ul className="mt-3 space-y-2 text-pretty text-muted">
-                <li>Carry out the building work — a trusted contractor does that</li>
+                <li>Carry out the building work — the builder you appoint does that</li>
                 <li>
                   Call ourselves &ldquo;architects&rdquo; — we&apos;re Chartered Architectural
                   Technologists
@@ -176,7 +175,7 @@ export default function AboutPage() {
               {site.shortName} is an independent architectural design and drawing practice. Sean is a{" "}
               {site.credentials.jobTitle} (MCIAT) — we are <strong>not</strong> registered architects
               (&ldquo;architect&rdquo; is a title protected by law in the UK), and we design only:
-              your project is built by trusted, certified contractors who price and construct from our
+              your project is built by builders you appoint, who price and construct from our
               drawings, with a structural engineer for the calculations.
             </p>
             <p className="mt-3 text-pretty text-muted">

@@ -9,9 +9,9 @@ import { site } from "@/lib/site";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 
 export const metadata = pageMeta({
-  title: "Areas Covered — Architectural Design Across Wirral, Cheshire & North Wales",
+  title: "Areas Covered — Architectural Design Across Wirral & Surrounding Areas",
   description:
-    "SC Design Wirral provides architectural design for homes across Wirral, Cheshire, Merseyside and North Wales — from Wallasey, Birkenhead and Heswall to Chester, Warrington and Wrexham.",
+    "SC Design Wirral provides architectural design for homes across Wirral and selected surrounding areas — from Wallasey, Birkenhead and Heswall to Neston, Ellesmere Port and Chester.",
   path: "/areas",
 });
 

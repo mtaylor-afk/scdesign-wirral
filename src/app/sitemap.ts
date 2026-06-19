@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { siteUrl } from "@/lib/seo";
+import { siteUrl, absUrl } from "@/lib/seo";
 import { services } from "@/lib/services";
 import { locations } from "@/lib/locations";
 import { guides } from "@/lib/guides";
@@ -30,7 +30,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   const entries: MetadataRoute.Sitemap = staticPaths.map((p) => ({
-    url: `${siteUrl}${p === "/" ? "" : p}`,
+    url: absUrl(p),
     lastModified: now,
     changeFrequency: "monthly",
     priority: p === "/" ? 1 : 0.7,
@@ -38,7 +38,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   for (const s of services) {
     entries.push({
-      url: `${siteUrl}/services/${s.slug}`,
+      url: absUrl(`/services/${s.slug}`),
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.8,
@@ -47,7 +47,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   for (const g of guides) {
     if (g.draft) continue; // incomplete guides stay out of the sitemap (and are noindex)
     entries.push({
-      url: `${siteUrl}/guides/${g.slug}`,
+      url: absUrl(`/guides/${g.slug}`),
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
@@ -56,7 +56,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   for (const l of locations) {
     if (l.noindex) continue; // owner-flagged areas stay out of the sitemap
     entries.push({
-      url: `${siteUrl}/areas/${l.slug}`,
+      url: absUrl(`/areas/${l.slug}`),
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.6,
@@ -64,11 +64,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }
   for (const p of projects) {
     entries.push({
-      url: `${siteUrl}/projects/${p.slug}`,
+      url: absUrl(`/projects/${p.slug}`),
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.6,
     });
   }
+  // Static AI-readable summary page (a real .html file, not a trailing-slash route).
+  entries.push({
+    url: `${siteUrl}/llms.html`,
+    lastModified: now,
+    changeFrequency: "yearly",
+    priority: 0.3,
+  });
   return entries;
 }

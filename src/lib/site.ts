@@ -29,12 +29,9 @@ export const site = {
   },
   yearsAsBuilder: 6,
 
-  // Design-only practice. The build is delivered by trusted, certified contractor
-  // partners who price and build from Sean's drawings; a structural engineer covers
-  // structural calculations. Liability/contract for built work sits with the contractor.
-  partners: {
-    contractor: "WV Construction Ltd",
-  },
+  // Design-only practice. Homeowners appoint their own builder to price and build
+  // from Sean's drawings; a structural engineer covers any structural calculations.
+  // Liability and contract for the built work sit with the builder, not SC Design.
 
   // Companies House registration — shown in the footer + legal/policy pages to
   // meet UK company-website disclosure. The registered office (below) is the
@@ -45,9 +42,9 @@ export const site = {
 
   // Positioning (architectural design, design-only — no construction)
   tagline:
-    "Architectural design for home extensions, loft conversions and planning across Wirral, Cheshire, Merseyside & North Wales.",
+    "Architectural design for home extensions, loft conversions and planning across Wirral and selected surrounding areas.",
   positioning:
-    "Friendly, practical architectural design for growing families — from first idea to planning-ready drawings, with trusted builders to bring it to life.",
+    "Friendly, practical architectural design for growing families across Wirral and selected surrounding areas — from first idea to clear planning, building-regulations and builder-quote drawings.",
   yearsExperience: 15,
 
   // NAP — the Wallasey TRADING/contact address (distinct from the registered
@@ -62,7 +59,7 @@ export const site = {
   },
   addressDisplay: "20 Ripon Road, Wallasey, Wirral, CH45 6TR",
   addressIsPublic: false, // service-area-only — the Wallasey trading address is NOT published
-  serviceArea: "Wirral, Cheshire, Merseyside & North Wales",
+  serviceArea: "Wirral and selected surrounding areas",
 
   phoneDisplay: "07749 456528",
   phoneE164: "+447749456528",

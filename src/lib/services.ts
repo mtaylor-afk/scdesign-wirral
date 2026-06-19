@@ -899,7 +899,7 @@ export const services: Service[] = [
       },
       {
         "q": "Do you do the building work too?",
-        "a": "No — we're design-only. We prepare the supporting drawings and planning statement and liaise with the council. Trusted, certified contractor partners price and build from the drawings, with a structural engineer covering any calculations needed."
+        "a": "No — we're design-only. We prepare the supporting drawings and planning statement and liaise with the council. Builders you appoint price and build from the drawings, with a structural engineer covering any calculations needed."
       }
     ],
     "relatedServices": [

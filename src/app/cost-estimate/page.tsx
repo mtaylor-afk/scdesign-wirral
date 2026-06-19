@@ -9,7 +9,7 @@ import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 export const metadata = pageMeta({
   title: "Extension & Loft Cost Estimate — Wirral",
   description:
-    "A quick, honest guide to the likely build cost of a home extension, loft conversion, garage conversion or garden room across Wirral, Cheshire and North Wales. Estimate only.",
+    "A quick, honest guide to the likely build cost of a home extension, loft conversion, garage conversion or garden room across Wirral and selected surrounding areas. Estimate only.",
   path: "/cost-estimate",
 });
 
@@ -60,9 +60,9 @@ export default function CostEstimatePage() {
             <Card>
               <h2 className="text-lg">Where we fit in</h2>
               <p className="mt-2 text-pretty text-muted">
-                We&apos;re design only — we prepare the drawings your project needs and can recommend
-                trusted, certified builders to price and build from them. That keeps the costing
-                honest: you compare like-for-like quotes against one clear set of drawings.{" "}
+                We&apos;re design only — we prepare the drawings your project needs so builders can
+                price and build from them. That keeps the costing honest: you compare like-for-like
+                quotes against one clear set of drawings.{" "}
                 <Link href="/services" className="font-medium text-accent-strong underline">
                   See our services
                 </Link>

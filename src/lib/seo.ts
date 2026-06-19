@@ -5,6 +5,16 @@ import { NOINDEX } from "./base";
 export const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://scdesignwirral.co.uk";
 
+/**
+ * Absolute URL with a trailing slash to match `trailingSlash: true` — so every
+ * emitted canonical / sitemap / JSON-LD URL is the final 200 URL (no 307 hop).
+ */
+export function absUrl(path: string): string {
+  if (!path || path === "/") return `${siteUrl}/`;
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${siteUrl}${p.endsWith("/") ? p : `${p}/`}`;
+}
+
 type PageMetaInput = {
   title: string;
   description: string;
@@ -14,7 +24,7 @@ type PageMetaInput = {
 
 /** Build per-page metadata with canonical + Open Graph + Twitter. */
 export function pageMeta({ title, description, path, noindex }: PageMetaInput): Metadata {
-  const url = `${siteUrl}${path === "/" ? "" : path}`;
+  const url = absUrl(path);
   const fullTitle = path === "/" ? `${title}` : `${title} | ${site.shortName}`;
   return {
     // `absolute` bypasses the layout title.template so the brand is never
@@ -84,7 +94,7 @@ export function webSiteJsonLd() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: site.name,
-    url: siteUrl,
+    url: absUrl("/"),
     inLanguage: "en-GB",
     publisher: { "@id": `${siteUrl}/#business` },
   };
@@ -98,7 +108,7 @@ export function localBusinessJsonLd() {
     "@id": `${siteUrl}/#business`,
     name: site.name,
     description: site.positioning,
-    url: siteUrl,
+    url: absUrl("/"),
     telephone: site.phoneE164,
     email: site.email,
     image: `${siteUrl}/opengraph-image`,
@@ -106,6 +116,7 @@ export function localBusinessJsonLd() {
     serviceType: serviceTypes,
     knowsAbout: serviceTypes,
     sameAs: [site.socials.facebook, site.socials.instagram].filter(Boolean),
+    founder: { "@id": `${siteUrl}/about#sean-corser` },
   };
   // Service-area business: only expose a postal address when the client has
   // approved publishing it. Otherwise omit `address` entirely (Google's guidance
@@ -132,7 +143,7 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
       "@type": "ListItem",
       position: i + 1,
       name: it.name,
-      item: `${siteUrl}${it.path === "/" ? "" : it.path}`,
+      item: absUrl(it.path),
     })),
   };
 }
@@ -168,7 +179,7 @@ export function articleJsonLd(opts: {
   path: string;
   reviewed?: string;
 }) {
-  const url = `${siteUrl}${opts.path}`;
+  const url = absUrl(opts.path);
   const iso = monthYearToIso(opts.reviewed);
   return {
     "@context": "https://schema.org",
@@ -194,7 +205,7 @@ export function serviceJsonLd(name: string, description: string, path: string) {
     serviceType: "Architectural design",
     areaServed: site.serviceArea,
     provider: { "@type": "ProfessionalService", "@id": `${siteUrl}/#business`, name: site.name },
-    url: `${siteUrl}${path}`,
+    url: absUrl(path),
   };
 }
 
@@ -227,6 +238,6 @@ export function personJsonLd() {
       },
     ],
     worksFor: { "@id": `${siteUrl}/#business` },
-    url: `${siteUrl}/about`,
+    url: absUrl("/about"),
   };
 }

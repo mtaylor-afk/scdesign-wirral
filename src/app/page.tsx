@@ -97,10 +97,10 @@ export default function HomePage() {
                 Planning Drawings
               </h1>
               <p className="mt-5 max-w-xl text-pretty text-lg text-muted">
-                Friendly, practical home design for growing families across Wirral, Cheshire,
-                Merseyside &amp; North Wales — led by a Chartered Architectural Technologist (MCIAT).
-                From your first idea to planning-ready drawings, with trusted builders to bring it to
-                life.
+                Friendly, practical home design for growing families across Wirral and selected
+                surrounding areas — led by Sean Corser MCIAT, Chartered Architectural Technologist.
+                From your first idea to clear planning, building-regulations and builder-quote
+                drawings.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <LinkButton href={cta.primary.href} size="lg" track="contact-cta">
@@ -148,8 +148,8 @@ export default function HomePage() {
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
             <StatCard value="MCIAT" label="Chartered Architectural Technologist" />
             <StatCard value={`${site.yearsExperience}+`} label="Years in architectural design" />
-            <StatCard value="Local" label="Wirral, Cheshire & North Wales" />
-            <StatCard value="Builders" label="We work with trusted contractors" />
+            <StatCard value="Local" label="Wirral & surrounding areas" />
+            <StatCard value="Builder-ready" label="Clear drawings for like-for-like quotations" />
           </div>
         </Container>
       </Section>

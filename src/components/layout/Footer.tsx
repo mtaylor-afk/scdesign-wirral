@@ -40,7 +40,7 @@ export function Footer() {
           <p className="mt-4 max-w-xs text-sm text-paper/50">
             An independent architectural{" "}
             <strong className="font-medium text-paper/70">design &amp; drawing service</strong> — we
-            prepare your plans and work with trusted, certified builders to bring them to life.
+            prepare clear plans so homeowners can approach builders with confidence.
           </p>
           <div className="mt-4 flex gap-4 text-sm">
             {site.socials.instagram && (

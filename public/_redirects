@@ -14,3 +14,6 @@
 /services/lawful-development-certificate-wirral    /guides/lawful-development-certificate-explained  301
 /services/conservation-area-design-wirral          /guides/conservation-area-extensions-wirral       301
 /services/planning-building-regulations            /services                                         301
+
+# --- /llm.txt compatibility → canonical machine-readable AI summary ---
+/llm.txt   /llms.txt   301
