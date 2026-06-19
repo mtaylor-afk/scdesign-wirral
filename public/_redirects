@@ -1,0 +1,10 @@
+# SC Design Wirral — Cloudflare Pages redirects
+# Copied verbatim into the static export (out/_redirects) at build time.
+# Format:  /old-path   /new-path   301
+#
+# Populated during the redesign migration:
+#  - WS3: removed/renamed service URLs (permitted-development, LDC, conservation-area → guides)
+#  - WS7: retired templated area pages → /areas hub
+#
+# (entries added as those workstreams land — keeping this scaffold so the
+#  redirect map is version-controlled from the start of the rebuild.)
