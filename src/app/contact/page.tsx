@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Container, Section, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { ContactForm } from "@/components/ContactForm";
+import { EnquiryForm } from "@/components/EnquiryForm";
 import { ReviewCta } from "@/components/ui/ReviewCta";
 import { JsonLd } from "@/components/JsonLd";
 import { site, whatsappLink, defaultWhatsAppMessage } from "@/lib/site";
@@ -44,7 +44,7 @@ export default function ContactPage() {
         <Container>
           <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr]">
             <div>
-              <ContactForm />
+              <EnquiryForm />
             </div>
 
             <aside className="space-y-5">
@@ -91,14 +91,6 @@ export default function ContactPage() {
                 </p>
                 <p className="mt-2 text-xs text-muted">
                   {site.name} · registered in England &amp; Wales no. {site.companiesHouseNumber}.
-                </p>
-              </Card>
-
-              <Card>
-                <h2 className="text-lg">Service area</h2>
-                <p className="mt-2 text-sm text-muted">
-                  Based in Wallasey, working across {site.serviceArea}. We work to your property, so
-                  a postcode helps us confirm we cover you.
                 </p>
               </Card>
 

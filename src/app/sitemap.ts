@@ -23,6 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/faqs",
     "/contact",
     "/visualiser",
+    "/cost-estimate",
     // Legal pages (privacy, cookie, visualiser-terms) are intentionally excluded
     // from the sitemap — still crawlable via footer links, just not promoted.
   ];

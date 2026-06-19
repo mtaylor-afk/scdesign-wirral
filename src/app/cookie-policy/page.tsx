@@ -28,6 +28,20 @@ export default function CookiePolicyPage() {
         people most. We do not use advertising cookies and do not sell your data.
       </p>
 
+      <h2>Google reviews widget (optional)</h2>
+      <p>
+        Our reviews are shown through a third-party widget (Featurable, which displays Google
+        reviews). To respect your privacy it only loads once you accept non-essential content; until
+        then we show a simple link to our Google profile instead.
+      </p>
+
+      <h2>Spam protection</h2>
+      <p>
+        The enquiry form may use Cloudflare Turnstile — a privacy-friendly alternative to a CAPTCHA
+        — to tell humans from bots. It does not track you across other websites or use advertising
+        cookies.
+      </p>
+
       <h2>Managing your choice</h2>
       <p>
         You can change your decision at any time by clearing this site&apos;s storage in your

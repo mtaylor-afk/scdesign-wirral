@@ -107,6 +107,18 @@ export default function VisualiserPage() {
             </p>
           </Card>
           <Card>
+            <h2 className="text-lg">Curious what it might cost?</h2>
+            <p className="mt-2 text-pretty text-muted">
+              Get a rough, honest idea of the likely build cost before you commit — clearly marked as
+              an estimate, not a quote.
+            </p>
+            <div className="mt-4">
+              <LinkButton href="/cost-estimate" variant="ghost">
+                Try the cost estimate
+              </LinkButton>
+            </div>
+          </Card>
+          <Card>
             <h2 className="text-lg">Want to turn a concept into planning or builder drawings?</h2>
             <p className="mt-2 text-pretty text-muted">
               The visualiser is only a starting point. When you&apos;re ready, we can prepare the
