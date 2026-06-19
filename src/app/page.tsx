@@ -21,18 +21,15 @@ export const metadata = pageMeta({
 const helpWith: { label: string; href: string }[] = [
   { label: "House extension drawings", href: "/services/house-extensions" },
   { label: "Loft conversion design", href: "/services/loft-conversions" },
+  { label: "Front porch design", href: "/services/front-porch-extension-design" },
+  { label: "Bespoke garden rooms", href: "/services/bespoke-garden-room-design" },
   { label: "Planning permission drawings", href: "/services/planning-drawings-wirral" },
   {
     label: "Building-regulations drawings",
     href: "/services/building-regulations-drawings-wirral",
   },
-  { label: "Permitted development advice", href: "/services/permitted-development-wirral" },
-  {
-    label: "Lawful development certificate drawings",
-    href: "/services/lawful-development-certificate-wirral",
-  },
   { label: "Garage conversion drawings", href: "/services/garage-conversion-drawings-wirral" },
-  { label: "Conservation-area home design", href: "/services/conservation-area-design-wirral" },
+  { label: "Full architectural design service", href: "/services/residential-design" },
 ];
 
 const drawingsHelp: { term: string; body: string; href: string; cta: string }[] = [
@@ -94,14 +91,16 @@ export default function HomePage() {
                 Architectural design · {site.serviceArea}
               </p>
               <h1 className="text-balance text-4xl leading-[1.08] sm:text-5xl lg:text-[3.4rem]">
-                <span className="text-[#2563eb]">Architectural Designer</span>{" "}
+                <span className="text-accent-strong">Architectural Designer</span>{" "}
                 in Wirral for Extensions, Loft Conversions{" "}
-                <span className="text-[#2563eb]">&amp;</span>{" "}
+                <span className="text-accent-strong">&amp;</span>{" "}
                 Planning Drawings
               </h1>
               <p className="mt-5 max-w-xl text-pretty text-lg text-muted">
-                Wallasey-based architectural design for Wirral homeowners — from your first idea to
-                planning-ready drawings, building-regulations drawings and builder-quotation packs.
+                Friendly, practical home design for growing families across Wirral, Cheshire,
+                Merseyside &amp; North Wales — led by a Chartered Architectural Technologist (MCIAT).
+                From your first idea to planning-ready drawings, with trusted builders to bring it to
+                life.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <LinkButton href={cta.primary.href} size="lg" track="contact-cta">
@@ -131,11 +130,11 @@ export default function HomePage() {
 
             <div className="lg:pl-4">
               <BeforeAfterSlider
-                before="/examples/househront-before.jpg"
-                after="/examples/househront-after.jpg"
-                beforeAlt="House front before — existing home"
-                afterAlt="House front after — AI concept visualisation"
-                caption="AI concept visualisation — drag to compare. Illustrative only."
+                before="/portfolio/hero-before.jpg"
+                after="/portfolio/hero-after.jpg"
+                beforeAlt="Tired rear elevation of a Wirral home before redesign"
+                afterAlt="Concept visualisation of the same home with a single-storey rear extension"
+                caption="Before → concept visualisation. Drag to compare."
                 priority
               />
             </div>
@@ -147,10 +146,10 @@ export default function HomePage() {
       <Section className="py-12">
         <Container>
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
-            <StatCard value={`${site.yearsExperience}+`} label="Years' design experience" />
-            <StatCard value="Wallasey" label="Based on Wirral" />
-            <StatCard value="Design-led" label="Concept to planning drawings" />
-            <StatCard value="Builders" label="Clear drawings to quote from" />
+            <StatCard value="MCIAT" label="Chartered Architectural Technologist" />
+            <StatCard value={`${site.yearsExperience}+`} label="Years in architectural design" />
+            <StatCard value="Local" label="Wirral, Cheshire & North Wales" />
+            <StatCard value="Builders" label="We work with trusted contractors" />
           </div>
         </Container>
       </Section>

@@ -90,7 +90,7 @@ export const locations: Location[] = [
       "Birkenhead Park and several surrounding streets sit within conservation areas where design quality and materials matter — confirm your address with Wirral Council. We prepare sensitive, well-justified drawings where that context applies.",
     ],
     emphasis: ["Rear & side extensions", "Loft conversions", "Building-regulations drawings"],
-    relevantServices: [...designServices, "conservation-area-design-wirral"],
+    relevantServices: [...designServices],
     nearby: ["oxton", "prenton", "wallasey", "bebington"],
     faqs: [
       {
@@ -125,7 +125,7 @@ export const locations: Location[] = [
       "Kitchen-living extensions",
       "Concept & space planning",
     ],
-    relevantServices: [...designServices, "conservation-area-design-wirral"],
+    relevantServices: [...designServices],
     nearby: ["port-sunlight", "bromborough", "eastham", "prenton"],
     faqs: [
       {
@@ -191,7 +191,7 @@ export const locations: Location[] = [
       "Loft conversions",
       "Coastal-aware detailing in drawings",
     ],
-    relevantServices: [...designServices, "conservation-area-design-wirral"],
+    relevantServices: [...designServices],
     nearby: ["hoylake", "heswall", "greasby", "moreton"],
     faqs: [
       {
@@ -222,7 +222,7 @@ export const locations: Location[] = [
       "Parts of Hoylake and Meols fall within conservation areas — confirm your address with Wirral Council, as permitted development rights are often reduced in those locations.",
     ],
     emphasis: ["Character-sensitive extensions", "Loft conversions", "Planning drawings"],
-    relevantServices: [...designServices, "conservation-area-design-wirral"],
+    relevantServices: [...designServices],
     nearby: ["west-kirby", "moreton", "greasby", "heswall"],
     faqs: [
       {
@@ -412,7 +412,7 @@ export const locations: Location[] = [
       "Period-villa alterations",
       "Well-justified planning drawings",
     ],
-    relevantServices: ["conservation-area-design-wirral", "house-extensions", "residential-design"],
+    relevantServices: ["house-extensions", "residential-design"],
     nearby: ["birkenhead", "prenton", "bebington", "wallasey"],
     faqs: [
       {
@@ -447,7 +447,7 @@ export const locations: Location[] = [
       "Careful, well-justified proposals",
       "Work in and around the conservation village",
     ],
-    relevantServices: ["conservation-area-design-wirral", "residential-design"],
+    relevantServices: ["residential-design"],
     nearby: ["bebington", "bromborough", "eastham", "prenton"],
     faqs: [
       {
@@ -509,7 +509,7 @@ export const locations: Location[] = [
       "Parts of Prenton sit close to conservation areas around Oxton and Birkenhead — confirm your address with Wirral Council. We advise on the likely route and prepare the drawings.",
     ],
     emphasis: ["Period & semi extensions", "Loft conversions", "Bespoke residential design"],
-    relevantServices: [...designServices, "conservation-area-design-wirral"],
+    relevantServices: [...designServices],
     nearby: ["oxton", "birkenhead", "upton", "bebington"],
     faqs: [
       {
@@ -542,7 +542,7 @@ export const locations: Location[] = [
       "Neston and Parkgate include conservation areas and sit within Cheshire West and Chester for planning, not Wirral — so the local authority and policies differ. We prepare drawings with the correct local context, confirmed with the relevant authority.",
     ],
     emphasis: ["Village-street-sensitive design", "Rural-edge extensions", "Planning drawings"],
-    relevantServices: [...designServices, "conservation-area-design-wirral"],
+    relevantServices: [...designServices],
     nearby: ["heswall", "ellesmere-port", "west-kirby"],
     faqs: [
       {
@@ -639,7 +639,7 @@ export const locations: Location[] = [
       "Chester falls under Cheshire West and Chester, with extensive conservation areas and heritage assets. The authority and policies differ from Wirral, and we prepare drawings with that context properly considered.",
     ],
     emphasis: ["Conservation-aware design", "Period-home extensions", "Planning drawings"],
-    relevantServices: [...designServices, "conservation-area-design-wirral"],
+    relevantServices: [...designServices],
     nearby: ["ellesmere-port", "neston"],
     faqs: [
       {
@@ -670,7 +670,7 @@ export const locations: Location[] = [
       "Crosby falls under Sefton Council, with its own conservation areas and policies — separate from Wirral. We prepare drawings with the correct local context.",
     ],
     emphasis: ["Period & coastal-edge extensions", "Loft conversions", "Light-led design"],
-    relevantServices: [...designServices, "conservation-area-design-wirral"],
+    relevantServices: [...designServices],
     nearby: ["liverpool"],
     faqs: [
       {

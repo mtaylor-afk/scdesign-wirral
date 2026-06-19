@@ -5,19 +5,19 @@
    Minimalist architectural: charcoal / off-white / warm accent.
    ============================================================ */
 @theme {
-  /* Colour system */
-  --color-ink: #1c1d1f; /* charcoal — primary text / dark sections */
-  --color-ink-soft: #3a3b3e;
-  --color-paper: #f7f5f1; /* warm off-white — page background */
-  --color-paper-card: #fffefb;
-  --color-line: #e4e0d8; /* subtle warm border */
-  --color-muted: #6f6f73; /* muted grey body text */
-  --color-muted-soft: #9a9a9e;
+  /* Colour system — SC Design Wirral: brick red / cream / white / warm grey */
+  --color-ink: #211e1b; /* warm near-black — primary text / dark sections */
+  --color-ink-soft: #46413b;
+  --color-paper: #f5efe5; /* warm cream/beige — page background */
+  --color-paper-card: #ffffff; /* clean white cards */
+  --color-line: #e7ded1; /* soft warm-grey border */
+  --color-muted: #645f58; /* muted body text (AA on cream, ~4.8:1) */
+  --color-muted-soft: #918b81; /* decorative only — not for body text */
 
-  --color-accent: #b9743f; /* warm terracotta accent (decorative / on dark only — fails AA as a button bg under white text) */
-  --color-accent-strong: #a45f2d; /* AA-safe accent for white text on light surfaces (4.94:1) */
-  --color-accent-deep: #8f4f24; /* darker accent for button hover (6.34:1 under white) */
-  --color-accent-soft: #f0e2d6;
+  --color-accent: #a83232; /* brand red — decorative / on dark surfaces */
+  --color-accent-strong: #9b1b1b; /* AA-safe red for white text on light (~9:1) */
+  --color-accent-deep: #7a1414; /* darker red for button hover */
+  --color-accent-soft: #f4e3e0; /* soft red tint — chips / badges */
 
   --color-success: #3f7d57;
   --color-danger: #b3402f;
@@ -33,9 +33,9 @@
   --radius: 12px;
   --radius-lg: 20px;
 
-  /* Shadows */
-  --shadow-card: 0 1px 2px rgba(28, 29, 31, 0.04), 0 12px 32px rgba(28, 29, 31, 0.06);
-  --shadow-card-hover: 0 2px 6px rgba(28, 29, 31, 0.08), 0 20px 48px rgba(28, 29, 31, 0.1);
+  /* Shadows — softer/flatter for the friendlier, less "expensive" feel */
+  --shadow-card: 0 1px 2px rgba(33, 30, 27, 0.03), 0 6px 16px rgba(33, 30, 27, 0.045);
+  --shadow-card-hover: 0 2px 4px rgba(33, 30, 27, 0.05), 0 10px 24px rgba(33, 30, 27, 0.07);
 
   /* Spacing rhythm */
   --spacing-section: 5.5rem;

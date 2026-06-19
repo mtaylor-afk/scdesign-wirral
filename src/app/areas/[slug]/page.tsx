@@ -58,20 +58,13 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
     ?.map((s) => locations.find((l) => l.slug === s))
     .filter(Boolean) as typeof locations) ?? locations.filter((l) => l.slug !== slug).slice(0, 6);
 
-  // Cornerstone guides linked from every area page (+ conservation guide for
-  // conservation-sensitive areas).
-  const guideSlugs = loc.relevantServices?.includes("conservation-area-design-wirral")
-    ? [
-        "do-i-need-planning-permission-for-an-extension",
-        "do-i-need-building-regulations-approval",
-        "what-drawings-do-builders-need",
-        "conservation-area-extensions-wirral",
-      ]
-    : [
-        "do-i-need-planning-permission-for-an-extension",
-        "do-i-need-building-regulations-approval",
-        "what-drawings-do-builders-need",
-      ];
+  // Cornerstone homeowner guides linked from every area page.
+  const guideSlugs = [
+    "do-i-need-planning-permission-for-an-extension",
+    "do-i-need-building-regulations-approval",
+    "what-drawings-do-builders-need",
+    "conservation-area-extensions-wirral",
+  ];
   const helpfulGuides = guideSlugs
     .map((s) => guides.find((g) => g.slug === s))
     .filter((g): g is NonNullable<typeof g> => Boolean(g));

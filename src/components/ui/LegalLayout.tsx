@@ -23,7 +23,7 @@ export function LegalLayout({
         </div>
         <p className="mt-3 text-xs text-muted">
           {site.name} is registered in England &amp; Wales (company no. {site.companiesHouseNumber}).
-          Registered office: {site.registeredOffice}. Trading address: {site.addressDisplay}.
+          Registered office: {site.registeredOffice}.
         </p>
         <div className="legal mt-8 space-y-5 text-pretty text-muted [&_h2]:mt-8 [&_h2]:text-2xl [&_h2]:text-ink [&_h3]:mt-5 [&_h3]:text-lg [&_h3]:text-ink [&_a]:text-accent-strong [&_a]:underline [&_ul]:list-disc [&_ul]:pl-6 [&_li]:mt-1">
           {children}

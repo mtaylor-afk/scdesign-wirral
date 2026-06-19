@@ -84,14 +84,13 @@ export default function ContactPage() {
               </Card>
 
               <Card>
-                <h2 className="text-lg">Our office</h2>
-                <address className="mt-2 text-sm not-italic text-muted">
-                  {site.name}
-                  <br />
-                  {site.addressDisplay}
-                </address>
+                <h2 className="text-lg">Where we work</h2>
+                <p className="mt-2 text-sm text-muted">
+                  A service-area practice covering {site.serviceArea} — we come to your property, so
+                  there&apos;s no office to visit.
+                </p>
                 <p className="mt-2 text-xs text-muted">
-                  Registered in England &amp; Wales no. {site.companiesHouseNumber}.
+                  {site.name} · registered in England &amp; Wales no. {site.companiesHouseNumber}.
                 </p>
               </Card>
 

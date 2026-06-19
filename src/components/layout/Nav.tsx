@@ -65,12 +65,18 @@ export function Nav() {
       >
         <Link
           href="/"
-          className="flex flex-col leading-none"
-          aria-label="SC Design & Construction — home"
+          className="flex items-center gap-2"
+          aria-label="SC Design Wirral — home"
         >
-          <span className="font-display text-lg text-ink">SC Design</span>
-          <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-accent-strong">
-            &amp; Construction
+          <span aria-hidden className="font-display text-2xl font-bold leading-none">
+            <span className="text-ink">|</span>
+            <span className="text-accent-strong">SC</span>
+          </span>
+          <span className="flex flex-col leading-none">
+            <span className="font-display text-base text-ink">Design Wirral</span>
+            <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted">
+              Architectural Design
+            </span>
           </span>
         </Link>
 

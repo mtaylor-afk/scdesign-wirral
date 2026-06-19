@@ -8,7 +8,7 @@ import { pageMeta, breadcrumbJsonLd, personJsonLd } from "@/lib/seo";
 export const metadata = pageMeta({
   title: "About — Architectural Designer in Wirral",
   description:
-    "Led by Sean Corser, SC Design & Construction is a Wallasey-based architectural design studio with 18+ years' experience helping Wirral homeowners design extensions and lofts.",
+    "Led by Sean Corser, SC Design & Construction is a Wallasey-based architectural design studio with 15+ years' experience helping Wirral homeowners design extensions and lofts.",
   path: "/about",
 });
 
@@ -26,7 +26,7 @@ const trustPoints = [
     body: "Our drawings let builders quote accurately against the same information, so you compare like with like and the build matches what you agreed.",
   },
   {
-    title: "18+ years of experience",
+    title: "15+ years of experience",
     body: "From simple rear extensions to whole-home reconfigurations, we bring practical knowledge and a genuine eye for design.",
   },
 ];
@@ -127,6 +127,14 @@ export default function AboutPage() {
           <Card>
             <h2 className="text-xl">Company details, qualifications &amp; insurance</h2>
             <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
+              <dt className="font-semibold text-ink">Lead designer</dt>
+              <dd className="text-muted">
+                {site.contactName} {site.credentials.postNominals}
+              </dd>
+              <dt className="font-semibold text-ink">Professional</dt>
+              <dd className="text-muted">{site.credentials.jobTitle} (CIAT)</dd>
+              <dt className="font-semibold text-ink">Qualification</dt>
+              <dd className="text-muted">{site.credentials.degree}</dd>
               <dt className="font-semibold text-ink">Registered name</dt>
               <dd className="text-muted">{site.name}</dd>
               <dt className="font-semibold text-ink">Company number</dt>
@@ -135,17 +143,17 @@ export default function AboutPage() {
               </dd>
               <dt className="font-semibold text-ink">Registered office</dt>
               <dd className="text-muted">{site.registeredOffice}</dd>
-              <dt className="font-semibold text-ink">Trading address</dt>
-              <dd className="text-muted">{site.addressDisplay}</dd>
             </dl>
             <p className="mt-4 text-pretty text-muted">
-              SC Design &amp; Construction provides architectural design and drawing services. We do
-              not describe ourselves as registered architects unless ARB registration is expressly
-              confirmed — &ldquo;architect&rdquo; is a title protected by law in the UK.
+              {site.shortName} is an independent architectural design and drawing practice. Sean is a{" "}
+              {site.credentials.jobTitle} (MCIAT) — we are <strong>not</strong> registered architects
+              (&ldquo;architect&rdquo; is a title protected by law in the UK), and we design only:
+              your project is built by trusted, certified contractors who price and construct from our
+              drawings, with a structural engineer for the calculations.
             </p>
             <p className="mt-3 text-pretty text-muted">
-              Professional and insurance details can be provided on request where relevant to your
-              project.
+              Professional indemnity and public liability insurance cover our design work; further
+              details can be provided on request where relevant to your project.
             </p>
           </Card>
         </Container>

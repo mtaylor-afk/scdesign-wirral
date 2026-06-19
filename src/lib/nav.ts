@@ -83,7 +83,9 @@ export const exploreLinks: NavLink[] = [
 export const footerDesignServices: NavLink[] = [
   { label: "House extension drawings", href: "/services/house-extensions" },
   { label: "Loft conversion design", href: "/services/loft-conversions" },
-  { label: "Bespoke residential design", href: "/services/residential-design" },
+  { label: "Full architectural design", href: "/services/residential-design" },
+  { label: "Front porch design", href: "/services/front-porch-extension-design" },
+  { label: "Bespoke garden rooms", href: "/services/bespoke-garden-room-design" },
   { label: "Garage conversion drawings", href: "/services/garage-conversion-drawings-wirral" },
 ];
 
@@ -93,12 +95,9 @@ export const footerPlanningServices: NavLink[] = [
     label: "Building regulations drawings",
     href: "/services/building-regulations-drawings-wirral",
   },
-  { label: "Permitted development advice", href: "/services/permitted-development-wirral" },
-  {
-    label: "Lawful development certificates",
-    href: "/services/lawful-development-certificate-wirral",
-  },
-  { label: "Conservation area design", href: "/services/conservation-area-design-wirral" },
+  { label: "Change of use applications", href: "/services/change-of-use-applications" },
+  { label: "Measured building surveys", href: "/services/measured-building-surveys" },
+  { label: "Concept & feasibility", href: "/services/concept-design-feasibility" },
 ];
 
 export const footerLegalLinks: NavLink[] = [

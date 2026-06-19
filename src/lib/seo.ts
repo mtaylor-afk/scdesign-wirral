@@ -203,9 +203,9 @@ export function serviceJsonLd(name: string, description: string, path: string) {
 }
 
 /**
- * Person JSON-LD for Sean Corser. SAFE FIELDS ONLY — no ARB/RIBA, qualifications,
- * memberships or insurance until verified by the owner (Architects Act 1997:
- * never imply the protected title "architect"). "Architectural designer" is safe.
+ * Person JSON-LD for Sean Corser. ARB-safe: "Chartered Architectural Technologist"
+ * (CIAT / MCIAT) — NEVER the protected title "architect" (Architects Act 1997).
+ * MCIAT/"Chartered Architectural Technologist" — confirmed current (June 2026).
  */
 export function personJsonLd() {
   return {
@@ -213,7 +213,23 @@ export function personJsonLd() {
     "@type": "Person",
     "@id": `${siteUrl}/about#sean-corser`,
     name: site.contactName,
-    jobTitle: "Architectural designer",
+    jobTitle: site.credentials.jobTitle, // "Chartered Architectural Technologist"
+    hasCredential: [
+      {
+        "@type": "EducationalOccupationalCredential",
+        credentialCategory: "Professional membership",
+        name: `${site.credentials.postNominals} — ${site.credentials.jobTitle}`,
+        recognizedBy: {
+          "@type": "Organization",
+          name: "Chartered Institute of Architectural Technologists (CIAT)",
+        },
+      },
+      {
+        "@type": "EducationalOccupationalCredential",
+        credentialCategory: "degree",
+        name: site.credentials.degree, // "BSc Architectural Science"
+      },
+    ],
     worksFor: { "@id": `${siteUrl}/#business` },
     url: `${siteUrl}/about`,
   };
