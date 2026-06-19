@@ -21,7 +21,7 @@ import {
 // env at build time; defaults to the deployed endpoint.
 const VISUALISER_ENDPOINT =
   process.env.NEXT_PUBLIC_SC_VISUALISER_ENDPOINT ||
-  "https://q-cbuild1.vercel.app/api/sc-visualise";
+  "https://q-cbuild1.vercel.app/api/sc-visualise-v4";
 
 type Status = "upload" | "loading" | "result" | "error";
 type Result = { id: string; url: string; before: string; mocked: boolean };
@@ -127,6 +127,18 @@ export function VisualiserApp() {
             mocked: false,
           });
           setStatus("result");
+          return;
+        }
+        // V4 controlled "safe failure" (high-risk work that couldn't be produced
+        // reliably): show the server message and DO NOT fall back to the
+        // in-browser overlay, so a misleading concept is never presented.
+        if (json && json.ok === false && json.safeFailure) {
+          track("visualiser_error", { reason: "safe_fail" });
+          setError(
+            (json.message as string) ||
+              "We couldn't generate a reliable concept from this photo and brief. Please try a wider, clearer exterior photo showing the whole area you want to change, or simplify the request."
+          );
+          setStatus("error");
           return;
         }
         track("visualiser_error", { reason: (json && json.error) || "api" });

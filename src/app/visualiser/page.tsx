@@ -73,6 +73,11 @@ export default function VisualiserPage() {
                   </ul>
                 </div>
               </div>
+              <p className="mt-4 text-sm text-muted">
+                <span className="font-semibold text-ink">For extensions, canopies and loft changes:</span>{" "}
+                upload a wide daylight photo showing the whole wall, roof, door or area you want to change —
+                plus nearby windows, gutters and the ground or patio where any supports might go.
+              </p>
             </Card>
           </div>
 
