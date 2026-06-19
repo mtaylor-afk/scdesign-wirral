@@ -130,6 +130,7 @@ export default function PortfolioPage() {
                 className="overflow-hidden rounded-lg border border-line bg-paper-card shadow-card"
               >
                 {/* Sean's genuine renders — fixed dims to avoid layout shift; lazy below the fold. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={v.src}
                   alt={v.alt}

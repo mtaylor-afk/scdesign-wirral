@@ -61,11 +61,6 @@ type Status = "idle" | "submitting" | "success-online" | "success-mailto" | "err
 export function EnquiryForm() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
-  const headingRefs = [
-    useRef<HTMLParagraphElement>(null),
-    useRef<HTMLParagraphElement>(null),
-    useRef<HTMLParagraphElement>(null),
-  ];
 
   const [step, setStep] = useState(0);
   const [projectType, setProjectType] = useState("");
@@ -82,9 +77,9 @@ export function EnquiryForm() {
       mounted.current = true;
       return;
     }
-    headingRefs[step].current?.focus();
+    document.getElementById(`enquiry-step-${step}`)?.focus();
     track("contact_form_step", { step: step + 1 });
-  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step]);
 
   function read(name: string): string {
     const el = formRef.current?.elements.namedItem(name) as
@@ -270,7 +265,7 @@ export function EnquiryForm() {
       {/* STEP 1 — project type + location */}
       <fieldset hidden={step !== 0} className="space-y-5 border-0 p-0">
         <p
-          ref={headingRefs[0]}
+          id="enquiry-step-0"
           tabIndex={-1}
           className="text-lg font-semibold text-ink outline-none"
         >
@@ -315,7 +310,7 @@ export function EnquiryForm() {
       {/* STEP 2 — project detail */}
       <fieldset hidden={step !== 1} className="space-y-5 border-0 p-0">
         <p
-          ref={headingRefs[1]}
+          id="enquiry-step-1"
           tabIndex={-1}
           className="text-lg font-semibold text-ink outline-none"
         >
@@ -370,7 +365,7 @@ export function EnquiryForm() {
       {/* STEP 3 — contact details */}
       <fieldset hidden={step !== 2} className="space-y-5 border-0 p-0">
         <p
-          ref={headingRefs[2]}
+          id="enquiry-step-2"
           tabIndex={-1}
           className="text-lg font-semibold text-ink outline-none"
         >

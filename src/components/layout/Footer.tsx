@@ -33,6 +33,9 @@ export function Footer() {
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 sm:px-6 lg:grid-cols-5 lg:px-8">
         <div className="lg:col-span-1">
           <div className="font-display text-xl">SC Design Wirral</div>
+          <p className="mt-2 text-sm font-medium text-paper/75">
+            {site.contactName} {site.credentials.postNominals} · {site.credentials.jobTitle}
+          </p>
           <p className="mt-3 max-w-xs text-sm text-paper/60">{site.positioning}</p>
           <p className="mt-4 max-w-xs text-sm text-paper/50">
             An independent architectural{" "}
