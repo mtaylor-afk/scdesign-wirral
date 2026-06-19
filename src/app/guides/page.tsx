@@ -48,6 +48,29 @@ export default function GuidesPage() {
         </Container>
       </Section>
 
+      <Section>
+        <Container>
+          <Link href="/homeowners-guide" className="group block">
+            <Card
+              hover
+              className="flex flex-col gap-3 border-accent-soft bg-accent-soft/30 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <Badge className="self-start">Interactive</Badge>
+                <h2 className="mt-2 text-2xl">Will my project need planning permission?</h2>
+                <p className="mt-1 text-pretty text-muted">
+                  Click a porch, dormer, extension, garage or garden room on our interactive house
+                  for a plain-English answer.
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-accent-strong transition-[gap] group-hover:gap-2.5">
+                Open the guide <span aria-hidden>→</span>
+              </span>
+            </Card>
+          </Link>
+        </Container>
+      </Section>
+
       {guideCategories.map((cat, idx) => {
         const group = guides.filter((g) => g.category === cat.key && !g.draft);
         if (group.length === 0) return null;
