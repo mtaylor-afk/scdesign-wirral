@@ -205,8 +205,7 @@ export function serviceJsonLd(name: string, description: string, path: string) {
 /**
  * Person JSON-LD for Sean Corser. ARB-safe: "Chartered Architectural Technologist"
  * (CIAT / MCIAT) — NEVER the protected title "architect" (Architects Act 1997).
- * ⚠️ MCIAT/"Chartered" is a restricted title valid only while CIAT membership is
- * current — confirm active status before launch.
+ * MCIAT/"Chartered Architectural Technologist" — confirmed current (June 2026).
  */
 export function personJsonLd() {
   return {

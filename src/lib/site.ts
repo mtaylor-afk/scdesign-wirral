@@ -20,8 +20,8 @@ export const site = {
   contactName: "Sean Corser",
 
   // Credentials — ARB-safe ("architectural technologist"; NEVER "architect").
-  // ⚠️ "Chartered Architectural Technologist" / MCIAT is a legally restricted title
-  // usable ONLY while CIAT membership is current. Confirm active status before launch.
+  // "Chartered Architectural Technologist" / MCIAT — CONFIRMED current (June 2026).
+  // (A legally restricted title; valid only while CIAT membership stays current.)
   credentials: {
     jobTitle: "Chartered Architectural Technologist",
     postNominals: "MCIAT",
