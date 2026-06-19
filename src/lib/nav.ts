@@ -36,6 +36,7 @@ export const primaryNav: NavNode[] = [
     label: "Guides",
     href: "/guides",
     children: [
+      { label: "Interactive planning guide", href: "/homeowners-guide" },
       {
         label: "Do I need planning permission?",
         href: "/guides/do-i-need-planning-permission-for-an-extension",

@@ -83,6 +83,9 @@ export const site = {
   // Business Profile is verified. Blank → the UI shows a placeholder, never a
   // broken link. NEVER pair with invented reviews or AggregateRating schema.
   googleReviewUrl: process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL || "",
+  // Featurable rotating Google-reviews widget id (free tier). Blank → honest
+  // "leave a review" fallback; set once Sean authorises the widget.
+  featurableWidgetId: process.env.NEXT_PUBLIC_FEATURABLE_WIDGET_ID || "",
 } as const;
 
 /** WhatsApp deep link with an optional prefilled message. */
