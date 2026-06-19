@@ -23,8 +23,9 @@ const VISUALISER_ENDPOINT =
   process.env.NEXT_PUBLIC_SC_VISUALISER_ENDPOINT ||
   "https://q-cbuild1.vercel.app/api/sc-visualise-v4";
 
-type Status = "upload" | "loading" | "result" | "error";
+type Status = "upload" | "loading" | "result" | "refine" | "error";
 type Result = { id: string; url: string; before: string; mocked: boolean };
+type Refine = { url: string; before: string; suggestions: string[]; score: number | null };
 
 export function VisualiserApp() {
   const [status, setStatus] = useState<Status>("upload");
@@ -32,6 +33,8 @@ export function VisualiserApp() {
   const [preview, setPreview] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [result, setResult] = useState<Result | null>(null);
+  const [refine, setRefine] = useState<Refine | null>(null);
+  const [refineNotes, setRefineNotes] = useState<string>("");
   const [opts, setOpts] = useState({
     projectType: "rear",
     storeys: "single",
@@ -74,7 +77,7 @@ export function VisualiserApp() {
     setPreview(URL.createObjectURL(f));
   }
 
-  async function generate() {
+  async function generate(overrideNotes?: string) {
     if (!preview) {
       setError("Please choose a photo of your home, or try the sample.");
       return;
@@ -84,6 +87,9 @@ export function VisualiserApp() {
       setError("Please enter a valid email address — this is where your concept will be sent.");
       return;
     }
+    // On a refine regeneration, overrideNotes carries the edited instructions.
+    const notes = (overrideNotes ?? opts.notes).slice(0, 500);
+    if (overrideNotes !== undefined) setOpts((o) => ({ ...o, notes }));
     setStatus("loading");
     setError("");
     track("visualiser_start", { project_type: opts.projectType });
@@ -112,12 +118,27 @@ export function VisualiserApp() {
             projectType: opts.projectType,
             storeys: opts.storeys,
             style: opts.style,
-            notes: opts.notes,
+            notes,
             email: opts.email.trim(),
             phone: opts.phone.trim(),
           }),
         });
         const json = await res.json().catch(() => null);
+        // V4 "needs refinement": a best-effort image that didn't fully pass QC.
+        // Show it on the refine screen with suggestions + an editable brief,
+        // rather than dead-ending or falling back to the misleading overlay.
+        if (res.ok && json && json.ok && json.b64 && json.needsRefinement) {
+          track("visualiser_refine", { work_type: json.workType });
+          setRefine({
+            url: `data:${json.mime || "image/png"};base64,${json.b64}`,
+            before: presized.dataUrl,
+            suggestions: Array.isArray(json.suggestions) ? (json.suggestions as string[]) : [],
+            score: typeof json.score === "number" ? json.score : null,
+          });
+          setRefineNotes(notes);
+          setStatus("refine");
+          return;
+        }
         if (res.ok && json && json.ok && json.b64) {
           track("visualiser_complete", { mode: "ai" });
           setResult({
@@ -165,25 +186,43 @@ export function VisualiserApp() {
     }
   }
 
-  async function downloadResult() {
-    if (!result) return;
+  async function downloadImage(url: string, mocked: boolean, id: string) {
     track("visualiser_download");
-    // The AI render is shown clean on screen; watermark it for the download.
-    // The fallback overlay is already watermarked, so download it as-is.
-    let href = result.url;
-    if (!result.mocked) {
+    // AI renders are shown clean on screen; watermark them for download. The
+    // fallback overlay is already watermarked, so download it as-is.
+    let href = url;
+    if (!mocked) {
       try {
-        href = await addWatermark(result.url);
+        href = await addWatermark(url);
       } catch {
-        href = result.url;
+        href = url;
       }
     }
     const a = document.createElement("a");
     a.href = href;
-    a.download = `sc-extension-concept-${result.id}.jpg`;
+    a.download = `sc-extension-concept-${id}.jpg`;
     document.body.appendChild(a);
     a.click();
     a.remove();
+  }
+
+  async function downloadResult() {
+    if (!result) return;
+    await downloadImage(result.url, result.mocked, result.id);
+  }
+
+  // Refine screen: regenerate from the ORIGINAL photo with the edited instructions.
+  function regenerate() {
+    track("visualiser_refine_submit");
+    generate(refineNotes);
+  }
+
+  // Refine screen: accept the draft as-is → move it to the normal result view.
+  function acceptDraft() {
+    if (!refine) return;
+    track("visualiser_refine_accept");
+    setResult({ id: `ai-${Date.now()}`, url: refine.url, before: refine.before, mocked: false });
+    setStatus("result");
   }
 
   function reset() {
@@ -191,6 +230,8 @@ export function VisualiserApp() {
     setFile(null);
     setPreview("");
     setResult(null);
+    setRefine(null);
+    setRefineNotes("");
     setError("");
     setStatus("upload");
   }
@@ -265,6 +306,94 @@ export function VisualiserApp() {
                 resultId={result.id}
                 resultUrl={result.url.startsWith("data:") ? "" : result.url}
               />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* REFINE — best-effort draft shown when QC didn't fully pass; user iterates */}
+      {status === "refine" && refine && (
+        <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
+          <div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <figure className="m-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={refine.before}
+                  alt="Your photo"
+                  className="aspect-[3/2] w-full rounded-lg border border-line object-cover"
+                />
+                <figcaption className="mt-2 text-center text-sm text-muted">Your photo</figcaption>
+              </figure>
+              <figure className="m-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={refine.url}
+                  alt="Draft concept"
+                  className="aspect-[3/2] w-full rounded-lg border border-line object-cover"
+                />
+                <figcaption className="mt-2 text-center text-sm text-muted">
+                  Draft concept <span className="text-xs">(needs refining)</span>
+                </figcaption>
+              </figure>
+            </div>
+            <p className="mt-3 rounded-md bg-accent-soft/50 px-3 py-2 text-xs text-ink-soft">
+              This is an early draft — it didn&apos;t fully pass our quality checks, so it may not be
+              quite right yet. Refine your instructions and regenerate, or use this draft as it is.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button variant="ghost" onClick={() => downloadImage(refine.url, false, "draft")}>
+                Download draft
+              </Button>
+              <Button variant="ghost" onClick={acceptDraft}>
+                Use this draft
+              </Button>
+              <Button variant="ghost" onClick={reset}>
+                Start again
+              </Button>
+            </div>
+            <p className="mt-4 rounded-md border border-line bg-paper-card p-3 text-xs text-muted">
+              This is a concept visualisation only. It is not an architectural drawing, planning
+              application, structural design, building-regulations drawing or confirmation that the
+              design can be built. SC Design &amp; Construction will review your property properly
+              before giving advice.
+            </p>
+          </div>
+
+          <Card>
+            <h3 className="text-xl">Improve this concept</h3>
+            {refine.suggestions.length > 0 && (
+              <>
+                <p className="mt-1 text-sm text-muted">What we&apos;d improve:</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+                  {refine.suggestions.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <div className="mt-4">
+              <Field
+                label="Your instructions (edit or add detail, then regenerate)"
+                htmlFor="v-refine-notes"
+                hint="Your previous request is filled in — adjust it and add specifics."
+              >
+                <Textarea
+                  id="v-refine-notes"
+                  rows={5}
+                  value={refineNotes}
+                  maxLength={500}
+                  onChange={(e) => setRefineNotes(e.target.value)}
+                />
+              </Field>
+              <Button
+                size="lg"
+                onClick={regenerate}
+                className="mt-3 w-full sm:w-auto"
+                data-conversion="visualiser-start"
+              >
+                Regenerate with these changes
+              </Button>
             </div>
           </Card>
         </div>
@@ -450,7 +579,7 @@ export function VisualiserApp() {
 
             <Button
               size="lg"
-              onClick={generate}
+              onClick={() => generate()}
               disabled={!preview}
               className="w-full sm:w-auto"
               data-conversion="visualiser-start"
