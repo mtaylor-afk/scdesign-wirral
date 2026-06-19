@@ -1,7 +1,7 @@
 import { Container, Section, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
-import { ReviewCta } from "@/components/ui/ReviewCta";
+import { ReviewsWidget } from "@/components/ui/ReviewsWidget";
 import { JsonLd } from "@/components/JsonLd";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 
@@ -67,8 +67,9 @@ export default function ReviewsPage() {
 
       <Section>
         <Container className="max-w-3xl space-y-6">
-          {/* Leave a review — Google button if configured, honest placeholder if not */}
-          <ReviewCta />
+          {/* Live Google reviews via Featurable once configured + consented;
+              otherwise the honest "leave a review" invitation. Never fabricated. */}
+          <ReviewsWidget />
 
           {/* Recently worked with Sean? */}
           <Card>

@@ -20,31 +20,51 @@ export default function PrivacyPolicyPage() {
       <h2>What we collect</h2>
       <ul>
         <li>Contact details you provide (name, email, phone, postcode) when you enquire.</li>
-        <li>The content of your message and the project type you select.</li>
+        <li>
+          The content of your message and the project details you select (project type, stage,
+          timescale, rough budget and so on).
+        </li>
+        <li>The page you enquired from, to help us understand your enquiry.</li>
         <li>Images you upload to the Extension Concept Visualiser (see retention below).</li>
         <li>Basic, privacy-friendly analytics — only if you accept analytics cookies.</li>
       </ul>
+      <p>
+        We do not ask for or collect payment-card details, bank details or any special-category data
+        through this website.
+      </p>
 
       <h2>How we use it</h2>
       <ul>
         <li>To respond to your enquiry and discuss your project.</li>
+        <li>
+          To send the enquiry to us by email, and to email you a short automatic acknowledgement
+          confirming we have received it.
+        </li>
         <li>To generate a concept visualisation when you use the visualiser.</li>
+        <li>To protect the forms from spam and abuse.</li>
         <li>
           To understand, in aggregate, which pages are most useful (analytics only with consent).
         </li>
       </ul>
+      <p>
+        The cost estimator runs entirely in your browser — it gives an indicative range from the
+        options you choose and does not, by itself, send any personal data to us. We only hear from
+        you if you then choose to enquire.
+      </p>
 
       <h2>Lawful bases</h2>
       <p>
-        We rely on legitimate interests (responding to enquiries you initiate), consent
-        (non-essential analytics), and taking steps at your request prior to entering into a
-        service.
+        We rely on legitimate interests (responding to enquiries you initiate and keeping our forms
+        secure), consent (non-essential analytics and the third-party reviews widget), and taking
+        steps at your request prior to entering into a service.
       </p>
 
       <h2>Data retention</h2>
       <ul>
         <li>
-          Enquiry records are kept only as long as needed to deal with your project and our records.
+          Enquiry emails are kept only as long as needed to deal with your project and for our
+          ordinary business records, then deleted. The website itself does not keep a separate copy
+          of your enquiry — it is delivered to us by email and not stored in a database.
         </li>
         <li>
           Visualiser source images are deleted promptly after processing. Generated concept images
@@ -53,11 +73,38 @@ export default function PrivacyPolicyPage() {
         </li>
       </ul>
 
-      <h2>Sharing</h2>
+      <h2>Who processes your data for us</h2>
       <p>
-        We use trusted processors to run the website and its features (for example, hosting, email
-        delivery, image processing and storage). We do not sell your data.
+        We use a small number of trusted providers (&quot;processors&quot;) to run the website and
+        its features. We do not sell your data, and we only share what each provider needs to do its
+        job:
       </p>
+      <ul>
+        <li>
+          <strong>Cloudflare</strong> — hosts the website and (where enabled) provides the
+          &quot;Turnstile&quot; check that protects the enquiry form from spam.
+        </li>
+        <li>
+          <strong>Vercel</strong> — runs the small serverless functions that process your enquiry
+          and the visualiser.
+        </li>
+        <li>
+          <strong>Apple (iCloud Mail)</strong> — delivers the enquiry email to us and the
+          acknowledgement email to you.
+        </li>
+        <li>
+          <strong>OpenAI</strong> — processes the photo you upload to the visualiser to generate a
+          concept image. Your photo is not used to train its models.
+        </li>
+        <li>
+          <strong>Featurable / Google</strong> — supplies the Google-reviews widget, which only
+          loads if you accept it.
+        </li>
+        <li>
+          <strong>Plausible</strong> — privacy-friendly, cookie-free analytics, only if you accept
+          analytics.
+        </li>
+      </ul>
 
       <h2>Your rights</h2>
       <p>
