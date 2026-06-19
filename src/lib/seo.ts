@@ -107,7 +107,10 @@ export function localBusinessJsonLd() {
     knowsAbout: serviceTypes,
     sameAs: [site.socials.facebook, site.socials.instagram].filter(Boolean),
   };
-  // Only expose a postal address when the client has approved publishing it.
+  // Service-area business: only expose a postal address when the client has
+  // approved publishing it. Otherwise omit `address` entirely (Google's guidance
+  // for service-area businesses that work from home) and rely on areaServed —
+  // we do NOT expose the home town as a business locality.
   if (site.addressIsPublic) {
     data.address = {
       "@type": "PostalAddress",
@@ -115,13 +118,6 @@ export function localBusinessJsonLd() {
       addressLocality: site.address.town,
       addressRegion: site.address.region,
       postalCode: site.address.postcode,
-      addressCountry: site.address.country,
-    };
-  } else {
-    data.address = {
-      "@type": "PostalAddress",
-      addressLocality: site.address.town,
-      addressRegion: site.address.region,
       addressCountry: site.address.country,
     };
   }
