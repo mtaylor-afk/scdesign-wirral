@@ -299,16 +299,16 @@ export default function HomePage() {
                 </LinkButton>
               </div>
             </Card>
-            <Card className="flex h-full flex-col border-dashed">
+            <Card className="flex h-full flex-col">
               <h3 className="text-xl">Real project case studies</h3>
               <p className="mt-2 flex-1 text-pretty text-muted">
-                Detailed case studies of real Wirral projects are being prepared and will be added
-                once homeowner permission is in place — with the brief, the design response, the
-                planning route and the drawings.
+                Real SC Design Wirral projects — home extensions and remodels across Wirral, plus
+                commercial and conversion work — each with the brief, the design response and the
+                drawings prepared.
               </p>
               <div className="mt-4">
                 <LinkButton href="/projects" variant="ghost">
-                  Real project examples
+                  See our projects
                 </LinkButton>
               </div>
             </Card>

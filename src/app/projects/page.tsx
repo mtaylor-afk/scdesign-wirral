@@ -9,7 +9,7 @@ import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 export const metadata = pageMeta({
   title: "Projects & Case Studies — Architectural Design Wirral",
   description:
-    "Real architectural design case studies from across Wirral. Project case studies are being prepared — in the meantime, see our clearly-labelled concept visualisations.",
+    "Real architectural design projects from SC Design Wirral — home extensions and remodels across Wirral, plus commercial and conversion work. See the brief, the design response and the drawings prepared.",
   path: "/projects",
 });
 
@@ -47,9 +47,10 @@ export default function ProjectsPage() {
           />
           <h1 className="text-balance text-4xl sm:text-5xl">Projects &amp; case studies</h1>
           <p className="mt-5 text-pretty text-lg text-muted">
-            Real project case studies from homes across Wirral — the brief, the design response, the
-            planning route and the drawings prepared. We only show genuine projects here, with the
-            homeowner&apos;s permission.
+            A selection of real SC Design Wirral projects — home extensions and remodels across
+            Wirral, plus commercial and conversion work. Each one shows the brief, the design
+            response and the drawings prepared. Images are design visualisations of the proposed
+            schemes.
           </p>
         </Container>
       </Section>
@@ -57,25 +58,34 @@ export default function ProjectsPage() {
       {hasReal ? (
         <Section>
           <Container>
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((p) => (
-                <Card key={p.slug} hover className="flex h-full flex-col">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
-                    {p.town} · {p.projectType}
-                  </p>
-                  <h2 className="mt-2 text-xl">
-                    <Link href={`/projects/${p.slug}`} className="hover:text-accent-strong">
-                      {p.title}
-                    </Link>
-                  </h2>
-                  <p className="mt-2 flex-1 text-sm text-muted">{p.brief}</p>
-                  <Link
-                    href={`/projects/${p.slug}`}
-                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong"
-                  >
-                    Read case study <span aria-hidden>→</span>
-                  </Link>
-                </Card>
+                <Link key={p.slug} href={`/projects/${p.slug}`} className="group block h-full">
+                  <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper-card shadow-card transition-shadow hover:shadow-card-hover">
+                    {p.afterImage && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.afterImage}
+                        alt={`${p.title} — design visualisation`}
+                        width={900}
+                        height={600}
+                        loading="lazy"
+                        decoding="async"
+                        className="aspect-[3/2] w-full object-cover"
+                      />
+                    )}
+                    <div className="flex flex-1 flex-col p-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
+                        {p.town} · {p.projectType}
+                      </p>
+                      <h2 className="mt-2 text-xl group-hover:text-accent-strong">{p.title}</h2>
+                      <p className="mt-2 flex-1 text-sm text-muted">{p.summary ?? p.brief}</p>
+                      <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong transition-[gap] group-hover:gap-2.5">
+                        Read case study <span aria-hidden>→</span>
+                      </span>
+                    </div>
+                  </div>
+                </Link>
               ))}
             </div>
           </Container>

@@ -4,6 +4,7 @@ import { siteUrl } from "@/lib/seo";
 import { services } from "@/lib/services";
 import { locations } from "@/lib/locations";
 import { guides } from "@/lib/guides";
+import { projects } from "@/lib/projects";
 
 export const dynamic = "force-static";
 
@@ -56,6 +57,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     if (l.noindex) continue; // owner-flagged areas stay out of the sitemap
     entries.push({
       url: `${siteUrl}/areas/${l.slug}`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    });
+  }
+  for (const p of projects) {
+    entries.push({
+      url: `${siteUrl}/projects/${p.slug}`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.6,
