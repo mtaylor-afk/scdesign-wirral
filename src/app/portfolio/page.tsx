@@ -47,6 +47,41 @@ const concepts = [
   },
 ];
 
+// Sean's OWN concept renders (genuine design work). Concept visualisations —
+// NOT photographs of completed builds (those follow on /projects with permission).
+const visualisations = [
+  {
+    src: "/portfolio/viz-garden-extension.jpg",
+    alt: "Concept visualisation of a brick garden-room extension with bi-fold doors and a lit patio",
+    caption: "Garden-room extension",
+  },
+  {
+    src: "/portfolio/viz-lantern-extension.jpg",
+    alt: "Concept visualisation of a rear extension with a glazed roof lantern and bi-fold doors",
+    caption: "Rear extension with roof lantern",
+  },
+  {
+    src: "/portfolio/viz-single-storey.jpg",
+    alt: "Concept visualisation of a single-storey brick building at dusk",
+    caption: "Single-storey design",
+  },
+  {
+    src: "/portfolio/hero-after.jpg",
+    alt: "Concept visualisation of a single-storey rear extension on a rendered semi",
+    caption: "Rear extension concept",
+  },
+  {
+    src: "/portfolio/viz-concept-a.jpg",
+    alt: "Concept visualisation of a converted building",
+    caption: "Conversion concept",
+  },
+  {
+    src: "/portfolio/viz-concept-b.jpg",
+    alt: "Concept visualisation of a home extension",
+    caption: "Extension concept",
+  },
+];
+
 export default function PortfolioPage() {
   return (
     <>
@@ -84,8 +119,48 @@ export default function PortfolioPage() {
       <Section>
         <Container>
           <SectionHeading
+            eyebrow="Our design work"
+            title="Design visualisations"
+            intro="A selection of Sean's own concept visualisations for Wirral and North West homes — extensions, garden rooms and rear remodels. These are concept renders that show the intended design, not photographs of finished builds."
+          />
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {visualisations.map((v) => (
+              <figure
+                key={v.src}
+                className="overflow-hidden rounded-lg border border-line bg-paper-card shadow-card"
+              >
+                {/* Sean's genuine renders — fixed dims to avoid layout shift; lazy below the fold. */}
+                <img
+                  src={v.src}
+                  alt={v.alt}
+                  width={900}
+                  height={600}
+                  loading="lazy"
+                  decoding="async"
+                  className="aspect-[3/2] w-full object-cover"
+                />
+                <figcaption className="flex items-baseline justify-between gap-3 px-4 py-3">
+                  <span className="text-sm font-medium text-ink">{v.caption}</span>
+                  <span className="shrink-0 text-xs uppercase tracking-[0.14em] text-muted">
+                    Concept
+                  </span>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+          <p className="mt-6 text-sm text-muted">
+            Concept visualisations only — illustrative of the design intent, not planning drawings
+            and not photographs of completed work. Real, permissioned project case studies are being
+            prepared.
+          </p>
+        </Container>
+      </Section>
+
+      <Section tone="card">
+        <Container>
+          <SectionHeading
             eyebrow="Illustrative only"
-            title="Concept visualisations"
+            title="Before &amp; after concepts"
             intro="Drag each slider to compare. Every image here is an AI concept visualisation — illustrative only, not a planning drawing or a completed project."
           />
           <div className="mt-10 grid gap-8 sm:grid-cols-2">

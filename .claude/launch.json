@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sc-dev",
+      "runtimeExecutable": "C:\\Users\\Matthew.Taylor\\AppData\\Local\\nodejs20\\npm.cmd",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    }
+  ]
+}
