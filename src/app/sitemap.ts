@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/services",
     "/areas",
     "/guides",
+    "/homeowners-guide",
     "/projects",
     "/reviews",
     "/portfolio",
