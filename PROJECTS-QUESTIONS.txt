@@ -1,0 +1,242 @@
+==================================================================
+ SC DESIGN WIRRAL  -  PROJECTS QUESTIONNAIRE
+==================================================================
+The 6 project pages are LIVE now. Fill in the ANSWER lines below to
+replace the placeholder text with real details. Anything left blank
+stays as it is - you don't have to answer everything.
+
+When you send it back, keep the "PROJECT 1 / 2 / 3..." headings so I
+can match each answer to the right page.
+
+Guardrails I'm working to:
+  - General area only (no full street address is published)
+  - No invented testimonials, dates or planning references
+  - The word "architect" is never used (only "architectural design")
+==================================================================
+
+
+------------------------------------------------------------------
+ APPLIES TO EVERY PROJECT
+------------------------------------------------------------------
+A. PHOTO vs RENDER: for each image, is it a PHOTO of the finished
+   build, or a design RENDER? (All are labelled "design
+   visualisation" right now.)
+   ANSWER:
+
+B. EXTRA PHOTOS: have you got more images for any project (real
+   before / during / finished photos, other angles, the drawings)?
+   See "SENDING ME PHOTOS" at the bottom.
+   ANSWER:
+
+C. ORDER: any preferred order for the 6 on the page?
+   (Currently: 3 residential first, then 3 commercial/conversion.)
+   ANSWER:
+
+
+==================================================================
+ PROJECT 1  -  Rear extension & garden transformation
+==================================================================
+URL:   https://scdesignwirral.co.uk/projects/rear-extension-garden-remodel
+SLUG:  rear-extension-garden-remodel
+IMAGE: hero-before.jpg  ->  hero-after.jpg  (before/after slider; also the homepage hero)
+NOW:   Area = Wirral | Property = 1930s semi-detached | Type = Single-storey rear extension
+
+ 1. Real town / area? (e.g. Wallasey, Heswall - general area only)
+    ANSWER:
+ 2. Is "1930s semi-detached" the right property type?
+    ANSWER:
+ 3. Is "Single-storey rear extension" the right project type?
+    ANSWER:
+ 4. Is the AFTER image a real photo of the finished build, or a render?
+    ANSWER:
+ 5. What did the client want (the brief)?
+    ANSWER:
+ 6. Any challenge worth mentioning (site, levels, neighbours, planning)?
+    ANSWER:
+ 7. Planning route - permitted development / full application / approved? When?
+    ANSWER:
+ 8. Outcome - was it built? Roughly when? Anything notable?
+    ANSWER:
+ 9. Any client quote you have permission to publish? (name/initials + area)
+    ANSWER:
+10. Extra photos for this one?
+    ANSWER:
+
+
+==================================================================
+ PROJECT 2  -  Brick garden room extension
+==================================================================
+URL:   https://scdesignwirral.co.uk/projects/brick-garden-room
+SLUG:  brick-garden-room
+IMAGE: viz-garden-extension.jpg
+NOW:   Area = Wirral | Property = Detached house | Type = Garden room / single-storey extension
+
+ 1. Real town / area?
+    ANSWER:
+ 2. Right property type?
+    ANSWER:
+ 3. Right project type?
+    ANSWER:
+ 4. Photo of finished build, or render?
+    ANSWER:
+ 5. The brief / what the client wanted?
+    ANSWER:
+ 6. Any challenge?
+    ANSWER:
+ 7. Planning route + approved/when?
+    ANSWER:
+ 8. Outcome - built? when? notable points?
+    ANSWER:
+ 9. Testimonial (with permission)?
+    ANSWER:
+10. Extra photos?
+    ANSWER:
+
+
+==================================================================
+ PROJECT 3  -  Rear extension with roof lantern
+==================================================================
+URL:   https://scdesignwirral.co.uk/projects/rear-extension-roof-lantern
+SLUG:  rear-extension-roof-lantern
+IMAGE: viz-lantern-extension.jpg
+NOW:   Area = Wirral | Property = Detached house | Type = Single-storey rear extension
+
+ 1. Real town / area?
+    ANSWER:
+ 2. Right property type?
+    ANSWER:
+ 3. Right project type?
+    ANSWER:
+ 4. Photo of finished build, or render?
+    ANSWER:
+ 5. The brief?
+    ANSWER:
+ 6. Any challenge?
+    ANSWER:
+ 7. Planning route + approved/when?
+    ANSWER:
+ 8. Outcome - built? when?
+    ANSWER:
+ 9. Testimonial (with permission)?
+    ANSWER:
+10. Extra photos?
+    ANSWER:
+
+
+==================================================================
+ PROJECT 4  -  Single-storey commercial building
+==================================================================
+URL:   https://scdesignwirral.co.uk/projects/single-storey-commercial-building
+SLUG:  single-storey-commercial-building
+IMAGE: viz-single-storey.jpg
+NOW:   Area = North West | Property = Commercial premises | Type = New-build commercial unit
+
+ 1. Real town / area?
+    ANSWER:
+ 2. What type of building is this actually (clinic, office, vets, salon, etc.)?
+    ANSWER:
+ 3. Is "new-build commercial unit" correct, or was it an extension/conversion?
+    ANSWER:
+ 4. Photo of finished build, or render?
+    ANSWER:
+ 5. The brief / client and use?
+    ANSWER:
+ 6. Any challenge?
+    ANSWER:
+ 7. Planning route (commercial / change of use) + approved/when?
+    ANSWER:
+ 8. Outcome - built? when?
+    ANSWER:
+ 9. Testimonial (with permission)?
+    ANSWER:
+10. Extra photos?
+    ANSWER:
+
+
+==================================================================
+ PROJECT 5  -  Chapel conversion to art gallery
+==================================================================
+URL:   https://scdesignwirral.co.uk/projects/chapel-to-gallery-conversion
+SLUG:  chapel-to-gallery-conversion
+IMAGE: viz-concept-a.jpg
+NOW:   Area = North West | Property = Former chapel | Type = Change of use & conversion
+
+ 1. Real town / area?
+    ANSWER:
+ 2. Is it genuinely a former chapel -> gallery? If different, what?
+    ANSWER:
+ 3. Was the building listed / in a conservation area?
+    ANSWER:
+ 4. Photo of finished build, or render?
+    ANSWER:
+ 5. The brief?
+    ANSWER:
+ 6. Any challenge (heritage, structure)?
+    ANSWER:
+ 7. Planning route (change of use / listed-building consent) + approved/when?
+    ANSWER:
+ 8. Outcome - built / open? when?
+    ANSWER:
+ 9. Testimonial (with permission)?
+    ANSWER:
+10. Extra photos?
+    ANSWER:
+
+
+==================================================================
+ PROJECT 6  -  Pharmacy shopfront & fit-out
+==================================================================
+URL:   https://scdesignwirral.co.uk/projects/pharmacy-fit-out
+SLUG:  pharmacy-fit-out
+IMAGE: viz-concept-b.jpg   (this render shows "Rowlands Pharmacy" branding)
+NOW:   Area = North West | Property = Retail unit | Type = Commercial fit-out
+
+ 1. Real town / area?
+    ANSWER:
+ 2. BRANDING - keep it named as "Rowlands Pharmacy", describe it generically
+    ("a high-street pharmacy"), or remove this project? Do you have permission
+    to show the brand?
+    ANSWER:
+ 3. Is "commercial fit-out" right, or new-build / shopfront only?
+    ANSWER:
+ 4. Photo of finished build, or render?
+    ANSWER:
+ 5. The brief / client?
+    ANSWER:
+ 6. Any challenge?
+    ANSWER:
+ 7. Planning route (advertisement consent / planning) + approved/when?
+    ANSWER:
+ 8. Outcome - built / open? when?
+    ANSWER:
+ 9. Testimonial (with permission)?
+    ANSWER:
+10. Extra photos?
+    ANSWER:
+
+
+==================================================================
+ ANY PROJECTS TO ADD?
+==================================================================
+List any other completed work you'd like featured (a line each -
+type, area, and what photos you have) and I'll build new pages.
+    ANSWER:
+
+
+==================================================================
+ SENDING ME PHOTOS
+==================================================================
+Drop the files in a folder and tell me where, OR describe them in
+your reply. For each photo it helps to note:
+  - Which project it belongs to (project number above, or "new")
+  - What it shows (before / during / finished / drawing / extra angle)
+  - Photo or render?
+
+Preferred: JPGs, landscape where possible. I'll optimise, size and
+place them, and update each page's labels (photo vs visualisation)
+to match.
+
+==================================================================
+ The pages are live now - send this back filled in and I'll
+ update each one.
+==================================================================

@@ -65,6 +65,34 @@ A complete, conversion-led redesign was built on the **`redesign`** branch (Clou
 - **LAUNCHED to production (June 2026):** cut over `redesign` → `main`; live on scdesignwirral.co.uk and verified end-to-end (multi-step form, 301 redirects, project pages, JSON-LD, no address leak). `main` and `redesign` kept in sync. **Remaining owner actions:** answer `PROJECTS-QUESTIONS.txt` (real project details + any completed-build photos), set `NEXT_PUBLIC_FEATURABLE_WIDGET_ID` + GBP Place ID, optionally `TURNSTILE_SECRET_KEY`.
 - **QA verified:** `tsc` + `lint` 0 problems, 88-page build, ARB-safe sweep clean, 0 `PostalAddress`/`AggregateRating`, `_redirects` resolve, images carry width/height.
 
+### 🔧 PROCESSING THE RETURNED PROJECTS QUESTIONNAIRE (fresh-session handoff)
+The 6 `/projects` pages are live with honest **placeholder** copy. The owner is returning **`PROJECTS-QUESTIONS.txt`** (repo root) filled in — they paste text following the `PROJECT 1…6` structure. A session with no chat history should use this to apply the answers. (If `PROJECTS-QUESTIONS.txt` is missing, its full content is recoverable from this map; `PROJECTS-CONTENT-QUESTIONNAIRE.md` is the same in markdown.)
+
+**Edit here:** project data `src/lib/projects.ts` (one object per `slug`); page template `src/app/projects/[slug]/page.tsx` (before/after slider when `beforeImage`+`afterImage` both set, else a single image captioned "design visualisation"); hub `src/app/projects/page.tsx`.
+
+**Project map — slug · image(s) · placeholders to replace:**
+| # | slug | image(s) | placeholders |
+|---|------|----------|--------------|
+| 1 | `rear-extension-garden-remodel` | `hero-before.jpg`+`hero-after.jpg` (before/after) | Wirral · 1930s semi-detached · Single-storey rear extension |
+| 2 | `brick-garden-room` | `viz-garden-extension.jpg` | Wirral · Detached house · Garden room |
+| 3 | `rear-extension-roof-lantern` | `viz-lantern-extension.jpg` | Wirral · Detached house · Single-storey rear extension |
+| 4 | `single-storey-commercial-building` | `viz-single-storey.jpg` | North West · Commercial premises · New-build commercial unit |
+| 5 | `chapel-to-gallery-conversion` | `viz-concept-a.jpg` | North West · Former chapel · Change of use & conversion |
+| 6 | `pharmacy-fit-out` | `viz-concept-b.jpg` (branded "Rowlands") | North West · Retail unit · Commercial fit-out |
+
+**Answer → field mapping** (numbered questions in the .txt):
+Q1→`town` (general area only, NEVER a street address) · Q2→`propertyType` (P4: kind of building; P5: confirm chapel; **P6: branding decision, see below**) · Q3→`projectType` (P4/P6: new-build vs conversion/fit-out) · Q4→image **photo or render** (see labelling) · Q5→`brief` · Q6→`challenge` · Q7→`planningRoute` (keep `buildingRegsRoute` sensible) · Q8→`outcome` · Q9→`testimonial` **only if a real quote + permission is given (never invent)** · Q10/extra photos→copy to `public/portfolio/`, set `beforeImage`/`afterImage`.
+
+**Photo-vs-render labelling (Q4):** renders stay "design visualisation". If the owner confirms an image is a real **completed-build photo**, relabel it: change the `[slug]` page single-image `<figcaption>` + the bottom disclaimer paragraph, and the hub `alt`, from "design visualisation" to "completed project". Cleanest implementation: add optional `imageType?: "photo" | "render"` to the `Project` type and drive the caption from it.
+
+**Project 6 (pharmacy) — apply the owner's Q2 branding answer:** "keep named" → may name Rowlands; "genericise" → keep copy generic ("a high-street pharmacy"); "remove" → delete the object from `projects`, remove `public/portfolio/viz-concept-b.jpg`, and add `public/_redirects`: `/projects/pharmacy-fit-out  /projects  301`.
+
+**Multiple photos per project:** the `Project` type currently supports only `beforeImage`+`afterImage`. If several photos are supplied for one project, extend the type with `gallery?: { src; alt; caption }[]` and render it in the `[slug]` page.
+
+**New projects (owner "ADD" answers):** copy an existing `projects` object's shape (fill all required fields), drop images in `public/portfolio/` — hub + sitemap pick them up automatically.
+
+**After ANY edit — verify + ship:** (1) `cd /c/dev/scdesign-wirral` — **Bash cwd does NOT persist between tool calls; prefix every call.** (2) `npx tsc --noEmit` + `npm run lint` (both must be 0 problems) + `npm run build`. (3) commit → `git push origin main` → sync redesign (`git checkout redesign && git merge --ff-only main && git push origin redesign && git checkout main`). (4) verify live (~1–3 min Cloudflare build): `curl -s "https://scdesignwirral.co.uk/projects/<slug>/?cb=$(date +%s)"`. **Guardrails:** never "architect"; general area only; no invented testimonials/dates/planning refs.
+
 ### Confirmed client decisions (PRE-REDESIGN — see the redesign block above for current overrides)
 - **Service stance: DESIGN-ONLY** (architectural design + planning drawings). The business does **NOT** carry out construction — never make build/construction claims.
 - **Wording: "architect / architectural design" IS approved** by the client. Lead with "architectural design / architectural drawings".
