@@ -19,7 +19,7 @@ const trustPoints = [
   },
   {
     title: "Local to Wirral",
-    body: "Based in Wallasey, we understand the local housing and planning context, and we're easy to reach by phone or WhatsApp.",
+    body: "Working right across Wirral, we understand the local housing and planning context, and we're easy to reach by phone or WhatsApp.",
   },
   {
     title: "Clear, buildable drawings",

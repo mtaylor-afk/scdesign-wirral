@@ -63,9 +63,8 @@ export default function AreasPage() {
             Architectural Design Across Wirral &amp; Surrounding Areas
           </h1>
           <p className="mt-5 text-pretty text-lg text-muted">
-            Based in Wallasey, we provide architectural design across {site.serviceArea}. Choose your
-            area below for local detail, or just send Sean your postcode and we&apos;ll confirm we
-            cover you.
+            We provide architectural design across {site.serviceArea}. Choose your area below for
+            local detail, or just send Sean your postcode and we&apos;ll confirm we cover you.
           </p>
         </Container>
       </Section>

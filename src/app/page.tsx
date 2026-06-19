@@ -13,7 +13,7 @@ export const metadata = pageMeta({
   title:
     "Architectural Designer Wirral | Extensions, Lofts & Planning Drawings | SC Design & Construction",
   description:
-    "Wallasey-based architectural designer helping Wirral homeowners with house extension drawings, loft conversion design, planning drawings and building-regulations drawings.",
+    "Wirral architectural designer helping homeowners with house extension drawings, loft conversion design, planning drawings and building-regulations drawings. Led by a Chartered Architectural Technologist (MCIAT).",
   path: "/",
 });
 
@@ -211,7 +211,7 @@ export default function HomePage() {
             <SectionHeading
               eyebrow="Local knowledge"
               title="Local design knowledge across Wirral"
-              intro="Based in Wallasey, we know the local housing and the planning context that shapes what's achievable — and where to take extra care."
+              intro="Working right across Wirral, we know the local housing and the planning context that shapes what's achievable — and where to take extra care."
             />
             <ul className="space-y-3 text-pretty text-muted">
               <li>
