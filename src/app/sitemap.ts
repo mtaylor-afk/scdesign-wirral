@@ -72,7 +72,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }
   // Static AI-readable summary page (a real .html file, not a trailing-slash route).
   entries.push({
-    url: `${siteUrl}/llms.html`,
+    url: `${siteUrl}/llms`,
     lastModified: now,
     changeFrequency: "yearly",
     priority: 0.3,

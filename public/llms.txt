@@ -114,4 +114,4 @@ Wider nearby areas (different planning authorities — e.g. Cheshire West and Ch
 
 SC Design Wirral is a Wallasey-based architectural design and drawing service for Wirral homeowners, led by Sean Corser MCIAT, Chartered Architectural Technologist. It prepares design, planning, building-regulations and builder-ready drawings for extensions, loft conversions, garage conversions and other home improvements across Wirral and selected surrounding areas. It is design-only and does not carry out the building work itself.
 
-A human-readable version of this summary: https://scdesignwirral.co.uk/llms.html
+A human-readable version of this summary: https://scdesignwirral.co.uk/llms
