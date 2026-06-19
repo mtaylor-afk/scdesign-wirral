@@ -32,12 +32,12 @@ export function Footer() {
     <footer className="bg-ink text-paper">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 sm:px-6 lg:grid-cols-5 lg:px-8">
         <div className="lg:col-span-1">
-          <div className="font-display text-xl">SC Design &amp; Construction</div>
+          <div className="font-display text-xl">SC Design Wirral</div>
           <p className="mt-3 max-w-xs text-sm text-paper/60">{site.positioning}</p>
           <p className="mt-4 max-w-xs text-sm text-paper/50">
-            Despite the company name, this site is for architectural{" "}
-            <strong className="font-medium text-paper/70">design and drawing services</strong> — we
-            don&apos;t carry out the building work ourselves.
+            An independent architectural{" "}
+            <strong className="font-medium text-paper/70">design &amp; drawing service</strong> — we
+            prepare your plans and work with trusted, certified builders to bring them to life.
           </p>
           <div className="mt-4 flex gap-4 text-sm">
             {site.socials.instagram && (
@@ -103,8 +103,7 @@ export function Footer() {
                 {site.email}
               </a>
             </li>
-            <li className="pt-1 text-paper/70">{site.addressDisplay}</li>
-            <li className="text-paper/60">Architectural design across {site.serviceArea}.</li>
+            <li className="pt-1 text-paper/60">Architectural design across {site.serviceArea}.</li>
           </ul>
         </div>
       </div>

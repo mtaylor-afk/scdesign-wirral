@@ -16,8 +16,25 @@ export const site = {
   // siteName); `shortName` is the display brand used in the nav logo and
   // page-title suffixes (deliberately without "Ltd").
   name: "SC Design & Construction Ltd",
-  shortName: "SC Design & Construction",
+  shortName: "SC Design Wirral",
   contactName: "Sean Corser",
+
+  // Credentials — ARB-safe ("architectural technologist"; NEVER "architect").
+  // ⚠️ "Chartered Architectural Technologist" / MCIAT is a legally restricted title
+  // usable ONLY while CIAT membership is current. Confirm active status before launch.
+  credentials: {
+    jobTitle: "Chartered Architectural Technologist",
+    postNominals: "MCIAT",
+    degree: "BSc Architectural Science",
+  },
+  yearsAsBuilder: 6,
+
+  // Design-only practice. The build is delivered by trusted, certified contractor
+  // partners who price and build from Sean's drawings; a structural engineer covers
+  // structural calculations. Liability/contract for built work sits with the contractor.
+  partners: {
+    contractor: "WV Construction Ltd",
+  },
 
   // Companies House registration — shown in the footer + legal/policy pages to
   // meet UK company-website disclosure. The registered office (below) is the
@@ -27,10 +44,11 @@ export const site = {
   registeredOffice: "Seymour Chambers, 92 London Road, Liverpool, L3 5NW",
 
   // Positioning (architectural design, design-only — no construction)
-  tagline: "Architectural design for extensions, loft conversions and planning across Wirral.",
+  tagline:
+    "Architectural design for home extensions, loft conversions and planning across Wirral, Cheshire, Merseyside & North Wales.",
   positioning:
-    "From first idea to planning-ready architectural drawings — bespoke home design for Wirral homeowners.",
-  yearsExperience: 18,
+    "Friendly, practical architectural design for growing families — from first idea to planning-ready drawings, with trusted builders to bring it to life.",
+  yearsExperience: 15,
 
   // NAP — the Wallasey TRADING/contact address (distinct from the registered
   // office above). Confirmed public by the owner. `region` stays the county
@@ -43,8 +61,8 @@ export const site = {
     country: "GB",
   },
   addressDisplay: "20 Ripon Road, Wallasey, Wirral, CH45 6TR",
-  addressIsPublic: true,
-  serviceArea: "Wirral and the surrounding areas",
+  addressIsPublic: false, // service-area-only — the Wallasey trading address is NOT published
+  serviceArea: "Wirral, Cheshire, Merseyside & North Wales",
 
   phoneDisplay: "07749 456528",
   phoneE164: "+447749456528",
@@ -57,10 +75,8 @@ export const site = {
   formRecipients: ["scdesignandconstruction1@gmail.com", "matthewjtaylor1985@icloud.com"],
 
   socials: {
-    // Empty = unknown → the link is not rendered (avoids a broken/placeholder URL).
-    // Set the exact SC Facebook page URL once confirmed.
-    facebook: "",
-    instagram: "https://www.instagram.com/sc.architectural.design",
+    facebook: "https://www.facebook.com/SCDesignAndConstruction",
+    instagram: "https://www.instagram.com/sc.design.wirral",
   },
 
   // Google review link — set NEXT_PUBLIC_GOOGLE_REVIEW_URL once the Google

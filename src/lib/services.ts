@@ -42,7 +42,7 @@ export const services: Service[] = [
     h1: "House Extension Drawings & Design in Wirral",
     metaTitle: "House Extension Drawings Wirral",
     metaDescription:
-      "House extension design and planning drawings for Wirral homeowners, including rear, side, wraparound and kitchen-diner extensions. 18+ years' experience.",
+      "House extension design and planning drawings for Wirral homeowners, including rear, side, wraparound and kitchen-diner extensions. 15+ years' experience.",
     blurb:
       "Architectural design drawings for rear, side, wraparound and kitchen-diner extensions — planned around how you actually live.",
     intro:
@@ -152,7 +152,7 @@ export const services: Service[] = [
     h1: "Loft Conversion Drawings & Design in Wirral",
     metaTitle: "Loft Conversion Drawings Wirral",
     metaDescription:
-      "Loft conversion design and building-regulations drawings for Wirral homes, including dormer, rooflight and hip-to-gable conversions. 18+ years' experience.",
+      "Loft conversion design and building-regulations drawings for Wirral homes, including dormer, rooflight and hip-to-gable conversions. 15+ years' experience.",
     blurb:
       "Dormer, rooflight and hip-to-gable loft designs that add a bedroom, office or bathroom without losing what makes a loft feel special.",
     intro:
