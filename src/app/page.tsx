@@ -21,18 +21,15 @@ export const metadata = pageMeta({
 const helpWith: { label: string; href: string }[] = [
   { label: "House extension drawings", href: "/services/house-extensions" },
   { label: "Loft conversion design", href: "/services/loft-conversions" },
+  { label: "Front porch design", href: "/services/front-porch-extension-design" },
+  { label: "Bespoke garden rooms", href: "/services/bespoke-garden-room-design" },
   { label: "Planning permission drawings", href: "/services/planning-drawings-wirral" },
   {
     label: "Building-regulations drawings",
     href: "/services/building-regulations-drawings-wirral",
   },
-  { label: "Permitted development advice", href: "/services/permitted-development-wirral" },
-  {
-    label: "Lawful development certificate drawings",
-    href: "/services/lawful-development-certificate-wirral",
-  },
   { label: "Garage conversion drawings", href: "/services/garage-conversion-drawings-wirral" },
-  { label: "Conservation-area home design", href: "/services/conservation-area-design-wirral" },
+  { label: "Full architectural design service", href: "/services/residential-design" },
 ];
 
 const drawingsHelp: { term: string; body: string; href: string; cta: string }[] = [

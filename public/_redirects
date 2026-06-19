@@ -8,3 +8,9 @@
 #
 # (entries added as those workstreams land — keeping this scaffold so the
 #  redirect map is version-controlled from the start of the rebuild.)
+
+# --- WS3: retired service pages (content now lives in the guides) ---
+/services/permitted-development-wirral            /guides/permitted-development-rights-wirral       301
+/services/lawful-development-certificate-wirral    /guides/lawful-development-certificate-explained  301
+/services/conservation-area-design-wirral          /guides/conservation-area-extensions-wirral       301
+/services/planning-building-regulations            /services                                         301

@@ -368,8 +368,8 @@ export const guides: Guide[] = [
       },
     ],
     related: [
-      "/services/permitted-development-wirral",
-      "/services/lawful-development-certificate-wirral",
+      "/services/planning-drawings-wirral",
+      "/services/planning-drawings-wirral",
       "/guides/lawful-development-certificate-explained",
     ],
     reviewed: "June 2026",
@@ -419,8 +419,8 @@ export const guides: Guide[] = [
       },
     ],
     related: [
-      "/services/lawful-development-certificate-wirral",
-      "/services/permitted-development-wirral",
+      "/services/planning-drawings-wirral",
+      "/services/planning-drawings-wirral",
       "/guides/permitted-development-rights-wirral",
     ],
     reviewed: "June 2026",
@@ -522,7 +522,7 @@ export const guides: Guide[] = [
     ],
     related: [
       "/services/planning-drawings-wirral",
-      "/services/planning-building-regulations",
+      "/services/building-regulations-drawings-wirral",
       "/guides/do-i-need-planning-permission-for-an-extension",
     ],
     reviewed: "June 2026",
@@ -572,7 +572,7 @@ export const guides: Guide[] = [
       },
     ],
     related: [
-      "/services/conservation-area-design-wirral",
+      "/services/residential-design",
       "/areas/oxton",
       "/areas/port-sunlight",
     ],
@@ -730,7 +730,7 @@ export const guides: Guide[] = [
     ],
     related: [
       "/services/building-regulations-drawings-wirral",
-      "/services/planning-building-regulations",
+      "/services/building-regulations-drawings-wirral",
       "/guides/do-i-need-building-regulations-approval",
       "/guides/after-planning-permission-next-steps",
       "/contact",
@@ -814,7 +814,7 @@ export const guides: Guide[] = [
     ],
     related: [
       "/services/building-regulations-drawings-wirral",
-      "/services/planning-building-regulations",
+      "/services/building-regulations-drawings-wirral",
       "/guides/full-plans-vs-building-notice-wirral",
       "/guides/structural-calculations-vs-architectural-drawings",
       "/guides/builder-quote-drawing-pack-checklist",
@@ -1164,7 +1164,7 @@ export const guides: Guide[] = [
     slug: "planning-permission-vs-lawful-development-certificate",
     navLabel: "Planning vs LDC",
     category: "pd-ldc",
-    ctaService: "/services/lawful-development-certificate-wirral",
+    ctaService: "/services/planning-drawings-wirral",
     title: "Planning Permission vs Lawful Development Certificate: Which One Do I Need?",
     metaTitle: "Planning Permission vs Lawful Development Certificate",
     description:
@@ -1233,8 +1233,8 @@ export const guides: Guide[] = [
       { label: "Planning Portal", href: "https://www.planningportal.co.uk/" },
     ],
     related: [
-      "/services/lawful-development-certificate-wirral",
-      "/services/permitted-development-wirral",
+      "/services/planning-drawings-wirral",
+      "/services/planning-drawings-wirral",
       "/services/planning-drawings-wirral",
       "/guides/lawful-development-certificate-explained",
       "/guides/permitted-development-rights-wirral",
@@ -1406,7 +1406,7 @@ export const guides: Guide[] = [
     related: [
       "/services/garage-conversion-drawings-wirral",
       "/services/building-regulations-drawings-wirral",
-      "/services/permitted-development-wirral",
+      "/services/planning-drawings-wirral",
       "/guides/do-i-need-building-regulations-approval",
       "/guides/full-plans-vs-building-notice-wirral",
       "/contact",
@@ -1491,7 +1491,7 @@ export const guides: Guide[] = [
     related: [
       "/services/house-extensions",
       "/services/planning-drawings-wirral",
-      "/services/permitted-development-wirral",
+      "/services/planning-drawings-wirral",
       "/guides/do-i-need-planning-permission-for-an-extension",
       "/guides/permitted-development-rights-wirral",
       "/contact",
@@ -1708,7 +1708,7 @@ export const guides: Guide[] = [
     slug: "wirral-pre-application-advice-home-extension",
     navLabel: "Wirral pre-application advice",
     category: "local-buying",
-    ctaService: "/services/planning-building-regulations",
+    ctaService: "/services/building-regulations-drawings-wirral",
     title: "Do I Need Pre-Application Advice from Wirral Council?",
     metaTitle: "Wirral Pre-Application Advice for Home Extensions",
     description:
@@ -1777,7 +1777,7 @@ export const guides: Guide[] = [
       { label: "Planning Portal", href: "https://www.planningportal.co.uk/" },
     ],
     related: [
-      "/services/planning-building-regulations",
+      "/services/building-regulations-drawings-wirral",
       "/services/planning-drawings-wirral",
       "/guides/do-i-need-planning-permission-for-an-extension",
       "/guides/wirral-householder-planning-application-drawings-checklist",
@@ -1790,7 +1790,7 @@ export const guides: Guide[] = [
     slug: "check-wirral-conservation-area-map",
     navLabel: "Check the conservation map",
     category: "local-buying",
-    ctaService: "/services/conservation-area-design-wirral",
+    ctaService: "/services/residential-design",
     title: "Wirral Conservation Area Map Check: How to Find Out If Your Home Is Affected",
     metaTitle: "Wirral Conservation Area Map Check for Homeowners",
     description:
@@ -1862,7 +1862,7 @@ export const guides: Guide[] = [
       },
     ],
     related: [
-      "/services/conservation-area-design-wirral",
+      "/services/residential-design",
       "/guides/conservation-area-extensions-wirral",
       "/services/planning-drawings-wirral",
       "/guides/wirral-pre-application-advice-home-extension",
@@ -1874,7 +1874,7 @@ export const guides: Guide[] = [
     slug: "buying-house-extension-loft-conversion-certificates",
     navLabel: "Buying a home: paperwork",
     category: "local-buying",
-    ctaService: "/services/planning-building-regulations",
+    ctaService: "/services/building-regulations-drawings-wirral",
     title: "Buying a House with an Extension, Loft Conversion or Garage Conversion: What Paperwork Should You Ask For?",
     metaTitle: "Buying a House with an Extension or Loft Conversion",
     description:
@@ -1943,8 +1943,8 @@ export const guides: Guide[] = [
       { label: "Planning Portal", href: "https://www.planningportal.co.uk/" },
     ],
     related: [
-      "/services/planning-building-regulations",
-      "/services/lawful-development-certificate-wirral",
+      "/services/building-regulations-drawings-wirral",
+      "/services/planning-drawings-wirral",
       "/services/building-regulations-drawings-wirral",
       "/guides/planning-permission-vs-lawful-development-certificate",
       "/guides/do-i-need-building-regulations-approval",

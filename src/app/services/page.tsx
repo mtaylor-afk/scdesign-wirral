@@ -17,14 +17,19 @@ export const metadata = pageMeta({
 // Situation → recommended service (plain-English "which do I need?" table).
 const situations: { when: string; service: string; href: string }[] = [
   {
-    when: "I have an idea but no drawings",
-    service: "Bespoke residential design",
+    when: "I have an idea but want to explore what's possible",
+    service: "Concept & feasibility",
+    href: "/services/concept-design-feasibility",
+  },
+  {
+    when: "I want one designer from concept to approval",
+    service: "Full architectural design",
     href: "/services/residential-design",
   },
   {
-    when: "I want a builder to quote accurately",
-    service: "Building regulations drawings",
-    href: "/services/building-regulations-drawings-wirral",
+    when: "I need accurate drawings of my existing home",
+    service: "Measured building survey",
+    href: "/services/measured-building-surveys",
   },
   {
     when: "I need planning permission",
@@ -32,19 +37,24 @@ const situations: { when: string; service: string; href: string }[] = [
     href: "/services/planning-drawings-wirral",
   },
   {
-    when: "I think it's permitted development",
-    service: "Permitted development advice",
-    href: "/services/permitted-development-wirral",
-  },
-  {
-    when: "Building control has asked for drawings",
+    when: "I want a builder to quote, or building control asked for drawings",
     service: "Building regulations drawings",
     href: "/services/building-regulations-drawings-wirral",
   },
   {
+    when: "I think it's permitted development",
+    service: "Permitted development guide",
+    href: "/guides/permitted-development-rights-wirral",
+  },
+  {
+    when: "I want a garden room or studio",
+    service: "Bespoke garden room design",
+    href: "/services/bespoke-garden-room-design",
+  },
+  {
     when: "My home is in a conservation area",
-    service: "Conservation area design",
-    href: "/services/conservation-area-design-wirral",
+    service: "Conservation area guide",
+    href: "/guides/conservation-area-extensions-wirral",
   },
 ];
 
