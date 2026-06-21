@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Field, Input, Textarea } from "@/components/ui/form";
 import { Button } from "@/components/ui";
 import { track } from "@/components/Analytics";
+import { backupEnquiry } from "@/lib/enquiry-backup";
 import { IS_STATIC } from "@/lib/base";
 import { site } from "@/lib/site";
 
@@ -16,6 +17,9 @@ export function SendConceptForm({ resultId, resultUrl }: { resultId: string; res
     setStatus("submitting");
     setError("");
     const data = Object.fromEntries(new FormData(e.currentTarget).entries());
+
+    // Fire-and-forget database backup (safety net; does not affect the email send below).
+    backupEnquiry("visualiser_concept", { ...data, resultId, resultUrl });
 
     // Static export (no server) → open the user's email client pre-filled.
     if (IS_STATIC) {

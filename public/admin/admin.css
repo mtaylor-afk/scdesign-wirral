@@ -298,6 +298,31 @@ table.tbl tr:hover td { background: #faf6ef; }
 .flowcol .barrow .lbl { font-size: 12.5px; }
 .flowcol em { font-style: normal; color: var(--muted); }
 
+/* ---------- Enquiries ---------- */
+.enqtbl tbody tr.enqrow { cursor: pointer; }
+.enqtbl tbody tr.enqrow:hover td { background: #faf6ef; }
+.enqdate { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+.enqcontact { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.enqformcell { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.enqchev { color: var(--muted-soft); font-size: 12px; transition: transform 0.18s; }
+.enqrow.open .enqchev { transform: rotate(180deg); }
+.enqrow.open + .enqdetailrow td { border-bottom: 2px solid var(--accent-soft); }
+.enqdetailrow td { background: #fbf8f2; padding: 0 !important; }
+.enqdetail { padding: 16px 14px; }
+.enqcols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; }
+.enqblock h4 { font-family: var(--font-sans); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; margin: 0 0 10px; }
+.enqdl { margin: 0; display: flex; flex-direction: column; gap: 9px; }
+.enqf { display: grid; grid-template-columns: 130px 1fr; gap: 12px; align-items: start; }
+.enqf dt { color: var(--muted); font-size: 12px; }
+.enqf dd { margin: 0; color: var(--ink); font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+.enqactions { display: flex; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.enqact { padding: 6px 14px; font-size: 12.5px; }
+
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.pager .btn { padding: 7px 14px; font-size: 13px; }
+.pager .btn[disabled] { opacity: 0.4; cursor: default; pointer-events: none; }
+.pager .pageinfo { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .sidebar { position: fixed; left: 0; top: 0; transform: translateX(-100%); transition: transform 0.2s; z-index: 50; box-shadow: var(--shadow-hover); }
@@ -312,4 +337,7 @@ table.tbl tr:hover td { background: #faf6ef; }
   .flowmid { justify-content: flex-start; }
   .flownode { max-width: none; width: 100%; text-align: left; }
   .flowsel { width: 100%; }
+  .enqcols { grid-template-columns: 1fr; gap: 16px; }
+  .enqf { grid-template-columns: 110px 1fr; gap: 8px; }
+  .enqtbl th:nth-child(4), .enqtbl td:nth-child(4) { display: none; } /* hide Project col on small screens */
 }

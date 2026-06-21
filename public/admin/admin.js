@@ -9,6 +9,7 @@ const API_BASE = "https://scdesign-wirral.vercel.app";
 const LOGIN = API_BASE + "/api/sc-admin-login";
 const LOGOUT = API_BASE + "/api/sc-admin-logout";
 const STATS = API_BASE + "/api/sc-admin-stats";
+const ENQUIRIES = API_BASE + "/api/sc-admin-enquiries";
 
 const state = {
   range: "7d",
@@ -22,6 +23,8 @@ const state = {
   journeyFilter: "all",
   flow: null,
   flowPage: null,
+  enquiries: null,
+  enqPage: 1,
 };
 
 /* ---------------- formatting helpers ---------------- */
@@ -558,6 +561,112 @@ function viewFlow() {
     </div>`;
 }
 
+/* ---------------- New customer enquiry (form submissions) ---------------- */
+function fmtDateTime(ts) {
+  try {
+    return new Date(ts).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  } catch (e) { return ts || ""; }
+}
+const ENQ_FORM_LABELS = { contact: "Contact form", visualiser_concept: "Visualiser concept" };
+const ENQ_FIELD_LABELS = {
+  name: "Name", email: "Email", phone: "Phone", contact: "Phone or email", postcode: "Postcode", area: "Area / town",
+  projectType: "Project type", projectStage: "Project stage", hasBuilder: "Has a builder", timescale: "Timescale",
+  budget: "Budget", preferredContact: "Preferred contact", message: "Message", notes: "Notes", consent: "Consent given",
+  resultId: "Concept reference", resultUrl: "Concept image", page: "Submitted from",
+};
+const enqFieldLabel = (k) => ENQ_FIELD_LABELS[k] || cap(String(k).replace(/_/g, " "));
+const ENQ_FIELD_ORDER = ["name", "email", "phone", "contact", "postcode", "area", "projectType", "projectStage", "hasBuilder", "timescale", "budget", "preferredContact", "message", "notes", "resultId", "resultUrl", "consent"];
+
+function enquiryDetail(r) {
+  const f = r.fields || {};
+  const has = (k) => f[k] !== null && f[k] !== undefined && f[k] !== "";
+  const keys = [
+    ...ENQ_FIELD_ORDER.filter(has),
+    ...Object.keys(f).filter((k) => !ENQ_FIELD_ORDER.includes(k) && has(k)),
+  ];
+  const fieldHtml = keys.length
+    ? keys.map((k) => {
+        let v = String(f[k]);
+        if (k === "resultUrl" && /^https?:\/\//.test(v)) v = `<a href="${esc(v)}" target="_blank" rel="noopener noreferrer">View image</a>`;
+        else v = esc(v);
+        return `<div class="enqf"><dt>${esc(enqFieldLabel(k))}</dt><dd>${v}</dd></div>`;
+      }).join("")
+    : '<div class="empty">No field data captured.</div>';
+
+  const loc = [r.city, r.region, r.country].filter(Boolean).join(", ");
+  const ctx = [
+    ["Received", fmtDateTime(r.created_at)],
+    ["Form", ENQ_FORM_LABELS[r.form] || cap(r.form || "")],
+    ["Submitted from", r.page],
+    ["Channel", r.channel ? cap(r.channel) : ""],
+    ["Referrer", r.referrer_host],
+    ["Location", loc],
+    ["Device", [cap(r.device || ""), r.browser, r.os].filter(Boolean).join(" · ")],
+    ["Status", r.status],
+  ].filter((x) => x[1]);
+  const ctxHtml = ctx.map((x) => `<div class="enqf"><dt>${esc(x[0])}</dt><dd>${esc(String(x[1]))}</dd></div>`).join("");
+
+  const actions = [];
+  if (r.email) actions.push(`<a class="btn btn-ghost enqact" href="mailto:${esc(r.email)}">✉ Email</a>`);
+  if (r.phone) actions.push(`<a class="btn btn-ghost enqact" href="tel:${esc(r.phone)}">✆ Call</a>`);
+
+  return `<div class="enqdetail">
+    <div class="enqcols">
+      <div class="enqblock"><h4>Submitted fields</h4><dl class="enqdl">${fieldHtml}</dl></div>
+      <div class="enqblock"><h4>Context</h4><dl class="enqdl">${ctxHtml}</dl></div>
+    </div>
+    ${actions.length ? `<div class="enqactions">${actions.join("")}</div>` : ""}
+  </div>`;
+}
+
+function enquiryRow(r, i) {
+  const contact = [r.phone, r.email].filter(Boolean).join("  ·  ") || "—";
+  const f = r.fields || {};
+  const proj = r.project_type || f.projectType || "—";
+  const formL = ENQ_FORM_LABELS[r.form] || cap(r.form || "");
+  return `<tr class="enqrow" data-enqtoggle="${i}">
+      <td class="enqdate">${esc(fmtDateTime(r.created_at))}</td>
+      <td>${esc(r.name || "—")}</td>
+      <td class="enqcontact" title="${esc(contact)}">${esc(contact)}</td>
+      <td>${esc(proj)}</td>
+      <td class="enqformcell"><span class="pill grey">${esc(formL)}</span><span class="enqchev" aria-hidden="true">▾</span></td>
+    </tr>
+    <tr class="enqdetailrow" id="enqd-${i}" hidden><td colspan="5">${enquiryDetail(r)}</td></tr>`;
+}
+
+function enqPager(d) {
+  if (d.totalPages <= 1) return "";
+  const prev = d.page > 1 ? `data-enqpage="${d.page - 1}"` : "disabled";
+  const next = d.page < d.totalPages ? `data-enqpage="${d.page + 1}"` : "disabled";
+  return `<div class="pager">
+    <button class="btn btn-ghost" ${prev}>← Prev</button>
+    <span class="pageinfo">Page ${d.page} of ${d.totalPages} · ${fmt(d.total)} total</span>
+    <button class="btn btn-ghost" ${next}>Next →</button>
+  </div>`;
+}
+
+function viewEnquiries() {
+  const d = state.enquiries;
+  if (!d) return loader();
+  const rows = d.rows || [];
+  const body = rows.length
+    ? rows.map((r, i) => enquiryRow(r, i)).join("")
+    : '<tr><td colspan="5" class="empty">No enquiries saved yet. New website form submissions will appear here automatically.</td></tr>';
+  return `
+    <div class="callout"><strong>Backup record of every website enquiry.</strong> The website still emails Sean exactly as before — this is a safety-net copy saved to the database, so a lead is never lost if an email is missed. Newest first; <strong>click a row</strong> to see every field captured.</div>
+    <div class="grid kpis">
+      ${kpi("Total enquiries", fmt(d.total), "saved all-time")}
+      ${kpi("Showing", fmt(rows.length), `page ${d.page} of ${d.totalPages}`)}
+    </div>
+    <div class="card">
+      <table class="tbl enqtbl">
+        <thead><tr><th>Received</th><th>Name</th><th>Contact</th><th>Project</th><th>Form</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+      ${enqPager(d)}
+    </div>`;
+}
+
 /* ---------------- Data available (reference catalogue) ---------------- */
 const REF = [
   {
@@ -674,17 +783,18 @@ function viewDataAvailable() {
 }
 
 const VIEWS = {
-  overview: viewOverview, trends: viewTrends, pages: viewPages, journeys: viewJourneys, flow: viewFlow, sources: viewSources,
+  overview: viewOverview, enquiries: viewEnquiries, trends: viewTrends, pages: viewPages, journeys: viewJourneys, flow: viewFlow, sources: viewSources,
   locations: viewLocations, devices: viewDevices, engagement: viewEngagement,
   realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, data: viewDataAvailable,
 };
 const TITLES = {
-  overview: "Overview", trends: "Traffic trends", pages: "Pages", journeys: "Visitor journeys", flow: "Path flow", sources: "Sources",
+  overview: "Overview", enquiries: "New customer enquiry", trends: "Traffic trends", pages: "Pages", journeys: "Visitor journeys", flow: "Path flow", sources: "Sources",
   locations: "Locations", devices: "Devices & technology", engagement: "Engagement",
   realtime: "Real-time", events: "Events & conversions", visualiser: "Visualiser", data: "Data available",
 };
 const NAV = [
   { items: [{ id: "overview", label: "Overview" }] },
+  { group: "Leads", items: [{ id: "enquiries", label: "Customer enquiries" }] },
   { group: "Traffic", items: [
     { id: "trends", label: "Trends" }, { id: "pages", label: "Pages" }, { id: "journeys", label: "Journeys" },
     { id: "flow", label: "Path flow" }, { id: "sources", label: "Sources" },
@@ -733,6 +843,8 @@ function setPageMeta() {
     txt = state.flow
       ? `${rangeLabel()} · ${fmt(state.flow.summary.sessions)} visits${state.flow.meta.botsExcluded ? " · bots excluded" : ""}`
       : rangeLabel();
+  } else if (state.view === "enquiries") {
+    txt = state.enquiries ? `${fmt(state.enquiries.total)} enquiries saved` : "Form submissions";
   } else if (state.data) {
     txt = `${rangeLabel()} · ${fmt(state.data.meta.rowsScanned)} events scanned${state.data.meta.botsExcluded ? " · bots excluded" : ""}`;
   }
@@ -751,6 +863,7 @@ function renderView() {
   }
   if (state.view === "journeys" && !state.journeys) loadJourneys();
   if (state.view === "flow" && !state.flow) loadFlow();
+  if (state.view === "enquiries" && !state.enquiries) loadEnquiries(state.enqPage);
 }
 
 function setView(id) {
@@ -819,11 +932,32 @@ async function loadFlow() {
   }
 }
 
+async function loadEnquiries(page) {
+  state.enqPage = page || state.enqPage || 1;
+  try {
+    const url = `${ENQUIRIES}?page=${state.enqPage}&pageSize=10`;
+    const r = await fetch(url, { credentials: "include" });
+    if (r.status === 401) { showLogin(); return; }
+    if (!r.ok) throw new Error("enquiries " + r.status);
+    state.enquiries = await r.json();
+    state.enqPage = state.enquiries.page;
+    if (state.view === "enquiries") {
+      document.getElementById("view").innerHTML = viewEnquiries();
+      setPageMeta();
+    }
+  } catch (e) {
+    if (state.view === "enquiries") {
+      document.getElementById("view").innerHTML = '<div class="card"><div class="empty">Could not load enquiries. Try Refresh.</div></div>';
+    }
+  }
+}
+
 async function refresh() {
   try {
     await loadStats();
     state.journeys = null; // range/bots may have changed — reload on demand
     state.flow = null;
+    state.enquiries = null; // refresh re-pulls the current page
     if (state.view === "realtime") await loadRealtime();
     renderView();
   } catch (e) { /* keep current */ }
@@ -915,6 +1049,19 @@ function wire() {
       state.flowPage = fg.getAttribute("data-flowgo");
       document.getElementById("view").innerHTML = viewFlow();
       window.scrollTo(0, 0);
+      return;
+    }
+    const ep = e.target.closest("[data-enqpage]");
+    if (ep) {
+      const p = parseInt(ep.getAttribute("data-enqpage"), 10);
+      if (Number.isFinite(p)) { loadEnquiries(p); window.scrollTo(0, 0); }
+      return;
+    }
+    const et = e.target.closest("[data-enqtoggle]");
+    if (et) {
+      const det = document.getElementById("enqd-" + et.getAttribute("data-enqtoggle"));
+      if (det) det.hidden = !det.hidden;
+      et.classList.toggle("open");
       return;
     }
   });

@@ -379,6 +379,49 @@ async function sbSelectEvents(sinceIso, cap) {
   return all;
 }
 
+/** Insert one row into sc_enquiries (the form-submission backup). Returns {ok, status, error}. */
+async function sbInsertEnquiry(row) {
+  const url = `${sbBase()}/rest/v1/sc_enquiries`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: sbHeaders({ Prefer: "return=minimal" }),
+    body: JSON.stringify(row),
+  });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    return { ok: false, status: res.status, error };
+  }
+  return { ok: true, status: res.status };
+}
+
+/**
+ * Select a page of enquiries, newest first. Uses PostgREST's exact count so the
+ * admin can paginate. Returns { rows, total }.
+ */
+async function sbSelectEnquiries(limit, offset) {
+  limit = limit || 10;
+  offset = offset || 0;
+  const url =
+    `${sbBase()}/rest/v1/sc_enquiries?select=*` +
+    `&order=created_at.desc&limit=${limit}&offset=${offset}`;
+  const res = await fetch(url, {
+    headers: sbHeaders({ Prefer: "count=exact", Range: `${offset}-${offset + limit - 1}` }),
+  });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    throw new Error(`Supabase enquiries select failed (${res.status}): ${error}`);
+  }
+  const rows = await res.json();
+  // Content-Range looks like "0-9/123"; the part after "/" is the total.
+  let total = rows.length;
+  const cr = res.headers.get("content-range");
+  if (cr && cr.includes("/")) {
+    const n = parseInt(cr.split("/")[1], 10);
+    if (Number.isFinite(n)) total = n;
+  }
+  return { rows, total };
+}
+
 module.exports = {
   ALLOWED_ORIGINS,
   applyCors,
@@ -399,4 +442,6 @@ module.exports = {
   hostOf,
   sbInsert,
   sbSelectEvents,
+  sbInsertEnquiry,
+  sbSelectEnquiries,
 };

@@ -6,6 +6,7 @@ import Script from "next/script";
 import { Field, Input, Textarea, Select } from "@/components/ui/form";
 import { Button } from "@/components/ui";
 import { track } from "@/components/Analytics";
+import { backupEnquiry } from "@/lib/enquiry-backup";
 import { withBase } from "@/lib/base";
 import { site, cta } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -194,6 +195,9 @@ export function EnquiryForm() {
     setStatus("submitting");
     setError("");
     track("contact_form_submit", { project_type: payload.projectType });
+
+    // Fire-and-forget database backup (safety net; does not affect the email send below).
+    backupEnquiry("contact", payload);
 
     try {
       const res = await fetch(ENQUIRY_ENDPOINT, {
