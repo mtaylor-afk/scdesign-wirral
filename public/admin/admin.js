@@ -10,6 +10,7 @@ const LOGIN = API_BASE + "/api/sc-admin-login";
 const LOGOUT = API_BASE + "/api/sc-admin-logout";
 const STATS = API_BASE + "/api/sc-admin-stats";
 const ENQUIRIES = API_BASE + "/api/sc-admin-enquiries";
+const ERROR_LOGS = API_BASE + "/api/sc-admin-error-logs";
 
 const state = {
   range: "7d",
@@ -25,6 +26,9 @@ const state = {
   flowPage: null,
   enquiries: null,
   enqPage: 1,
+  errorLogs: null,
+  errPage: 1,
+  errBots: "exclude", // exclude | include | only
 };
 
 /* ---------------- formatting helpers ---------------- */
@@ -667,6 +671,320 @@ function viewEnquiries() {
     </div>`;
 }
 
+/* ---------------- Error logs (client errors on the live site) ---------------- */
+const ERR_TYPE_LABELS = {
+  js_error: "JS error",
+  resource_error: "Resource",
+  unhandled_rejection: "Promise",
+  react_error: "React crash",
+  form_error: "Form fail",
+  console_error: "console.error",
+};
+// props keys rendered elsewhere (page/visitor block, breadcrumbs) — excluded
+// from the generic "Extra context" dump so we don't show them twice.
+const ERR_KNOWN_PROPS = [
+  "surface", "online", "connection", "deviceMemory", "hardwareConcurrency",
+  "title", "visibility", "sinceLoadMs", "buildId", "breadcrumbs", "ua", "ref",
+  "dpr", "serverTs", "utm",
+];
+
+function fmtCrumbT(ms) {
+  ms = ms || 0;
+  return ms < 1000 ? "+" + ms + "ms" : "+" + Math.round(ms / 100) / 10 + "s";
+}
+function errBadge(e) {
+  const label = ERR_TYPE_LABELS[e.type] || e.type || "error";
+  return `<span class="errtype errtype-${esc(e.type)}">${esc(label)}</span>`;
+}
+
+function errExtras(p) {
+  return Object.keys(p).filter(
+    (k) => ERR_KNOWN_PROPS.indexOf(k) === -1 && p[k] !== null && p[k] !== undefined && p[k] !== ""
+  );
+}
+
+function errorDetail(e, i) {
+  const p = e.props || {};
+  const errF = (label, value) =>
+    value === null || value === undefined || value === ""
+      ? ""
+      : `<div class="errf"><dt>${esc(label)}</dt><dd>${esc(String(value))}</dd></div>`;
+
+  const srcLine = e.source
+    ? e.source + (e.lineno ? ":" + e.lineno : "") + (e.colno ? ":" + e.colno : "")
+    : "";
+  const errBlock = [
+    errF("Message", e.message),
+    errF("Type", ERR_TYPE_LABELS[e.type] || e.type),
+    errF("Severity", e.severity || "error"),
+    errF("Surface", e.surface),
+    srcLine ? `<div class="errf"><dt>Source</dt><dd><code>${esc(srcLine)}</code></dd></div>` : "",
+  ].join("");
+  const stackHtml = e.stack ? `<pre class="errstack">${esc(e.stack)}</pre>` : "";
+
+  const loc = [e.city, e.region, e.country].filter(Boolean).join(", ");
+  const conn =
+    p.connection && typeof p.connection === "object"
+      ? [
+          p.connection.effectiveType,
+          p.connection.downlink != null ? p.connection.downlink + " Mbps" : "",
+          p.connection.rtt != null ? p.connection.rtt + " ms" : "",
+        ].filter(Boolean).join(" · ")
+      : "";
+  const ctx =
+    (e.url
+      ? `<div class="errf"><dt>Page URL</dt><dd><a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.url)}</a></dd></div>`
+      : errF("Path", e.path)) +
+    [
+      errF("Referrer", e.referrer_host),
+      errF("Browser", [e.browser, e.bv].filter(Boolean).join(" ")),
+      errF("Operating system", [e.os, e.osv].filter(Boolean).join(" ")),
+      errF("Device", cap(e.device || "")),
+      errF("Bot", e.is_bot ? "yes" : "no"),
+      errF("Location", loc),
+      errF("Viewport", e.viewport),
+      errF("Screen", e.screen),
+      errF("Pixel ratio", p.dpr),
+      errF("Language", e.lang),
+      errF("Timezone", e.tz),
+      errF("Online", p.online === undefined ? "" : p.online ? "yes" : "no"),
+      errF("Connection", conn),
+      errF("Device memory", p.deviceMemory != null ? p.deviceMemory + " GB" : ""),
+      errF("CPU cores", p.hardwareConcurrency),
+      errF("Page title", p.title),
+      errF("Tab visibility", p.visibility),
+      errF("Time since load", p.sinceLoadMs != null ? Math.round(p.sinceLoadMs / 100) / 10 + "s" : ""),
+      errF("Build ID", p.buildId),
+      errF("Visitor", e.vid),
+      errF("Logged at", fmtDateTime(e.ts)),
+    ].join("");
+
+  const extras = errExtras(p);
+  const extraHtml = extras.length
+    ? extras
+        .map((k) => {
+          let v = p[k];
+          if (typeof v === "object") { try { v = JSON.stringify(v); } catch (er) { v = String(v); } }
+          return `<div class="errf"><dt>${esc(enqFieldLabel(k))}</dt><dd>${esc(String(v))}</dd></div>`;
+        })
+        .join("")
+    : "";
+
+  const crumbs = Array.isArray(p.breadcrumbs) ? p.breadcrumbs : [];
+  const crumbHtml = crumbs.length
+    ? `<ol class="crumbs">${crumbs
+        .map(
+          (c) =>
+            `<li><span class="crumbt">${esc(fmtCrumbT(c.t))}</span><span class="crumbk">${esc(c.k)}</span><span class="crumbm">${esc(c.m)}</span></li>`
+        )
+        .join("")}</ol>`
+    : '<div class="empty">No breadcrumbs captured.</div>';
+
+  const json = esc(JSON.stringify(e, null, 2));
+
+  return `<div class="errdetail">
+    <div class="errcols">
+      <div class="errblock"><h4>Error</h4><dl class="errdl">${errBlock}</dl>${stackHtml}</div>
+      <div class="errblock"><h4>Page &amp; visitor</h4><dl class="errdl">${ctx}</dl></div>
+    </div>
+    ${extraHtml ? `<div class="errblock errblock-wide"><h4>Extra context</h4><dl class="errdl errdl-grid">${extraHtml}</dl></div>` : ""}
+    <div class="errblock errblock-wide"><h4>Breadcrumbs <span class="errsub">— actions leading up to the error (most recent last)</span></h4>${crumbHtml}</div>
+    <details class="errjson"><summary>Full data (JSON)</summary><pre>${json}</pre></details>
+    <div class="erractions">
+      <button class="btn copybtn" data-errcopy="${i}">⧉ Copy all error data</button>
+      <span class="errcopyhint">Pastes a full report into Claude Code to identify &amp; fix.</span>
+    </div>
+  </div>`;
+}
+
+function errorRow(e, i) {
+  const msg = e.message || (e.stack ? String(e.stack).split("\n")[0] : "(no message)");
+  const where = [cap(e.device || ""), e.browser].filter(Boolean).join(" · ");
+  const surf = e.surface === "admin" ? `<span class="pill grey errtag">admin</span>` : "";
+  const bot = e.is_bot ? `<span class="pill grey errtag">bot</span>` : "";
+  return `<tr class="errrow" data-errtoggle="${i}">
+      <td class="errdate">${esc(fmtDateTime(e.ts))}</td>
+      <td class="errtypecell">${errBadge(e)}${surf}${bot}</td>
+      <td class="errmsg" title="${esc(msg)}">${esc(msg)}</td>
+      <td class="pathcell" title="${esc(e.path || "")}">${esc(e.path || "—")}</td>
+      <td class="errwhere">${esc(where || "—")}<span class="enqchev" aria-hidden="true">▾</span></td>
+    </tr>
+    <tr class="errdetailrow" id="errd-${i}" hidden><td colspan="5">${errorDetail(e, i)}</td></tr>`;
+}
+
+function errPager(d) {
+  if (d.totalPages <= 1) return "";
+  const prev = d.page > 1 ? `data-errpage="${d.page - 1}"` : "disabled";
+  const next = d.page < d.totalPages ? `data-errpage="${d.page + 1}"` : "disabled";
+  return `<div class="pager">
+    <button class="btn btn-ghost" ${prev}>← Prev</button>
+    <span class="pageinfo">Page ${d.page} of ${d.totalPages} · ${fmt(d.total)} total</span>
+    <button class="btn btn-ghost" ${next}>Next →</button>
+  </div>`;
+}
+
+function viewErrors() {
+  const d = state.errorLogs;
+  if (!d) return loader();
+  const rows = d.rows || [];
+  const body = rows.length
+    ? rows.map((e, i) => errorRow(e, i)).join("")
+    : `<tr><td colspan="5" class="empty">No errors logged for this filter — good news, or none captured yet.</td></tr>`;
+  const chip = (id, label) =>
+    `<button class="jchip ${state.errBots === id ? "active" : ""}" data-errfilter="${id}">${label}</button>`;
+  const filterNote =
+    d.botMode === "only"
+      ? "Bot-generated errors only"
+      : d.botMode === "include"
+      ? "All errors incl. bots"
+      : "Real-visitor errors (bots hidden)";
+  return `
+    <div class="callout"><strong>Every error captured on the live website.</strong> Each row is a JavaScript error, a failed page resource, a broken form submit, or a React crash — saved with full context. <strong>Bots are hidden by default.</strong> Click a row to see everything captured, then <strong>Copy all error data</strong> to paste straight into Claude Code to identify and fix it.</div>
+    <div class="grid kpis">
+      ${kpi("Errors logged", fmt(d.total), filterNote)}
+      ${kpi("Last 24 hours", fmt(d.last24h), "same filter")}
+      ${kpi("Showing", fmt(rows.length), `page ${d.page} of ${d.totalPages}`)}
+    </div>
+    <div class="jfilters">
+      ${chip("exclude", "Humans only")}
+      ${chip("include", "All")}
+      ${chip("only", "Bots only")}
+    </div>
+    <div class="card">
+      <table class="tbl errtbl">
+        <thead><tr><th>Time</th><th>Type</th><th>Message</th><th>Page</th><th>Where</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+      ${errPager(d)}
+    </div>`;
+}
+
+/* ---- Copy-to-clipboard (Claude-Code-ready report) ---- */
+function formatErrorForClipboard(e) {
+  const p = e.props || {};
+  const L = [];
+  L.push("SC Design — Website error report");
+  L.push("=================================");
+  L.push("Time:      " + fmtDateTime(e.ts));
+  L.push(
+    "Type:      " + (ERR_TYPE_LABELS[e.type] || e.type) +
+      "   Severity: " + (e.severity || "error") +
+      "   Surface: " + (e.surface || "public")
+  );
+  L.push("Message:   " + (e.message || ""));
+  L.push("");
+  if (e.url) L.push("Page:      " + e.url);
+  L.push("Path:      " + (e.path || ""));
+  const srcLine = e.source
+    ? e.source + (e.lineno ? ":" + e.lineno : "") + (e.colno ? ":" + e.colno : "")
+    : "";
+  if (srcLine) L.push("Source:    " + srcLine);
+  if (e.referrer_host) L.push("Referrer:  " + e.referrer_host);
+  L.push("");
+  L.push("Browser:   " + [e.browser, e.bv].filter(Boolean).join(" "));
+  L.push("OS:        " + [e.os, e.osv].filter(Boolean).join(" "));
+  L.push("Device:    " + (e.device || "") + (e.is_bot ? "   (BOT)" : ""));
+  const loc = [e.city, e.region, e.country].filter(Boolean).join(", ");
+  if (loc) L.push("Location:  " + loc);
+  L.push(
+    "Viewport:  " + (e.viewport || "?") +
+      "   Screen: " + (e.screen || "?") +
+      (p.dpr ? "   dpr " + p.dpr : "")
+  );
+  L.push("Language:  " + (e.lang || "") + "   Timezone: " + (e.tz || ""));
+  const netBits = [
+    p.connection && p.connection.effectiveType ? p.connection.effectiveType : "",
+    p.online === false ? "OFFLINE" : "",
+  ].filter(Boolean).join(" ");
+  if (netBits) L.push("Network:   " + netBits);
+  if (p.buildId) L.push("Build:     " + p.buildId);
+  if (e.vid) L.push("Visitor:   " + e.vid + " (cookieless daily hash)");
+
+  const extras = errExtras(p);
+  if (extras.length) {
+    L.push("");
+    L.push("Extra context:");
+    extras.forEach((k) => {
+      let v = p[k];
+      if (typeof v === "object") { try { v = JSON.stringify(v); } catch (er) { v = String(v); } }
+      L.push("  " + k + ": " + v);
+    });
+  }
+
+  if (e.stack) {
+    L.push("");
+    L.push("Stack trace:");
+    L.push(e.stack);
+  }
+
+  const crumbs = Array.isArray(p.breadcrumbs) ? p.breadcrumbs : [];
+  if (crumbs.length) {
+    L.push("");
+    L.push("Breadcrumbs (most recent last):");
+    crumbs.forEach((c) => L.push("  [" + fmtCrumbT(c.t) + "] " + c.k + " → " + c.m));
+  }
+
+  L.push("");
+  L.push("Full context (JSON):");
+  L.push("```json");
+  L.push(JSON.stringify(e, null, 2));
+  L.push("```");
+  return L.join("\n");
+}
+
+function showToast(msg) {
+  let el = document.getElementById("copytoast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "copytoast";
+    el.className = "copytoast";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+function fallbackCopy(text, done) {
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    if (ok) done();
+    else showToast("Could not copy — open Full data (JSON) and copy it manually.");
+  } catch (e) {
+    showToast("Could not copy — open Full data (JSON) and copy it manually.");
+  }
+}
+
+function copyErrorToClipboard(i, btn) {
+  const e = state.errorLogs && state.errorLogs.rows && state.errorLogs.rows[i];
+  if (!e) return;
+  const text = formatErrorForClipboard(e);
+  const done = () => {
+    showToast("Full error report copied — paste it into Claude Code.");
+    if (btn) {
+      btn.classList.add("copied");
+      const label = btn.textContent;
+      btn.textContent = "Copied ✓";
+      setTimeout(() => { btn.classList.remove("copied"); btn.textContent = label; }, 1600);
+    }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
 /* ---------------- Data available (reference catalogue) ---------------- */
 const REF = [
   {
@@ -785,12 +1103,12 @@ function viewDataAvailable() {
 const VIEWS = {
   overview: viewOverview, enquiries: viewEnquiries, trends: viewTrends, pages: viewPages, journeys: viewJourneys, flow: viewFlow, sources: viewSources,
   locations: viewLocations, devices: viewDevices, engagement: viewEngagement,
-  realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, data: viewDataAvailable,
+  realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, errors: viewErrors, data: viewDataAvailable,
 };
 const TITLES = {
   overview: "Overview", enquiries: "New customer enquiry", trends: "Traffic trends", pages: "Pages", journeys: "Visitor journeys", flow: "Path flow", sources: "Sources",
   locations: "Locations", devices: "Devices & technology", engagement: "Engagement",
-  realtime: "Real-time", events: "Events & conversions", visualiser: "Visualiser", data: "Data available",
+  realtime: "Real-time", events: "Events & conversions", visualiser: "Visualiser", errors: "Error logs", data: "Data available",
 };
 const NAV = [
   { items: [{ id: "overview", label: "Overview" }] },
@@ -802,6 +1120,7 @@ const NAV = [
     { id: "engagement", label: "Engagement" }, { id: "realtime", label: "Real-time" },
   ]},
   { group: "Conversions", items: [{ id: "events", label: "Events" }, { id: "visualiser", label: "Visualiser" }] },
+  { group: "System", items: [{ id: "errors", label: "Error logs" }] },
   { group: "Reference", items: [{ id: "data", label: "Data available" }] },
 ];
 
@@ -845,6 +1164,10 @@ function setPageMeta() {
       : rangeLabel();
   } else if (state.view === "enquiries") {
     txt = state.enquiries ? `${fmt(state.enquiries.total)} enquiries saved` : "Form submissions";
+  } else if (state.view === "errors") {
+    txt = state.errorLogs
+      ? `${fmt(state.errorLogs.total)} errors${state.errorLogs.botMode === "exclude" ? " · bots excluded" : state.errorLogs.botMode === "only" ? " · bots only" : ""}`
+      : "Client errors";
   } else if (state.data) {
     txt = `${rangeLabel()} · ${fmt(state.data.meta.rowsScanned)} events scanned${state.data.meta.botsExcluded ? " · bots excluded" : ""}`;
   }
@@ -864,6 +1187,7 @@ function renderView() {
   if (state.view === "journeys" && !state.journeys) loadJourneys();
   if (state.view === "flow" && !state.flow) loadFlow();
   if (state.view === "enquiries" && !state.enquiries) loadEnquiries(state.enqPage);
+  if (state.view === "errors" && !state.errorLogs) loadErrors(state.errPage);
 }
 
 function setView(id) {
@@ -952,12 +1276,33 @@ async function loadEnquiries(page) {
   }
 }
 
+async function loadErrors(page) {
+  state.errPage = page || state.errPage || 1;
+  try {
+    const url = `${ERROR_LOGS}?page=${state.errPage}&pageSize=10&bots=${state.errBots}`;
+    const r = await fetch(url, { credentials: "include" });
+    if (r.status === 401) { showLogin(); return; }
+    if (!r.ok) throw new Error("errors " + r.status);
+    state.errorLogs = await r.json();
+    state.errPage = state.errorLogs.page;
+    if (state.view === "errors") {
+      document.getElementById("view").innerHTML = viewErrors();
+      setPageMeta();
+    }
+  } catch (e) {
+    if (state.view === "errors") {
+      document.getElementById("view").innerHTML = '<div class="card"><div class="empty">Could not load error logs. Try Refresh.</div></div>';
+    }
+  }
+}
+
 async function refresh() {
   try {
     await loadStats();
     state.journeys = null; // range/bots may have changed — reload on demand
     state.flow = null;
     state.enquiries = null; // refresh re-pulls the current page
+    state.errorLogs = null; // refresh re-pulls the current page
     if (state.view === "realtime") await loadRealtime();
     renderView();
   } catch (e) { /* keep current */ }
@@ -1062,6 +1407,32 @@ function wire() {
       const det = document.getElementById("enqd-" + et.getAttribute("data-enqtoggle"));
       if (det) det.hidden = !det.hidden;
       et.classList.toggle("open");
+      return;
+    }
+    const errc = e.target.closest("[data-errcopy]");
+    if (errc) {
+      copyErrorToClipboard(parseInt(errc.getAttribute("data-errcopy"), 10), errc);
+      return;
+    }
+    const errf = e.target.closest("[data-errfilter]");
+    if (errf) {
+      state.errBots = errf.getAttribute("data-errfilter");
+      state.errPage = 1;
+      state.errorLogs = null;
+      loadErrors(1);
+      return;
+    }
+    const errp = e.target.closest("[data-errpage]");
+    if (errp) {
+      const p = parseInt(errp.getAttribute("data-errpage"), 10);
+      if (Number.isFinite(p)) { loadErrors(p); window.scrollTo(0, 0); }
+      return;
+    }
+    const errt = e.target.closest("[data-errtoggle]");
+    if (errt) {
+      const det = document.getElementById("errd-" + errt.getAttribute("data-errtoggle"));
+      if (det) det.hidden = !det.hidden;
+      errt.classList.toggle("open");
       return;
     }
   });

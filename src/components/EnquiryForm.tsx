@@ -7,6 +7,7 @@ import { Field, Input, Textarea } from "@/components/ui/form";
 import { Button } from "@/components/ui";
 import { track } from "@/components/Analytics";
 import { backupEnquiry } from "@/lib/enquiry-backup";
+import { reportError } from "@/lib/error-report";
 import { withBase } from "@/lib/base";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -263,7 +264,21 @@ export function EnquiryForm() {
     }
 
     // Last resort only (both server paths failed): pre-filled email to Sean.
+    // Log it — a contact form falling back to mailto is a real lost-lead risk.
     track("contact_form_success", { mode: "mailto_fallback" });
+    reportError({
+      type: "form_error",
+      severity: "error",
+      message: "Contact form: primary endpoint and server backup both failed — fell back to mailto",
+      props: {
+        form: "contact",
+        primaryOk: false,
+        backupStored: backup.stored,
+        backupEmailed: backup.emailed,
+        endpoint: ENQUIRY_ENDPOINT,
+        projectType: payload.projectType || "",
+      },
+    });
     mailtoFallback(payload);
     setStatus("success-mailto");
   }

@@ -421,6 +421,78 @@ async function sbSelectEnquiries(limit, offset) {
   return { rows, total };
 }
 
+/** Insert one row into sc_errors (the client error log). Returns {ok, status, error}. */
+async function sbInsertError(row) {
+  const url = `${sbBase()}/rest/v1/sc_errors`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: sbHeaders({ Prefer: "return=minimal" }),
+    body: JSON.stringify(row),
+  });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    return { ok: false, status: res.status, error };
+  }
+  return { ok: true, status: res.status };
+}
+
+/**
+ * Select a page of errors, newest first. `botMode` is "exclude" (default — only
+ * human errors), "only" (just bots), or "include" (everything). Uses PostgREST's
+ * exact count so the admin can paginate. Returns { rows, total }.
+ */
+async function sbSelectErrors(limit, offset, botMode) {
+  limit = limit || 10;
+  offset = offset || 0;
+  let botFilter = "";
+  if (botMode === "only") botFilter = "&is_bot=eq.true";
+  else if (botMode !== "include") botFilter = "&is_bot=eq.false"; // default = exclude bots
+  const url =
+    `${sbBase()}/rest/v1/sc_errors?select=*` +
+    `${botFilter}&order=ts.desc&limit=${limit}&offset=${offset}`;
+  const res = await fetch(url, {
+    headers: sbHeaders({ Prefer: "count=exact", Range: `${offset}-${offset + limit - 1}` }),
+  });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    throw new Error(`Supabase errors select failed (${res.status}): ${error}`);
+  }
+  const rows = await res.json();
+  let total = rows.length;
+  const cr = res.headers.get("content-range");
+  if (cr && cr.includes("/")) {
+    const n = parseInt(cr.split("/")[1], 10);
+    if (Number.isFinite(n)) total = n;
+  }
+  return { rows, total };
+}
+
+/**
+ * Exact count of error rows since `sinceIso` (HEAD request, no body fetched).
+ * Honours the same botMode as sbSelectErrors. Returns a number (0 on failure).
+ */
+async function sbCountErrors(sinceIso, botMode) {
+  let botFilter = "";
+  if (botMode === "only") botFilter = "&is_bot=eq.true";
+  else if (botMode !== "include") botFilter = "&is_bot=eq.false";
+  const since = sinceIso ? `&ts=gte.${encodeURIComponent(sinceIso)}` : "";
+  const url = `${sbBase()}/rest/v1/sc_errors?select=id${since}${botFilter}`;
+  try {
+    const res = await fetch(url, {
+      method: "HEAD",
+      headers: sbHeaders({ Prefer: "count=exact", Range: "0-0" }),
+    });
+    const cr = res.headers.get("content-range");
+    if (cr && cr.includes("/")) {
+      const n = parseInt(cr.split("/")[1], 10);
+      if (Number.isFinite(n)) return n;
+    }
+  } catch {
+    /* best-effort KPI only */
+  }
+  return 0;
+}
+
 module.exports = {
   ALLOWED_ORIGINS,
   applyCors,
@@ -443,4 +515,7 @@ module.exports = {
   sbSelectEvents,
   sbInsertEnquiry,
   sbSelectEnquiries,
+  sbInsertError,
+  sbSelectErrors,
+  sbCountErrors,
 };

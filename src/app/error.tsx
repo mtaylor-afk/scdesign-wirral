@@ -1,13 +1,27 @@
 "use client";
 
+import { useEffect } from "react";
 import { withBase } from "@/lib/base";
+import { reportError } from "@/lib/error-report";
 
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Log the crash that triggered this boundary (best-effort, never throws).
+  useEffect(() => {
+    reportError({
+      type: "react_error",
+      severity: "error",
+      message: error?.message || "React render error",
+      stack: error?.stack,
+      props: { digest: error?.digest },
+    });
+  }, [error]);
+
   return (
     <div className="mx-auto max-w-md px-5 py-24 text-center">
       <h1 className="text-3xl">Something went wrong</h1>

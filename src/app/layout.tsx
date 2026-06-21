@@ -7,6 +7,7 @@ import { MobileCtaBar } from "@/components/layout/MobileCtaBar";
 import { ConsentBanner } from "@/components/ConsentBanner";
 import { Analytics } from "@/components/Analytics";
 import { ClickTracking } from "@/components/ClickTracking";
+import { ErrorTracking } from "@/components/ErrorTracking";
 import { JsonLd } from "@/components/JsonLd";
 import { localBusinessJsonLd, webSiteJsonLd, siteUrl } from "@/lib/seo";
 import { site } from "@/lib/site";
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ConsentBanner />
         <Analytics />
         <ClickTracking />
+        <ErrorTracking />
       </body>
     </html>
   );

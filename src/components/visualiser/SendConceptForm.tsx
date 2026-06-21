@@ -5,6 +5,7 @@ import { Field, Input, Textarea } from "@/components/ui/form";
 import { Button } from "@/components/ui";
 import { track } from "@/components/Analytics";
 import { backupEnquiry } from "@/lib/enquiry-backup";
+import { reportError } from "@/lib/error-report";
 import { withBase } from "@/lib/base";
 import { site } from "@/lib/site";
 
@@ -189,6 +190,20 @@ export function SendConceptForm({
 
     // Last resort only (both server paths failed).
     track("visualiser_handoff_submitted", { mode: "mailto_fallback" });
+    reportError({
+      type: "form_error",
+      severity: "error",
+      message:
+        "Visualiser concept handoff: primary endpoint and server backup both failed — fell back to mailto",
+      props: {
+        form: "visualiser_concept",
+        primaryOk: false,
+        backupStored: backup.stored,
+        backupEmailed: backup.emailed,
+        endpoint: ENQUIRY_ENDPOINT,
+        conceptId: resultId,
+      },
+    });
     mailtoFallback(payload);
     setStatus("success");
   }
