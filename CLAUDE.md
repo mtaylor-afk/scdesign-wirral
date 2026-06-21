@@ -56,6 +56,24 @@ backend (the `QCbuild1` / `q-cbuild1.vercel.app` Vercel project that hosts SC's
 > adds it himself via `/permissions` or by editing `.claude/settings.json`. This
 > prose is the binding behavioural rule regardless — follow it in every session.
 
+**How Matthew grants full no-prompt access (an agent CANNOT set this itself — it's
+a deliberate security boundary that blocks self-widening of permissions):**
+
+1. The strongest, persistent setting already lives in `.claude/settings.local.json`:
+   `"permissions": { "defaultMode": "bypassPermissions" }` — view / edit / create /
+   delete any file **and** run commands with zero approval prompts, every session
+   in this folder. To (re)enable: open that file (or `.claude/settings.json`),
+   confirm that line, save, and start a fresh session (settings load at start).
+2. For a single session only: press **Shift+Tab** in the prompt until the footer
+   shows **"accept edits on" (⏵⏵)** — auto-approves file edits for that session.
+3. `/permissions` is the GUI for the same thing, but only opens in a standalone
+   `claude` terminal, not inside an active chat — so the settings-file edit is the
+   most direct route.
+
+Even with bypass on, only the four genuinely irreversible external actions (sending
+messages as Matthew, deleting data, access changes, financial) get a one-line
+heads-up; everything else just proceeds.
+
 ## Recent changes — lead capture, backup email, favicon (June 2026)
 
 Logged for future sessions. Commits on `main` unless noted:
