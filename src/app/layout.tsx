@@ -36,7 +36,14 @@ export const metadata: Metadata = {
   // Indexing is controlled explicitly via NEXT_PUBLIC_NOINDEX (set only for
   // preview / non-production builds). The live own-domain deploy is indexable.
   robots: NOINDEX ? { index: false, follow: false } : { index: true, follow: true },
-  // favicon is provided by the file-based convention (app/icon.svg).
+  // Favicon set lives in public/ (favicon.ico — the correct SC logo, 7 sizes —
+  // plus apple-touch-icon.png at 180×180). Emits exactly:
+  //   <link rel="icon" href="/favicon.ico" sizes="any">
+  //   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  icons: {
+    icon: [{ url: "/favicon.ico", sizes: "any" }],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
