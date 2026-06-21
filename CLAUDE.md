@@ -156,7 +156,34 @@ First-party, **cookieless** analytics + a login-gated admin dashboard. **This su
 - **Data:** Supabase project **`sc-analytics`** (`https://yxapzkiodjecladjziom.supabase.co`), table `sc_events` (core columns + `props` jsonb; RLS on, service-role only). Cookieless daily-rotating salted visitor hash; IP never stored.
 - **Admin app:** self-contained at `public/admin/` → **https://scdesignwirral.co.uk/admin/** (noindex + robots-disallowed). Login **222 / 333**. Side menu: Overview · Traffic (Trends/Pages/Sources/Locations/Devices/Engagement/Real-time) · Conversions (Events/Visualiser) · Reference (**Data available** — catalogue of every field + how to add reports). Inline SVG charts, no external deps.
 - **Change the login:** edit `SC_ADMIN_PASS` / `SC_ADMIN_USER` in the Vercel project env vars (no code change). **Move the API domain:** update `API_BASE` in `public/admin/admin.js` + `NEXT_PUBLIC_SC_ANALYTICS_BASE`.
-- **Vercel env vars (owner-set, NOT in repo):** `SC_SUPABASE_URL`, `SC_SUPABASE_SERVICE_ROLE_KEY`, `SC_ADMIN_USER`, `SC_ADMIN_PASS`, `SC_ADMIN_SESSION_SECRET`.
+- **Vercel env vars (owner-set, NOT in repo):** `SC_SUPABASE_URL`, `SC_SUPABASE_SERVICE_ROLE_KEY`, `SC_ADMIN_USER`, `SC_ADMIN_PASS`, `SC_ADMIN_SESSION_SECRET`. **NOTE (Jun 2026):** a live test login with the long-documented **222 / 333** returned 401 — the live `SC_ADMIN_USER`/`SC_ADMIN_PASS` were changed at some point, so do **not** assume 222/333; only the owner has the current value.
+
+### 🐞 ERROR LOGGING + LOGIN AUDIT + ALWAYS-LIVE ADMIN (LIVE — Jun 2026)
+Site-wide client **error capture** + an admin **Error logs** view, an admin sign-in **audit trail**, and a hardened **no-cache** admin. Same first-party stack as the analytics above (same Vercel `scdesign-wirral` project, same Supabase `sc-analytics` project). **Supersedes the "error logging deferred / use Sentry" note below.**
+
+**🔴 STANDING RULE — every page must capture errors, like analytics.** The tracker is **`<ErrorTracking />` mounted in the root layout** (`src/app/layout.tsx`, beside `<Analytics />`), so **every Next route is covered automatically** — new pages need no extra work. **Never remove it.** The one manual case mirrors analytics: a standalone `public/**` page isn't wrapped by the React layout (the admin app handles its own via `public/admin/error-capture.js`, tagged `surface:"admin"`).
+
+**What's captured (every page):** uncaught JS errors, failed resource loads, unhandled promise rejections, React render crashes (`src/app/error.tsx` calls `reportError`), explicit **form-submit failures** (EnquiryForm + SendConceptForm both-failed/mailto branch), and `console.error`. Each row carries a **breadcrumb trail** (recent clicks / route changes / fetches / console) + device/geo/connection context, tagged `surface` = `public` | `admin`. Engine = **`src/lib/error-report.ts`** (`reportError` / `recordBreadcrumb` / `initErrorTracking`); fire-and-forget text/plain + `sendBeacon` (mirrors `enquiry-backup.ts`); de-dupes + caps + queues to stay volume-safe.
+
+**Admin login audit:** `api/sc-admin-login.js` logs EVERY sign-in outcome (success / bad_credentials / rate_limited) server-side — time, IP-derived geo, device, attempted **username (NEVER the password)** — into the same `sc_errors` table under types `login_success` / `login_failed`. A wrong password is a normal handled 401, NOT a JS error, so it only appears under **Login attempts**, never under Error logs (this confused the owner during build — by design).
+
+**Backend (Vercel `scdesign-wirral`, `api/*.js`):**
+- `api/sc-error-collect.js` — public cookieless ingest (no IP stored; bots flagged not dropped; does NOT skip `/admin`).
+- `api/sc-admin-error-logs.js` — session-gated paginated read. `?kind=errors` (default; excludes login rows) | `logins` | `logins_failed` | `logins_success`; `?bots=exclude|include|only` (errors default exclude bots; logins default include).
+- `serverlib/common.js` — `sbInsertError` / `sbSelectErrors` / `sbCountErrors`. **`sbInsertError` SELF-HEALS:** on a PostgREST "Could not find the 'X' column" error it preserves that value inside `props` and retries without the column, so inserts work even if the live table is behind the schema. *(This fixed a real incident: the live `sc_errors` table was missing the `surface` column → every insert 502'd → Error logs showed 0. Diagnosed with Playwright + a temporary 502-error echo.)*
+
+**Data:** Supabase `sc-analytics` table **`sc_errors`** (schema of record: **`db/sc_errors.sql`**; RLS on, service-role only). **Dependency:** the table must exist (run `db/sc_errors.sql` once in the Supabase SQL editor). With the self-heal, column drift no longer breaks logging.
+
+**Admin UI (`public/admin/`):** new **System** nav group → **Error logs** (newest-first table, Humans/All/Bots chips, expandable full-context rows + breadcrumb timeline, a **"Copy all error data"** button → Claude-Code-ready report — the first clipboard code in the admin) and **Login attempts** (outcome badges, attempted username, location, device; All/Failed/Successful chips). Read `surface` via `rowSurface(r)` = `r.surface || r.props.surface`.
+
+**🔴 ALWAYS-LIVE ADMIN — no cache, no in-memory reuse** (owner requirement: never show stale data). Keep ALL of this for any new admin view:
+- **No in-memory reuse:** `renderView()` clears every cached `state.*` then re-fetches on each view switch (a brief loader on nav is intentional).
+- **No HTTP cache (data):** all admin fetches go through **`apiGet()`** = `cache:"no-store"` + a `?_=<ts>` cache-buster.
+- **Server:** `applyCors()` sets `Cache-Control: no-store` on every API response.
+- **Assets:** **`public/_headers`** serves `/admin/*` as `no-store` (Cloudflare Pages) so the app shell/JS/CSS are always the latest.
+- A **"Live · updated HH:MM:SS"** stamp (`#lastUpdated` / `markFresh()`) makes freshness visible.
+
+**Debugging tip:** Playwright IS installed (`@playwright/test`) — drive the LIVE site headless to reproduce client behaviour. `sendBeacon` bodies are NOT exposed by `request.postData()`; wrap `navigator.sendBeacon` in an `addInitScript` to capture them.
 
 ### 🔧 PROCESSING THE RETURNED PROJECTS QUESTIONNAIRE (fresh-session handoff)
 The 6 `/projects` pages are live with honest **placeholder** copy. The owner is returning **`PROJECTS-QUESTIONS.txt`** (repo root) filled in — they paste text following the `PROJECT 1…6` structure. A session with no chat history should use this to apply the answers. (If `PROJECTS-QUESTIONS.txt` is missing, its full content is recoverable from this map; `PROJECTS-CONTENT-QUESTIONNAIRE.md` is the same in markdown.)
