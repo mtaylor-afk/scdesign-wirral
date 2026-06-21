@@ -427,6 +427,117 @@ module.exports = async (req, res) => {
       );
     }
 
+    // ---- Path flow (page-to-page routes across all visitors) -------------
+    // Counts consecutive pageview transitions within sessions, plus per-page
+    // incoming/outgoing pages and entry/exit buckets, so the admin can explore
+    // how visitors move through the site.
+    if (report === "flow") {
+      const fDur = RANGES[url.searchParams.get("range")] || RANGES["7d"];
+      const fSince = now - fDur;
+      let frows = await sbSelectEvents(new Date(fSince).toISOString(), 100000);
+      if (!includeBots) frows = frows.filter((r) => !(r.props && r.props.bot));
+      const pv = frows.filter((r) => r.type === "pageview" && t(r) >= fSince);
+
+      const byVid = new Map();
+      for (const r of pv) {
+        const v = vidOf(r);
+        if (!byVid.has(v)) byVid.set(v, []);
+        byVid.get(v).push(r);
+      }
+
+      const pageInfo = new Map(); // path -> { path, views, entries, exits, inMap, outMap }
+      const P = (path) => {
+        if (!pageInfo.has(path))
+          pageInfo.set(path, { path, views: 0, entries: 0, exits: 0, inMap: new Map(), outMap: new Map() });
+        return pageInfo.get(path);
+      };
+      const bump = (map, key) => map.set(key, (map.get(key) || 0) + 1);
+      const topOf = (map, n) =>
+        [...map.entries()]
+          .map(([key, count]) => ({ key, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, n);
+
+      let sessionsCount = 0;
+      for (const evs of byVid.values()) {
+        evs.sort((a, b) => t(a) - t(b));
+        let session = [];
+        let lastT = null;
+        const flush = () => {
+          if (!session.length) return;
+          sessionsCount++;
+          const paths = session.map((e) => e.path || "/");
+          for (let i = 0; i < paths.length; i++) {
+            const cur = P(paths[i]);
+            cur.views++;
+            if (i === 0) cur.entries++;
+            if (i === paths.length - 1) cur.exits++;
+            if (i < paths.length - 1) {
+              const from = paths[i];
+              const to = paths[i + 1];
+              if (from !== to) {
+                // ignore refresh self-loops
+                bump(P(from).outMap, to);
+                bump(P(to).inMap, from);
+              }
+            }
+          }
+          session = [];
+        };
+        for (const e of evs) {
+          const tt = t(e);
+          if (lastT !== null && tt - lastT > SESSION_GAP) flush();
+          session.push(e);
+          lastT = tt;
+        }
+        flush();
+      }
+
+      const allTransitions = [];
+      for (const p of pageInfo.values()) {
+        for (const [to, count] of p.outMap.entries()) {
+          allTransitions.push({ from: p.path, to, count });
+        }
+      }
+      allTransitions.sort((a, b) => b.count - a.count);
+      const transitions = allTransitions.slice(0, 40);
+
+      const pages = [...pageInfo.values()]
+        .map((p) => ({
+          path: p.path,
+          views: p.views,
+          entries: p.entries,
+          exits: p.exits,
+          in: topOf(p.inMap, 12),
+          out: topOf(p.outMap, 12),
+        }))
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 60);
+
+      return res.end(
+        JSON.stringify({
+          ok: true,
+          report: "flow",
+          meta: {
+            range: url.searchParams.get("range") || "7d",
+            since: new Date(fSince).toISOString(),
+            until: new Date(now).toISOString(),
+            botsExcluded: !includeBots,
+            rowsScanned: frows.length,
+            generatedAt: new Date(now).toISOString(),
+          },
+          summary: {
+            sessions: sessionsCount,
+            pages: pageInfo.size,
+            transitionTypes: allTransitions.length,
+            topRoute: transitions[0] || null,
+          },
+          transitions,
+          pages,
+        })
+      );
+    }
+
     // ---- Full bundle -----------------------------------------------------
     const dur = RANGES[url.searchParams.get("range")] || RANGES["7d"];
     const byHour = dur <= RANGES["24h"];

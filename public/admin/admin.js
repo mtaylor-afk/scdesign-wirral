@@ -20,6 +20,8 @@ const state = {
   rtTimer: null,
   journeys: null,
   journeyFilter: "all",
+  flow: null,
+  flowPage: null,
 };
 
 /* ---------------- formatting helpers ---------------- */
@@ -481,6 +483,81 @@ function viewJourneys() {
     ${list.length > RENDER_CAP ? `<div class="csub" style="margin-top:12px">Showing the ${RENDER_CAP} most recent of ${fmt(list.length)} matching visitors${j.meta.returned < s.visitors ? ` (server returns the ${fmt(j.meta.returned)} most recent of ${fmt(s.visitors)} total)` : ""}.</div>` : ""}`;
 }
 
+/* ---------------- Path flow (page-to-page routes) ---------------- */
+function flowList(items, opt) {
+  opt = opt || {};
+  if (!items || !items.length) return `<div class="empty">${opt.empty || "No data yet."}</div>`;
+  const max = Math.max(...items.map((i) => i.count), 1);
+  return (
+    '<div class="barlist">' +
+    items
+      .map((i) => {
+        const w = (i.count / max) * 100;
+        const clickable = !i.bucket;
+        const go = clickable ? ` data-flowgo="${esc(i.path)}"` : "";
+        const cls = "barrow" + (clickable ? " flow-go" : "");
+        const label = i.bucket ? `<em>${esc(i.label)}</em>` : esc(i.label);
+        return `<div class="${cls}"${go}><div class="bar" style="width:${w.toFixed(1)}%"></div><div class="lbl" title="${esc(i.title || i.label)}">${label}</div><div class="num">${fmt(i.count)}</div></div>`;
+      })
+      .join("") +
+    "</div>"
+  );
+}
+
+function viewFlow() {
+  const d = state.flow;
+  if (!d) return loader();
+  const s = d.summary;
+  const pages = d.pages || [];
+  const intro = `<div class="callout"><strong>What this page is.</strong> The most common <strong>page-to-page routes</strong> visitors take, plus a flow explorer. Pick a page to see where visitors <em>came from</em> and where they <em>went next</em> — click any page in the columns to re-centre on it. Routes are counted between consecutive pages within a single visit.</div>`;
+  if (!pages.length) {
+    return intro + `<div class="card"><div class="empty">No multi-page visits in this period yet. Path flow appears once visitors move between pages.</div></div>`;
+  }
+
+  let sel = state.flowPage;
+  if (!sel || !pages.find((p) => p.path === sel)) sel = pages[0].path;
+  const page = pages.find((p) => p.path === sel) || pages[0];
+
+  const before = page.in.map((x) => ({ label: x.key, title: x.key, path: x.key, count: x.count }));
+  if (page.entries) before.push({ label: "Entered here (direct / search)", count: page.entries, bucket: true });
+  before.sort((a, b) => b.count - a.count);
+
+  const after = page.out.map((x) => ({ label: x.key, title: x.key, path: x.key, count: x.count }));
+  if (page.exits) after.push({ label: "Left the site", count: page.exits, bucket: true });
+  after.sort((a, b) => b.count - a.count);
+
+  const routes = d.transitions.map((tr) => ({ key: `${tr.from}  →  ${tr.to}`, count: tr.count }));
+  const options = pages
+    .map((p) => `<option value="${esc(p.path)}" ${p.path === sel ? "selected" : ""}>${esc(p.path)} · ${fmt(p.views)} views</option>`)
+    .join("");
+
+  return `
+    ${intro}
+    <div class="grid kpis">
+      ${kpi("Visits analysed", fmt(s.sessions), "")}
+      ${kpi("Pages with traffic", fmt(s.pages), "")}
+      ${kpi("Distinct routes", fmt(s.transitionTypes), "")}
+      ${kpi("Top route", s.topRoute ? fmt(s.topRoute.count) : "–", s.topRoute ? esc(s.topRoute.from) + " → " + esc(s.topRoute.to) : "")}
+    </div>
+    <div class="card" style="margin-bottom:16px"><h3>Top routes</h3><div class="csub">Most common page-to-page steps · ${rangeLabel()}</div>${barList(routes, { limit: 14, empty: "Not enough multi-page visits yet to show routes." })}</div>
+    <div class="card">
+      <div class="flowtop">
+        <div><h3>Flow explorer</h3><div class="csub">Where visitors come from and go next</div></div>
+        <select class="flowsel" data-flowsel aria-label="Choose a page">${options}</select>
+      </div>
+      <div class="flowcols">
+        <div class="flowcol"><div class="flowhead">Came from</div>${flowList(before, { empty: "No prior page (everyone entered here)." })}</div>
+        <div class="flowmid">
+          <div class="flownode">
+            <div class="flownode-path" title="${esc(page.path)}">${esc(page.path)}</div>
+            <div class="flownode-stats">${fmt(page.views)} views <span class="dot">·</span> ${fmt(page.entries)} entries <span class="dot">·</span> ${fmt(page.exits)} exits</div>
+          </div>
+        </div>
+        <div class="flowcol"><div class="flowhead">Went to</div>${flowList(after, { empty: "No next page (everyone left from here)." })}</div>
+      </div>
+    </div>`;
+}
+
 /* ---------------- Data available (reference catalogue) ---------------- */
 const REF = [
   {
@@ -597,12 +674,12 @@ function viewDataAvailable() {
 }
 
 const VIEWS = {
-  overview: viewOverview, trends: viewTrends, pages: viewPages, journeys: viewJourneys, sources: viewSources,
+  overview: viewOverview, trends: viewTrends, pages: viewPages, journeys: viewJourneys, flow: viewFlow, sources: viewSources,
   locations: viewLocations, devices: viewDevices, engagement: viewEngagement,
   realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, data: viewDataAvailable,
 };
 const TITLES = {
-  overview: "Overview", trends: "Traffic trends", pages: "Pages", journeys: "Visitor journeys", sources: "Sources",
+  overview: "Overview", trends: "Traffic trends", pages: "Pages", journeys: "Visitor journeys", flow: "Path flow", sources: "Sources",
   locations: "Locations", devices: "Devices & technology", engagement: "Engagement",
   realtime: "Real-time", events: "Events & conversions", visualiser: "Visualiser", data: "Data available",
 };
@@ -610,7 +687,7 @@ const NAV = [
   { items: [{ id: "overview", label: "Overview" }] },
   { group: "Traffic", items: [
     { id: "trends", label: "Trends" }, { id: "pages", label: "Pages" }, { id: "journeys", label: "Journeys" },
-    { id: "sources", label: "Sources" },
+    { id: "flow", label: "Path flow" }, { id: "sources", label: "Sources" },
     { id: "locations", label: "Locations" }, { id: "devices", label: "Devices & Tech" },
     { id: "engagement", label: "Engagement" }, { id: "realtime", label: "Real-time" },
   ]},
@@ -652,6 +729,10 @@ function setPageMeta() {
     txt = state.journeys
       ? `${rangeLabel()} · ${fmt(state.journeys.summary.visitors)} visitors${state.journeys.meta.botsExcluded ? " · bots excluded" : ""}`
       : rangeLabel();
+  } else if (state.view === "flow") {
+    txt = state.flow
+      ? `${rangeLabel()} · ${fmt(state.flow.summary.sessions)} visits${state.flow.meta.botsExcluded ? " · bots excluded" : ""}`
+      : rangeLabel();
   } else if (state.data) {
     txt = `${rangeLabel()} · ${fmt(state.data.meta.rowsScanned)} events scanned${state.data.meta.botsExcluded ? " · bots excluded" : ""}`;
   }
@@ -669,6 +750,7 @@ function renderView() {
     state.rtTimer = setInterval(loadRealtime, 15000);
   }
   if (state.view === "journeys" && !state.journeys) loadJourneys();
+  if (state.view === "flow" && !state.flow) loadFlow();
 }
 
 function setView(id) {
@@ -719,10 +801,29 @@ async function loadJourneys() {
   }
 }
 
+async function loadFlow() {
+  try {
+    const url = `${STATS}?report=flow&range=${state.range}&bots=${state.bots ? "include" : "exclude"}`;
+    const r = await fetch(url, { credentials: "include" });
+    if (r.status === 401) { showLogin(); return; }
+    if (!r.ok) throw new Error("flow " + r.status);
+    state.flow = await r.json();
+    if (state.view === "flow") {
+      document.getElementById("view").innerHTML = viewFlow();
+      setPageMeta();
+    }
+  } catch (e) {
+    if (state.view === "flow") {
+      document.getElementById("view").innerHTML = '<div class="card"><div class="empty">Could not load path flow. Try Refresh.</div></div>';
+    }
+  }
+}
+
 async function refresh() {
   try {
     await loadStats();
     state.journeys = null; // range/bots may have changed — reload on demand
+    state.flow = null;
     if (state.view === "realtime") await loadRealtime();
     renderView();
   } catch (e) { /* keep current */ }
@@ -808,6 +909,20 @@ function wire() {
       state.journeyFilter = jf.getAttribute("data-jfilter");
       document.getElementById("view").innerHTML = viewJourneys();
       return;
+    }
+    const fg = e.target.closest("[data-flowgo]");
+    if (fg) {
+      state.flowPage = fg.getAttribute("data-flowgo");
+      document.getElementById("view").innerHTML = viewFlow();
+      window.scrollTo(0, 0);
+      return;
+    }
+  });
+  document.getElementById("view").addEventListener("change", (e) => {
+    const fs = e.target.closest("[data-flowsel]");
+    if (fs) {
+      state.flowPage = fs.value;
+      document.getElementById("view").innerHTML = viewFlow();
     }
   });
 }
