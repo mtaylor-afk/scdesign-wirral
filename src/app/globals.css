@@ -84,6 +84,13 @@ h4 {
   }
 }
 
+/* Don't print the sticky/fixed site chrome (header, mobile CTA, cookie banner). */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
 /* Utility: balanced headings */
 .text-balance {
   text-wrap: balance;

@@ -14,7 +14,7 @@ export function ConsentBanner() {
     <div
       role="dialog"
       aria-label="Cookie consent"
-      className="fixed inset-x-3 bottom-3 z-[100] mx-auto max-w-2xl rounded-lg border border-line bg-paper-card p-5 shadow-card-hover"
+      className="fixed inset-x-3 bottom-3 z-[100] mx-auto max-w-2xl rounded-lg border border-line bg-paper-card p-5 shadow-card-hover no-print"
     >
       <p className="text-sm text-ink">
         We use privacy-friendly, <strong>cookieless</strong> analytics (Cloudflare Web Analytics and

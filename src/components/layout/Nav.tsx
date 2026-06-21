@@ -57,7 +57,7 @@ export function Nav() {
   return (
     <header
       ref={navRef}
-      className="sticky top-0 z-50 border-b border-line bg-paper/85 backdrop-blur-md"
+      className="sticky top-0 z-50 border-b border-line bg-paper/85 backdrop-blur-md no-print"
     >
       <nav
         className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-6 lg:px-8"
@@ -89,6 +89,7 @@ export function Nav() {
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
                       "rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-paper-card",
                       active && "text-accent-strong"
@@ -107,12 +108,29 @@ export function Nav() {
                 className="relative"
                 onMouseEnter={() => setMenu(item.label)}
                 onMouseLeave={() => setMenu(null)}
+                onBlur={(e) => {
+                  // Close when keyboard focus leaves this menu group entirely.
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) setMenu(null);
+                }}
               >
                 <button
                   type="button"
                   aria-expanded={isOpen}
                   aria-controls={panelId}
                   onClick={() => setMenu((m) => (m === item.label ? null : item.label))}
+                  onKeyDown={(e) => {
+                    // ArrowDown opens the panel and moves focus to its first link.
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setMenu(item.label);
+                      requestAnimationFrame(() => {
+                        document
+                          .getElementById(panelId)
+                          ?.querySelector<HTMLElement>("a")
+                          ?.focus();
+                      });
+                    }
+                  }}
                   className={cn(
                     "inline-flex items-center gap-1 rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-paper-card",
                     (active || isOpen) && "text-accent-strong"
@@ -163,6 +181,7 @@ export function Nav() {
           className="inline-flex h-10 w-10 items-center justify-center rounded-md text-ink lg:hidden"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
+          aria-controls="mobile-menu"
           onClick={() => setOpen((v) => !v)}
         >
           <span className="text-2xl" aria-hidden>
@@ -171,15 +190,26 @@ export function Nav() {
         </button>
       </nav>
 
-      {/* Mobile menu */}
-      {open && (
-        <div className="max-h-[calc(100dvh-4rem)] overflow-y-auto lg:hidden">
-          <ul className="space-y-1 border-t border-line bg-paper px-5 pb-8 pt-3">
-            {primaryNav.map((item) => (
+      {/* Mobile menu — always rendered, hidden via the [hidden] attribute when
+          closed so aria-controls always resolves and the links leave the a11y
+          tree + tab order when the menu is shut. */}
+      <div
+        id="mobile-menu"
+        hidden={!open}
+        className="max-h-[calc(100dvh-4rem)] overflow-y-auto lg:hidden"
+      >
+        <ul className="space-y-1 border-t border-line bg-paper px-5 pb-8 pt-3">
+          {primaryNav.map((item) => {
+            const active = isActive(item.href);
+            return (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="block rounded-md px-3 py-3 text-base font-semibold text-ink hover:bg-paper-card"
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "block rounded-md px-3 py-3 text-base font-semibold hover:bg-paper-card",
+                    active ? "text-accent-strong" : "text-ink"
+                  )}
                   onClick={() => setOpen(false)}
                 >
                   {item.label}
@@ -188,42 +218,53 @@ export function Nav() {
                   <ul className="mb-1 ml-3 border-l border-line pl-3">
                     {item.children
                       .filter((c) => !c.label.startsWith("All "))
-                      .map((c) => (
-                        <li key={c.href}>
-                          <Link
-                            href={c.href}
-                            className="block rounded-md px-3 py-2 text-sm text-ink-soft hover:bg-paper-card"
-                            onClick={() => setOpen(false)}
-                          >
-                            {c.label}
-                          </Link>
-                        </li>
-                      ))}
+                      .map((c) => {
+                        const cActive = isActive(c.href);
+                        return (
+                          <li key={c.href}>
+                            <Link
+                              href={c.href}
+                              aria-current={cActive ? "page" : undefined}
+                              className={cn(
+                                "block rounded-md px-3 py-2 text-sm hover:bg-paper-card",
+                                cActive ? "text-accent-strong" : "text-ink-soft"
+                              )}
+                              onClick={() => setOpen(false)}
+                            >
+                              {c.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
                   </ul>
                 )}
               </li>
-            ))}
-            <li>
-              <Link
-                href="/contact"
-                className="block rounded-md px-3 py-3 text-base font-semibold text-ink hover:bg-paper-card"
-                onClick={() => setOpen(false)}
-              >
-                Contact
-              </Link>
-            </li>
-            <li className="pt-2">
-              <Link
-                href={cta.primary.href}
-                className="block rounded-full bg-accent-strong px-5 py-3 text-center text-base font-medium text-white transition-colors hover:bg-accent-deep"
-                onClick={() => setOpen(false)}
-              >
-                {cta.primary.label}
-              </Link>
-            </li>
-          </ul>
-        </div>
-      )}
+            );
+          })}
+          <li>
+            <Link
+              href="/contact"
+              aria-current={isActive("/contact") ? "page" : undefined}
+              className={cn(
+                "block rounded-md px-3 py-3 text-base font-semibold hover:bg-paper-card",
+                isActive("/contact") ? "text-accent-strong" : "text-ink"
+              )}
+              onClick={() => setOpen(false)}
+            >
+              Contact
+            </Link>
+          </li>
+          <li className="pt-2">
+            <Link
+              href={cta.primary.href}
+              className="block rounded-full bg-accent-strong px-5 py-3 text-center text-base font-medium text-white transition-colors hover:bg-accent-deep"
+              onClick={() => setOpen(false)}
+            >
+              {cta.primary.label}
+            </Link>
+          </li>
+        </ul>
+      </div>
     </header>
   );
 }

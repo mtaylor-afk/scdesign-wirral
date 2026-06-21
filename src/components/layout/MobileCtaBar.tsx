@@ -13,16 +13,17 @@ export function MobileCtaBar() {
     <>
       <div
         aria-hidden
-        className="lg:hidden"
+        className="lg:hidden no-print"
         style={{ height: "calc(4rem + env(safe-area-inset-bottom))" }}
       />
       <div
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-line bg-paper/95 backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-line bg-paper/95 backdrop-blur-md lg:hidden no-print"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <a
           href={`tel:${site.phoneE164}`}
           data-conversion="phone-click"
+          aria-label="Call Sean"
           className="flex flex-col items-center justify-center gap-0.5 py-2.5 text-xs font-medium text-ink-soft"
         >
           <span aria-hidden className="text-base">
@@ -35,6 +36,7 @@ export function MobileCtaBar() {
           data-conversion="whatsapp-click"
           target="_blank"
           rel="noopener noreferrer"
+          aria-label="Message Sean on WhatsApp"
           className="flex flex-col items-center justify-center gap-0.5 border-x border-line py-2.5 text-xs font-medium text-ink-soft"
         >
           <span aria-hidden className="text-base">
@@ -45,6 +47,7 @@ export function MobileCtaBar() {
         <Link
           href="/contact"
           data-conversion="contact-cta"
+          aria-label="Send Sean your project idea"
           className="flex flex-col items-center justify-center gap-0.5 bg-accent-strong py-2.5 text-xs font-semibold text-white"
         >
           <span aria-hidden className="text-base">
