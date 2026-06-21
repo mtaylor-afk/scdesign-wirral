@@ -1,0 +1,7 @@
+# Cloudflare Pages headers.
+# Admin portal: never cache the app shell, scripts or styles — always serve the
+# latest version so the admin can never run stale code or show stale data.
+/admin
+  Cache-Control: no-store, max-age=0
+/admin/*
+  Cache-Control: no-store, max-age=0

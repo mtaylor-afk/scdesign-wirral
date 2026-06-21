@@ -1286,19 +1286,31 @@ function setPageMeta() {
 
 function renderView() {
   clearRt();
+  // Always start from a clean slate — never display cached/in-memory results.
+  // Each view re-fetches its data live below.
+  state.data = null;
+  state.realtime = null;
+  state.journeys = null;
+  state.flow = null;
+  state.enquiries = null;
+  state.errorLogs = null;
+  state.logins = null;
   document.getElementById("pageTitle").textContent = TITLES[state.view];
   setPageMeta();
   const el = document.getElementById("view");
-  el.innerHTML = (VIEWS[state.view] || viewOverview)();
-  if (state.view === "realtime") {
+  el.innerHTML = (VIEWS[state.view] || viewOverview)(); // shows a loader (state is null)
+  const v = state.view;
+  if (v === "realtime") {
     loadRealtime();
     state.rtTimer = setInterval(loadRealtime, 15000);
-  }
-  if (state.view === "journeys" && !state.journeys) loadJourneys();
-  if (state.view === "flow" && !state.flow) loadFlow();
-  if (state.view === "enquiries" && !state.enquiries) loadEnquiries(state.enqPage);
-  if (state.view === "errors" && !state.errorLogs) loadErrors(state.errPage);
-  if (state.view === "logins" && !state.logins) loadLogins(state.loginPage);
+  } else if (v === "journeys") loadJourneys();
+  else if (v === "flow") loadFlow();
+  else if (v === "enquiries") loadEnquiries(state.enqPage);
+  else if (v === "errors") loadErrors(state.errPage);
+  else if (v === "logins") loadLogins(state.loginPage);
+  else if (v === "data") {
+    /* static reference catalogue — nothing to fetch */
+  } else loadStatsView();
 }
 
 function setView(id) {
@@ -1310,22 +1322,52 @@ function setView(id) {
 }
 
 /* ---------------- API ---------------- */
+/* Always fetch live: a per-request cache-buster + `cache: no-store` defeats any
+   browser/CDN cache, so the admin can never show a stale response. */
+function apiGet(url) {
+  const sep = url.indexOf("?") === -1 ? "?" : "&";
+  return fetch(url + sep + "_=" + Date.now(), { credentials: "include", cache: "no-store" });
+}
+function markFresh() {
+  const el = document.getElementById("lastUpdated");
+  if (el) el.textContent = "Live · updated " + new Date().toLocaleTimeString("en-GB");
+}
+
+// Views that all read from the shared stats bundle (state.data).
+const STATS_VIEWS = ["overview", "trends", "pages", "sources", "locations", "devices", "engagement", "events", "visualiser"];
+
 async function loadStats() {
   const url = `${STATS}?range=${state.range}&bots=${state.bots ? "include" : "exclude"}`;
-  const r = await fetch(url, { credentials: "include" });
+  const r = await apiGet(url);
   if (r.status === 401) { showLogin(); return false; }
   if (!r.ok) throw new Error("stats " + r.status);
   state.data = await r.json();
+  markFresh();
   return true;
+}
+
+async function loadStatsView() {
+  try {
+    const ok = await loadStats();
+    if (ok && STATS_VIEWS.indexOf(state.view) !== -1) {
+      document.getElementById("view").innerHTML = (VIEWS[state.view] || viewOverview)();
+      setPageMeta();
+    }
+  } catch (e) {
+    if (STATS_VIEWS.indexOf(state.view) !== -1) {
+      document.getElementById("view").innerHTML = '<div class="card"><div class="empty">Could not load. Try Refresh.</div></div>';
+    }
+  }
 }
 
 async function loadRealtime() {
   try {
     const url = `${STATS}?report=realtime&bots=${state.bots ? "include" : "exclude"}`;
-    const r = await fetch(url, { credentials: "include" });
+    const r = await apiGet(url);
     if (r.status === 401) { showLogin(); return; }
     if (r.ok) {
       state.realtime = await r.json();
+      markFresh();
       if (state.view === "realtime") document.getElementById("view").innerHTML = viewRealtime();
     }
   } catch (e) { /* ignore transient */ }
@@ -1334,10 +1376,11 @@ async function loadRealtime() {
 async function loadJourneys() {
   try {
     const url = `${STATS}?report=journeys&range=${state.range}&bots=${state.bots ? "include" : "exclude"}`;
-    const r = await fetch(url, { credentials: "include" });
+    const r = await apiGet(url);
     if (r.status === 401) { showLogin(); return; }
     if (!r.ok) throw new Error("journeys " + r.status);
     state.journeys = await r.json();
+    markFresh();
     if (state.view === "journeys") {
       document.getElementById("view").innerHTML = viewJourneys();
       setPageMeta();
@@ -1352,10 +1395,11 @@ async function loadJourneys() {
 async function loadFlow() {
   try {
     const url = `${STATS}?report=flow&range=${state.range}&bots=${state.bots ? "include" : "exclude"}`;
-    const r = await fetch(url, { credentials: "include" });
+    const r = await apiGet(url);
     if (r.status === 401) { showLogin(); return; }
     if (!r.ok) throw new Error("flow " + r.status);
     state.flow = await r.json();
+    markFresh();
     if (state.view === "flow") {
       document.getElementById("view").innerHTML = viewFlow();
       setPageMeta();
@@ -1371,11 +1415,12 @@ async function loadEnquiries(page) {
   state.enqPage = page || state.enqPage || 1;
   try {
     const url = `${ENQUIRIES}?page=${state.enqPage}&pageSize=10`;
-    const r = await fetch(url, { credentials: "include" });
+    const r = await apiGet(url);
     if (r.status === 401) { showLogin(); return; }
     if (!r.ok) throw new Error("enquiries " + r.status);
     state.enquiries = await r.json();
     state.enqPage = state.enquiries.page;
+    markFresh();
     if (state.view === "enquiries") {
       document.getElementById("view").innerHTML = viewEnquiries();
       setPageMeta();
@@ -1391,11 +1436,12 @@ async function loadErrors(page) {
   state.errPage = page || state.errPage || 1;
   try {
     const url = `${ERROR_LOGS}?page=${state.errPage}&pageSize=10&bots=${state.errBots}`;
-    const r = await fetch(url, { credentials: "include" });
+    const r = await apiGet(url);
     if (r.status === 401) { showLogin(); return; }
     if (!r.ok) throw new Error("errors " + r.status);
     state.errorLogs = await r.json();
     state.errPage = state.errorLogs.page;
+    markFresh();
     if (state.view === "errors") {
       document.getElementById("view").innerHTML = viewErrors();
       setPageMeta();
@@ -1411,11 +1457,12 @@ async function loadLogins(page) {
   state.loginPage = page || state.loginPage || 1;
   try {
     const url = `${ERROR_LOGS}?kind=${state.loginKind}&page=${state.loginPage}&pageSize=10&bots=${state.loginBots}`;
-    const r = await fetch(url, { credentials: "include" });
+    const r = await apiGet(url);
     if (r.status === 401) { showLogin(); return; }
     if (!r.ok) throw new Error("logins " + r.status);
     state.logins = await r.json();
     state.loginPage = state.logins.page;
+    markFresh();
     if (state.view === "logins") {
       document.getElementById("view").innerHTML = viewLogins();
       setPageMeta();
@@ -1427,17 +1474,9 @@ async function loadLogins(page) {
   }
 }
 
-async function refresh() {
-  try {
-    await loadStats();
-    state.journeys = null; // range/bots may have changed — reload on demand
-    state.flow = null;
-    state.enquiries = null; // refresh re-pulls the current page
-    state.errorLogs = null; // refresh re-pulls the current page
-    state.logins = null; // refresh re-pulls the current page
-    if (state.view === "realtime") await loadRealtime();
-    renderView();
-  } catch (e) { /* keep current */ }
+// Refresh = re-render the current view, which always re-fetches live data.
+function refresh() {
+  renderView();
 }
 
 /* ---------------- auth / boot ---------------- */
@@ -1512,7 +1551,7 @@ function wire() {
   });
   document.getElementById("view").addEventListener("click", (e) => {
     const m = e.target.closest("[data-m]");
-    if (m) { state.trendMetric = m.getAttribute("data-m"); renderView(); return; }
+    if (m) { state.trendMetric = m.getAttribute("data-m"); document.getElementById("view").innerHTML = viewTrends(); return; }
     const jt = e.target.closest("[data-jtoggle]");
     if (jt) { jt.closest(".journey").classList.toggle("open"); return; }
     const jf = e.target.closest("[data-jfilter]");

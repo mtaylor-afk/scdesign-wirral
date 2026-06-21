@@ -33,6 +33,11 @@ function applyCors(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Max-Age", "86400");
+  // Never let a response be cached (browser, CDN or proxy) — the admin must
+  // always see live data, and ingest responses carry nothing worth caching.
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   if (req.method === "OPTIONS") {
     res.statusCode = 204;
     res.end();
