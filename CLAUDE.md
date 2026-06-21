@@ -65,6 +65,23 @@ A complete, conversion-led redesign was built on the **`redesign`** branch (Clou
 - **LAUNCHED to production (June 2026):** cut over `redesign` → `main`; live on scdesignwirral.co.uk and verified end-to-end (multi-step form, 301 redirects, project pages, JSON-LD, no address leak). `main` and `redesign` kept in sync. **Remaining owner actions:** answer `PROJECTS-QUESTIONS.txt` (real project details + any completed-build photos), set `NEXT_PUBLIC_FEATURABLE_WIDGET_ID` + GBP Place ID, optionally `TURNSTILE_SECRET_KEY`.
 - **QA verified:** `tsc` + `lint` 0 problems, 88-page build, ARB-safe sweep clean, 0 `PostalAddress`/`AggregateRating`, `_redirects` resolve, images carry width/height.
 
+### 📊 ANALYTICS & ADMIN PORTAL (LIVE — Jun 2026) + STANDING RULE
+First-party, **cookieless** analytics + a login-gated admin dashboard. **This supersedes the "DEFERRED — visitor/error logging + admin panel" note further down** (that work is now built and live).
+
+**🔴 STANDING RULE — every page must send analytics, as standard. Applies to ALL future work on this site:**
+- The tracker is **`<Analytics />` mounted in the root layout** (`src/app/layout.tsx`), so **every Next route inherits it automatically** — new pages added under `src/app/**` need **no extra work** to be tracked. **Never remove `<Analytics />` or `<ClickTracking />` from the root layout, and never add a separate root layout / route group that bypasses it.** After creating a new page, the only check is that it lives under the shared root layout (it will, by default).
+- **The one case that needs manual work:** a standalone static page added under `public/**` (e.g. `public/foo.html`) is NOT wrapped by the React layout, so it must get the tracking beacon added by hand — a small `sendBeacon`/`fetch` POST to `${NEXT_PUBLIC_SC_ANALYTICS_BASE}/api/sc-analytics-collect` mirroring `Analytics.tsx`. (`public/admin/**` is deliberately EXCLUDED — the admin self-excludes and is its own app.)
+- **New key actions** (a new button / form / CTA / tool) → fire `track('<event_name>', {…})` from `Analytics.tsx` / `ClickTracking.tsx` so they appear in the admin Events/Conversions reports.
+- Pageviews appear in the admin within seconds — confirm a new page via **Traffic → Real-time**.
+
+**How it's built (ALL SC-isolated from TailoredQuote / QCbuild1):**
+- **Tracker:** `src/components/Analytics.tsx` (cookieless pageview on load + on route change + an `engaged` beacon for time-on-page/scroll) and `src/components/ClickTracking.tsx` (phone/email/whatsapp/cta/service/area/`form_submit`/`outbound_link` + the visualiser events). Endpoint base = `.env.production` **`NEXT_PUBLIC_SC_ANALYTICS_BASE`** (`https://scdesign-wirral.vercel.app`). **No cookies, no IP stored, no consent gate** (legitimate interest; cookieless). The consent banner / privacy / cookie pages were updated to describe it.
+- **API:** Vercel project **`scdesign-wirral`** (separate from QCbuild1/TQ; prod `https://scdesign-wirral.vercel.app`). Functions in `api/`: `sc-analytics-collect` (public ingest), `sc-admin-login`, `sc-admin-logout`, `sc-admin-stats`. Shared code in **`serverlib/common.js`** (deliberately OUTSIDE `api/`). `vercel.json` uses **zero-config function routing** (`framework:null` + `outputDirectory:public` + `functions`) — do **NOT** switch to legacy `builds` (it deploys but won't route → 404). **Vercel Deployment Protection must stay OFF** (the site must reach the API; admin has its own login).
+- **Data:** Supabase project **`sc-analytics`** (`https://yxapzkiodjecladjziom.supabase.co`), table `sc_events` (core columns + `props` jsonb; RLS on, service-role only). Cookieless daily-rotating salted visitor hash; IP never stored.
+- **Admin app:** self-contained at `public/admin/` → **https://scdesignwirral.co.uk/admin/** (noindex + robots-disallowed). Login **222 / 333**. Side menu: Overview · Traffic (Trends/Pages/Sources/Locations/Devices/Engagement/Real-time) · Conversions (Events/Visualiser) · Reference (**Data available** — catalogue of every field + how to add reports). Inline SVG charts, no external deps.
+- **Change the login:** edit `SC_ADMIN_PASS` / `SC_ADMIN_USER` in the Vercel project env vars (no code change). **Move the API domain:** update `API_BASE` in `public/admin/admin.js` + `NEXT_PUBLIC_SC_ANALYTICS_BASE`.
+- **Vercel env vars (owner-set, NOT in repo):** `SC_SUPABASE_URL`, `SC_SUPABASE_SERVICE_ROLE_KEY`, `SC_ADMIN_USER`, `SC_ADMIN_PASS`, `SC_ADMIN_SESSION_SECRET`.
+
 ### 🔧 PROCESSING THE RETURNED PROJECTS QUESTIONNAIRE (fresh-session handoff)
 The 6 `/projects` pages are live with honest **placeholder** copy. The owner is returning **`PROJECTS-QUESTIONS.txt`** (repo root) filled in — they paste text following the `PROJECT 1…6` structure. A session with no chat history should use this to apply the answers. (If `PROJECTS-QUESTIONS.txt` is missing, its full content is recoverable from this map; `PROJECTS-CONTENT-QUESTIONNAIRE.md` is the same in markdown.)
 
@@ -107,7 +124,7 @@ Q1→`town` (general area only, NEVER a street address) · Q2→`propertyType` (
 - **Registered LTD company** — use "SC Design & Construction Ltd" + company no. 11511225 in formal placements (footer / legal pages / JSON-LD). Keep the display brand "SC Design & Construction" (no "Ltd") in the nav logo + page titles.
 - No thin/duplicate location pages — each of the 12 must be unique.
 - Visualiser output is a **concept only**, never presented as buildable/planning-ready.
-- No non-consented analytics; server-side rate limiting only; Sharp on Node runtime (never Edge).
+- Analytics: the first-party SC analytics is **cookieless, stores no IP and runs without consent** (legitimate interest) — see "ANALYTICS & ADMIN PORTAL" above; only third-party scripts (the reviews widget) stay consent-gated. (Supersedes the earlier blanket "no non-consented analytics" line.) Server-side rate limiting only; Sharp on Node runtime (never Edge).
 - Never expose the Supabase service-role key or any API key client-side.
 
 ### Content rules
@@ -243,8 +260,8 @@ Owner supplied a 32-phase "full live-site audit + implementation" brief (ARB-saf
 - **Verified:** `tsc`+ESLint+build clean; `out/` grep = all 9 `data-conversion` values present (and `visualiser-submit` in the bundle), 0 "to be confirmed"/"coming soon"/"link to be added", 0 Review/AggregateRating schema, 0 unsafe protected-title forms, 0 "sole trader"; live WebFetch spot-checks confirmed the hero CTA, photo tips, 7-day note + concept→drawings CTA deployed. (Honesty note: code-based audit + build + live spot-checks — not a full automated browser crawl.)
 - **Still owner-blocked (unchanged):** GBP review URL, real reviews, approved project photos, quals/insurance details, ARB status, Lighthouse + real form/visualiser submission tests.
 
-#### DEFERRED (planning only, not started) — visitor/error logging + admin panel (June 2026)
-Owner asked what's needed before commissioning an in-site admin panel that logs visitors + errors. Analysis to carry forward when the work is picked up:
+#### ✅ BUILT (Jun 2026) — visitor logging + admin panel — was DEFERRED, now LIVE
+**See "📊 ANALYTICS & ADMIN PORTAL (LIVE)" near the top of these Project Notes — that is the current, authoritative description.** The chosen solution was **first-party cookieless analytics on a separate Vercel project (`scdesign-wirral`) + a Supabase project (`sc-analytics`) + a static admin app at `/admin/`** — not the Cloudflare D1 / Pages Functions route floated below. The original deferral analysis is kept for history only:
 - **Core blocker:** the site is a **static export** (`next.config.ts` → `output: "export"`, Cloudflare Pages) with **no backend** — it cannot write to a DB or host a protected `/admin` page on its own. A real solution needs three things, only one of which is a database: (1) a datastore, (2) server-side compute, (3) admin authentication.
 - **Already in the repo but dormant:** consent-gated **Plausible** (`Analytics.tsx`; activates when `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set; `track()` already fires custom events) and a **server-only Supabase** client (`supabase.ts` — dead under static export, no server to run it).
 - **Lowest-effort path (recommended first):** hosted dashboards — turn on Plausible (or Cloudflare Web Analytics, free/privacy-first) for visitors + **Sentry** (free tier, ingests browser errors directly) for errors. These need no backend and may remove the need to build a panel at all.
