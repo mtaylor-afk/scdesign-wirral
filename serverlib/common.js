@@ -436,12 +436,25 @@ async function sbInsertError(row) {
   return { ok: true, status: res.status };
 }
 
+// Restrict by row "kind". Admin login attempts share the sc_errors table but use
+// dedicated `type`s; this keeps them out of the error views and powers the
+// separate "Login attempts" view.
+function errKindFilter(kind) {
+  if (kind === "logins") return "&type=in.(login_success,login_failed)";
+  if (kind === "logins_failed") return "&type=eq.login_failed";
+  if (kind === "logins_success") return "&type=eq.login_success";
+  if (kind === "errors") return "&type=not.in.(login_success,login_failed)";
+  return ""; // all
+}
+
 /**
  * Select a page of errors, newest first. `botMode` is "exclude" (default — only
- * human errors), "only" (just bots), or "include" (everything). Uses PostgREST's
- * exact count so the admin can paginate. Returns { rows, total }.
+ * human errors), "only" (just bots), or "include" (everything). `kind` filters
+ * by row type ("errors" excludes login rows; "logins"/"logins_failed"/
+ * "logins_success" select them). Uses PostgREST's exact count so the admin can
+ * paginate. Returns { rows, total }.
  */
-async function sbSelectErrors(limit, offset, botMode) {
+async function sbSelectErrors(limit, offset, botMode, kind) {
   limit = limit || 10;
   offset = offset || 0;
   let botFilter = "";
@@ -449,7 +462,7 @@ async function sbSelectErrors(limit, offset, botMode) {
   else if (botMode !== "include") botFilter = "&is_bot=eq.false"; // default = exclude bots
   const url =
     `${sbBase()}/rest/v1/sc_errors?select=*` +
-    `${botFilter}&order=ts.desc&limit=${limit}&offset=${offset}`;
+    `${botFilter}${errKindFilter(kind)}&order=ts.desc&limit=${limit}&offset=${offset}`;
   const res = await fetch(url, {
     headers: sbHeaders({ Prefer: "count=exact", Range: `${offset}-${offset + limit - 1}` }),
   });
@@ -471,12 +484,12 @@ async function sbSelectErrors(limit, offset, botMode) {
  * Exact count of error rows since `sinceIso` (HEAD request, no body fetched).
  * Honours the same botMode as sbSelectErrors. Returns a number (0 on failure).
  */
-async function sbCountErrors(sinceIso, botMode) {
+async function sbCountErrors(sinceIso, botMode, kind) {
   let botFilter = "";
   if (botMode === "only") botFilter = "&is_bot=eq.true";
   else if (botMode !== "include") botFilter = "&is_bot=eq.false";
   const since = sinceIso ? `&ts=gte.${encodeURIComponent(sinceIso)}` : "";
-  const url = `${sbBase()}/rest/v1/sc_errors?select=id${since}${botFilter}`;
+  const url = `${sbBase()}/rest/v1/sc_errors?select=id${since}${botFilter}${errKindFilter(kind)}`;
   try {
     const res = await fetch(url, {
       method: "HEAD",

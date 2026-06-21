@@ -38,28 +38,46 @@ module.exports = async (req, res) => {
   let page = parseInt(url.searchParams.get("page"), 10);
   if (!Number.isFinite(page) || page < 1) page = 1;
 
+  // `kind` selects what to return: client errors (default, login rows excluded)
+  // or admin login attempts ("logins" = all, or just failed/successful).
+  const VALID_KINDS = ["errors", "logins", "logins_failed", "logins_success"];
+  let kind = url.searchParams.get("kind");
+  if (!VALID_KINDS.includes(kind)) kind = "errors";
+  const isLogins = kind !== "errors";
+
   const botsParam = url.searchParams.get("bots");
+  // Errors default to hiding bots; login attempts default to showing everything
+  // (bot/script sign-in attempts are exactly what you want to see).
   const botMode =
-    botsParam === "include" || botsParam === "only" ? botsParam : "exclude";
+    botsParam === "include" || botsParam === "only" || botsParam === "exclude"
+      ? botsParam
+      : isLogins
+      ? "include"
+      : "exclude";
 
   try {
-    const { rows, total } = await sbSelectErrors(pageSize, (page - 1) * pageSize, botMode);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const last24h = await sbCountErrors(since24h, botMode);
-    return res.end(
-      JSON.stringify({
-        ok: true,
-        page,
-        pageSize,
-        total,
-        totalPages,
-        last24h,
-        botMode,
-        rows,
-        generatedAt: new Date().toISOString(),
-      })
-    );
+    const { rows, total } = await sbSelectErrors(pageSize, (page - 1) * pageSize, botMode, kind);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const last24h = await sbCountErrors(since24h, botMode, kind);
+    const payload = {
+      ok: true,
+      page,
+      pageSize,
+      total,
+      totalPages,
+      last24h,
+      botMode,
+      kind,
+      rows,
+      generatedAt: new Date().toISOString(),
+    };
+    if (isLogins) {
+      payload.failedTotal = await sbCountErrors(null, botMode, "logins_failed");
+      payload.successTotal = await sbCountErrors(null, botMode, "logins_success");
+      payload.failed24h = await sbCountErrors(since24h, botMode, "logins_failed");
+    }
+    return res.end(JSON.stringify(payload));
   } catch (err) {
     console.error("sc-admin-error-logs error", err && err.message);
     res.statusCode = 502;

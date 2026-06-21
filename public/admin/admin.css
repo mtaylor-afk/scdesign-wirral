@@ -188,6 +188,7 @@ table.tbl tr:hover td { background: #faf6ef; }
 .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--accent-soft); color: var(--accent-deep); }
 .pill.green { background: #e2f0e8; color: var(--success); }
 .pill.grey { background: #efe9df; color: var(--muted); }
+.pill.red { background: #f6dada; color: #8a1f1f; }
 .flag { font-size: 13px; }
 
 /* ---------- Realtime ---------- */
@@ -381,6 +382,12 @@ table.tbl tr:hover td { background: #faf6ef; }
   opacity: 0; pointer-events: none; transition: opacity 0.18s, transform 0.18s; z-index: 100;
 }
 .copytoast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- Login attempts ---------- */
+.loginuser { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 12.5px; color: var(--ink); }
+.errtbl tbody tr.errrow.login-failed td { background: #fdf4f3; }
+.errtbl tbody tr.errrow.login-failed:hover td { background: #fbeae8; }
+.errtbl tbody tr.errrow.login-failed + .errdetailrow td { border-bottom: 2px solid #f3d6d2; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {

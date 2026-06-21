@@ -29,6 +29,10 @@ const state = {
   errorLogs: null,
   errPage: 1,
   errBots: "exclude", // exclude | include | only
+  logins: null,
+  loginPage: 1,
+  loginKind: "logins", // logins | logins_failed | logins_success
+  loginBots: "include",
 };
 
 /* ---------------- formatting helpers ---------------- */
@@ -985,6 +989,104 @@ function copyErrorToClipboard(i, btn) {
   }
 }
 
+/* ---------------- Login attempts (admin sign-in audit trail) ---------------- */
+const LOGIN_REASON_LABELS = {
+  bad_credentials: "wrong username or password",
+  rate_limited: "too many attempts (rate-limited)",
+};
+function loginFailed(l) {
+  return (l.props && l.props.outcome === "failed") || l.type === "login_failed";
+}
+function loginOutcomeBadge(l) {
+  return loginFailed(l) ? `<span class="pill red">Failed</span>` : `<span class="pill green">Success</span>`;
+}
+function loginUsername(l) {
+  return (l.props && l.props.username) || "—";
+}
+
+function loginDetail(l) {
+  const p = l.props || {};
+  const failed = loginFailed(l);
+  const f = (label, value) =>
+    value === null || value === undefined || value === ""
+      ? ""
+      : `<div class="errf"><dt>${esc(label)}</dt><dd>${esc(String(value))}</dd></div>`;
+  const loc = [l.city, l.region, l.country].filter(Boolean).join(", ");
+  const block = [
+    f("Outcome", failed ? "Failed" : "Success"),
+    f("Username tried", p.username),
+    f("Reason", p.reason ? LOGIN_REASON_LABELS[p.reason] || p.reason : failed ? "" : "—"),
+    f("When", fmtDateTime(l.ts)),
+    f("Location", loc),
+    f("Device", [cap(l.device || ""), l.browser, l.os].filter(Boolean).join(" · ")),
+    f("Looks like a bot/script", l.is_bot ? "yes" : "no"),
+    f("Referrer", l.referrer_host),
+    f("User agent", p.ua),
+    f("Visitor", l.vid),
+  ].join("");
+  const json = esc(JSON.stringify(l, null, 2));
+  return `<div class="errdetail">
+    <div class="errblock"><h4>Sign-in attempt</h4><dl class="errdl errdl-grid">${block}</dl></div>
+    <details class="errjson"><summary>Full data (JSON)</summary><pre>${json}</pre></details>
+  </div>`;
+}
+
+function loginRow(l, i) {
+  const loc = [l.city, l.region, l.country].filter(Boolean).join(", ") || "—";
+  const dev = [cap(l.device || ""), l.browser].filter(Boolean).join(" · ") || "—";
+  const botTag = l.is_bot ? `<span class="pill grey errtag">bot</span>` : "";
+  return `<tr class="errrow${loginFailed(l) ? " login-failed" : ""}" data-logintoggle="${i}">
+      <td class="errdate">${esc(fmtDateTime(l.ts))}</td>
+      <td>${loginOutcomeBadge(l)}${botTag}</td>
+      <td class="loginuser">${esc(loginUsername(l))}</td>
+      <td class="pathcell" title="${esc(loc)}">${esc(loc)}</td>
+      <td class="errwhere">${esc(dev)}<span class="enqchev" aria-hidden="true">▾</span></td>
+    </tr>
+    <tr class="errdetailrow" id="logind-${i}" hidden><td colspan="5">${loginDetail(l)}</td></tr>`;
+}
+
+function loginPager(d) {
+  if (d.totalPages <= 1) return "";
+  const prev = d.page > 1 ? `data-loginpage="${d.page - 1}"` : "disabled";
+  const next = d.page < d.totalPages ? `data-loginpage="${d.page + 1}"` : "disabled";
+  return `<div class="pager">
+    <button class="btn btn-ghost" ${prev}>← Prev</button>
+    <span class="pageinfo">Page ${d.page} of ${d.totalPages} · ${fmt(d.total)} total</span>
+    <button class="btn btn-ghost" ${next}>Next →</button>
+  </div>`;
+}
+
+function viewLogins() {
+  const d = state.logins;
+  if (!d) return loader();
+  const rows = d.rows || [];
+  const body = rows.length
+    ? rows.map((l, i) => loginRow(l, i)).join("")
+    : `<tr><td colspan="5" class="empty">No sign-in attempts recorded for this filter yet.</td></tr>`;
+  const chip = (id, label) =>
+    `<button class="jchip ${state.loginKind === id ? "active" : ""}" data-loginfilter="${id}">${label}</button>`;
+  return `
+    <div class="callout"><strong>Every admin sign-in attempt.</strong> A full access trail — successful and failed logins to this panel, with time, approximate location and device, so you can spot anyone trying to get in. <strong>Passwords are never recorded</strong> — only the username that was tried.</div>
+    <div class="grid kpis">
+      ${kpi("Failed sign-ins", fmt(d.failedTotal), "all-time")}
+      ${kpi("Successful sign-ins", fmt(d.successTotal), "all-time")}
+      ${kpi("Failed (24h)", fmt(d.failed24h), "last 24 hours")}
+      ${kpi("Showing", fmt(rows.length), `page ${d.page} of ${d.totalPages}`)}
+    </div>
+    <div class="jfilters">
+      ${chip("logins", "All")}
+      ${chip("logins_failed", "Failed")}
+      ${chip("logins_success", "Successful")}
+    </div>
+    <div class="card">
+      <table class="tbl errtbl">
+        <thead><tr><th>Time</th><th>Outcome</th><th>Username tried</th><th>Location</th><th>Device</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+      ${loginPager(d)}
+    </div>`;
+}
+
 /* ---------------- Data available (reference catalogue) ---------------- */
 const REF = [
   {
@@ -1103,12 +1205,12 @@ function viewDataAvailable() {
 const VIEWS = {
   overview: viewOverview, enquiries: viewEnquiries, trends: viewTrends, pages: viewPages, journeys: viewJourneys, flow: viewFlow, sources: viewSources,
   locations: viewLocations, devices: viewDevices, engagement: viewEngagement,
-  realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, errors: viewErrors, data: viewDataAvailable,
+  realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, errors: viewErrors, logins: viewLogins, data: viewDataAvailable,
 };
 const TITLES = {
   overview: "Overview", enquiries: "New customer enquiry", trends: "Traffic trends", pages: "Pages", journeys: "Visitor journeys", flow: "Path flow", sources: "Sources",
   locations: "Locations", devices: "Devices & technology", engagement: "Engagement",
-  realtime: "Real-time", events: "Events & conversions", visualiser: "Visualiser", errors: "Error logs", data: "Data available",
+  realtime: "Real-time", events: "Events & conversions", visualiser: "Visualiser", errors: "Error logs", logins: "Login attempts", data: "Data available",
 };
 const NAV = [
   { items: [{ id: "overview", label: "Overview" }] },
@@ -1120,7 +1222,7 @@ const NAV = [
     { id: "engagement", label: "Engagement" }, { id: "realtime", label: "Real-time" },
   ]},
   { group: "Conversions", items: [{ id: "events", label: "Events" }, { id: "visualiser", label: "Visualiser" }] },
-  { group: "System", items: [{ id: "errors", label: "Error logs" }] },
+  { group: "System", items: [{ id: "errors", label: "Error logs" }, { id: "logins", label: "Login attempts" }] },
   { group: "Reference", items: [{ id: "data", label: "Data available" }] },
 ];
 
@@ -1168,6 +1270,10 @@ function setPageMeta() {
     txt = state.errorLogs
       ? `${fmt(state.errorLogs.total)} errors${state.errorLogs.botMode === "exclude" ? " · bots excluded" : state.errorLogs.botMode === "only" ? " · bots only" : ""}`
       : "Client errors";
+  } else if (state.view === "logins") {
+    txt = state.logins
+      ? `${fmt(state.logins.failedTotal)} failed · ${fmt(state.logins.successTotal)} successful`
+      : "Admin sign-ins";
   } else if (state.data) {
     txt = `${rangeLabel()} · ${fmt(state.data.meta.rowsScanned)} events scanned${state.data.meta.botsExcluded ? " · bots excluded" : ""}`;
   }
@@ -1188,6 +1294,7 @@ function renderView() {
   if (state.view === "flow" && !state.flow) loadFlow();
   if (state.view === "enquiries" && !state.enquiries) loadEnquiries(state.enqPage);
   if (state.view === "errors" && !state.errorLogs) loadErrors(state.errPage);
+  if (state.view === "logins" && !state.logins) loadLogins(state.loginPage);
 }
 
 function setView(id) {
@@ -1296,6 +1403,26 @@ async function loadErrors(page) {
   }
 }
 
+async function loadLogins(page) {
+  state.loginPage = page || state.loginPage || 1;
+  try {
+    const url = `${ERROR_LOGS}?kind=${state.loginKind}&page=${state.loginPage}&pageSize=10&bots=${state.loginBots}`;
+    const r = await fetch(url, { credentials: "include" });
+    if (r.status === 401) { showLogin(); return; }
+    if (!r.ok) throw new Error("logins " + r.status);
+    state.logins = await r.json();
+    state.loginPage = state.logins.page;
+    if (state.view === "logins") {
+      document.getElementById("view").innerHTML = viewLogins();
+      setPageMeta();
+    }
+  } catch (e) {
+    if (state.view === "logins") {
+      document.getElementById("view").innerHTML = '<div class="card"><div class="empty">Could not load login attempts. Try Refresh.</div></div>';
+    }
+  }
+}
+
 async function refresh() {
   try {
     await loadStats();
@@ -1303,6 +1430,7 @@ async function refresh() {
     state.flow = null;
     state.enquiries = null; // refresh re-pulls the current page
     state.errorLogs = null; // refresh re-pulls the current page
+    state.logins = null; // refresh re-pulls the current page
     if (state.view === "realtime") await loadRealtime();
     renderView();
   } catch (e) { /* keep current */ }
@@ -1433,6 +1561,27 @@ function wire() {
       const det = document.getElementById("errd-" + errt.getAttribute("data-errtoggle"));
       if (det) det.hidden = !det.hidden;
       errt.classList.toggle("open");
+      return;
+    }
+    const lf = e.target.closest("[data-loginfilter]");
+    if (lf) {
+      state.loginKind = lf.getAttribute("data-loginfilter");
+      state.loginPage = 1;
+      state.logins = null;
+      loadLogins(1);
+      return;
+    }
+    const lp = e.target.closest("[data-loginpage]");
+    if (lp) {
+      const p = parseInt(lp.getAttribute("data-loginpage"), 10);
+      if (Number.isFinite(p)) { loadLogins(p); window.scrollTo(0, 0); }
+      return;
+    }
+    const lt = e.target.closest("[data-logintoggle]");
+    if (lt) {
+      const det = document.getElementById("logind-" + lt.getAttribute("data-logintoggle"));
+      if (det) det.hidden = !det.hidden;
+      lt.classList.toggle("open");
       return;
     }
   });
