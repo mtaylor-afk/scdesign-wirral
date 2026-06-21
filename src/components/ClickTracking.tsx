@@ -49,7 +49,7 @@ export function ClickTracking() {
 
     function onSubmit(e: SubmitEvent) {
       const form = e.target as HTMLFormElement | null;
-      if (!form || form.tagName !== "FORM") return;
+      if (!form) return;
       const id =
         form.getAttribute("id") ||
         form.getAttribute("name") ||

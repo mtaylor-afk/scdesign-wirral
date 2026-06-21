@@ -15,7 +15,7 @@ type LimitResult = { allowed: boolean; reason?: "per_ip" | "daily_cap"; retryAft
 const PER_IP_CAP = Number(process.env.VISUALISER_PER_IP_CAP || 5);
 const DAILY_CAP = Number(process.env.VISUALISER_DAILY_CAP || 200);
 
-const memory = new Map<string, { count: number; day: string }>();
+const memory = new Map<string, { count: number }>();
 let warnedMemory = false;
 
 function today(): string {
@@ -35,7 +35,7 @@ export async function checkVisualiserRateLimit(ip: string): Promise<LimitResult>
     }
     // Per-IP within the in-memory window.
     const key = `${ip}:${day}`;
-    const rec = memory.get(key) || { count: 0, day };
+    const rec = memory.get(key) || { count: 0 };
     if (rec.count >= PER_IP_CAP) return { allowed: false, reason: "per_ip" };
     rec.count += 1;
     memory.set(key, rec);
@@ -62,7 +62,8 @@ export async function checkVisualiserRateLimit(ip: string): Promise<LimitResult>
   }
 
   // Record this attempt.
-  await supabase.from("visualiser_rate_limits").insert({ ip, day });
+  const { error } = await supabase.from("visualiser_rate_limits").insert({ ip, day });
+  if (error) console.error("[ratelimit] insert failed", error);
   return { allowed: true };
 }
 

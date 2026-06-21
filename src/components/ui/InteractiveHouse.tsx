@@ -92,7 +92,7 @@ export function InteractiveHouse() {
         {/* House + hotspots */}
         <div
           className="relative overflow-hidden rounded-lg border border-line bg-paper"
-          role="img"
+          role="group"
           aria-label={`Interactive ${view} of a house — select a feature to see its planning rules.`}
         >
           <div className="aspect-[4/3] w-full">

@@ -120,7 +120,6 @@ export function Analytics() {
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", flushEngaged);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // On each route change: flush the previous page's engagement, then record the
@@ -139,7 +138,6 @@ export function Analytics() {
     startRef.current = Date.now();
     scrollRef.current = 0;
     sentEngagedRef.current = false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   return null;

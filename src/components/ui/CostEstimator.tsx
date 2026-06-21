@@ -26,8 +26,9 @@ const FINISHES: { key: string; label: string; mult: number }[] = [
   { key: "high", label: "High spec", mult: 1.25 },
 ];
 
+const ROUND_TO = 1000; // indicative figures are rounded to the nearest £1,000
 function round(n: number) {
-  return Math.round(n / 1000) * 1000;
+  return Math.round(n / ROUND_TO) * ROUND_TO;
 }
 function gbp(n: number) {
   return "£" + n.toLocaleString("en-GB");

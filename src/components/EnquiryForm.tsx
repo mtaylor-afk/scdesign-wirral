@@ -62,6 +62,7 @@ type Status = "idle" | "submitting" | "success-online" | "success-mailto" | "err
 export function EnquiryForm() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const successRef = useRef<HTMLHeadingElement>(null);
 
   const [step, setStep] = useState(0);
   const [projectType, setProjectType] = useState("");
@@ -81,6 +82,12 @@ export function EnquiryForm() {
     document.getElementById(`enquiry-step-${step}`)?.focus();
     track("contact_form_step", { step: step + 1 });
   }, [step]);
+
+  // Move focus to the confirmation heading when the mailto-fallback view appears,
+  // so keyboard/screen-reader users aren't stranded on the now-removed submit button.
+  useEffect(() => {
+    if (status === "success-mailto") successRef.current?.focus();
+  }, [status]);
 
   function read(name: string): string {
     const el = formRef.current?.elements.namedItem(name) as
@@ -221,7 +228,9 @@ export function EnquiryForm() {
   if (status === "success-mailto") {
     return (
       <div className="rounded-lg border border-line bg-paper-card p-6 shadow-card">
-        <h2 className="text-xl text-ink">Almost there — just press send</h2>
+        <h2 ref={successRef} tabIndex={-1} className="text-xl text-ink outline-none">
+          Almost there — just press send
+        </h2>
         <p className="mt-2 text-muted">
           Your email app should have opened with your enquiry ready to go. Press send and Sean will
           come back to you. If it didn&apos;t open, you can call or WhatsApp instead:

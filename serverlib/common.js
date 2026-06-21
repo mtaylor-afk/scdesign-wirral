@@ -360,7 +360,6 @@ async function sbSelectEvents(sinceIso, cap) {
   const pageSize = 1000;
   let offset = 0;
   const all = [];
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const url =
       `${sbBase()}/rest/v1/sc_events?${select}` +

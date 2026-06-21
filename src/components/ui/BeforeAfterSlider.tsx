@@ -36,6 +36,7 @@ export function BeforeAfterSlider({
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
+    if (!rect.width) return;
     const pct = ((clientX - rect.left) / rect.width) * 100;
     setPos(Math.max(0, Math.min(100, pct)));
   }, []);
@@ -103,8 +104,19 @@ export function BeforeAfterSlider({
           aria-valuenow={Math.round(pos)}
           tabIndex={0}
           onKeyDown={(e) => {
-            if (e.key === "ArrowLeft") setPos((p) => Math.max(0, p - 4));
-            if (e.key === "ArrowRight") setPos((p) => Math.min(100, p + 4));
+            if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+              e.preventDefault();
+              setPos((p) => Math.max(0, p - 4));
+            } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+              e.preventDefault();
+              setPos((p) => Math.min(100, p + 4));
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              setPos(0);
+            } else if (e.key === "End") {
+              e.preventDefault();
+              setPos(100);
+            }
           }}
           className="absolute top-0 bottom-0 z-10 -ml-0.5 w-1 cursor-ew-resize bg-white/90 shadow"
           style={{ left: `${pos}%` }}
