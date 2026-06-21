@@ -18,6 +18,8 @@ const state = {
   data: null,
   realtime: null,
   rtTimer: null,
+  journeys: null,
+  journeyFilter: "all",
 };
 
 /* ---------------- formatting helpers ---------------- */
@@ -350,6 +352,135 @@ function viewVisualiser() {
     <div class="card"><h3>Visualiser funnel</h3><div class="csub">Concept generation flow · ${rangeLabel()}</div>${barList(funnel, { empty: "No visualiser activity yet." })}</div>`;
 }
 
+/* ---------------- Journeys (per-visitor timelines) ---------------- */
+function visitorShort(vid) {
+  return vid && vid !== "anon" ? vid.slice(0, 6) : "anon";
+}
+function clockTime(ts) {
+  try {
+    return new Date(ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  } catch (e) { return ""; }
+}
+function whenLabel(ts) {
+  try {
+    const d = new Date(ts);
+    const today = new Date();
+    const sameDay = d.toDateString() === today.toDateString();
+    const t = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    if (sameDay) return "Today " + t;
+    const yest = new Date(today.getTime() - 86400000);
+    if (d.toDateString() === yest.toDateString()) return "Yesterday " + t;
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + ", " + t;
+  } catch (e) { return ""; }
+}
+function placeLabel(j) {
+  const city = j.city || "";
+  const country = j.country || "";
+  const name = city ? city : countryName(country);
+  return (flag(country) + " " + esc(name)).trim();
+}
+function actDetail(a) {
+  const p = a.props || {};
+  const bits = [];
+  if (p.dest) bits.push(String(p.dest));
+  else if (p.form) bits.push(String(p.form));
+  else if (p.project_type) bits.push(String(p.project_type));
+  else if (p.href) bits.push(String(p.href));
+  return bits.length ? ` <span class="actdest">${esc(bits.join(" · "))}</span>` : "";
+}
+function isConvName(n) {
+  return ["phone_click", "email_click", "whatsapp_click", "form_submit", "cta_click", "visualiser_start", "visualiser_complete"].includes(n);
+}
+
+function journeyCard(j, i) {
+  const steps = (j.steps || [])
+    .map((s) => {
+      const acts = (s.actions || [])
+        .map((a) => `<span class="actpill ${isConvName(a.name) ? "conv" : ""}" title="${esc(a.name)}">${esc(eventLabel(a.name))}${actDetail(a)}</span>`)
+        .join("");
+      const meta = [];
+      if (s.timeOnPage) meta.push(dur(s.timeOnPage));
+      if (s.scroll) meta.push("scrolled " + s.scroll + "%");
+      meta.push(clockTime(s.ts));
+      const label = s.title ? esc(s.title) : esc(s.path);
+      return `<li class="jstep${s.newSession ? " jstep-new" : ""}">
+        <div class="jstep-top">
+          <span class="jstep-path" title="${esc(s.path)}">${label}</span>
+          <span class="jstep-time">${s.timeOnPage ? dur(s.timeOnPage) : "&ndash;"}</span>
+        </div>
+        <div class="jstep-sub">${esc(s.path)} <span class="dot">·</span> ${meta.join(' <span class="dot">·</span> ')}</div>
+        ${acts ? `<div class="jstep-acts">${acts}</div>` : ""}
+      </li>`;
+    })
+    .join("");
+  const src = j.referrerHost ? cap(j.channel) + " · " + esc(j.referrerHost) : cap(j.channel);
+  const utm = j.utm && (j.utm.source || j.utm.campaign)
+    ? ` <span class="dot">·</span> ${esc([j.utm.source, j.utm.campaign].filter(Boolean).join("/"))}`
+    : "";
+  const badges = [
+    j.converted ? '<span class="pill green">Converted</span>' : "",
+    `<span class="pill grey">${j.pages} ${j.pages === 1 ? "page" : "pages"}</span>`,
+    `<span class="pill grey">${dur(j.durationS)}</span>`,
+    j.actionsCount ? `<span class="pill">${j.actionsCount} ${j.actionsCount === 1 ? "action" : "actions"}</span>` : "",
+  ].join("");
+  const techBits = [cap(j.device), j.browser, j.os].filter(Boolean).join(" · ");
+  return `<div class="journey${j.converted ? " is-conv" : ""}" data-jx="${i}">
+    <button class="jhead" data-jtoggle="${i}" type="button">
+      <span class="javatar">${j.converted ? "★" : visitorShort(j.vid).slice(0, 1).toUpperCase()}</span>
+      <span class="jident">
+        <span class="jvisitor">Visitor ${esc(visitorShort(j.vid))}</span>
+        <span class="jsub">${placeLabel(j)} <span class="dot">·</span> ${esc(techBits)}</span>
+      </span>
+      <span class="jbadges">${badges}</span>
+      <span class="jwhen">${whenLabel(j.lastTs)}</span>
+      <span class="jchev" aria-hidden="true">▾</span>
+    </button>
+    <div class="jbody">
+      <div class="jsource">Source: ${src}${utm} <span class="dot">·</span> Entry: <code>${esc(j.entry)}</code> <span class="dot">·</span> ${j.sessions} ${j.sessions === 1 ? "session" : "sessions"}</div>
+      <ol class="jsteps">${steps || '<li class="empty">No pages recorded.</li>'}</ol>
+      ${j.stepsTruncated ? '<div class="csub" style="margin-top:8px">Timeline truncated to the first 60 steps.</div>' : ""}
+    </div>
+  </div>`;
+}
+
+function viewJourneys() {
+  const j = state.journeys;
+  if (!j) return loader();
+  const s = j.summary;
+  const all = j.journeys || [];
+  let list = all;
+  if (state.journeyFilter === "converters") list = all.filter((x) => x.converted);
+  else if (state.journeyFilter === "multi") list = all.filter((x) => x.pages >= 2);
+
+  const chip = (id, label, n) =>
+    `<button class="jchip ${state.journeyFilter === id ? "active" : ""}" data-jfilter="${id}">${label}${n != null ? ` <span class="jchip-n">${fmt(n)}</span>` : ""}</button>`;
+
+  const RENDER_CAP = 200;
+  const shown = list.slice(0, RENDER_CAP);
+  const cards = shown.length
+    ? shown.map((x, i) => journeyCard(x, i)).join("")
+    : '<div class="card"><div class="empty">No journeys match this filter for the selected period.</div></div>';
+
+  return `
+    <div class="callout">
+      <strong>What this page is.</strong> Each card is one <strong>visitor's journey</strong> — the pages they viewed in order, how long they spent on each, and the actions they took. Time-on-page comes from when they moved to the next page (or the engaged beacon on the last page). <strong>Privacy by design:</strong> the visitor ID is cookieless and re-generated every day, so a journey covers one visitor <em>within a single day</em> — we don't follow people across days.
+    </div>
+    <div class="grid kpis">
+      ${kpi("Visitors", fmt(s.visitors), "in this period")}
+      ${kpi("Converted", fmt(s.converters), s.visitors ? Math.round((s.converters / s.visitors) * 100) + "% of visitors" : "")}
+      ${kpi("Multi-page visits", fmt(s.multiPage), "saw 2+ pages")}
+      ${kpi("Avg. pages / visitor", s.avgPages, "")}
+      ${kpi("Avg. time", dur(s.avgDuration), "per visitor")}
+    </div>
+    <div class="jfilters">
+      ${chip("all", "All visitors", s.visitors)}
+      ${chip("converters", "Converters", s.converters)}
+      ${chip("multi", "Multi-page", s.multiPage)}
+    </div>
+    <div class="journeys">${cards}</div>
+    ${list.length > RENDER_CAP ? `<div class="csub" style="margin-top:12px">Showing the ${RENDER_CAP} most recent of ${fmt(list.length)} matching visitors${j.meta.returned < s.visitors ? ` (server returns the ${fmt(j.meta.returned)} most recent of ${fmt(s.visitors)} total)` : ""}.</div>` : ""}`;
+}
+
 /* ---------------- Data available (reference catalogue) ---------------- */
 const REF = [
   {
@@ -405,8 +536,8 @@ const REF = [
     group: "Visitor & session (cookieless)",
     desc: "A salted hash that rotates every day lets us count unique visitors and group views into visits — with no cookies and no stored IP.",
     rows: [
-      ["visitor hash (vid)", "Computed", "16-char daily hash", "Unique visitors, sessions, bounce"],
-      ["session", "Computed", "views grouped within 30 min", "Visits, pages/visit, entry/exit, duration"],
+      ["visitor hash (vid)", "Computed", "16-char daily hash", "Unique visitors, sessions, bounce, journeys"],
+      ["session", "Computed", "views grouped within 30 min", "Visits, pages/visit, entry/exit, duration, journeys"],
     ],
   },
   {
@@ -466,19 +597,20 @@ function viewDataAvailable() {
 }
 
 const VIEWS = {
-  overview: viewOverview, trends: viewTrends, pages: viewPages, sources: viewSources,
+  overview: viewOverview, trends: viewTrends, pages: viewPages, journeys: viewJourneys, sources: viewSources,
   locations: viewLocations, devices: viewDevices, engagement: viewEngagement,
   realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, data: viewDataAvailable,
 };
 const TITLES = {
-  overview: "Overview", trends: "Traffic trends", pages: "Pages", sources: "Sources",
+  overview: "Overview", trends: "Traffic trends", pages: "Pages", journeys: "Visitor journeys", sources: "Sources",
   locations: "Locations", devices: "Devices & technology", engagement: "Engagement",
   realtime: "Real-time", events: "Events & conversions", visualiser: "Visualiser", data: "Data available",
 };
 const NAV = [
   { items: [{ id: "overview", label: "Overview" }] },
   { group: "Traffic", items: [
-    { id: "trends", label: "Trends" }, { id: "pages", label: "Pages" }, { id: "sources", label: "Sources" },
+    { id: "trends", label: "Trends" }, { id: "pages", label: "Pages" }, { id: "journeys", label: "Journeys" },
+    { id: "sources", label: "Sources" },
     { id: "locations", label: "Locations" }, { id: "devices", label: "Devices & Tech" },
     { id: "engagement", label: "Engagement" }, { id: "realtime", label: "Real-time" },
   ]},
@@ -513,19 +645,30 @@ function clearRt() {
   if (state.rtTimer) { clearInterval(state.rtTimer); state.rtTimer = null; }
 }
 
+function setPageMeta() {
+  let txt = "";
+  if (state.view === "data") txt = "Reference";
+  else if (state.view === "journeys") {
+    txt = state.journeys
+      ? `${rangeLabel()} · ${fmt(state.journeys.summary.visitors)} visitors${state.journeys.meta.botsExcluded ? " · bots excluded" : ""}`
+      : rangeLabel();
+  } else if (state.data) {
+    txt = `${rangeLabel()} · ${fmt(state.data.meta.rowsScanned)} events scanned${state.data.meta.botsExcluded ? " · bots excluded" : ""}`;
+  }
+  document.getElementById("pageMeta").textContent = txt;
+}
+
 function renderView() {
   clearRt();
   document.getElementById("pageTitle").textContent = TITLES[state.view];
-  const meta = state.data
-    ? `${rangeLabel()} · ${fmt(state.data.meta.rowsScanned)} events scanned${state.data.meta.botsExcluded ? " · bots excluded" : ""}`
-    : "";
-  document.getElementById("pageMeta").textContent = state.view === "data" ? "Reference" : meta;
+  setPageMeta();
   const el = document.getElementById("view");
   el.innerHTML = (VIEWS[state.view] || viewOverview)();
   if (state.view === "realtime") {
     loadRealtime();
     state.rtTimer = setInterval(loadRealtime, 15000);
   }
+  if (state.view === "journeys" && !state.journeys) loadJourneys();
 }
 
 function setView(id) {
@@ -558,9 +701,28 @@ async function loadRealtime() {
   } catch (e) { /* ignore transient */ }
 }
 
+async function loadJourneys() {
+  try {
+    const url = `${STATS}?report=journeys&range=${state.range}&bots=${state.bots ? "include" : "exclude"}`;
+    const r = await fetch(url, { credentials: "include" });
+    if (r.status === 401) { showLogin(); return; }
+    if (!r.ok) throw new Error("journeys " + r.status);
+    state.journeys = await r.json();
+    if (state.view === "journeys") {
+      document.getElementById("view").innerHTML = viewJourneys();
+      setPageMeta();
+    }
+  } catch (e) {
+    if (state.view === "journeys") {
+      document.getElementById("view").innerHTML = '<div class="card"><div class="empty">Could not load journeys. Try Refresh.</div></div>';
+    }
+  }
+}
+
 async function refresh() {
   try {
     await loadStats();
+    state.journeys = null; // range/bots may have changed — reload on demand
     if (state.view === "realtime") await loadRealtime();
     renderView();
   } catch (e) { /* keep current */ }
@@ -638,7 +800,15 @@ function wire() {
   });
   document.getElementById("view").addEventListener("click", (e) => {
     const m = e.target.closest("[data-m]");
-    if (m) { state.trendMetric = m.getAttribute("data-m"); renderView(); }
+    if (m) { state.trendMetric = m.getAttribute("data-m"); renderView(); return; }
+    const jt = e.target.closest("[data-jtoggle]");
+    if (jt) { jt.closest(".journey").classList.toggle("open"); return; }
+    const jf = e.target.closest("[data-jfilter]");
+    if (jf) {
+      state.journeyFilter = jf.getAttribute("data-jfilter");
+      document.getElementById("view").innerHTML = viewJourneys();
+      return;
+    }
   });
 }
 

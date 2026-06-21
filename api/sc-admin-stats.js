@@ -263,6 +263,170 @@ module.exports = async (req, res) => {
       );
     }
 
+    // ---- Journeys (per-visitor timelines) --------------------------------
+    // One "journey" = one cookieless visitor (vid) within the selected range.
+    // Because the visitor hash re-salts every UTC day, a journey is effectively
+    // a single visitor's activity on one day (no cross-day tracking — by design).
+    if (report === "journeys") {
+      const jDur = RANGES[url.searchParams.get("range")] || RANGES["7d"];
+      const jSince = now - jDur;
+      let jrows = await sbSelectEvents(new Date(jSince).toISOString(), 100000);
+      if (!includeBots) jrows = jrows.filter((r) => !(r.props && r.props.bot));
+      jrows = jrows.filter((r) => t(r) >= jSince);
+
+      const byVid = new Map();
+      for (const r of jrows) {
+        const v = vidOf(r);
+        if (!byVid.has(v)) byVid.set(v, []);
+        byVid.get(v).push(r);
+      }
+
+      const CONV = new Set([
+        "phone_click",
+        "email_click",
+        "whatsapp_click",
+        "form_submit",
+        "visualiser_start",
+        "visualiser_complete",
+        "cta_click",
+      ]);
+      const SESSION_GAP_S = SESSION_GAP / 1000;
+      const MAX_STEPS = 60;
+      const CAP = 300;
+
+      // Close out the current step, choosing the most accurate time-on-page:
+      // navigation delta to the next pageview within a session, otherwise the
+      // measured "engaged" duration (last page of a session / end of data).
+      function closeStep(cur, steps, nextTs, endedSession) {
+        let tp;
+        if (!endedSession && nextTs != null) tp = Math.round((nextTs - cur.startTs) / 1000);
+        else tp = Math.round((cur.engagedDur || 0) / 1000);
+        if (!Number.isFinite(tp) || tp < 0) tp = 0;
+        if (tp > SESSION_GAP_S) tp = SESSION_GAP_S; // guard against tab-left-open outliers
+        cur.timeOnPage = tp;
+        delete cur.startTs;
+        delete cur.engagedDur;
+        steps.push(cur);
+      }
+
+      const journeys = [];
+      for (const [vid, evs] of byVid.entries()) {
+        evs.sort((a, b) => t(a) - t(b));
+        const steps = [];
+        let cur = null;
+        let prevPvTs = null;
+        let sessionCount = 0;
+
+        for (const e of evs) {
+          const tt = t(e);
+          if (e.type === "pageview") {
+            const newSession = prevPvTs === null || tt - prevPvTs > SESSION_GAP;
+            if (newSession) sessionCount++;
+            if (cur) closeStep(cur, steps, tt, newSession);
+            cur = {
+              path: e.path || "/",
+              title: (e.props && e.props.title) || "",
+              ts: e.ts,
+              startTs: tt,
+              engagedDur: 0,
+              scroll: 0,
+              newSession,
+              actions: [],
+            };
+            prevPvTs = tt;
+          } else if (e.type === "event" && e.name === "engaged") {
+            if (cur) {
+              const d = durMs(e);
+              if (d > cur.engagedDur) cur.engagedDur = d;
+              const sc = (e.props && e.props.scroll) || 0;
+              if (sc > cur.scroll) cur.scroll = sc;
+            }
+          } else if (e.type === "event") {
+            const act = { name: e.name, ts: e.ts, props: e.props || {} };
+            if (cur) cur.actions.push(act);
+            else {
+              cur = {
+                path: e.path || "/",
+                title: "",
+                ts: e.ts,
+                startTs: tt,
+                engagedDur: 0,
+                scroll: 0,
+                newSession: true,
+                actions: [act],
+              };
+            }
+          }
+        }
+        if (cur) closeStep(cur, steps, null, true);
+
+        const pvCount = evs.filter((r) => r.type === "pageview").length;
+        const pv0 = evs.find((r) => r.type === "pageview") || evs[0] || {};
+        const allActions = steps.reduce((a, s) => a + s.actions.length, 0);
+        const converted = steps.some((s) => s.actions.some((a) => CONV.has(a.name)));
+        const totalTime = steps.reduce((a, s) => a + s.timeOnPage, 0);
+
+        journeys.push({
+          vid,
+          firstTs: evs[0].ts,
+          lastTs: evs[evs.length - 1].ts,
+          date: (evs[0].ts || "").slice(0, 10),
+          durationS: totalTime,
+          pages: pvCount,
+          sessions: sessionCount || (steps.length ? 1 : 0),
+          actionsCount: allActions,
+          converted,
+          entry: steps.length ? steps[0].path : pv0.path || "/",
+          exit: steps.length ? steps[steps.length - 1].path : "",
+          device: pv0.device || "",
+          browser: pv0.browser || "",
+          bv: (pv0.props && pv0.props.bv) || "",
+          os: pv0.os || "",
+          country: pv0.country || "",
+          region: (pv0.props && pv0.props.region) || "",
+          city: (pv0.props && pv0.props.city) || "",
+          channel: (pv0.props && pv0.props.channel) || "direct",
+          referrerHost: pv0.referrer_host || "",
+          utm: (pv0.props && pv0.props.utm) || null,
+          steps: steps.slice(0, MAX_STEPS),
+          stepsTruncated: steps.length > MAX_STEPS,
+        });
+      }
+
+      journeys.sort((a, b) => t({ ts: b.lastTs }) - t({ ts: a.lastTs }));
+
+      const summary = {
+        visitors: journeys.length,
+        converters: journeys.filter((j) => j.converted).length,
+        multiPage: journeys.filter((j) => j.pages >= 2).length,
+        avgPages: journeys.length
+          ? +(journeys.reduce((a, j) => a + j.pages, 0) / journeys.length).toFixed(1)
+          : 0,
+        avgDuration: journeys.length
+          ? Math.round(journeys.reduce((a, j) => a + j.durationS, 0) / journeys.length)
+          : 0,
+        totalActions: journeys.reduce((a, j) => a + j.actionsCount, 0),
+      };
+
+      return res.end(
+        JSON.stringify({
+          ok: true,
+          report: "journeys",
+          meta: {
+            range: url.searchParams.get("range") || "7d",
+            since: new Date(jSince).toISOString(),
+            until: new Date(now).toISOString(),
+            botsExcluded: !includeBots,
+            rowsScanned: jrows.length,
+            returned: Math.min(journeys.length, CAP),
+            generatedAt: new Date(now).toISOString(),
+          },
+          summary,
+          journeys: journeys.slice(0, CAP),
+        })
+      );
+    }
+
     // ---- Full bundle -----------------------------------------------------
     const dur = RANGES[url.searchParams.get("range")] || RANGES["7d"];
     const byHour = dur <= RANGES["24h"];
