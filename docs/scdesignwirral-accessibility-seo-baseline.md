@@ -64,9 +64,9 @@ the *Final Proposed Changes* brief: **verify, document, then change.**
 |---|---|---|
 | 1 | Nav `aria-controls` + keyboard dropdowns + `aria-current`; print styles | **Done** (this commit) |
 | 2 | Reconcile areas list; verify portfolio images; image dims/alt; Lighthouse CWV | Pending |
-| 3 | Protected-title sweep + "Are you architects?" FAQ; service-page structure check | Pending |
-| 4 | Trust-signal consistency; **review env var** (needs Matthew's Google review link) | Partly blocked |
-| 5 | `/contact/thank-you` noindex check; CTA-label consistency | Pending |
+| 3 | Protected-title sweep + "Are you architects?" FAQ; service-page structure check | **Done — verified clean** |
+| 4 | Trust-signal consistency; review env var | **Verified** (needs Matthew's review URL) |
+| 5 | `/contact/thank-you` noindex check; CTA-label consistency | **Done — verified clean** |
 | 6 | Cross-device + keyboard + schema + broken-link QA; release report | Pending |
 
 ## 4. Blocked on Matthew (will not guess or fabricate)
@@ -96,3 +96,20 @@ the *Final Proposed Changes* brief: **verify, document, then change.**
   can run PSI in-browser for live numbers; the structural CWV risk factors (lazy LCP image,
   missing image dims, render-blocking fonts/CSS, layout-shifting media) are all already
   mitigated in the code.
+- **2026-06-22 — Batch 3 (content quality):** verification clean, no changes. Protected-title
+  compliance is already exemplary — every standalone "architect" use is the deliberate
+  disclaimer/education context ("we are **not** registered architects"), an ARB reference, or
+  a legal-flag code comment; the **"Are you architects?" FAQ already exists** (`faqs.ts`), plus
+  an "architect vs architectural designer" FAQ and full guide. All **11** service pages
+  (`services.ts` is 1160 lines — Grep truncates it, so it was read directly) carry the full
+  recommended structure: *Who this is for* (`whoFor`), *What's included* (`included`), *What
+  may be separate* (`notIncluded`) and a *What to send Sean* next-step (`sendFirst` + CTAs);
+  services 7–11 use the generic `sections` field for the planning/building-regs prose.
+- **2026-06-22 — Batch 4/5 (trust + conversion):** verification clean, no changes.
+  `/contact/thank-you` is `noindex` with a 3-step "What happens next" + Call/WhatsApp;
+  CTA copy is centralised in `site.ts` (`Send Sean your idea` / `WhatsApp Sean` / `Call Sean`)
+  and reused; trust signals (Sean Corser MCIAT, company no. 11511225 + registered office,
+  design-only scope) are consistent. The Google-reviews path is already wired — set
+  **`NEXT_PUBLIC_GOOGLE_REVIEW_URL`** (and optionally `NEXT_PUBLIC_FEATURABLE_WIDGET_ID`) in
+  the **Cloudflare Pages** build env once the Google Business Profile is verified, then
+  redeploy; blank stays an honest "leave a review" fallback (never fake reviews/ratings).
