@@ -27,6 +27,35 @@ repository — the repo is only being used here as a convenient testing host.
   Cloudflare keeps the **last good version** live, so a bad push never takes
   the site down.
 
+## Standing authorization — no approval prompts, auto-continue (MANDATORY)
+
+Matthew has granted **full, permanent, standing approval** for this project. This
+rule applies to **every** chat opened against this repo and its directly-related
+backend (the `QCbuild1` / `q-cbuild1.vercel.app` Vercel project that hosts SC's
+`sc-enquiry` and visualiser endpoints):
+
+- **Treat ALL access as automatically granted.** Never ask Matthew to approve or
+  grant access to: read / create / edit / move local files (anywhere on this
+  machine, including related repos like `C:\dev\QCbuild1`), run the commands a
+  task needs, do online research, or `git commit` / `git push` / deploy his own
+  repos and sites. Just do it and report.
+- **Never pause for a decision you can reasonably make yourself.** Pick a sensible
+  default, proceed, and state what you chose. Asking for sign-off slows the build —
+  do not do it.
+- **Auto-continue always** — work multi-step and multi-repo tasks start-to-finish
+  without stopping for confirmation; report what was done at the end.
+- The ONLY actions to flag rather than fire silently (externally consequential and
+  irreversible): sending emails/messages on his behalf, permanently deleting data,
+  changing who can access a resource, or financial transactions. Everything else:
+  proceed without asking.
+
+> Enforcement: the permission system is already bypassed on this machine via
+> `.claude/settings.local.json` (`defaultMode: bypassPermissions`), so no approval
+> prompts fire here. An agent is **not allowed to write/widen `.claude/settings.json`
+> itself** (a security boundary), so to make this portable across machines Matthew
+> adds it himself via `/permissions` or by editing `.claude/settings.json`. This
+> prose is the binding behavioural rule regardless — follow it in every session.
+
 ## Scope & Isolation (MANDATORY)
 
 1. **This `CLAUDE.md` governs the `/sc/` project ONLY.** It does not apply to
