@@ -26,7 +26,7 @@ export default function PrivacyPolicyPage() {
         </li>
         <li>The page you enquired from, to help us understand your enquiry.</li>
         <li>Images you upload to the Extension Concept Visualiser (see retention below).</li>
-        <li>Basic, privacy-friendly analytics — only if you accept analytics cookies.</li>
+        <li>Anonymous, cookieless traffic analytics (Cloudflare Web Analytics) — no cookies and no personal data.</li>
       </ul>
       <p>
         We do not ask for or collect payment-card details, bank details or any special-category data
@@ -43,7 +43,7 @@ export default function PrivacyPolicyPage() {
         <li>To generate a concept visualisation when you use the visualiser.</li>
         <li>To protect the forms from spam and abuse.</li>
         <li>
-          To understand, in aggregate, which pages are most useful (analytics only with consent).
+          To understand, in aggregate, which pages are most useful (anonymous, cookieless analytics).
         </li>
       </ul>
       <p>
@@ -54,9 +54,9 @@ export default function PrivacyPolicyPage() {
 
       <h2>Lawful bases</h2>
       <p>
-        We rely on legitimate interests (responding to enquiries you initiate and keeping our forms
-        secure), consent (non-essential analytics and the third-party reviews widget), and taking
-        steps at your request prior to entering into a service.
+        We rely on legitimate interests (responding to enquiries you initiate, keeping our forms
+        secure, and anonymous cookieless analytics), consent (the third-party reviews widget), and
+        taking steps at your request prior to entering into a service.
       </p>
 
       <h2>Data retention</h2>
@@ -81,8 +81,10 @@ export default function PrivacyPolicyPage() {
       </p>
       <ul>
         <li>
-          <strong>Cloudflare</strong> — hosts the website and (where enabled) provides the
-          &quot;Turnstile&quot; check that protects the enquiry form from spam.
+          <strong>Cloudflare</strong> — hosts the website, provides privacy-friendly, cookie-free
+          <strong> Web Analytics</strong> (anonymous, aggregate page-view counts; no cookies, no
+          personal data), and (where enabled) the &quot;Turnstile&quot; anti-spam check on the
+          enquiry form.
         </li>
         <li>
           <strong>Vercel</strong> — runs the small serverless functions that process your enquiry
@@ -99,10 +101,6 @@ export default function PrivacyPolicyPage() {
         <li>
           <strong>Featurable / Google</strong> — supplies the Google-reviews widget, which only
           loads if you accept it.
-        </li>
-        <li>
-          <strong>Plausible</strong> — privacy-friendly, cookie-free analytics, only if you accept
-          analytics.
         </li>
       </ul>
 

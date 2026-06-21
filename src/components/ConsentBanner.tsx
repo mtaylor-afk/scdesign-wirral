@@ -17,8 +17,9 @@ export function ConsentBanner() {
       className="fixed inset-x-3 bottom-3 z-[100] mx-auto max-w-2xl rounded-lg border border-line bg-paper-card p-5 shadow-card-hover"
     >
       <p className="text-sm text-ink">
-        We use a small amount of privacy-friendly, cookieless analytics to understand which pages
-        help people most. Nothing non-essential loads until you choose. See our{" "}
+        We use Cloudflare Web Analytics — privacy-friendly, <strong>cookieless</strong> analytics
+        that counts page views anonymously (no cookies, no personal data, no cross-site tracking).
+        Accepting also turns on our Google reviews widget. See our{" "}
         <a href={withBase("/cookie-policy")} className="underline">
           Cookie Policy
         </a>
