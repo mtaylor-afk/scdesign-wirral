@@ -1,0 +1,10 @@
+# Caddy reverse proxy for self-hosted Plausible (auto Let's Encrypt HTTPS).
+# Copy into the cloned plausible/community-edition repo and run together with the
+# overlay: docker compose -f compose.yml -f compose.caddy.yml up -d
+# Requires: DNS A record analytics.scdesignwirral.co.uk -> server IP (grey-cloud
+# in Cloudflare so Let's Encrypt can validate) and ports 80 + 443 open.
+
+analytics.scdesignwirral.co.uk {
+	encode zstd gzip
+	reverse_proxy plausible:8000
+}

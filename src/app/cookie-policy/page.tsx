@@ -12,8 +12,10 @@ export default function CookiePolicyPage() {
   return (
     <LegalLayout title="Cookie Policy" updated="June 2026">
       <p>
-        We keep cookies and tracking to a minimum. Non-essential analytics only load after you
-        accept them in the consent banner.
+        We keep cookies and tracking to a minimum and use <strong>no cookies for analytics</strong>.
+        A privacy-friendly, cookieless analytics tool counts page views anonymously; some optional
+        extra detail and a third-party reviews widget only load after you accept in the consent
+        banner.
       </p>
 
       <h2>Essential</h2>
@@ -22,10 +24,15 @@ export default function CookiePolicyPage() {
         make the site work. These are always on because the site cannot function without them.
       </p>
 
-      <h2>Analytics (optional)</h2>
+      <h2>Analytics (cookieless)</h2>
       <p>
-        If you accept, we use privacy-friendly, cookieless analytics to understand which pages help
-        people most. We do not use advertising cookies and do not sell your data.
+        We use <strong>Plausible</strong>, a privacy-friendly analytics tool we host ourselves. It
+        sets <strong>no cookies</strong>, collects <strong>no personal data</strong>, and never
+        tracks you across other websites. Basic, anonymous, aggregate page-view counts run by default
+        so we can see which pages help people most. If you <strong>accept</strong> in the banner, we
+        additionally record aggregate detail about which links and features are used — still
+        anonymous, still cookieless. You can decline that extra detail at any time. We never use
+        advertising cookies or sell your data.
       </p>
 
       <h2>Google reviews widget (optional)</h2>
@@ -46,7 +53,8 @@ export default function CookiePolicyPage() {
       <p>
         You can change your decision at any time by clearing this site&apos;s storage in your
         browser, or by contacting us at <a href={`mailto:${site.email}`}>{site.email}</a>. Until you
-        accept, nothing non-essential is loaded.
+        accept, only the cookieless anonymous page-view count runs — the reviews widget and the extra
+        analytics detail stay off.
       </p>
     </LegalLayout>
   );

@@ -26,7 +26,7 @@ export default function PrivacyPolicyPage() {
         </li>
         <li>The page you enquired from, to help us understand your enquiry.</li>
         <li>Images you upload to the Extension Concept Visualiser (see retention below).</li>
-        <li>Basic, privacy-friendly analytics — only if you accept analytics cookies.</li>
+        <li>Basic, cookieless, anonymous analytics (page views) — with additional aggregate detail only if you accept in the consent banner.</li>
       </ul>
       <p>
         We do not ask for or collect payment-card details, bank details or any special-category data
@@ -43,7 +43,7 @@ export default function PrivacyPolicyPage() {
         <li>To generate a concept visualisation when you use the visualiser.</li>
         <li>To protect the forms from spam and abuse.</li>
         <li>
-          To understand, in aggregate, which pages are most useful (analytics only with consent).
+          To understand, in aggregate, which pages are most useful (anonymous cookieless analytics; additional detail only with consent).
         </li>
       </ul>
       <p>
@@ -54,9 +54,10 @@ export default function PrivacyPolicyPage() {
 
       <h2>Lawful bases</h2>
       <p>
-        We rely on legitimate interests (responding to enquiries you initiate and keeping our forms
-        secure), consent (non-essential analytics and the third-party reviews widget), and taking
-        steps at your request prior to entering into a service.
+        We rely on legitimate interests (responding to enquiries you initiate, keeping our forms
+        secure, and basic anonymous cookieless analytics), consent (the additional analytics detail
+        and the third-party reviews widget), and taking steps at your request prior to entering into
+        a service.
       </p>
 
       <h2>Data retention</h2>
@@ -101,8 +102,8 @@ export default function PrivacyPolicyPage() {
           loads if you accept it.
         </li>
         <li>
-          <strong>Plausible</strong> — privacy-friendly, cookie-free analytics, only if you accept
-          analytics.
+          <strong>Plausible</strong> — privacy-friendly, cookie-free analytics, self-hosted by us.
+          Basic anonymous page counts run by default; additional aggregate detail only if you accept.
         </li>
       </ul>
 

@@ -1,0 +1,26 @@
+# Caddy overlay for the official plausible/community-edition compose.
+# Adds an auto-HTTPS reverse proxy in front of the Plausible app on the same
+# Docker network (so `plausible:8000` resolves).
+#
+# Usage (from inside the cloned community-edition repo, with Caddyfile alongside):
+#   docker compose -f compose.yml -f compose.caddy.yml up -d
+#
+# Alternative to this overlay: Cloudflare Tunnel (no open ports) — see ./README.md.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - plausible
+
+volumes:
+  caddy-data:
+  caddy-config:
