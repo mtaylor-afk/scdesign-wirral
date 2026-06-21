@@ -429,25 +429,38 @@ async function sbSelectEnquiries(limit, offset) {
  */
 async function sbInsertError(row) {
   const url = `${sbBase()}/rest/v1/sc_errors`;
-  const body = JSON.stringify(row);
+  const current = Object.assign({}, row);
+  if (!current.props || typeof current.props !== "object") current.props = {};
   let lastStatus = 0;
   let lastError = "";
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt));
+  for (let attempt = 0; attempt < 8; attempt++) {
     try {
       const res = await fetch(url, {
         method: "POST",
         headers: sbHeaders({ Prefer: "return=minimal" }),
-        body,
+        body: JSON.stringify(current),
       });
       if (res.ok) return { ok: true, status: res.status };
       lastStatus = res.status;
       lastError = await res.text().catch(() => "");
-      // 4xx (other than 404 schema-cache) are permanent — don't waste retries.
+      // Self-heal: if the table is missing a column (e.g. it was created from an
+      // older schema), keep that value inside props and retry without it — so
+      // logging works regardless of the exact table shape, with no data lost.
+      const miss = /Could not find the '([^']+)' column/.exec(lastError);
+      if (miss && miss[1] && Object.prototype.hasOwnProperty.call(current, miss[1])) {
+        const col = miss[1];
+        if (col !== "props" && current[col] !== undefined && current[col] !== null) {
+          current.props[col] = current[col];
+        }
+        delete current[col];
+        continue; // retry immediately with the offending column removed
+      }
+      // Other 4xx are permanent — don't waste retries.
       if (res.status < 500 && res.status !== 404) break;
     } catch (e) {
       lastError = e && e.message ? e.message : String(e);
     }
+    await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
   }
   return { ok: false, status: lastStatus, error: lastError };
 }

@@ -172,8 +172,7 @@ module.exports = async (req, res) => {
     if (!result.ok) {
       console.error("sc-error-collect insert failed", result.status, result.error);
       res.statusCode = 502;
-      // TEMP DEBUG: surface the DB error to diagnose insert failures. Revert.
-      return res.end(JSON.stringify({ status: result.status, error: String(result.error).slice(0, 600) }));
+      return res.end();
     }
   } catch (err) {
     console.error("sc-error-collect error", err && err.message);

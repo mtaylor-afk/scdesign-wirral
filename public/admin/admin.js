@@ -706,6 +706,10 @@ function errExtras(p) {
     (k) => ERR_KNOWN_PROPS.indexOf(k) === -1 && p[k] !== null && p[k] !== undefined && p[k] !== ""
   );
 }
+// surface may live in a top-level column or (if that column is absent) in props.
+function rowSurface(r) {
+  return r.surface || (r.props && r.props.surface) || "";
+}
 
 function errorDetail(e, i) {
   const p = e.props || {};
@@ -721,7 +725,7 @@ function errorDetail(e, i) {
     errF("Message", e.message),
     errF("Type", ERR_TYPE_LABELS[e.type] || e.type),
     errF("Severity", e.severity || "error"),
-    errF("Surface", e.surface),
+    errF("Surface", rowSurface(e)),
     srcLine ? `<div class="errf"><dt>Source</dt><dd><code>${esc(srcLine)}</code></dd></div>` : "",
   ].join("");
   const stackHtml = e.stack ? `<pre class="errstack">${esc(e.stack)}</pre>` : "";
@@ -804,7 +808,7 @@ function errorDetail(e, i) {
 function errorRow(e, i) {
   const msg = e.message || (e.stack ? String(e.stack).split("\n")[0] : "(no message)");
   const where = [cap(e.device || ""), e.browser].filter(Boolean).join(" · ");
-  const surf = e.surface === "admin" ? `<span class="pill grey errtag">admin</span>` : "";
+  const surf = rowSurface(e) === "admin" ? `<span class="pill grey errtag">admin</span>` : "";
   const bot = e.is_bot ? `<span class="pill grey errtag">bot</span>` : "";
   return `<tr class="errrow" data-errtoggle="${i}">
       <td class="errdate">${esc(fmtDateTime(e.ts))}</td>
@@ -873,7 +877,7 @@ function formatErrorForClipboard(e) {
   L.push(
     "Type:      " + (ERR_TYPE_LABELS[e.type] || e.type) +
       "   Severity: " + (e.severity || "error") +
-      "   Surface: " + (e.surface || "public")
+      "   Surface: " + (rowSurface(e) || "public")
   );
   L.push("Message:   " + (e.message || ""));
   L.push("");
