@@ -56,6 +56,35 @@ backend (the `QCbuild1` / `q-cbuild1.vercel.app` Vercel project that hosts SC's
 > adds it himself via `/permissions` or by editing `.claude/settings.json`. This
 > prose is the binding behavioural rule regardless — follow it in every session.
 
+## Recent changes — lead capture, backup email, favicon (June 2026)
+
+Logged for future sessions. Commits on `main` unless noted:
+
+- **Low-friction lead capture, site-wide** (`fda05e3`) — "capture first, qualify
+  second". Single-page contact form (required: name + phone-OR-email + consent;
+  optional: project type/postcode/message; submit "Send enquiry to Sean"); two-tier
+  "What to send Sean" (minimum vs helpful extras) on service/guide pages; softened
+  CTAs (central `cta.primary.label` = "Send Sean your idea"); cost-estimate handoff
+  (still ungated) that carries `calculator_*` context to `/contact`; server-side
+  visualiser concept handoff with required consent.
+- **Enquiry endpoint relaxed** — `QCbuild1/api/sc-enquiry.js` (`c8c7dd1`, branch
+  `claude/quote-builder-wv-construction-dwtaw` — separate repo) now accepts
+  name + (phone OR email) + consent; phone/postcode optional.
+- **Server-side backup email** (`e2fb46f`) — `api/sc-enquiry-backup.js` now emails
+  Sean via `serverlib/icloud-mailer.js` (nodemailer/iCloud SMTP — the TailoredQuote
+  framework) to gmail+icloud (Reply-To = enquirer) after the SQL insert. Forms
+  count a submit as successful if the primary endpoint **or** the backup email
+  succeeds; `mailto:` only as a true last resort (To + CC, not a comma-joined To).
+  **Action: set `SMTP_USER`/`SMTP_PASS` (+ optional `SC_MAIL_FROM`/
+  `SC_LEAD_RECIPIENTS`) in the scdesign-wirral Vercel project** (see `.env.example`).
+  Without them, SQL capture + the external endpoint still work; only the extra
+  backup email is skipped.
+- **Correct-logo favicon** (`13b7c83`) — `public/favicon.ico` (7 sizes) +
+  `public/apple-touch-icon.png` (180×180), wired via `metadata.icons` in
+  `layout.tsx` to emit `<link rel="icon" href="/favicon.ico" sizes="any">` and
+  `<link rel="apple-touch-icon" href="/apple-touch-icon.png">`. Removed the old
+  placeholder `app/icon.svg` (browsers preferred the SVG over the `.ico`).
+
 ## Scope & Isolation (MANDATORY)
 
 1. **This `CLAUDE.md` governs the `/sc/` project ONLY.** It does not apply to
