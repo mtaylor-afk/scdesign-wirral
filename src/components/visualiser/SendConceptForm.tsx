@@ -108,9 +108,12 @@ export function SendConceptForm({
   function mailtoFallback(p: ReturnType<typeof buildPayload>) {
     const body =
       `Name: ${p.name}\nEmail: ${p.email}\nPhone: ${p.phone}\nPostcode: ${p.postcode}\n\n${p.message}`;
-    window.location.href = `mailto:${site.formRecipients.join(",")}?subject=${encodeURIComponent(
-      "My extension concept"
-    )}&body=${encodeURIComponent(body)}`;
+    const [to, ...cc] = site.formRecipients;
+    const ccPart = cc.length ? `cc=${encodeURIComponent(cc.join(","))}&` : "";
+    window.location.href =
+      `mailto:${to}?${ccPart}subject=${encodeURIComponent(
+        "My extension concept"
+      )}&body=${encodeURIComponent(body)}`;
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -144,9 +147,15 @@ export function SendConceptForm({
 
     setStatus("submitting");
 
-    // Fire-and-forget durable backup (independent of the email send below).
-    backupEnquiry("visualiser_concept", { ...payload, resultId, resultUrl });
+    // Durable backup: SQL + server-side email to Sean (both addresses). Awaited
+    // only if the primary endpoint doesn't succeed.
+    const backupPromise = backupEnquiry("visualiser_concept", {
+      ...payload,
+      resultId,
+      resultUrl,
+    });
 
+    let primaryOk = false;
     try {
       const res = await fetch(ENQUIRY_ENDPOINT, {
         method: "POST",
@@ -154,15 +163,34 @@ export function SendConceptForm({
         body: JSON.stringify(payload),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.ok) throw new Error(json.error || "send_failed");
+      primaryOk = !!(res.ok && json.ok);
+    } catch {
+      /* fall through to backup */
+    }
+
+    if (primaryOk) {
       track("visualiser_handoff_submitted", { mode: "online" });
       setStatus("success");
-    } catch {
-      // Never lose a lead.
-      track("visualiser_handoff_submitted", { mode: "mailto_fallback" });
-      mailtoFallback(payload);
-      setStatus("success");
+      return;
     }
+
+    let backup = { stored: false, emailed: false };
+    try {
+      backup = await backupPromise;
+    } catch {
+      /* keep defaults */
+    }
+
+    if (backup.emailed) {
+      track("visualiser_handoff_submitted", { mode: "backup_email" });
+      setStatus("success");
+      return;
+    }
+
+    // Last resort only (both server paths failed).
+    track("visualiser_handoff_submitted", { mode: "mailto_fallback" });
+    mailtoFallback(payload);
+    setStatus("success");
   }
 
   if (status === "success") {

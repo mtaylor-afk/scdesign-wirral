@@ -183,9 +183,15 @@ export function EnquiryForm() {
     const body =
       `Name: ${p.name}\nPhone: ${p.phone}\nEmail: ${p.email}\nPostcode: ${p.postcode}\n` +
       `Project: ${p.projectType}\n\n${p.message}`;
-    window.location.href = `mailto:${site.formRecipients.join(",")}?subject=${encodeURIComponent(
-      "Website enquiry — " + (p.projectType || "project")
-    )}&body=${encodeURIComponent(body)}`;
+    // Address the first recipient in To and the rest as CC, so mail clients show
+    // them as distinct addresses (a single comma-joined To string is mishandled
+    // by some clients).
+    const [to, ...cc] = site.formRecipients;
+    const ccPart = cc.length ? `cc=${encodeURIComponent(cc.join(","))}&` : "";
+    window.location.href =
+      `mailto:${to}?${ccPart}subject=${encodeURIComponent(
+        "Website enquiry — " + (p.projectType || "project")
+      )}&body=${encodeURIComponent(body)}`;
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -215,9 +221,13 @@ export function EnquiryForm() {
     setStatus("submitting");
     track("contact_form_submitted", { project_type: payload.projectType || "unspecified" });
 
-    // Fire-and-forget database backup (safety net; does not affect the email send).
-    backupEnquiry("contact", payload);
+    // Durable backup: stores in SQL AND emails Sean server-side (both addresses,
+    // Reply-To = enquirer). Started now; only awaited if the primary endpoint
+    // doesn't succeed, so the happy path stays fast.
+    const backupPromise = backupEnquiry("contact", payload);
 
+    // Primary path: the external endpoint (also sends the enquirer an auto-ack).
+    let primaryOk = false;
     try {
       const res = await fetch(ENQUIRY_ENDPOINT, {
         method: "POST",
@@ -225,16 +235,37 @@ export function EnquiryForm() {
         body: JSON.stringify(payload),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.ok) throw new Error(json.error || "send_failed");
+      primaryOk = !!(res.ok && json.ok);
+    } catch {
+      /* fall through to the backup result */
+    }
+
+    if (primaryOk) {
       track("contact_form_success", { mode: "online" });
       formRef.current?.reset();
       router.push("/contact/thank-you");
-    } catch {
-      // Never lose a lead: fall back to a pre-filled email.
-      track("contact_form_success", { mode: "mailto_fallback" });
-      mailtoFallback(payload);
-      setStatus("success-mailto");
+      return;
     }
+
+    // Primary failed → rely on the server-side backup email (no local mail app).
+    let backup = { stored: false, emailed: false };
+    try {
+      backup = await backupPromise;
+    } catch {
+      /* keep defaults */
+    }
+
+    if (backup.emailed) {
+      track("contact_form_success", { mode: "backup_email" });
+      formRef.current?.reset();
+      router.push("/contact/thank-you");
+      return;
+    }
+
+    // Last resort only (both server paths failed): pre-filled email to Sean.
+    track("contact_form_success", { mode: "mailto_fallback" });
+    mailtoFallback(payload);
+    setStatus("success-mailto");
   }
 
   if (status === "success-mailto") {

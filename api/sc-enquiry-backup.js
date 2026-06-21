@@ -23,6 +23,96 @@ const {
   hostOf,
   sbInsertEnquiry,
 } = require("../serverlib/common");
+const mailer = require("../serverlib/icloud-mailer");
+
+// SC enquiry notifications go to BOTH of Sean's addresses (the existing pair —
+// the same two used by the site's mailto fallback). Overridable via
+// SC_LEAD_RECIPIENTS (comma-separated) without code changes.
+const SC_RECIPIENTS = (
+  process.env.SC_LEAD_RECIPIENTS ||
+  "scdesignandconstruction1@gmail.com,matthewjtaylor1985@icloud.com"
+)
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** Build + send Sean's notification email for one enquiry row. Best-effort. */
+async function notifySean(row) {
+  if (!mailer.isConfigured()) {
+    return { emailed: false, emailError: "smtp_not_configured" };
+  }
+  const formLabel =
+    row.form === "visualiser_concept"
+      ? "visualiser enquiry"
+      : row.form === "cost_estimate"
+        ? "cost estimate enquiry"
+        : "enquiry";
+  const name = row.name || "someone";
+  const subject = `New SC Design Wirral ${formLabel} from ${name}`;
+  const replyValid = EMAIL_RE.test(row.email || "");
+
+  const fieldRows = [
+    ["Name", row.name],
+    ["Email", row.email],
+    ["Phone", row.phone],
+    ["Postcode", row.postcode],
+    ["Project type", row.project_type],
+    ["Source", row.form],
+    ["Page", row.page],
+    ["Location", [row.city, row.region, row.country].filter(Boolean).join(", ")],
+  ].filter((r) => r[1]);
+
+  const tableHtml =
+    '<table style="border-collapse:collapse;font-size:14px">' +
+    fieldRows
+      .map(
+        (r) =>
+          `<tr><td style="padding:4px 16px 4px 0;color:#645f58;vertical-align:top;white-space:nowrap">${esc(
+            r[0]
+          )}</td><td style="padding:4px 0;color:#211e1b">${esc(r[1])}</td></tr>`
+      )
+      .join("") +
+    "</table>";
+  const messageHtml = row.message ? esc(row.message).replace(/\n/g, "<br>") : "(no message)";
+  const html =
+    '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#211e1b;line-height:1.5">' +
+    `<h2 style="margin:0 0 4px">New website ${esc(formLabel)}</h2>` +
+    `<p style="margin:0 0 14px;color:#645f58;font-size:13px">via scdesignwirral.co.uk${
+      replyValid ? ` — reply to this email to respond to ${esc(name)} directly.` : "."
+    }</p>` +
+    tableHtml +
+    '<h3 style="margin:18px 0 6px">Their message</h3>' +
+    `<div style="background:#f5efe5;padding:14px 16px;border-radius:10px;font-size:14px">${messageHtml}</div>` +
+    "</div>";
+  const text =
+    `New website ${formLabel} (scdesignwirral.co.uk)\n\n` +
+    fieldRows.map((r) => `${r[0]}: ${r[1]}`).join("\n") +
+    `\n\nMessage:\n${row.message || "(no message)"}`;
+
+  try {
+    await mailer.send({
+      to: SC_RECIPIENTS,
+      replyTo: replyValid ? row.email : undefined,
+      subject,
+      html,
+      text,
+    });
+    return { emailed: true, emailError: null };
+  } catch (err) {
+    const emailError = (err && err.message) || "send_failed";
+    console.error("sc-enquiry-backup email failed:", emailError);
+    return { emailed: false, emailError };
+  }
+}
 
 function str(v, max) {
   if (v === undefined || v === null) return "";
@@ -134,19 +224,24 @@ module.exports = async (req, res) => {
     },
   };
 
+  let stored = false;
   try {
     const result = await sbInsertEnquiry(row);
+    stored = !!result.ok;
     if (!result.ok) {
       console.error("sc-enquiry-backup insert failed", result.status, result.error);
-      res.statusCode = 502;
-      return res.end();
     }
   } catch (err) {
     console.error("sc-enquiry-backup error", err && err.message);
-    res.statusCode = 502;
-    return res.end();
   }
 
-  res.statusCode = 204;
-  return res.end();
+  // Server-side notification email to Sean (both addresses), independent of the
+  // external q-cbuild1 enquiry endpoint. Best-effort — never throws.
+  const { emailed, emailError } = await notifySean(row);
+
+  // ok if the lead was captured by EITHER durable path (SQL row or email).
+  const ok = stored || emailed;
+  res.statusCode = ok ? 200 : 502;
+  res.setHeader("Content-Type", "application/json");
+  return res.end(JSON.stringify({ ok, stored, emailed, emailError }));
 };
