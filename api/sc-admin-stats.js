@@ -8,7 +8,7 @@
  * last-30-minutes view.
  */
 
-const { applyCors, requireSession, sbSelectEvents } = require("./_lib/common");
+const { applyCors, requireSession, sbSelectEvents } = require("../serverlib/common");
 
 const RANGES = {
   "24h": 24 * 60 * 60 * 1000,

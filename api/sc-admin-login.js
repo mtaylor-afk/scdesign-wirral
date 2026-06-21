@@ -17,7 +17,7 @@ const {
   createSession,
   sessionCookie,
   clientIp,
-} = require("./_lib/common");
+} = require("../serverlib/common");
 
 const crypto = require("node:crypto");
 

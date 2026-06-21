@@ -18,7 +18,7 @@ const {
   classifyChannel,
   hostOf,
   sbInsert,
-} = require("./_lib/common");
+} = require("../serverlib/common");
 
 function str(v, max) {
   if (v === undefined || v === null) return "";

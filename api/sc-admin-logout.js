@@ -2,7 +2,7 @@
  * SC Design Wirral — admin logout. Clears the session cookie.
  */
 
-const { applyCors, clearCookie } = require("./_lib/common");
+const { applyCors, clearCookie } = require("../serverlib/common");
 
 module.exports = async (req, res) => {
   if (applyCors(req, res)) return;

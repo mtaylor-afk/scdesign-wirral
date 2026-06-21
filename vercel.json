@@ -1,6 +1,8 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "api/sc-*.js", "use": "@vercel/node" }
-  ]
+  "framework": null,
+  "buildCommand": "echo no build step needed",
+  "outputDirectory": "public",
+  "functions": {
+    "api/*.js": { "maxDuration": 30 }
+  }
 }
