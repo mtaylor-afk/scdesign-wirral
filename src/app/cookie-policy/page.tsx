@@ -13,8 +13,9 @@ export default function CookiePolicyPage() {
     <LegalLayout title="Cookie Policy" updated="June 2026">
       <p>
         We keep cookies and tracking to a minimum and use <strong>no cookies for analytics</strong>.
-        We measure traffic with Cloudflare Web Analytics, a privacy-first, cookieless service; a
-        third-party reviews widget only loads after you accept in the consent banner.
+        We measure traffic with two privacy-first, cookieless tools — Cloudflare Web Analytics and
+        our own first-party analytics; a third-party reviews widget only loads after you accept in
+        the consent banner.
       </p>
 
       <h2>Essential</h2>
@@ -25,10 +26,12 @@ export default function CookiePolicyPage() {
 
       <h2>Analytics (cookieless)</h2>
       <p>
-        We use <strong>Cloudflare Web Analytics</strong> to understand which pages help people most.
-        It is <strong>cookieless</strong>, collects <strong>no personal data</strong> and does not
-        track you across other websites — so it runs anonymously and in aggregate without needing
-        consent. We do not use advertising cookies and do not sell your data.
+        We use <strong>Cloudflare Web Analytics</strong> and our own <strong>first-party
+        analytics</strong> to understand which pages help people most. Both are{" "}
+        <strong>cookieless</strong>, store <strong>no IP addresses</strong> and collect{" "}
+        <strong>no personal data</strong>, and neither tracks you across other websites — so they run
+        anonymously and in aggregate without needing consent. We do not use advertising cookies and
+        do not sell your data.
       </p>
 
       <h2>Google reviews widget (optional)</h2>

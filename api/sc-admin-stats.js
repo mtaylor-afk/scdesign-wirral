@@ -85,7 +85,8 @@ function sessionDurationS(s) {
 
 function coreMetrics(rows) {
   const pv = rows.filter((r) => r.type === "pageview");
-  const ev = rows.filter((r) => r.type === "event");
+  // "engaged" is an internal time-on-page beacon, not a real user event.
+  const ev = rows.filter((r) => r.type === "event" && r.name !== "engaged");
   const sessions = buildSessions(pv);
   const bounces = sessions.filter((s) => s.pages === 1).length;
   const totalDur = sessions.reduce((a, s) => a + sessionDurationS(s), 0);
@@ -148,25 +149,36 @@ function hourHist(pageviews) {
   return hours;
 }
 
-function pageStats(pageviews, sessions) {
+function pageStats(pageviews, engaged) {
+  // Per-page average time comes from the "engaged" beacons (ms), keyed by path.
+  const durByPath = new Map();
+  for (const e of engaged) {
+    const p = e.path || "/";
+    const d = durMs(e);
+    if (d > 0) {
+      if (!durByPath.has(p)) durByPath.set(p, []);
+      durByPath.get(p).push(d);
+    }
+  }
   const map = new Map();
   for (const r of pageviews) {
     const p = r.path || "/";
-    if (!map.has(p)) map.set(p, { path: p, views: 0, vids: new Set(), durs: [] });
+    if (!map.has(p)) map.set(p, { path: p, views: 0, vids: new Set() });
     const m = map.get(p);
     m.views += 1;
     m.vids.add(vidOf(r));
-    const d = durMs(r);
-    if (d > 0) m.durs.push(d);
   }
-  const arr = [...map.values()].map((m) => ({
-    path: m.path,
-    views: m.views,
-    visitors: m.vids.size,
-    avgTime: m.durs.length
-      ? Math.round(m.durs.reduce((a, b) => a + b, 0) / m.durs.length / 1000)
-      : 0,
-  }));
+  const arr = [...map.values()].map((m) => {
+    const durs = durByPath.get(m.path) || [];
+    return {
+      path: m.path,
+      views: m.views,
+      visitors: m.vids.size,
+      avgTime: durs.length
+        ? Math.round(durs.reduce((a, b) => a + b, 0) / durs.length / 1000)
+        : 0,
+    };
+  });
   arr.sort((a, b) => b.views - a.views);
   return arr.slice(0, 50);
 }
@@ -265,6 +277,8 @@ module.exports = async (req, res) => {
 
     const curPv = cur.filter((r) => r.type === "pageview");
     const curEv = cur.filter((r) => r.type === "event");
+    const engagedEv = curEv.filter((r) => r.name === "engaged");
+    const realEv = curEv.filter((r) => r.name !== "engaged");
     const sessions = buildSessions(curPv);
 
     const metrics = coreMetrics(cur);
@@ -283,10 +297,10 @@ module.exports = async (req, res) => {
       .sort((a, b) => b.count - a.count)
       .slice(0, 30);
 
-    // Events by name + by page
-    const eventsByName = countBy(curEv, (r) => r.name, 50);
+    // Events by name + by page (excludes the internal "engaged" beacon)
+    const eventsByName = countBy(realEv, (r) => r.name, 50);
     const eventByPage = {};
-    for (const e of curEv) {
+    for (const e of realEv) {
       (eventByPage[e.name] = eventByPage[e.name] || {});
       const p = e.path || "/";
       eventByPage[e.name][p] = (eventByPage[e.name][p] || 0) + 1;
@@ -315,7 +329,7 @@ module.exports = async (req, res) => {
         dayOfWeek: dayOfWeekHist(curPv),
         hourOfDay: hourHist(curPv),
       },
-      pages: pageStats(curPv, sessions),
+      pages: pageStats(curPv, engagedEv),
       entryPages: countBy(sessions, (s) => s.entry, 25),
       exitPages: countBy(sessions, (s) => s.exit, 25),
       sources: {
@@ -338,12 +352,12 @@ module.exports = async (req, res) => {
       },
       engagement: {
         timeOnPage: bucketDist(
-          curPv.map(durMs).filter((d) => d > 0).map((d) => d / 1000),
+          engagedEv.map(durMs).filter((d) => d > 0).map((d) => d / 1000),
           [10, 30, 60, 180],
           ["0–10s", "10–30s", "30–60s", "1–3m", "3m+"]
         ),
         scrollDepth: bucketDist(
-          curPv
+          engagedEv
             .map((r) => (r.props && r.props.scroll) || 0)
             .filter((s) => s > 0),
           [25, 50, 75],

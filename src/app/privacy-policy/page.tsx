@@ -26,7 +26,11 @@ export default function PrivacyPolicyPage() {
         </li>
         <li>The page you enquired from, to help us understand your enquiry.</li>
         <li>Images you upload to the Extension Concept Visualiser (see retention below).</li>
-        <li>Anonymous, cookieless traffic analytics (Cloudflare Web Analytics) — no cookies and no personal data.</li>
+        <li>
+          Anonymous, cookieless traffic analytics — Cloudflare Web Analytics and our own
+          first-party analytics. No cookies, no stored IP addresses and no personal data; used only
+          to understand site usage in aggregate.
+        </li>
       </ul>
       <p>
         We do not ask for or collect payment-card details, bank details or any special-category data
@@ -87,8 +91,12 @@ export default function PrivacyPolicyPage() {
           enquiry form.
         </li>
         <li>
-          <strong>Vercel</strong> — runs the small serverless functions that process your enquiry
-          and the visualiser.
+          <strong>Vercel</strong> — runs the small serverless functions that process your enquiry,
+          the visualiser, and our first-party, cookieless website analytics.
+        </li>
+        <li>
+          <strong>Supabase</strong> — stores our anonymous, cookieless analytics events (page views
+          and on-site actions). No cookies, no IP addresses and no personal data are stored.
         </li>
         <li>
           <strong>Apple (iCloud Mail)</strong> — delivers the enquiry email to us and the

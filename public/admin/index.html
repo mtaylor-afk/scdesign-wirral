@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>SC Design Wirral — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./admin.css" />
+</head>
+<body>
+  <!-- Login screen -->
+  <div id="login">
+    <form class="login-card" id="loginForm" autocomplete="off">
+      <div class="brand">SC Design <span>Wirral</span></div>
+      <div class="sub">Admin &amp; analytics portal</div>
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required />
+      </div>
+      <button class="btn btn-block" type="submit" id="loginBtn">Sign in</button>
+      <div class="login-err" id="loginErr"></div>
+      <div class="login-foot">Authorised access only · cookieless, privacy-first analytics</div>
+    </form>
+  </div>
+
+  <!-- App shell -->
+  <div id="app" class="hidden">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Menu">☰</button>
+        <div>
+          <h1 id="pageTitle">Overview</h1>
+          <div class="meta" id="pageMeta"></div>
+        </div>
+        <div class="controls">
+          <div class="seg" id="rangeSeg"></div>
+          <label class="toggle"><input type="checkbox" id="botsToggle" /> Show bots</label>
+          <button class="btn-ghost btn" id="refreshBtn" style="padding:6px 12px;">Refresh</button>
+        </div>
+      </div>
+      <div class="content" id="view">
+        <div class="loader">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./admin.js" defer></script>
+</body>
+</html>

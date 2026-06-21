@@ -23,7 +23,7 @@ const ALLOWED_BOTS = [
 ];
 
 export default function robots(): MetadataRoute.Robots {
-  const disallow = ["/api/", "/components-preview"];
+  const disallow = ["/api/", "/admin/", "/admin", "/components-preview"];
   return {
     rules: [
       { userAgent: "*", allow: "/", disallow },
