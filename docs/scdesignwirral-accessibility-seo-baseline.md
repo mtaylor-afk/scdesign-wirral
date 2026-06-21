@@ -84,3 +84,15 @@ the *Final Proposed Changes* brief: **verify, document, then change.**
   `globals.css` — `@media print { .no-print { display:none } }`; applied `no-print` to the
   sticky header, `MobileCtaBar`, and `ConsentBanner`. `MobileCtaBar.tsx` — explicit
   `aria-label`s (Call Sean / Message Sean on WhatsApp / Send Sean your project idea).
+- **2026-06-22 — Batch 2 (technical SEO):** verification came back clean — `areasServed`
+  (20 towns + "Wirral") already maps 1:1 to the 20 area-page slugs (the "21 vs 22" was a
+  miscount); all 7 project `/portfolio/*` images and the `/examples/*` refs exist on disk
+  (no broken paths; the `househront` filename typo is consistent in code + disk so it
+  resolves); every static/crawlable image already has explicit `width`/`height` + meaningful
+  `alt`, and the runtime visualiser images use `aspect-[3/2]` to reserve space (no CLS).
+  **One fix:** `BeforeAfterSlider.tsx` now sets `fetchPriority="high"` on the hero (priority)
+  images for a faster LCP. **CWV note:** PageSpeed Insights' anonymous API was rate-limited
+  (429) and a reliable local Lighthouse run wasn't available in this environment — Matthew
+  can run PSI in-browser for live numbers; the structural CWV risk factors (lazy LCP image,
+  missing image dims, render-blocking fonts/CSS, layout-shifting media) are all already
+  mitigated in the code.
