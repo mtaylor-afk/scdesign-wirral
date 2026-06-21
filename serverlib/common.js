@@ -421,19 +421,35 @@ async function sbSelectEnquiries(limit, offset) {
   return { rows, total };
 }
 
-/** Insert one row into sc_errors (the client error log). Returns {ok, status, error}. */
+/**
+ * Insert one row into sc_errors (the client error log + admin login audit).
+ * Retries transient failures (cold Supabase compute / schema-cache reload) with
+ * a short backoff so a low-traffic error or login row isn't silently dropped on
+ * the first hit. Returns {ok, status, error}.
+ */
 async function sbInsertError(row) {
   const url = `${sbBase()}/rest/v1/sc_errors`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: sbHeaders({ Prefer: "return=minimal" }),
-    body: JSON.stringify(row),
-  });
-  if (!res.ok) {
-    const error = await res.text().catch(() => "");
-    return { ok: false, status: res.status, error };
+  const body = JSON.stringify(row);
+  let lastStatus = 0;
+  let lastError = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt));
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: sbHeaders({ Prefer: "return=minimal" }),
+        body,
+      });
+      if (res.ok) return { ok: true, status: res.status };
+      lastStatus = res.status;
+      lastError = await res.text().catch(() => "");
+      // 4xx (other than 404 schema-cache) are permanent — don't waste retries.
+      if (res.status < 500 && res.status !== 404) break;
+    } catch (e) {
+      lastError = e && e.message ? e.message : String(e);
+    }
   }
-  return { ok: true, status: res.status };
+  return { ok: false, status: lastStatus, error: lastError };
 }
 
 // Restrict by row "kind". Admin login attempts share the sc_errors table but use
