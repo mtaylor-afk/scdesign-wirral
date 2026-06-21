@@ -33,9 +33,10 @@ export default function ContactPage() {
           />
           <h1 className="text-balance text-4xl sm:text-5xl">Send Sean your project idea</h1>
           <p className="mt-5 text-pretty text-lg text-muted">
-            Tell us what you&apos;re hoping to do, where the property is and what stage you&apos;re
-            at. A few photos and a short description are enough for an honest first view — with no
-            obligation. We design only; we don&apos;t carry out the building work.
+            Minimum needed: your name and one way to contact you. Project details are optional — a
+            postcode, a few photos or a short description help if you have them, but you don&apos;t
+            need anything prepared to start. No obligation; we design only and don&apos;t carry out
+            the building work.
           </p>
         </Container>
       </Section>

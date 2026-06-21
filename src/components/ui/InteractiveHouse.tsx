@@ -9,7 +9,7 @@ import {
   type HouseView,
 } from "@/lib/houseFeatures";
 import { getService } from "@/lib/services";
-import { cta } from "@/lib/site";
+import { whatsappLink, defaultWhatsAppMessage } from "@/lib/site";
 
 /* ---- Simple, friendly flat-illustration houses (front + rear) ---- */
 function HouseFront() {
@@ -183,16 +183,28 @@ export function InteractiveHouse() {
             </div>
             <div className="mt-5 rounded-[var(--radius)] border border-accent-soft bg-accent-soft/40 p-4">
               <p className="text-sm text-ink-soft">
-                Not sure how this applies to your home? Send your postcode and a few photos for an
-                honest first view — with no obligation.
+                Not sure how this applies to your home? Send Sean your name and one way to contact you
+                for an honest first view — with no obligation. A postcode and photos help if you have
+                them, but aren&apos;t required to start.
               </p>
-              <Link
-                href={cta.primary.href}
-                data-conversion="guide-cta"
-                className="mt-3 inline-flex h-10 items-center rounded-full bg-accent-strong px-5 text-sm font-medium text-white hover:bg-accent-deep"
-              >
-                {cta.primary.label}
-              </Link>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <Link
+                  href="/contact?source_type=guide&source_page=/homeowners-guide"
+                  data-conversion="guide-cta"
+                  className="inline-flex h-10 items-center rounded-full bg-accent-strong px-5 text-sm font-medium text-white hover:bg-accent-deep"
+                >
+                  Ask Sean for an honest first view
+                </Link>
+                <a
+                  href={whatsappLink(defaultWhatsAppMessage)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-conversion="whatsapp-click"
+                  className="inline-flex h-10 items-center rounded-full border border-line bg-white px-5 text-sm font-medium text-ink hover:bg-paper-card"
+                >
+                  WhatsApp Sean
+                </a>
+              </div>
             </div>
             <p className="mt-4 text-xs text-muted">
               General guidance for England only — rules vary by property and differ in Wales. Always

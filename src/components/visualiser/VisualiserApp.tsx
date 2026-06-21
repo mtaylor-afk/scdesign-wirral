@@ -297,14 +297,23 @@ export function VisualiserApp() {
           </div>
 
           <Card>
-            <h3 className="text-xl">Like it? Send it to Sean</h3>
+            <h3 className="text-xl">Want Sean&apos;s honest first view?</h3>
             <p className="mt-1 text-sm text-muted">
-              We&apos;ll take a look and come back to you about turning the idea into a real design.
+              Send this concept to Sean with a short note — this is optional, and you can also just
+              keep the concept. Nothing is sent to Sean until you choose to here.
             </p>
             <div className="mt-4">
               <SendConceptForm
                 resultId={result.id}
                 resultUrl={result.url.startsWith("data:") ? "" : result.url}
+                email={opts.email}
+                phone={opts.phone}
+                projectType={
+                  PROJECT_TYPES.find((p) => p.value === opts.projectType)?.label ?? opts.projectType
+                }
+                storeys={STOREYS.find((s) => s.value === opts.storeys)?.label ?? opts.storeys}
+                style={STYLES.find((s) => s.value === opts.style)?.label ?? opts.style}
+                notes={opts.notes}
               />
             </div>
           </Card>
@@ -489,6 +498,11 @@ export function VisualiserApp() {
           </div>
 
           <div className="space-y-4">
+            <p className="rounded-md bg-accent-soft/40 px-3 py-2 text-xs text-ink-soft">
+              Generate a concept first — you only need a clear photo and an email address for the
+              result. If you like the idea, you can choose to send it to Sean afterwards. This isn&apos;t
+              a formal project enquiry.
+            </p>
             <Field label="Project type" htmlFor="v-project">
               <Select
                 id="v-project"
@@ -529,8 +543,9 @@ export function VisualiserApp() {
               </Select>
             </Field>
             <Field
-              label="Give me more detail of what you want"
+              label="Tell us anything specific you want to see"
               htmlFor="v-notes"
+              optional
               hint="e.g. bi-fold doors onto the garden, matching brick"
             >
               <Textarea
@@ -559,7 +574,12 @@ export function VisualiserApp() {
                 onChange={(e) => setOpts({ ...opts, email: e.target.value })}
               />
             </Field>
-            <Field label="Telephone (optional)" htmlFor="v-phone">
+            <Field
+              label="Phone / WhatsApp number"
+              htmlFor="v-phone"
+              optional
+              hint="Only add this if you're happy for Sean to follow up by phone or WhatsApp."
+            >
               <Input
                 id="v-phone"
                 type="tel"

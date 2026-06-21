@@ -99,7 +99,8 @@ export default function HomeownersGuidePage() {
           <p className="mt-4 rounded-[var(--radius)] border border-accent-soft bg-accent-soft/40 p-4 text-sm text-ink-soft">
             <strong className="text-ink">Cover Wales too?</strong> We design for homes across North
             Wales as well — permitted-development rules differ there, so the guidance above is for
-            England. Send us your address and we&apos;ll confirm the right route for your property.
+            England. Get in touch and we&apos;ll confirm the right route for your property — a
+            postcode helps, but isn&apos;t required to start.
           </p>
         </Container>
       </Section>
@@ -122,7 +123,9 @@ export default function HomeownersGuidePage() {
 
       <CTASection
         heading="Not sure what applies to your property?"
-        sub="Send Sean your postcode and a short description — you'll get an honest first view of the likely planning route, with no obligation."
+        sub="Send Sean your name and one way to contact you — you'll get an honest first view of the likely planning route, with no obligation. A postcode and photos help if you have them, but aren't required to start."
+        primaryLabel="Ask Sean for an honest first view"
+        ctaHref="/contact?source_type=guide&source_page=/homeowners-guide"
       />
     </>
   );

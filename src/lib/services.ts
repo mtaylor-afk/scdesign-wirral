@@ -102,7 +102,7 @@ export const services: Service[] = [
       "A few photos of the area you'd like to extend, inside and out",
       "Your postcode and rough idea of what you'd like to achieve",
       "Any existing plans or an estate-agent floorplan if you have one",
-      "A sense of your budget and timescale",
+      "Timescale or budget — only if you're comfortable sharing it",
     ],
     faqs: [
       {
@@ -483,7 +483,7 @@ export const services: Service[] = [
     sendFirst: [
       "Your planning drawings or agreed design, if you have them",
       "Photos of the existing property",
-      "Details of any builder already involved",
+      "If a builder is already involved, their details — but that's not needed to start",
     ],
     faqs: [
       {
@@ -990,7 +990,7 @@ export const services: Service[] = [
       }
     ],
     "sendFirst": [
-      "Your full address and postcode so we can plan the visit",
+      "Your full address and postcode when you're ready to book the survey visit — Sean will eventually need this to plan it, but a name and one contact method is enough to start",
       "A rough idea of what you're hoping to do (extend, convert, reconfigure)",
       "Any existing plans or an estate-agent floorplan, even if you think they're inaccurate",
       "Which parts of the home the project will affect, so we measure the right areas",
@@ -1105,7 +1105,7 @@ export const services: Service[] = [
       "Your address or postcode (so we can check the property and its planning context)",
       "A rough idea of what you'd like to achieve — more space, a better layout, a specific room",
       "Any photos of the property, inside and out, that help us understand it",
-      "A ballpark budget, even a broad range — it keeps the options realistic",
+      "A rough budget — only if you're comfortable sharing it; it helps keep options realistic",
       "Anything you already know about the site — conservation area, previous applications, restrictions"
     ],
     "faqs": [

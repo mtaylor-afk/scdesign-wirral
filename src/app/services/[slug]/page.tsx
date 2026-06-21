@@ -177,8 +177,40 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
             />
             {service.sendFirst && (
               <div>
-                <h2 className="text-2xl">What to send us first</h2>
+                <h2 className="text-2xl">What to send Sean</h2>
+                <p className="mt-3 text-pretty text-muted">
+                  You do not need a full brief or drawings to get started. Send your name and one way
+                  to contact you — the rest is optional, and you can share more whenever it suits you.
+                </p>
+                <h3 className="mt-6 text-lg font-semibold text-ink">Minimum to get started</h3>
+                <BulletList
+                  items={[
+                    "Your name",
+                    "A phone number or email address",
+                    "A sentence about what you're thinking of doing",
+                  ]}
+                />
+                <h3 className="mt-6 text-lg font-semibold text-ink">
+                  Helpful extras if you have them
+                </h3>
                 <BulletList items={service.sendFirst} />
+                <p className="mt-4 text-sm text-muted">
+                  Not sure yet? That&apos;s fine — send what you have and Sean will guide you on the
+                  rest. Photos can follow by WhatsApp or email whenever you&apos;re ready.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <LinkButton
+                    href={`/contact?source_type=service&source_page=${encodeURIComponent(
+                      `/services/${slug}`
+                    )}`}
+                    track="service-cta"
+                  >
+                    {cta.primary.label}
+                  </LinkButton>
+                  <LinkButton href={cta.whatsapp.href} variant="ghost" external track="whatsapp-click">
+                    {cta.whatsapp.label}
+                  </LinkButton>
+                </div>
               </div>
             )}
           </Container>

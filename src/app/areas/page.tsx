@@ -140,7 +140,7 @@ export default function AreasPage() {
 
       <CTASection
         heading="Not sure if we cover you?"
-        sub="Send Sean your postcode and a few photos — we'll confirm and give you an honest first view."
+        sub="Send Sean your name and one way to contact you — he'll confirm and give you an honest first view. A postcode helps him check, but isn't required to start."
       />
     </>
   );

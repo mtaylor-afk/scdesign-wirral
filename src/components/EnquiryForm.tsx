@@ -3,25 +3,27 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
-import { Field, Input, Textarea, Select } from "@/components/ui/form";
+import { Field, Input, Textarea } from "@/components/ui/form";
 import { Button } from "@/components/ui";
 import { track } from "@/components/Analytics";
 import { backupEnquiry } from "@/lib/enquiry-backup";
 import { withBase } from "@/lib/base";
-import { site, cta } from "@/lib/site";
+import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 /**
- * Multi-step website enquiry form (WS4 — the conversion backbone).
+ * Single-page website enquiry form — "capture first, qualify second".
+ *
+ * The only things genuinely needed are a name and ONE way to reply (phone OR
+ * email) + consent. Everything else (project type, postcode, message) is
+ * optional. No multi-step journey, no progress bar, no "Continue".
  *
  * Posts to the isolated serverless endpoint (QCbuild1 `api/sc-enquiry`) which
- * emails Sean INSTANTLY (reply-to = the enquirer) and sends the enquirer an
- * auto-acknowledgement. If the POST fails for any reason, we fall back to a
- * pre-filled mailto so a genuine lead is never lost.
- *
- * Accessibility: all three steps stay mounted (values persist); only the active
- * step is shown. On step change we move focus to the step heading and announce
- * progress via an aria-live region. Validation is enforced per step.
+ * emails Sean INSTANTLY to BOTH recipients (reply-to = the enquirer, handled
+ * server-side) and sends the enquirer an auto-acknowledgement. Every submission
+ * is also copied to the SC Supabase `sc_enquiries` table (durable record). If
+ * the POST fails for any reason, we fall back to a pre-filled mailto so a
+ * genuine lead is never lost.
  */
 
 const ENQUIRY_ENDPOINT =
@@ -41,50 +43,78 @@ const projectTypes = [
   "Not sure yet",
 ];
 
-const projectStages = [
-  "Just an idea",
-  "Need drawings for planning",
-  "Need drawings for builder quotes",
-  "Builder requested drawings",
-  "Planning refused / need redesign",
-  "Building control requested drawings",
-];
-
-const builderOptions = ["Yes", "No", "Speaking to builders"];
-const timescales = ["ASAP", "1–3 months", "3–6 months", "Just researching"];
-const contactMethods = ["Phone", "WhatsApp", "Email"];
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const STEP_TITLES = ["What are you planning?", "A few details", "Your contact details"];
 
-type Status = "idle" | "submitting" | "success-online" | "success-mailto" | "error";
+type Status = "idle" | "submitting" | "success-mailto";
+type Errors = { name?: string; contact?: string; email?: string; consent?: string };
 
 export function EnquiryForm() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const successRef = useRef<HTMLHeadingElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
 
-  const [step, setStep] = useState(0);
   const [projectType, setProjectType] = useState("");
   const [status, setStatus] = useState<Status>("idle");
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<Errors>({});
+
+  // Non-sensitive source context captured from the URL (set by service/area/
+  // guide/cost-estimate CTAs). Stored as metadata only — never trusted.
+  const sourceRef = useRef<Record<string, string>>({});
 
   const turnstileKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
-  // Move focus to the step heading whenever the step changes (not on first mount),
-  // and announce the step for screen-reader users.
-  const mounted = useRef(false);
+  // Prefill from query params after mount (avoids any SSR/hydration mismatch).
   useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
-    document.getElementById(`enquiry-step-${step}`)?.focus();
-    track("contact_form_step", { step: step + 1 });
-  }, [step]);
+    if (typeof window === "undefined") return;
+    const u = new URL(window.location.href);
+    const get = (k: string) => u.searchParams.get(k) || "";
+    const src: Record<string, string> = {};
+    [
+      "source_type",
+      "source_page",
+      "project_type",
+      "area",
+      "calculator_project",
+      "calculator_area_m2",
+      "calculator_finish",
+      "calculator_estimate_range",
+    ].forEach((k) => {
+      const v = get(k);
+      if (v) src[k] = v;
+    });
+    sourceRef.current = src;
 
-  // Move focus to the confirmation heading when the mailto-fallback view appears,
-  // so keyboard/screen-reader users aren't stranded on the now-removed submit button.
+    // Map an incoming project_type to a chip if it matches one.
+    if (src.project_type) {
+      const match = projectTypes.find(
+        (t) => t.toLowerCase() === src.project_type.toLowerCase()
+      );
+      // Legitimate one-shot init of form state from the URL query string (an
+      // external system), guarded to run only on mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (match) setProjectType(match);
+    }
+
+    // Pre-fill the (optional) message with cost-estimate context so the enquiry
+    // email and the SQL record carry it without the user retyping anything.
+    if (src.source_type === "cost_estimate" && src.calculator_project) {
+      const msgEl = formRef.current?.elements.namedItem("message") as
+        | HTMLTextAreaElement
+        | null;
+      if (msgEl && !msgEl.value) {
+        const parts = [
+          `I used the cost estimate for: ${src.calculator_project}`,
+          src.calculator_area_m2 ? `approx ${src.calculator_area_m2} m²` : "",
+          src.calculator_finish ? `${src.calculator_finish} finish` : "",
+          src.calculator_estimate_range ? `estimated ${src.calculator_estimate_range}` : "",
+        ].filter(Boolean);
+        msgEl.value = `${parts.join(", ")}. Could you sense-check this for my project?`;
+      }
+    }
+  }, []);
+
+  // Focus the success heading when the mailto-fallback view appears.
   useEffect(() => {
     if (status === "success-mailto") successRef.current?.focus();
   }, [status]);
@@ -93,66 +123,44 @@ export function EnquiryForm() {
     const el = formRef.current?.elements.namedItem(name) as
       | HTMLInputElement
       | HTMLTextAreaElement
-      | HTMLSelectElement
       | null;
     return el ? String(el.value || "").trim() : "";
   }
 
-  function fail(msg: string) {
-    setStatus("error");
-    setError(msg);
-    track("contact_form_error", { reason: "validation" });
+  function validate(): Errors {
+    const next: Errors = {};
+    const name = read("name");
+    const phone = read("phone");
+    const email = read("email");
+    const consentEl = formRef.current?.elements.namedItem("consent") as
+      | HTMLInputElement
+      | null;
+
+    if (!name) next.name = "Please enter your name so Sean knows who to reply to.";
+    if (!phone && !email)
+      next.contact =
+        "Please enter either a phone number or email address so Sean can reply.";
+    else if (email && !EMAIL_RE.test(email))
+      next.email = "Please enter an email address in the format name@example.com.";
+    if (!consentEl?.checked)
+      next.consent = "Please confirm Sean can use your details to respond to your enquiry.";
+
+    return next;
   }
 
-  function clearError() {
-    if (status === "error") {
-      setStatus("idle");
-      setError("");
-    }
-  }
-
-  function validateStep(n: number): boolean {
-    if (n === 0) {
-      if (!projectType) {
-        fail("Please choose the kind of project you have in mind.");
-        return false;
-      }
-      if (!read("postcode")) {
-        fail("Please add your property postcode so we can confirm we cover you.");
-        return false;
-      }
-    }
-    if (n === 2) {
-      if (!read("name")) {
-        fail("Please enter your name.");
-        return false;
-      }
-      if (!read("phone")) {
-        fail("Please enter a phone number so Sean can reach you.");
-        return false;
-      }
-      if (!EMAIL_RE.test(read("email"))) {
-        fail("Please enter a valid email address.");
-        return false;
-      }
-      const consentEl = formRef.current?.elements.namedItem("consent") as HTMLInputElement | null;
-      if (!consentEl?.checked) {
-        fail("Please tick the box so we can reply to your enquiry.");
-        return false;
+  function focusFirstError(errs: Errors) {
+    const order: Array<[keyof Errors, string]> = [
+      ["name", "name"],
+      ["contact", "phone"],
+      ["email", "email"],
+      ["consent", "consent"],
+    ];
+    for (const [key, fieldId] of order) {
+      if (errs[key]) {
+        document.getElementById(fieldId)?.focus();
+        return;
       }
     }
-    return true;
-  }
-
-  function next() {
-    if (!validateStep(step)) return;
-    clearError();
-    setStep((s) => Math.min(2, s + 1));
-  }
-
-  function back() {
-    clearError();
-    setStep((s) => Math.max(0, s - 1));
   }
 
   function collect() {
@@ -161,27 +169,20 @@ export function EnquiryForm() {
       email: read("email"),
       phone: read("phone"),
       postcode: read("postcode"),
-      area: read("area"),
       projectType,
-      projectStage: read("projectStage"),
-      hasBuilder: read("hasBuilder"),
-      timescale: read("timescale"),
-      budget: read("budget"),
-      preferredContact: read("preferredContact"),
       message: read("message"),
       consent: "on",
       company: read("company"), // honeypot
       "cf-turnstile-response": read("cf-turnstile-response"),
       page: typeof window !== "undefined" ? window.location.href : "",
+      ...sourceRef.current,
     };
   }
 
   function mailtoFallback(p: ReturnType<typeof collect>) {
     const body =
       `Name: ${p.name}\nPhone: ${p.phone}\nEmail: ${p.email}\nPostcode: ${p.postcode}\n` +
-      `Project: ${p.projectType}\nStage: ${p.projectStage}\nHas builder: ${p.hasBuilder}\n` +
-      `Timescale: ${p.timescale}\nBudget: ${p.budget}\nPreferred contact: ${p.preferredContact}\n\n` +
-      `${p.message}`;
+      `Project: ${p.projectType}\n\n${p.message}`;
     window.location.href = `mailto:${site.formRecipients.join(",")}?subject=${encodeURIComponent(
       "Website enquiry — " + (p.projectType || "project")
     )}&body=${encodeURIComponent(body)}`;
@@ -189,21 +190,32 @@ export function EnquiryForm() {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!validateStep(2)) return;
+
+    const errs = validate();
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      track("contact_form_validation_error", { reason: Object.keys(errs).join(",") });
+      // Announce + move focus: summary first, then the first invalid field.
+      requestAnimationFrame(() => {
+        summaryRef.current?.focus();
+        focusFirstError(errs);
+      });
+      return;
+    }
+    setErrors({});
 
     const payload = collect();
 
     // Honeypot tripped — silently treat as success without contacting anyone.
     if (payload.company) {
-      setStatus("success-online");
+      router.push("/contact/thank-you");
       return;
     }
 
     setStatus("submitting");
-    setError("");
-    track("contact_form_submit", { project_type: payload.projectType });
+    track("contact_form_submitted", { project_type: payload.projectType || "unspecified" });
 
-    // Fire-and-forget database backup (safety net; does not affect the email send below).
+    // Fire-and-forget database backup (safety net; does not affect the email send).
     backupEnquiry("contact", payload);
 
     try {
@@ -214,12 +226,12 @@ export function EnquiryForm() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.ok) throw new Error(json.error || "send_failed");
-      track("contact_form_success", { project_type: payload.projectType, mode: "online" });
+      track("contact_form_success", { mode: "online" });
       formRef.current?.reset();
       router.push("/contact/thank-you");
     } catch {
       // Never lose a lead: fall back to a pre-filled email.
-      track("contact_form_success", { project_type: payload.projectType, mode: "mailto_fallback" });
+      track("contact_form_success", { mode: "mailto_fallback" });
       mailtoFallback(payload);
       setStatus("success-mailto");
     }
@@ -236,7 +248,11 @@ export function EnquiryForm() {
           come back to you. If it didn&apos;t open, you can call or WhatsApp instead:
         </p>
         <div className="mt-4 flex flex-wrap gap-3 text-sm">
-          <a href={`tel:${site.phoneE164}`} data-conversion="phone-click" className="font-medium text-accent-strong">
+          <a
+            href={`tel:${site.phoneE164}`}
+            data-conversion="phone-click"
+            className="font-medium text-accent-strong"
+          >
             Call {site.phoneDisplay}
           </a>
         </div>
@@ -244,30 +260,43 @@ export function EnquiryForm() {
     );
   }
 
+  const errorList = Object.values(errors).filter(Boolean) as string[];
+
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-6" noValidate>
       {turnstileKey && (
-        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          strategy="afterInteractive"
+        />
       )}
 
-      {/* Progress indicator */}
       <div>
-        <div className="flex items-center justify-between text-xs font-medium text-muted">
-          <span>
-            Step {step + 1} of 3 — {STEP_TITLES[step]}
-          </span>
-          <span aria-hidden>{Math.round(((step + 1) / 3) * 100)}%</span>
-        </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line" aria-hidden>
-          <div
-            className="h-full rounded-full bg-accent-strong transition-[width] duration-300"
-            style={{ width: `${((step + 1) / 3) * 100}%` }}
-          />
-        </div>
-        <p className="sr-only" aria-live="polite">
-          Step {step + 1} of 3: {STEP_TITLES[step]}
+        <h2 className="text-lg font-semibold text-ink">Quick project enquiry</h2>
+        <p className="mt-1 text-sm text-muted">
+          This takes about 60 seconds. Only your name and one contact method are needed — the rest is
+          optional.
         </p>
       </div>
+
+      {/* Error summary (focus target on failed submit). */}
+      {errorList.length > 0 && (
+        <div
+          ref={summaryRef}
+          tabIndex={-1}
+          role="alert"
+          className="rounded-lg border border-danger/40 bg-danger/5 p-4 outline-none"
+        >
+          <p className="text-sm font-semibold text-danger">
+            Please check the following so Sean can reply:
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-danger">
+            {errorList.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Honeypot — hidden from humans, bots tend to fill it. */}
       <div className="hidden" aria-hidden>
@@ -275,16 +304,67 @@ export function EnquiryForm() {
         <input id="company" name="company" type="text" tabIndex={-1} autoComplete="off" />
       </div>
 
-      {/* STEP 1 — project type + location */}
-      <fieldset hidden={step !== 0} className="space-y-5 border-0 p-0">
-        <p
-          id="enquiry-step-0"
-          tabIndex={-1}
-          className="text-lg font-semibold text-ink outline-none"
+      {/* Contact details — the only required part. */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          label="Your name"
+          htmlFor="name"
+          required
+          error={errors.name}
         >
-          What are you planning?
-        </p>
-        <div role="radiogroup" aria-label="Project type" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          <Input
+            id="name"
+            name="name"
+            type="text"
+            required
+            autoComplete="name"
+            aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? "name-error" : undefined}
+          />
+        </Field>
+        <Field
+          label="Phone"
+          htmlFor="phone"
+          hint="A phone or email is enough — whichever you prefer."
+          error={errors.contact}
+        >
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            autoComplete="tel"
+            inputMode="tel"
+            aria-invalid={!!errors.contact}
+            aria-describedby={cn("phone-hint", errors.contact && "phone-error")}
+          />
+        </Field>
+      </div>
+
+      <Field
+        label="Email"
+        htmlFor="email"
+        optional
+        hint="Add an email if you'd rather Sean replied that way."
+        error={errors.email}
+      >
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          aria-invalid={!!errors.email}
+          aria-describedby={cn("email-hint", errors.email && "email-error")}
+        />
+      </Field>
+
+      {/* Optional project context. */}
+      <fieldset className="border-0 p-0">
+        <legend className="text-sm font-medium text-ink">
+          What are you thinking of doing?{" "}
+          <span className="text-xs font-normal text-muted">(optional)</span>
+        </legend>
+        <div role="radiogroup" aria-label="Project type" className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {projectTypes.map((t) => {
             const selected = projectType === t;
             return (
@@ -293,10 +373,7 @@ export function EnquiryForm() {
                 key={t}
                 role="radio"
                 aria-checked={selected}
-                onClick={() => {
-                  setProjectType(t);
-                  clearError();
-                }}
+                onClick={() => setProjectType((cur) => (cur === t ? "" : t))}
                 className={cn(
                   "rounded-[var(--radius)] border px-3 py-3 text-left text-sm transition-colors",
                   selected
@@ -309,150 +386,79 @@ export function EnquiryForm() {
             );
           })}
         </div>
-
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Property postcode" htmlFor="postcode" required hint="Helps us confirm we cover your area">
-            <Input id="postcode" name="postcode" required autoComplete="postal-code" />
-          </Field>
-          <Field label="Area / town" htmlFor="area">
-            <Input id="area" name="area" placeholder="e.g. West Kirby, Heswall…" />
-          </Field>
-        </div>
       </fieldset>
 
-      {/* STEP 2 — project detail */}
-      <fieldset hidden={step !== 1} className="space-y-5 border-0 p-0">
-        <p
-          id="enquiry-step-1"
-          tabIndex={-1}
-          className="text-lg font-semibold text-ink outline-none"
-        >
-          A few details (all optional)
-        </p>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Project stage" htmlFor="projectStage">
-            <Select id="projectStage" name="projectStage" defaultValue="">
-              <option value="">Choose one…</option>
-              {projectStages.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Do you already have a builder?" htmlFor="hasBuilder">
-            <Select id="hasBuilder" name="hasBuilder" defaultValue="">
-              <option value="">Choose one…</option>
-              {builderOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Timescale" htmlFor="timescale">
-            <Select id="timescale" name="timescale" defaultValue="">
-              <option value="">Choose one…</option>
-              {timescales.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Budget (optional)" htmlFor="budget" hint="A rough range is fine">
-            <Input id="budget" name="budget" placeholder="e.g. £40–60k" />
-          </Field>
-        </div>
+      <div className="grid gap-5 sm:grid-cols-2">
         <Field
-          label="Tell us about your project"
-          htmlFor="message"
-          hint="A short description is plenty — you can send photos by WhatsApp or email afterwards."
+          label="Property postcode"
+          htmlFor="postcode"
+          optional
+          hint="Helps Sean check your local planning context — not required to start."
         >
-          <Textarea id="message" name="message" rows={5} />
+          <Input
+            id="postcode"
+            name="postcode"
+            type="text"
+            autoComplete="postal-code"
+            aria-describedby="postcode-hint"
+          />
         </Field>
-      </fieldset>
+      </div>
 
-      {/* STEP 3 — contact details */}
-      <fieldset hidden={step !== 2} className="space-y-5 border-0 p-0">
-        <p
-          id="enquiry-step-2"
-          tabIndex={-1}
-          className="text-lg font-semibold text-ink outline-none"
-        >
-          Your contact details
-        </p>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Your name" htmlFor="name" required>
-            <Input id="name" name="name" required autoComplete="name" />
-          </Field>
-          <Field label="Phone" htmlFor="phone" required>
-            <Input id="phone" name="phone" type="tel" required autoComplete="tel" inputMode="tel" />
-          </Field>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Email" htmlFor="email" required>
-            <Input id="email" name="email" type="email" required autoComplete="email" inputMode="email" />
-          </Field>
-          <Field label="Preferred contact method" htmlFor="preferredContact">
-            <Select id="preferredContact" name="preferredContact" defaultValue="">
-              <option value="">No preference</option>
-              {contactMethods.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
+      <Field
+        label="Anything you'd like to add?"
+        htmlFor="message"
+        optional
+        hint="A sentence is plenty — you can send photos by WhatsApp or email afterwards."
+      >
+        <Textarea id="message" name="message" rows={5} aria-describedby="message-hint" />
+      </Field>
 
-        <label className="flex items-start gap-3 text-sm text-muted">
-          <input type="checkbox" name="consent" required className="mt-1 h-4 w-4" />
-          <span>
-            I&apos;m happy for {site.shortName} to use these details to respond to my enquiry, in line
-            with the{" "}
-            <a href={withBase("/privacy-policy")} className="underline">
-              Privacy Policy
-            </a>
-            .
-          </span>
-        </label>
-
-        {turnstileKey && <div className="cf-turnstile" data-sitekey={turnstileKey} data-theme="light" />}
-      </fieldset>
-
-      {status === "error" && (
-        <p role="alert" className="text-sm text-danger">
-          {error}
+      <label className="flex items-start gap-3 text-sm text-muted">
+        <input
+          id="consent"
+          type="checkbox"
+          name="consent"
+          required
+          aria-invalid={!!errors.consent}
+          aria-describedby={errors.consent ? "consent-error" : undefined}
+          className="mt-1 h-4 w-4"
+        />
+        <span>
+          I&apos;m happy for {site.shortName} to use these details to respond to my enquiry, in line
+          with the{" "}
+          <a href={withBase("/privacy-policy")} className="underline">
+            Privacy Policy
+          </a>
+          . <span className="text-xs text-muted">(required)</span>
+        </span>
+      </label>
+      {errors.consent && (
+        <p id="consent-error" role="alert" className="text-sm text-danger">
+          {errors.consent}
         </p>
       )}
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between gap-3 pt-1">
-        {step > 0 ? (
-          <Button type="button" variant="ghost" onClick={back}>
-            Back
-          </Button>
-        ) : (
-          <span />
-        )}
+      {turnstileKey && <div className="cf-turnstile" data-sitekey={turnstileKey} data-theme="light" />}
 
-        {step < 2 ? (
-          <Button type="button" size="lg" onClick={next}>
-            Continue
-          </Button>
-        ) : (
-          <Button type="submit" size="lg" disabled={status === "submitting"} data-conversion="contact-submit">
-            {status === "submitting" ? "Sending…" : cta.primary.label}
-          </Button>
-        )}
+      <div className="pt-1">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={status === "submitting"}
+          data-conversion="contact-submit"
+        >
+          {status === "submitting" ? "Sending…" : "Send enquiry to Sean"}
+        </Button>
       </div>
 
       <p className="text-xs text-muted">
         No obligation — we design only and reply with an honest first view. Prefer to talk now?{" "}
-        <a href={`tel:${site.phoneE164}`} data-conversion="phone-click" className="font-medium text-accent-strong">
+        <a
+          href={`tel:${site.phoneE164}`}
+          data-conversion="phone-click"
+          className="font-medium text-accent-strong"
+        >
           Call {site.phoneDisplay}
         </a>
         .

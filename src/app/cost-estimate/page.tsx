@@ -82,7 +82,7 @@ export default function CostEstimatePage() {
 
       <CTASection
         heading="Ready for a real view?"
-        sub="Send Sean your postcode, a few photos and the size you're thinking of — you'll get an honest first view of the design and the likely route, with no obligation."
+        sub="Send Sean your name and one way to contact you for an honest first view of the design and likely route — with no obligation. The size, a postcode or a few photos help if you have them, but aren't required to start."
       />
     </>
   );

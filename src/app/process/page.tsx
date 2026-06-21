@@ -15,8 +15,8 @@ export const metadata = pageMeta({
 
 const stages: { title: string; you: string; us: string; output: string }[] = [
   {
-    title: "Send Sean your project idea",
-    you: "Send a few photos, your postcode and a short description of what you'd like to achieve.",
+    title: "Send Sean your idea",
+    you: "Just your name and one way to contact you is enough to start. A few photos, your postcode and a short description help if you have them, but aren't required.",
     us: "We give you an honest first view of what's realistic — with no obligation.",
     output: "A quick, no-pressure first reply.",
   },

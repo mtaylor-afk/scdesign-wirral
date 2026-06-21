@@ -98,7 +98,9 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
           </h1>
           <p className="mt-5 text-pretty text-lg text-muted">{loc.intro}</p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <LinkButton href={cta.primary.href}>{cta.primary.label}</LinkButton>
+            <LinkButton href={`/contact?source_type=area&area=${slug}`} track="area-cta">
+              {cta.primary.label}
+            </LinkButton>
             <LinkButton href={cta.visualiser.href} variant="ghost">
               {cta.visualiser.label}
             </LinkButton>
@@ -204,8 +206,9 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
 
       <CTASection
         heading={`Designing a project in ${loc.name}?`}
-        sub={`Send Sean your ${loc.name} postcode and a few photos — you'll get an honest first view with no obligation.`}
+        sub={`Send Sean your name and one way to contact you for an honest first view — with no obligation. A ${loc.name} postcode helps him confirm the local planning context, but you can get in touch without having everything ready.`}
         track="area-cta"
+        ctaHref={`/contact?source_type=area&area=${slug}`}
       />
     </>
   );

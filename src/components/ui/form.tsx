@@ -8,22 +8,44 @@ export function Field({
   label,
   htmlFor,
   required,
+  optional,
   hint,
+  error,
   children,
 }: {
   label: string;
   htmlFor: string;
   required?: boolean;
+  /** Mark a field as optional with a visible "(optional)" label (a11y: not asterisk-only). */
+  optional?: boolean;
   hint?: string;
+  /** Inline error text. Rendered with id `${htmlFor}-error` so the input can
+   *  reference it via aria-describedby; also announced via role="alert". */
+  error?: string;
   children: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={htmlFor} className="text-sm font-medium text-ink">
-        {label} {required && <span className="text-accent-strong">*</span>}
+        {label}
+        {required && (
+          <span className="ml-1 text-xs font-normal text-muted">
+            (required)<span className="text-accent-strong" aria-hidden> *</span>
+          </span>
+        )}
+        {optional && <span className="ml-1 text-xs font-normal text-muted">(optional)</span>}
       </label>
       {children}
-      {hint && <p className="text-xs text-muted">{hint}</p>}
+      {hint && (
+        <p id={`${htmlFor}-hint`} className="text-xs text-muted">
+          {hint}
+        </p>
+      )}
+      {error && (
+        <p id={`${htmlFor}-error`} role="alert" className="text-xs text-danger">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

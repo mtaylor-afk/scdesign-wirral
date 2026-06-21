@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { cta } from "@/lib/site";
+import { whatsappLink } from "@/lib/site";
+import { track } from "@/components/Analytics";
 
 /**
  * Indicative BUILD-cost estimator (the contractor's price, NOT our design fee
@@ -43,6 +44,21 @@ export function CostEstimator() {
   const finish = FINISHES.find((f) => f.key === finishKey)!;
   const low = round(area * project.low * finish.mult);
   const high = round(area * project.high * finish.mult);
+
+  // Low-friction handoff: carry the (non-sensitive) estimate context to the
+  // streamlined contact page so the message is pre-filled — no separate form,
+  // and the calculator itself stays instant and ungated.
+  const estimateRange = `${gbp(low)} – ${gbp(high)}`;
+  const contactHref =
+    `/contact?source_type=cost_estimate` +
+    `&calculator_project=${encodeURIComponent(project.label)}` +
+    `&calculator_area_m2=${area}` +
+    `&calculator_finish=${encodeURIComponent(finish.label)}` +
+    `&calculator_estimate_range=${encodeURIComponent(estimateRange)}`;
+  const whatsAppMessage =
+    `Hi Sean, I used the cost estimate for a ${area} m² ${project.label.toLowerCase()} ` +
+    `(${finish.label.toLowerCase()} finish) — estimated ${estimateRange}. ` +
+    `Could you sense-check this for my project?`;
 
   return (
     <div className="rounded-lg border border-line bg-paper-card p-6 shadow-card">
@@ -118,14 +134,37 @@ export function CostEstimator() {
         and building-control fees, and any structural or party-wall work.
       </p>
 
-      <div className="mt-5">
-        <Link
-          href={cta.primary.href}
-          data-conversion="service-cta"
-          className="inline-flex h-11 items-center rounded-full bg-accent-strong px-5 text-sm font-medium text-white hover:bg-accent-deep"
-        >
-          Send your project for a proper view
-        </Link>
+      <div className="mt-6 rounded-[var(--radius)] border border-line bg-paper p-5">
+        <p className="font-medium text-ink">Want Sean to sense-check this?</p>
+        <p className="mt-1 text-sm text-muted">
+          No need to enter anything to use the estimate. If it&apos;s useful, you can send these
+          figures to Sean for an honest first view — just your name and one way to contact you.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link
+            href={contactHref}
+            onClick={() =>
+              track("cost_estimate_handoff_clicked", {
+                project: project.label,
+                area_m2: area,
+                finish: finish.label,
+              })
+            }
+            data-conversion="cost-estimate-handoff"
+            className="inline-flex h-11 items-center rounded-full bg-accent-strong px-5 text-sm font-medium text-white hover:bg-accent-deep"
+          >
+            Send this estimate to Sean
+          </Link>
+          <a
+            href={whatsappLink(whatsAppMessage)}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-conversion="whatsapp-click"
+            className="inline-flex h-11 items-center rounded-full border border-line bg-white px-5 text-sm font-medium text-ink hover:bg-paper-card"
+          >
+            WhatsApp Sean
+          </a>
+        </div>
       </div>
     </div>
   );

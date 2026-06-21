@@ -46,8 +46,9 @@ export default function VisualiserPage() {
             By uploading a photo you confirm you have the right to use it. Your source photo is used
             only to create the concept and isn&apos;t stored afterwards; the generated concept is kept
             briefly (currently up to {process.env.VISUALISER_RESULT_EXPIRY_DAYS || "7"} days) so we
-            can show it to you and send it on if you ask. Generate your concept below, then send it to
-            Sean with your postcode and a few project notes if you&apos;d like an honest first view.
+            can show it to you and send it on if you ask. Generate your concept below, then — if
+            you&apos;d like an honest first view — choose to send it to Sean with a short note. A
+            postcode helps but isn&apos;t required.
           </p>
 
           <div className="mx-auto mb-6 max-w-3xl">
@@ -105,8 +106,9 @@ export default function VisualiserPage() {
           <Card>
             <h2 className="text-lg">What happens next?</h2>
             <p className="mt-2 text-pretty text-muted">
-              Like the direction? Send your concept to Sean with your postcode and a short note, and
-              we&apos;ll give you an honest first view of the likely design route. From there, real
+              Like the direction? Choose to send your concept to Sean with a short note (a postcode
+              helps but isn&apos;t required), and we&apos;ll give you an honest first view of the
+              likely design route. From there, real
               design begins with a proper look at your property — the concept is only ever a starting
               point for the conversation.
             </p>

@@ -376,7 +376,7 @@ export default function HomePage() {
 
       <CTASection
         heading="Ready to see what's possible for your home?"
-        sub="Send Sean your postcode, a few photos and a short description. You'll get an honest first view of the likely design route, with no obligation."
+        sub="All you need to start is your name and one way to contact you. A postcode, a few photos or a short description help if you have them — but they're not required. You'll get an honest first view of the likely design route, with no obligation."
       />
     </>
   );

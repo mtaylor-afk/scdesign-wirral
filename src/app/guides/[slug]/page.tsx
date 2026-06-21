@@ -53,12 +53,18 @@ function relatedLabel(href: string) {
   return href.replace(/^\//, "").replace(/-/g, " ").replace(/\//g, " · ");
 }
 
-// Practical "what to send Sean" checklist — shown on every guide.
-const sendToSean = [
-  "Your property postcode (so we can check the local planning context)",
+// The bare minimum to start a useful conversation — shown on every guide.
+const sendMinimum = [
+  "Your name",
+  "A phone number or email address",
+  "A sentence about what you're thinking of doing",
+];
+
+// Helpful extras — useful if you already have them, but never required to start.
+const sendHelpful = [
+  "Your property postcode (helps Sean check the local planning context)",
   "A few photos of the area affected, inside and outside",
   "An estate-agent floorplan or any existing drawings, if you have them",
-  "A short description of what you'd like to achieve",
   "Any council, building-control or builder letters or emails, if relevant",
   "Whether the property is in a conservation area, listed, or has an Article 4 direction, if you know",
   "Whether you already have planning permission, building-control comments or builder quotes",
@@ -161,8 +167,9 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
           {/* CTA Zone A — early contact nudge */}
           <div className="mt-6 rounded-[var(--radius)] border border-accent-soft bg-accent-soft/30 p-5">
             <p className="text-pretty text-ink-soft">
-              Not sure which route applies to your property? Send Sean your postcode, a few photos
-              and a short description for an honest first view — with no obligation.
+              Not sure which route applies to your property? Send Sean your name and one way to
+              contact you for an honest first view — with no obligation. A postcode, a few photos and
+              a short description help if you have them, but aren&apos;t required to start.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <LinkButton href={cta.primary.href}>{cta.primary.label}</LinkButton>
@@ -237,17 +244,32 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
             ))}
           </div>
 
-          {/* What to send Sean */}
+          {/* What to send Sean — minimum vs helpful extras */}
           <div className="mt-10 rounded-[var(--radius)] border border-line bg-paper-card p-5">
             <h2 className="text-xl">What to send Sean</h2>
             <p className="mt-2 text-sm text-muted">
-              A few details are enough for an honest first view — with no obligation:
+              You don&apos;t need a full brief or drawings to get started — just your name and one way
+              to contact you. The rest is optional, and you can send more whenever it suits you.
             </p>
-            <ul className="mt-3 space-y-2">
-              {sendToSean.map((t) => (
+
+            <h3 className="mt-5 text-sm font-semibold text-ink">Minimum to start</h3>
+            <ul className="mt-2 space-y-2">
+              {sendMinimum.map((t) => (
                 <li key={t} className="flex gap-3 text-pretty text-muted">
                   <span className="mt-1 shrink-0 text-accent-strong" aria-hidden>
                     ◆
+                  </span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+
+            <h3 className="mt-5 text-sm font-semibold text-ink">Helpful if you have them</h3>
+            <ul className="mt-2 space-y-2">
+              {sendHelpful.map((t) => (
+                <li key={t} className="flex gap-3 text-pretty text-muted">
+                  <span className="mt-1 shrink-0 text-accent-soft" aria-hidden>
+                    ◇
                   </span>
                   <span>{t}</span>
                 </li>

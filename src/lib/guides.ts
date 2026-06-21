@@ -190,14 +190,14 @@ export const guides: Guide[] = [
       {
         heading: "How we keep it transparent",
         body: [
-          "We talk through scope and fees up front, so you know what's included before you commit. Send a few photos and a description of what you'd like to do and we'll come back to you with an honest view.",
+          "We talk through scope and fees up front, so you know what's included before you commit. Send Sean your name and one way to contact you and we'll come back with an honest view — a few photos and a short description help if you have them, but aren't required to start.",
         ],
       },
     ],
     faqs: [
       {
         q: "Can you give me a fixed price?",
-        a: "Once we understand your property and what you'd like to achieve, we can set out a clear scope and fee. The honest first step is a quick chat and a few photos.",
+        a: "Once we understand your property and what you'd like to achieve, we can set out a clear scope and fee. The honest first step is just a quick message — photos help if you have them, but aren't needed to start.",
       },
       {
         q: "Is design worth it for a small extension?",
@@ -568,7 +568,7 @@ export const guides: Guide[] = [
       },
       {
         q: "How do I know if I'm in a conservation area?",
-        a: "Wirral Council holds the designations and is the definitive source. Send us your postcode and we can help you check.",
+        a: "Wirral Council holds the designations and is the definitive source. A postcode helps Sean check the local planning context, but it isn't required to start — get in touch and he can help you check.",
       },
     ],
     related: [
