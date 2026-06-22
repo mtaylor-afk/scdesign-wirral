@@ -3,6 +3,7 @@ import { Container, Section, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { EnquiryForm } from "@/components/EnquiryForm";
 import { ReviewCta } from "@/components/ui/ReviewCta";
+import { GoogleRatingLine } from "@/components/ui/Testimonials";
 import { JsonLd } from "@/components/JsonLd";
 import { site, whatsappLink, defaultWhatsAppMessage } from "@/lib/site";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
@@ -45,6 +46,7 @@ export default function ContactPage() {
         <Container>
           <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr]">
             <div>
+              <GoogleRatingLine className="mb-6" />
               <EnquiryForm />
             </div>
 

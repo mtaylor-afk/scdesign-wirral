@@ -9,7 +9,7 @@ export function ReviewStars({ count = 5, className = "" }: { count?: number; cla
     <span
       role="img"
       aria-label={`Rated ${count} out of 5`}
-      className={`tracking-[0.12em] text-accent-strong ${className}`}
+      className={`tracking-[0.12em] text-gold ${className}`}
     >
       {STARS.slice(0, count)}
     </span>
@@ -60,6 +60,33 @@ export function ReviewsSummary({ align = "left" }: { align?: "left" | "center" }
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Compact one-line trust signal — ★★★★★ 5.0 · N Google reviews → links to Google.
+ * For placing next to a form/CTA on light surfaces. The href matches
+ * site.googleReviewUrl, so ClickTracking records it as google_review_click.
+ */
+export function GoogleRatingLine({ className = "" }: { className?: string }) {
+  if (!reviewSummary.url) return null;
+  return (
+    <a
+      href={reviewSummary.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Rated ${reviewSummary.rating.toFixed(1)} out of 5 from ${reviewSummary.count} Google reviews — read them on Google`}
+      className="group inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+    >
+      <ReviewStars className="text-base" />
+      <span className="font-semibold text-ink">{reviewSummary.rating.toFixed(1)}</span>
+      <span className="text-muted group-hover:text-ink">
+        · {reviewSummary.count} Google reviews
+      </span>
+      <span className="text-accent-strong group-hover:underline" aria-hidden>
+        ↗
+      </span>
+    </a>
   );
 }
 

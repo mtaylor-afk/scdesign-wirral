@@ -73,7 +73,7 @@ export function Footer() {
               rel="noopener noreferrer"
               className="mt-5 inline-flex items-center gap-2 text-sm text-paper/85 hover:text-white"
             >
-              <span className="text-accent" aria-hidden>
+              <span className="text-gold" aria-hidden>
                 ★★★★★
               </span>
               <span>

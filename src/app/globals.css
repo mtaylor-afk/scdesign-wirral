@@ -19,6 +19,8 @@
   --color-accent-deep: #7a1414; /* darker red for button hover */
   --color-accent-soft: #f4e3e0; /* soft red tint — chips / badges */
 
+  --color-gold: #e0a01f; /* warm gold — review/rating stars only (reads on cream + dark) */
+
   --color-success: #3f7d57;
   --color-danger: #b3402f;
 

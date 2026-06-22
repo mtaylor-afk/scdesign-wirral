@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Container, Section, SectionHeading, Card, LinkButton } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
+import { GoogleRatingLine } from "@/components/ui/Testimonials";
 import { FAQList } from "@/components/ui/FAQItem";
 import { JsonLd } from "@/components/JsonLd";
 import { services, getService } from "@/lib/services";
@@ -114,6 +115,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
               {cta.visualiser.label}
             </LinkButton>
           </div>
+          <GoogleRatingLine className="mt-5" />
         </Container>
       </Section>
 

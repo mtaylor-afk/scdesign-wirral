@@ -45,7 +45,7 @@ export const reviews: Review[] = [
   },
   {
     author: "David Morley",
-    text: "Would highly recommend. From initial briefing to completion of the drawing pack Sean was outstanding with his knowledge. Would use again in a heart beat.",
+    text: "Would highly recommend. From initial briefing to completion of the drawing pack Sean was outstanding with his knowledge. Would use again in a heartbeat.",
   },
   {
     author: "Ryan Hirst",
@@ -55,7 +55,7 @@ export const reviews: Review[] = [
   {
     author: "Lee Davey",
     tag: "Builder",
-    text: "As a builder I came across Sean's drawings from a customer. Since then I've used Sean for all my extension and conversion works as the quality of his drawing are clear and precise which results in less problems on the job.",
+    text: "As a builder I came across Sean's drawings from a customer. Since then I've used Sean for all my extension and conversion works as the quality of his drawings are clear and precise which results in less problems on the job.",
   },
   {
     author: "Graham Edge",
@@ -65,10 +65,6 @@ export const reviews: Review[] = [
   {
     author: "Paul Crosthwaite",
     text: "Top guy. Was very responsive throughout. Design was perfect and recommended which builders we should use. Project went extremely smoothly. Will definitely be using him again and would recommend him to everyone.",
-  },
-  {
-    author: "J P",
-    text: "Working with Sean was a pleasure. We had a vision and he helped it become a reality by advising what was practically possible as what wasn't! Open minded, knowledgeable and budget friendly, I'd not go anywhere but SC Design & Construction.",
   },
   {
     author: "Kieran McGonigle",
