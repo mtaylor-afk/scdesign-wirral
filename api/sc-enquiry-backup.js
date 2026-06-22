@@ -21,6 +21,7 @@ const {
   parseUA,
   classifyChannel,
   hostOf,
+  sanitizeProps,
   sbInsertEnquiry,
 } = require("../serverlib/common");
 const mailer = require("../serverlib/icloud-mailer");
@@ -56,9 +57,16 @@ async function notifySean(row) {
       : row.form === "cost_estimate"
         ? "cost estimate enquiry"
         : "enquiry";
-  const name = row.name || "someone";
+  // CR/LF + length hardening on the header-bound fields (holds regardless of the
+  // nodemailer version): a one-line, length-capped name for the Subject, and a
+  // strict reply-to (valid + <=254 chars + no CR/LF) so a crafted address can't
+  // reach nodemailer's address parser.
+  const oneLine = (s) => String(s == null ? "" : s).replace(/[\r\n\t]+/g, " ").slice(0, 200);
+  const name = oneLine(row.name) || "someone";
   const subject = `New SC Design Wirral ${formLabel} from ${name}`;
-  const replyValid = EMAIL_RE.test(row.email || "");
+  const replyEmail = String(row.email || "");
+  const replyValid =
+    replyEmail.length <= 254 && !/[\r\n]/.test(replyEmail) && EMAIL_RE.test(replyEmail);
 
   const fieldRows = [
     ["Name", row.name],
@@ -179,12 +187,9 @@ module.exports = async (req, res) => {
 
   // Keep a clean copy of every field, minus the honeypot and the (large,
   // single-use) bot-challenge token.
-  let cleanFields = {};
-  try {
-    cleanFields = JSON.parse(JSON.stringify(F));
-  } catch {
-    cleanFields = {};
-  }
+  // Bounded copy of every field (string/array/object caps) so a hostile client
+  // can't write a huge jsonb row; minus the honeypot + single-use challenge token.
+  const cleanFields = sanitizeProps(F) || {};
   delete cleanFields.company; // honeypot
   delete cleanFields["cf-turnstile-response"];
 

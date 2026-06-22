@@ -17,6 +17,7 @@ const {
   createSession,
   sessionCookie,
   clientIp,
+  trustedClientIp,
   getGeo,
   parseUA,
   visitorHash,
@@ -32,9 +33,22 @@ const SESSION_TTL = 12 * 60 * 60; // 12 hours
 const attempts = new Map(); // ip -> { count, first }
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 10;
+// Global backstop across ALL IPs in this instance: a single attacker rotating the
+// forwarded-for header still can't exceed this within the window even if each
+// per-IP bucket stays under MAX_ATTEMPTS.
+const globalWindow = { count: 0, first: 0 };
+const MAX_GLOBAL = 100;
 
 function rateLimited(ip) {
   const now = Date.now();
+  // Global backstop first.
+  if (!globalWindow.first || now - globalWindow.first > WINDOW_MS) {
+    globalWindow.count = 0;
+    globalWindow.first = now;
+  }
+  globalWindow.count += 1;
+  if (globalWindow.count > MAX_GLOBAL) return true;
+  // Per-IP bucket.
   const rec = attempts.get(ip);
   if (!rec || now - rec.first > WINDOW_MS) {
     attempts.set(ip, { count: 1, first: now });
@@ -112,7 +126,8 @@ module.exports = async (req, res) => {
     return res.end(JSON.stringify({ ok: false, error: "origin" }));
   }
 
-  const ip = clientIp(req);
+  const ip = clientIp(req); // cookieless audit vid (correlates with analytics)
+  const rlIp = trustedClientIp(req); // non-spoofable IP for the brute-force limiter
   res.setHeader("Content-Type", "application/json");
 
   let body;
@@ -123,7 +138,7 @@ module.exports = async (req, res) => {
   }
   const username = body && body.username ? String(body.username) : "";
 
-  if (rateLimited(ip)) {
+  if (rateLimited(rlIp)) {
     await logLogin(req, ip, "failed", username, "rate_limited");
     res.statusCode = 429;
     return res.end(JSON.stringify({ ok: false, error: "Too many attempts. Try again later." }));

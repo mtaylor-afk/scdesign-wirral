@@ -202,7 +202,13 @@ function getGeo(req) {
  * days or reversed back to an IP.
  */
 function visitorHash(ip, ua, host) {
-  const secret = process.env.SC_ADMIN_SESSION_SECRET || "sc-fallback-salt";
+  const secret = process.env.SC_ADMIN_SESSION_SECRET || "";
+  // No secret => return the 'anon' sentinel (the admin UI already special-cases it)
+  // rather than hashing under a publicly-known fallback salt, which would make the
+  // daily hash brute-forceable back to an IP. Don't throw (callers have no
+  // try/catch) and don't use a random per-process salt (would fragment unique /
+  // journey counts across serverless instances).
+  if (!secret) return "anon";
   const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
   const salt = crypto.createHmac("sha256", secret).update(`salt:${day}`).digest("hex");
   return crypto
@@ -210,6 +216,48 @@ function visitorHash(ip, ua, host) {
     .update(`${salt}|${ip}|${ua}|${host || "scdesign"}`)
     .digest("hex")
     .slice(0, 16);
+}
+
+/**
+ * Trusted client IP for SECURITY decisions (rate limiting / audit) only — never
+ * feeds the cookieless visitor hash. Unlike clientIp() it never trusts the
+ * LEFTMOST X-Forwarded-For entry (fully client-controlled). On Vercel the real
+ * client IP is the platform-injected x-real-ip / x-vercel-forwarded-for, or the
+ * RIGHTMOST (proxy-appended) hop of x-forwarded-for.
+ */
+function trustedClientIp(req) {
+  const h = req.headers || {};
+  const real = h["x-real-ip"];
+  if (real) return String(real).split(",").pop().trim();
+  const vff = h["x-vercel-forwarded-for"];
+  if (vff) return String(vff).split(",").pop().trim();
+  const xff = h["x-forwarded-for"];
+  if (xff) return String(xff).split(",").pop().trim();
+  return (req.socket && req.socket.remoteAddress) || "";
+}
+
+/**
+ * Recursively cap the size of a free-form props object so a hostile or runaway
+ * client can't write huge jsonb rows. Strings truncated, arrays/objects bounded.
+ * Shared by the analytics / error / enquiry ingest endpoints.
+ */
+function sanitizeProps(v, depth) {
+  depth = depth || 0;
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string") return v.slice(0, 2000);
+  if (typeof v === "number" || typeof v === "boolean") return v;
+  if (depth >= 5) return null;
+  if (Array.isArray(v)) return v.slice(0, 40).map((x) => sanitizeProps(x, depth + 1));
+  if (typeof v === "object") {
+    const out = {};
+    let n = 0;
+    for (const k of Object.keys(v)) {
+      if (n++ >= 50) break;
+      out[String(k).slice(0, 80)] = sanitizeProps(v[k], depth + 1);
+    }
+    return out;
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -553,8 +601,10 @@ module.exports = {
   requireSession,
   SESSION_COOKIE,
   clientIp,
+  trustedClientIp,
   getGeo,
   visitorHash,
+  sanitizeProps,
   parseUA,
   classifyChannel,
   hostOf,

@@ -21,6 +21,7 @@ const {
   visitorHash,
   parseUA,
   hostOf,
+  sanitizeProps,
   sbInsertError,
 } = require("../serverlib/common");
 
@@ -43,27 +44,6 @@ const ALLOWED_TYPES = [
   "form_error",
   "console_error",
 ];
-
-// Recursively cap the size of the free-form props object so a hostile or runaway
-// client can't write huge rows. Strings are truncated, arrays/objects are bounded.
-function sanitizeProps(v, depth) {
-  depth = depth || 0;
-  if (v === null || v === undefined) return null;
-  if (typeof v === "string") return v.slice(0, 2000);
-  if (typeof v === "number" || typeof v === "boolean") return v;
-  if (depth >= 5) return null;
-  if (Array.isArray(v)) return v.slice(0, 40).map((x) => sanitizeProps(x, depth + 1));
-  if (typeof v === "object") {
-    const out = {};
-    let n = 0;
-    for (const k of Object.keys(v)) {
-      if (n++ >= 50) break;
-      out[String(k).slice(0, 80)] = sanitizeProps(v[k], depth + 1);
-    }
-    return out;
-  }
-  return null;
-}
 
 module.exports = async (req, res) => {
   if (applyCors(req, res)) return;
@@ -127,16 +107,23 @@ module.exports = async (req, res) => {
   // Free-form rich context (breadcrumbs, connection, per-type extras, …).
   const extra = body.props && typeof body.props === "object" ? sanitizeProps(body.props) : {};
 
+  // Server-derived keys are spread LAST so a client can't forge/override them.
   const props = Object.assign(
+    {},
+    extra || {},
+    hasUtm ? { utm } : {},
     {
       ua: ua || null,
       ref: referrer || null,
       dpr: typeof body.dpr === "number" ? body.dpr : null,
       serverTs: new Date().toISOString(),
-    },
-    hasUtm ? { utm } : {},
-    extra || {}
+    }
   );
+
+  // Defence-in-depth: only store a Page URL that is http(s). This endpoint is
+  // public, so a hostile report can't plant a javascript:/data: value the admin
+  // error view might otherwise render as a link.
+  const reportedUrl = str(body.url, 1024);
 
   const row = {
     type,
@@ -147,7 +134,7 @@ module.exports = async (req, res) => {
     colno: int(body.colno),
     stack: stack || null,
     path,
-    url: str(body.url, 1024) || null,
+    url: /^https?:\/\//i.test(reportedUrl) ? reportedUrl : null,
     referrer_host: referrerHost || null,
     vid,
     browser,

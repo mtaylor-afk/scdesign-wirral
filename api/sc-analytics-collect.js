@@ -17,6 +17,7 @@ const {
   parseUA,
   classifyChannel,
   hostOf,
+  sanitizeProps,
   sbInsert,
 } = require("../serverlib/common");
 
@@ -80,17 +81,17 @@ module.exports = async (req, res) => {
   const hasUtm = Object.values(utm).some(Boolean);
   const channel = classifyChannel(referrerHost, utm);
 
-  // Per-event extra props (the tracker sends a small object for events).
-  let extra = {};
-  if (body.props && typeof body.props === "object") {
-    try {
-      extra = JSON.parse(JSON.stringify(body.props));
-    } catch {
-      extra = {};
-    }
-  }
+  // Per-event extra props (the tracker sends a small object for events). Bounded
+  // so a hostile client can't write huge rows.
+  const extra =
+    body.props && typeof body.props === "object" ? sanitizeProps(body.props) || {} : {};
 
+  // Server-derived keys are spread LAST so a client-supplied `props` can't forge
+  // or override vid/bot/geo/channel/etc.
   const props = Object.assign(
+    {},
+    extra,
+    hasUtm ? { utm } : {},
     {
       vid,
       ref: referrer || null,
@@ -110,9 +111,7 @@ module.exports = async (req, res) => {
       bot: isBot,
       dur: int(body.dur),
       scroll: int(body.scroll),
-    },
-    hasUtm ? { utm } : {},
-    extra
+    }
   );
 
   const row = {

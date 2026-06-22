@@ -56,11 +56,15 @@ async function send(opts) {
     throw new Error("icloud-mailer: to, subject, html and text are all required");
   }
   const transporter = createTransport();
+  // Strip CR/LF from header-bound fields so no caller (incl. the shared q-cbuild1
+  // backend) can inject extra SMTP/MIME headers via from/replyTo/subject — header
+  // injection protection that holds regardless of the nodemailer version.
+  const noCRLF = (s) => (s == null ? s : String(s).replace(/[\r\n]+/g, " "));
   const info = await transporter.sendMail({
-    from: opts.from || DEFAULT_FROM,
-    replyTo: opts.replyTo || undefined,
+    from: noCRLF(opts.from) || DEFAULT_FROM,
+    replyTo: noCRLF(opts.replyTo) || undefined,
     to: opts.to,
-    subject: opts.subject,
+    subject: noCRLF(opts.subject),
     html: opts.html,
     text: opts.text,
   });
