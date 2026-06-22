@@ -76,10 +76,14 @@ export const site = {
     instagram: "https://www.instagram.com/sc.design.wirral",
   },
 
-  // Google review link — set NEXT_PUBLIC_GOOGLE_REVIEW_URL once the Google
-  // Business Profile is verified. Blank → the UI shows a placeholder, never a
-  // broken link. NEVER pair with invented reviews or AggregateRating schema.
-  googleReviewUrl: process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL || "",
+  // Google review link — Sean's live Google Business reviews (provided by Matthew
+  // 2026-06-22; volatile browser/session params trimmed, functional q + si kept).
+  // NEXT_PUBLIC_GOOGLE_REVIEW_URL still overrides if ever needed. Blank → the UI
+  // shows the invitation only, never a broken link. NEVER pair with invented
+  // reviews or AggregateRating schema.
+  googleReviewUrl:
+    process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL ||
+    "https://www.google.com/search?q=SC+Design+%26+Construction+Ltd+Reviews&si=APenkKm7iecQ4G6P-TsbSMFKIQtv3EFIqRAFw-i8uEbk55Z-_y_bWHzpSO07io5JSOvwzJVVGcPn-BWGu1evmfvBeiInsaw2SUV_sOwPG1ogWAMsjDkGOETsmi8Go_Hg-m14E6QN-qViBQVT6JBz_uEcQy89unQ50g%3D%3D",
   // Featurable rotating Google-reviews widget id (free tier). Blank → honest
   // "leave a review" fallback; set once Sean authorises the widget.
   featurableWidgetId: process.env.NEXT_PUBLIC_FEATURABLE_WIDGET_ID || "",
