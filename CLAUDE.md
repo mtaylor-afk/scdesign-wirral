@@ -185,6 +185,31 @@ Site-wide client **error capture** + an admin **Error logs** view, an admin sign
 
 **Debugging tip:** Playwright IS installed (`@playwright/test`) — drive the LIVE site headless to reproduce client behaviour. `sendBeacon` bodies are NOT exposed by `request.postData()`; wrap `navigator.sendBeacon` in an `addInitScript` to capture them.
 
+### ⭐ GENUINE GOOGLE REVIEWS — proudly displayed (LIVE — Jun 2026)
+Sean's real Google reviews (**5.0 average, 30 reviews, all 5★**) are now shown as verbatim testimonials across the site. **This SUPERSEDES the older "ReviewsWidget (Featurable) / review *themes* / honest-fallback copy" approach** for `/reviews` and the homepage (those notes lower down are history).
+
+**🔴 STANDING RULE — reviews are GENUINE-ONLY and shown WITHOUT self-review schema.** Applies to all future review work on this (or any client) site:
+- **Never fabricate** a review, rating, author or count. Only display reviews that genuinely exist on Google.
+- Show them **verbatim with attribution** and always **link to the live Google profile for validation** (`site.googleReviewUrl`).
+- **NEVER emit `Review` or `AggregateRating` JSON-LD for the business's own reviews on its own site** — Google disallows self-hosted self-review structured data *even when the reviews are genuine* (self-serving rich-snippet stars are a guidelines violation / manual-action risk). Display them **visually only**. For star rich-snippets, a third-party collector (Trustpilot / Featurable) is the compliant route — owner action, not ours to fake.
+
+**What's built (commits `996f105` + `e9a1112`):**
+- **`src/lib/reviews.ts`** — `reviewSummary` (`rating 5.0`, `count 30`, `source "Google"`, `url = site.googleReviewUrl`, `capturedOn`) + `reviews[]` = **15 curated verbatim reviews** (first 3 are the homepage feature). One reviewer (**Stephanie Corser — same surname as Sean**) was deliberately **omitted** to avoid any conflict-of-interest perception. The header comment documents this policy + how to refresh.
+- **`src/components/ui/Testimonials.tsx`** — `ReviewStars` (accessible 5-star row), `ReviewCard` (verbatim quote + author + optional `tag` Badge + "Verified Google review"), `ReviewsSummary` (`5.0 ★★★★★ · 30 genuine reviews on Google` + a "Read all 30 on Google" link), and `Testimonials` (responsive grid; pass `limit` to feature a subset).
+- **`/reviews`** (`src/app/reviews/page.tsx`) leads with `ReviewsSummary` + all 15 cards, then `ReviewCta` (leave a review) + `CTASection`.
+- **Homepage** (`src/app/page.tsx`) shows `ReviewsSummary align="center"` + `Testimonials limit={3}` + a "read more" link to `/reviews`.
+- **Footer** (`Footer.tsx`) shows a `5.0 / 30 Google reviews` badge linking to Google.
+- **`site.googleReviewUrl`** default is now Sean's **live Google reviews link** (commit `996f105`), lighting up the site-wide "Leave a Google review" `ReviewCta`; `NEXT_PUBLIC_GOOGLE_REVIEW_URL` overrides. `featurableWidgetId` (`NEXT_PUBLIC_FEATURABLE_WIDGET_ID`) stays optional/unset.
+
+**How the reviews were captured:** via the **connected Chrome browser** — Google search reviews are **consent-walled** (WebFetch 302s to `consent.google.com`), so they're only readable through Matthew's logged-in browser. **Caveat — STATIC SNAPSHOT:** the 15 quotes + the 5.0/30 summary go **stale** as new reviews arrive. To refresh: re-read the Google profile via Chrome and update `reviews.ts`, **or** wire a Featurable widget id for live auto-updating cards.
+
+**Owner-approved follow-ups — NOT yet implemented (pending "yes please all suggestions above"):** (1) make the **rating stars gold/amber** (no gold token exists — use an arbitrary value e.g. `text-[#e8a33d]`, in `ReviewStars` + the `Footer` badge); (2) add a compact **"★ 5.0 · 30 Google reviews" trust line** by the contact form + on service pages; (3) lightly tidy obvious typos in the verbatim quotes; (4) drop the **"J P" initials-only** card.
+
+**Pass to Sean (owner actions):** Google lists his business category as **"Architect"** — conflicts with the deliberate protected-title-safe "architectural **designer**, not an architect" positioning → change the **GBP primary category to "Architectural designer"**. Optional: set up **Featurable** (live cards + `NEXT_PUBLIC_FEATURABLE_WIDGET_ID`) and/or **Trustpilot** (compliant star rich-snippets).
+
+#### Accessibility / SEO verify-first pass (Jun 2026, commits `fca79f8` + `10285d6`)
+A 6-phase "accessibility / all-device / SEO / conversion" brief — but a **verify-first audit found the site already well-built**, so this was a small safe punch-list, not a rewrite (the brief's three "major concerns" were non-issues). Changes: `Nav.tsx` — `aria-controls` + a stable `#mobile-menu` (hidden when closed), ArrowDown-to-open / blur-to-close desktop dropdowns, `aria-current` on links; `globals.css` print `.no-print` on header/CTA/cookie banner; `MobileCtaBar` aria-labels; `BeforeAfterSlider` `fetchPriority="high"` on the hero (LCP). Baseline report: **`docs/scdesignwirral-accessibility-seo-baseline.md`**. **Still owner-blocked:** area-page keep/merge/noindex decisions need a **Google Search Console export first** — do not touch the 20 area pages until that's reviewed.
+
 ### 🔧 PROCESSING THE RETURNED PROJECTS QUESTIONNAIRE (fresh-session handoff)
 The 6 `/projects` pages are live with honest **placeholder** copy. The owner is returning **`PROJECTS-QUESTIONS.txt`** (repo root) filled in — they paste text following the `PROJECT 1…6` structure. A session with no chat history should use this to apply the answers. (If `PROJECTS-QUESTIONS.txt` is missing, its full content is recoverable from this map; `PROJECTS-CONTENT-QUESTIONNAIRE.md` is the same in markdown.)
 
