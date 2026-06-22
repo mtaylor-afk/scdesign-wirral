@@ -53,6 +53,12 @@ function esc(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
   );
 }
+// Return the URL only if it uses an http(s) scheme. esc() escapes HTML but does
+// NOT neutralise dangerous schemes (javascript:/data:), so every server-supplied
+// value must pass through here before being rendered as a clickable href.
+function safeHref(v) {
+  return /^https?:\/\//i.test(String(v == null ? "" : v)) ? String(v) : null;
+}
 function ago(ts) {
   const s = Math.round((Date.now() - new Date(ts).getTime()) / 1000);
   if (s < 60) return s + "s ago";
@@ -595,7 +601,7 @@ function enquiryDetail(r) {
   const fieldHtml = keys.length
     ? keys.map((k) => {
         let v = String(f[k]);
-        if (k === "resultUrl" && /^https?:\/\//.test(v)) v = `<a href="${esc(v)}" target="_blank" rel="noopener noreferrer">View image</a>`;
+        if (k === "resultUrl" && safeHref(v)) v = `<a href="${esc(v)}" target="_blank" rel="noopener noreferrer">View image</a>`;
         else v = esc(v);
         return `<div class="enqf"><dt>${esc(enqFieldLabel(k))}</dt><dd>${v}</dd></div>`;
       }).join("")
@@ -739,9 +745,14 @@ function errorDetail(e, i) {
           p.connection.rtt != null ? p.connection.rtt + " ms" : "",
         ].filter(Boolean).join(" · ")
       : "";
+  const safeUrl = safeHref(e.url);
   const ctx =
     (e.url
-      ? `<div class="errf"><dt>Page URL</dt><dd><a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.url)}</a></dd></div>`
+      ? `<div class="errf"><dt>Page URL</dt><dd>${
+          safeUrl
+            ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener noreferrer">${esc(e.url)}</a>`
+            : `<code>${esc(e.url)}</code>`
+        }</dd></div>`
       : errF("Path", e.path)) +
     [
       errF("Referrer", e.referrer_host),
@@ -1313,9 +1324,32 @@ function renderView() {
   } else loadStatsView();
 }
 
+// Mobile-aware sidebar open/close: keeps aria-expanded in sync and marks the
+// off-screen sidebar `inert` so keyboard users can't Tab into hidden nav links
+// (mobile only; the desktop sidebar is always visible and operable).
+const mqMobile = window.matchMedia("(max-width: 860px)");
+function setNavOpen(open) {
+  const app = document.getElementById("app");
+  const sidebar = document.getElementById("sidebar");
+  const toggle = document.getElementById("menuToggle");
+  if (app) app.classList.toggle("nav-open", open);
+  if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  if (sidebar) {
+    if (mqMobile.matches && !open) sidebar.setAttribute("inert", "");
+    else sidebar.removeAttribute("inert");
+  }
+  // Return focus to the toggle when closing on mobile (don't strand it on inert).
+  if (!open && mqMobile.matches && sidebar && toggle && sidebar.contains(document.activeElement))
+    toggle.focus();
+}
+mqMobile.addEventListener("change", () => {
+  const app = document.getElementById("app");
+  setNavOpen(!!(app && app.classList.contains("nav-open")));
+});
+
 function setView(id) {
   state.view = id;
-  document.getElementById("app").classList.remove("nav-open");
+  setNavOpen(false);
   renderSidebar();
   renderView();
   window.scrollTo(0, 0);
@@ -1547,7 +1581,8 @@ function wire() {
   });
   document.getElementById("refreshBtn").addEventListener("click", refresh);
   document.getElementById("menuToggle").addEventListener("click", () => {
-    document.getElementById("app").classList.toggle("nav-open");
+    const app = document.getElementById("app");
+    setNavOpen(!(app && app.classList.contains("nav-open")));
   });
   document.getElementById("view").addEventListener("click", (e) => {
     const m = e.target.closest("[data-m]");
@@ -1646,7 +1681,13 @@ async function boot() {
     if (ok) {
       showApp();
       renderSidebar();
-      renderView();
+      // Render the default view from the bundle loadStats() just fetched, instead
+      // of renderView() which would null state.data and re-fetch it (double load).
+      clearRt();
+      document.getElementById("pageTitle").textContent = TITLES[state.view];
+      document.getElementById("view").innerHTML = (VIEWS[state.view] || viewOverview)();
+      setPageMeta();
+      setNavOpen(false);
     }
   } catch (e) {
     showLogin();
