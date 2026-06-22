@@ -410,15 +410,14 @@ export function EnquiryForm() {
           What are you thinking of doing?{" "}
           <span className="text-xs font-normal text-muted">(optional)</span>
         </legend>
-        <div role="radiogroup" aria-label="Project type" className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        <div role="group" aria-label="Project type" className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {projectTypes.map((t) => {
             const selected = projectType === t;
             return (
               <button
                 type="button"
                 key={t}
-                role="radio"
-                aria-checked={selected}
+                aria-pressed={selected}
                 onClick={() => setProjectType((cur) => (cur === t ? "" : t))}
                 className={cn(
                   "rounded-[var(--radius)] border px-3 py-3 text-left text-sm transition-colors",

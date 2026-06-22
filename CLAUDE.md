@@ -406,7 +406,7 @@ Owner supplied a 32-phase "full live-site audit + implementation" brief (ARB-saf
 - **Owner must provide before build:** chosen path; provisioned account/DB; credentials as **Cloudflare Pages env vars** (never committed); admin auth (Cloudflare Access = simplest); what to log + retention; **GDPR/PECR** decision — IP addresses are personal data, so decide anonymisation/consent and update the privacy + cookie policy to match the existing consent-banner stance.
 
 ### Deployment & how to view it (no own domain yet)
-- **Static export** for GitHub Pages: `./scripts/build-static.sh` → writes `sc/site/` (env-driven `output: export` + `basePath=/sc/site` + `trailingSlash`; API routes moved aside during the build). `next.config.ts` reads `SC_STATIC_EXPORT` / `NEXT_PUBLIC_BASE_PATH` / `NEXT_PUBLIC_STATIC` / `NEXT_PUBLIC_SITE_URL`.
+- **Static export** (this standalone repo): `next build` → `out/`, served by Cloudflare Pages. (The old `scripts/build-static.sh` for the GitHub-Pages `/sc/site` sub-path was **removed June 2026** — it targeted a deploy topology that no longer exists.) `next.config.ts` hardcodes `isStatic = true` (`output: export` + `trailingSlash`); `NEXT_PUBLIC_BASE_PATH` defaults to `""`.
 - **`src/lib/base.ts`** — `withBase()` prefixes raw asset/anchor paths; `IS_STATIC` toggles the no-server form fallbacks (contact + send-concept open a prefilled email).
 - **Live viewing** (GitHub Pages serves only `main` + `claude/quote-builder-wv-construction-dwtaw`): develop on `claude/sc-clause-file-9bP8D`, then **publish** by copying `/sc/` onto `claude/quote-builder-wv-construction-dwtaw` (additive, `/sc/` only) → deploys via `.github/workflows/pages.yml`.
   - Test hub: `https://tailoredquote.co.uk/sc/index.html` · Full site: `…/sc/site/` · Visualiser: `…/sc/demo/extension-visualiser.html`
@@ -418,7 +418,7 @@ Owner supplied a 32-phase "full live-site audit + implementation" brief (ARB-saf
 - `demo/real/` + `public/examples/` — genuine before/after example image pairs (illustrative, not SC's own projects).
 
 ### Structure
-- `src/app` (App Router pages + `api/` route handlers + sitemap/robots/opengraph), `src/components` (`ui/` incl. `Breadcrumbs`, `layout/` incl. `MobileCtaBar`, `visualiser/`), `src/lib` (site, services, locations, faqs, guides, **projects**, seo, base, supabase, email, ratelimit, concept-canvas, consent, nav), `supabase/migrations`, `scripts/build-static.sh`, `project-templates/case-study-page.tsx.txt` (restore-to-route template).
+- `src/app` (App Router pages + `api/` route handlers + sitemap/robots/opengraph), `src/components` (`ui/` incl. `Breadcrumbs`, `layout/` incl. `MobileCtaBar`, `visualiser/`), `src/lib` (site, services, locations, faqs, guides, **projects**, seo, base, supabase, email, ratelimit, concept-canvas, consent, nav), `supabase/migrations`, `project-templates/case-study-page.tsx.txt` (restore-to-route template).
 - Docs: `sc/SITE-UPGRADE-PLAN.md` (June 2026 upgrade plan + outcomes), `sc/LOCAL_SEO_CHECKLIST.md` (GBP/NAP), `sc/STAGE-0-DISCOVERY.md`, `sc/SEO-PLAN.md`, `sc/README.md`, `sc/demo/README.md`.
 - **Data-driven content rule:** services/areas/guides are authored in `src/lib/*.ts` arrays (rich optional fields) and rendered by one template each. To add a page, add a data entry — the template, nav dropdown and sitemap pick it up automatically. Keep planning/conservation claims hedged ("often/may", "confirm with Wirral Council/your local authority"); never invent projects/reviews/quals; never use "architect" as the business title.
 

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const fieldBase =
@@ -24,6 +24,27 @@ export function Field({
   error?: string;
   children: ReactNode;
 }) {
+  // Auto-wire the control's aria-describedby (hint + error ids) and aria-invalid so
+  // every consumer gets the association for free — merged/deduped with any value the
+  // caller already passed, never clobbering it.
+  const ids = [hint ? `${htmlFor}-hint` : null, error ? `${htmlFor}-error` : null].filter(
+    Boolean
+  ) as string[];
+  let control: ReactNode = children;
+  if (isValidElement(children)) {
+    const props = children.props as Record<string, unknown>;
+    const existing =
+      typeof props["aria-describedby"] === "string"
+        ? (props["aria-describedby"] as string).split(/\s+/)
+        : [];
+    const describedBy = Array.from(new Set([...existing, ...ids].filter(Boolean)));
+    control = cloneElement(children as ReactElement<Record<string, unknown>>, {
+      id: (props.id as string | undefined) ?? htmlFor,
+      "aria-describedby": describedBy.length ? describedBy.join(" ") : undefined,
+      "aria-invalid": error ? true : props["aria-invalid"],
+    });
+  }
+
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={htmlFor} className="text-sm font-medium text-ink">
@@ -35,7 +56,7 @@ export function Field({
         )}
         {optional && <span className="ml-1 text-xs font-normal text-muted">(optional)</span>}
       </label>
-      {children}
+      {control}
       {hint && (
         <p id={`${htmlFor}-hint`} className="text-xs text-muted">
           {hint}

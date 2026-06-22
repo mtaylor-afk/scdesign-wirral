@@ -238,6 +238,18 @@ export function VisualiserApp() {
 
   return (
     <div>
+      {/* SR-only announcement of view transitions so keyboard/AT users know the
+          content changed when the focused control is replaced. Loading is announced
+          by the spinner's role=status and errors by role=alert below, so this is
+          scoped to result/refine to avoid double-announcing. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {status === "result"
+          ? "Your concept is ready."
+          : status === "refine"
+            ? "A draft concept is ready to review and refine."
+            : ""}
+      </p>
+
       {/* LOADING */}
       {status === "loading" && (
         <Card className="flex min-h-80 flex-col items-center justify-center text-center">

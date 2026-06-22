@@ -37,8 +37,14 @@ export function Nav() {
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        // If focus sits inside an open desktop dropdown panel, return it to that
+        // panel's trigger button so Escape never drops focus to <body> (WCAG 2.4.3).
+        const panel = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(
+          '[id^="menu-"]'
+        );
         setMenu(null);
         setOpen(false);
+        (panel?.previousElementSibling as HTMLElement | null)?.focus();
       }
     }
     document.addEventListener("mousedown", onDown);
@@ -107,7 +113,10 @@ export function Nav() {
                 key={item.href}
                 className="relative"
                 onMouseEnter={() => setMenu(item.label)}
-                onMouseLeave={() => setMenu(null)}
+                onMouseLeave={(e) => {
+                  // Don't close on pointer-leave while keyboard focus is still inside.
+                  if (!e.currentTarget.contains(document.activeElement)) setMenu(null);
+                }}
                 onBlur={(e) => {
                   // Close when keyboard focus leaves this menu group entirely.
                   if (!e.currentTarget.contains(e.relatedTarget as Node)) setMenu(null);
@@ -151,6 +160,7 @@ export function Nav() {
                       <li key={c.href}>
                         <Link
                           href={c.href}
+                          aria-current={pathname === c.href ? "page" : undefined}
                           onClick={() => setMenu(null)}
                           className="block rounded-md px-3 py-2 text-sm text-ink-soft hover:bg-paper-card hover:text-accent-strong"
                         >

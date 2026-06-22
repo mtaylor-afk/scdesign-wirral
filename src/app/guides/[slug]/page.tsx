@@ -317,7 +317,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
 
           <h2 className="mt-12 text-xl">Related</h2>
           <ul className="mt-4 flex flex-wrap gap-2.5">
-            {guide.related.map((href) => (
+            {[...new Set(guide.related)].map((href) => (
               <li key={href}>
                 <Link
                   href={href}

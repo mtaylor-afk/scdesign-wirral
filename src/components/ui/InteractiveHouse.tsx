@@ -155,6 +155,10 @@ export function InteractiveHouse() {
 
       {/* Detail panel */}
       <div className="lg:pt-12">
+        {/* Announce the selected feature to screen readers without stealing focus. */}
+        <p className="sr-only" role="status" aria-live="polite">
+          {feat ? `Showing ${feat.label}: ${feat.headline}.` : ""}
+        </p>
         {feat ? (
           <div className="rounded-lg border border-line bg-paper-card p-6 shadow-card">
             <h3 className="text-xl">{feat.label}</h3>
