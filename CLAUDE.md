@@ -11,6 +11,15 @@ repository — the repo is only being used here as a convenient testing host.
 > down are monorepo history and do **not** apply here; use the deployment
 > section immediately below.
 
+> **🔴 COMMIT-TARGET RULE — read me first (standing, this repo & this chat):**
+> Every commit for SC Design work — **including any "commit to CLAUDE.md"
+> request** — targets **THIS repo** (`mtaylor-afk/scdesign-wirral`, branch
+> `main`). **NEVER** commit SC changes, and never commit a CLAUDE.md edit, to the
+> **Sales Dashboard** repo (`…\Sales Dashboard\Claude`) — that is merely the
+> directory a chat may happen to run from; it has **no** GitHub remote and its
+> CLAUDE.md is unrelated. If "commit to claude.md" is ever ambiguous, it ALWAYS
+> means **this** file in the SC design repo.
+
 ## Working process & deployment (this clone)
 
 - **Hosting:** Cloudflare Pages, which builds from `main` on every push
