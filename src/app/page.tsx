@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Container, Section, LinkButton, StatCard, SectionHeading, Card } from "@/components/ui";
 import { CTASection } from "@/components/ui/CTASection";
-import { ReviewsWidget } from "@/components/ui/ReviewsWidget";
+import { ReviewsSummary, Testimonials } from "@/components/ui/Testimonials";
 import { BeforeAfterSlider } from "@/components/ui/BeforeAfterSlider";
 import { FAQList } from "@/components/ui/FAQItem";
 import { JsonLd } from "@/components/JsonLd";
@@ -333,15 +333,22 @@ export default function HomePage() {
 
       {/* REVIEWS */}
       <Section>
-        <Container className="max-w-3xl">
+        <Container>
           <SectionHeading
             eyebrow="Reviews"
             title="What homeowners and builders say"
+            intro="Genuine, verified reviews from the SC Design Google profile."
             align="center"
           />
-          <div className="mt-8">
-            <ReviewsWidget />
+          <div className="mt-8 flex justify-center">
+            <ReviewsSummary align="center" />
           </div>
+          <Testimonials limit={3} className="mt-10" />
+          <p className="mt-8 text-center text-sm text-muted">
+            <Link href="/reviews" className="font-medium text-accent-strong underline">
+              Read more reviews
+            </Link>
+          </p>
         </Container>
       </Section>
 

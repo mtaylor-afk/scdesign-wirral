@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ReviewCta } from "@/components/ui/ReviewCta";
 import { site, whatsappLink, defaultWhatsAppMessage } from "@/lib/site";
+import { reviewSummary } from "@/lib/reviews";
 import {
   footerDesignServices,
   footerPlanningServices,
@@ -64,6 +65,25 @@ export function Footer() {
               </a>
             )}
           </div>
+
+          {reviewSummary.url && (
+            <a
+              href={reviewSummary.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex items-center gap-2 text-sm text-paper/85 hover:text-white"
+            >
+              <span className="text-accent" aria-hidden>
+                ★★★★★
+              </span>
+              <span>
+                <strong className="font-semibold text-white">
+                  {reviewSummary.rating.toFixed(1)}
+                </strong>{" "}
+                · {reviewSummary.count} Google reviews
+              </span>
+            </a>
+          )}
 
           <ReviewCta tone="footer" />
         </div>
