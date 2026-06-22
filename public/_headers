@@ -1,7 +1,30 @@
 # Cloudflare Pages headers.
-# Admin portal: never cache the app shell, scripts or styles — always serve the
-# latest version so the admin can never run stale code or show stale data.
+
+# Baseline security headers on every response. DELIBERATELY NO content CSP
+# (default-src / script-src / style-src / connect-src): a content CSP would break
+# the inline JSON-LD, inline styles, Google Fonts, and the cross-origin POSTs to
+# scdesign-wirral.vercel.app + q-cbuild1.vercel.app. If a content CSP is ever
+# added it MUST allow-list: fonts.googleapis.com + fonts.gstatic.com (style/font),
+# 'unsafe-inline' (JSON-LD + inline styles), and connect-src those two vercel.app
+# origins — or the live site breaks. HSTS starts SHORT (no includeSubDomains, no
+# preload) until every scdesignwirral.co.uk subdomain is confirmed HTTPS-only;
+# raise max-age (and consider includeSubDomains/preload) only after that audit.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: frame-ancestors 'self'
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=300
+
+# Admin portal: never cache the app shell, scripts or styles (always run the
+# latest code / show live data) and never allow framing (clickjacking on the
+# PII-bearing views). More-specific rules override the /* values above.
 /admin
   Cache-Control: no-store, max-age=0
+  X-Frame-Options: DENY
+  Content-Security-Policy: frame-ancestors 'none'
 /admin/*
   Cache-Control: no-store, max-age=0
+  X-Frame-Options: DENY
+  Content-Security-Policy: frame-ancestors 'none'

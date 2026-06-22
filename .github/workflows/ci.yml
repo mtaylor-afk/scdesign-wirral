@@ -1,0 +1,27 @@
+name: CI
+
+# Enforces the "tsc + ESLint + build pass clean" premise the codebase relies on.
+# Note: pushes to main also auto-deploy (Cloudflare Pages + Vercel) independently
+# of this workflow — add a branch-protection rule requiring "validate" if you want
+# it to gate merges. NEVER run `npm audit fix --force` (it would downgrade Next 16).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Typecheck + lint + build
+        run: npm run validate
+      - name: Dependency audit (report only — vuln fixes are owner-timed)
+        run: npm audit --audit-level=high || true
