@@ -1,30 +1,29 @@
 # Cloudflare Pages headers.
-
-# Baseline security headers on every response. DELIBERATELY NO content CSP
-# (default-src / script-src / style-src / connect-src): a content CSP would break
-# the inline JSON-LD, inline styles, Google Fonts, and the cross-origin POSTs to
-# scdesign-wirral.vercel.app + q-cbuild1.vercel.app. If a content CSP is ever
-# added it MUST allow-list: fonts.googleapis.com + fonts.gstatic.com (style/font),
+#
+# Cloudflare Pages COMBINES (appends) the headers from every matching rule rather
+# than overriding by specificity — so setting the same header name on both /* and
+# /admin/* produces DUPLICATE headers. To keep exactly one of each, the security
+# headers are set ONCE globally on /*, and the /admin rules add ONLY Cache-Control.
+#
+# DELIBERATELY NO content CSP (default-src / script-src / style-src / connect-src):
+# it would break inline JSON-LD, inline styles, Google Fonts, and the cross-origin
+# POSTs to scdesign-wirral.vercel.app + q-cbuild1.vercel.app. A future content CSP
+# MUST allow-list fonts.googleapis.com + fonts.gstatic.com (style/font),
 # 'unsafe-inline' (JSON-LD + inline styles), and connect-src those two vercel.app
-# origins — or the live site breaks. HSTS starts SHORT (no includeSubDomains, no
-# preload) until every scdesignwirral.co.uk subdomain is confirmed HTTPS-only;
-# raise max-age (and consider includeSubDomains/preload) only after that audit.
+# origins — or the live site breaks. HSTS is SHORT (no includeSubDomains, no
+# preload) until every scdesignwirral.co.uk subdomain is confirmed HTTPS-only.
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  X-Frame-Options: SAMEORIGIN
-  Content-Security-Policy: frame-ancestors 'self'
+  X-Frame-Options: DENY
+  Content-Security-Policy: frame-ancestors 'none'
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
   Strict-Transport-Security: max-age=300
 
 # Admin portal: never cache the app shell, scripts or styles (always run the
-# latest code / show live data) and never allow framing (clickjacking on the
-# PII-bearing views). More-specific rules override the /* values above.
+# latest code / show live data). Frame protection comes from /* above — do NOT
+# repeat X-Frame-Options / CSP here or Cloudflare emits duplicate headers.
 /admin
   Cache-Control: no-store, max-age=0
-  X-Frame-Options: DENY
-  Content-Security-Policy: frame-ancestors 'none'
 /admin/*
   Cache-Control: no-store, max-age=0
-  X-Frame-Options: DENY
-  Content-Security-Policy: frame-ancestors 'none'
