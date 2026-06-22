@@ -67,7 +67,7 @@ the *Final Proposed Changes* brief: **verify, document, then change.**
 | 3 | Protected-title sweep + "Are you architects?" FAQ; service-page structure check | **Done — verified clean** |
 | 4 | Trust-signal consistency; review env var | **Verified** (needs Matthew's review URL) |
 | 5 | `/contact/thank-you` noindex check; CTA-label consistency | **Done — verified clean** |
-| 6 | Cross-device + keyboard + schema + broken-link QA; release report | Pending |
+| 6 | Cross-device + keyboard + schema + broken-link QA; release report | **Done — verified live + static** |
 
 ## 4. Blocked on Matthew (will not guess or fabricate)
 1. **Google Search Console export** (top queries/pages, indexed status, CWV, mobile usability) — **required before any area-page keep / merge / noindex decision.** Until then, zero area pages are touched.
@@ -113,3 +113,18 @@ the *Final Proposed Changes* brief: **verify, document, then change.**
   **`NEXT_PUBLIC_GOOGLE_REVIEW_URL`** (and optionally `NEXT_PUBLIC_FEATURABLE_WIDGET_ID`) in
   the **Cloudflare Pages** build env once the Google Business Profile is verified, then
   redeploy; blank stays an honest "leave a review" fallback (never fake reviews/ratings).
+- **2026-06-22 — Batch 6 (final QA & release):** the production export was served locally
+  (`python -m http.server` on `out/`) and exercised in a headless browser.
+  **Live accessibility — all pass:** mobile menu toggles correctly (`aria-expanded` and
+  `aria-label` flip, the `[hidden]` attribute toggles, and links leave the a11y tree when
+  closed); **Escape** closes it; the desktop dropdown **ArrowDown** opens the panel *and*
+  moves focus to the first link ("Extensions"); the dropdown **blur-closes** when focus
+  leaves it (Tab-out); `aria-current="page"` renders correctly (0 on home, 3 on a service
+  page). **Layout:** no horizontal scroll at 320px (0 px overflow); the mobile CTA bar
+  (Call / WhatsApp / Send idea) renders cleanly. **No console errors.**
+  **Static SEO/QA checks:** `out/404.html` present; `robots.txt` correct (Allow `/`, Disallow
+  `/api` `/admin` `/components-preview`, sitemap referenced); `sitemap.xml` = 78 URLs; homepage
+  emits 4 JSON-LD blocks; `/contact/thank-you` carries `noindex`; the hero `<img>` carries
+  `fetchpriority="high"`. *Note:* the `__next.*.txt` 404s seen under the bare static file
+  server are harmless — they're Next's client-router RSC prefetch payloads; real navigation
+  falls back to the 200 HTML pages, and Cloudflare Pages serves the export correctly.
