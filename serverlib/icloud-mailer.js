@@ -48,7 +48,7 @@ function createTransport() {
 
 /**
  * Send one email through iCloud SMTP.
- * @param {{to:string|string[], subject:string, html:string, text:string, replyTo?:string, from?:string}} opts
+ * @param {{to:string|string[], cc?:string|string[], subject:string, html:string, text:string, replyTo?:string, from?:string}} opts
  * @returns {Promise<{messageId:string|null, accepted:string[], rejected:string[]}>}
  */
 async function send(opts) {
@@ -60,10 +60,13 @@ async function send(opts) {
   // backend) can inject extra SMTP/MIME headers via from/replyTo/subject — header
   // injection protection that holds regardless of the nodemailer version.
   const noCRLF = (s) => (s == null ? s : String(s).replace(/[\r\n]+/g, " "));
+  const cc =
+    opts.cc && (!Array.isArray(opts.cc) || opts.cc.length) ? opts.cc : undefined;
   const info = await transporter.sendMail({
     from: noCRLF(opts.from) || DEFAULT_FROM,
     replyTo: noCRLF(opts.replyTo) || undefined,
     to: opts.to,
+    cc,
     subject: noCRLF(opts.subject),
     html: opts.html,
     text: opts.text,

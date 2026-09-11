@@ -26,16 +26,30 @@ const {
 } = require("../serverlib/common");
 const mailer = require("../serverlib/icloud-mailer");
 
-// SC enquiry notifications go to BOTH of Sean's addresses (the existing pair —
-// the same two used by the site's mailto fallback). Overridable via
-// SC_LEAD_RECIPIENTS (comma-separated) without code changes.
-const SC_RECIPIENTS = (
-  process.env.SC_LEAD_RECIPIENTS ||
-  "scdesignandconstruction1@gmail.com,matthewjtaylor1985@icloud.com"
-)
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+// SC enquiry notifications: Sean's business address in To, Matthew CC'd (so his
+// copy is clearly a cc, not a second primary recipient). All overridable via env
+// without a code change:
+//   SC_LEAD_TO   — the primary recipient (Sean).
+//   SC_LEAD_CC   — comma-separated cc list (Matthew, + anyone else).
+// Legacy SC_LEAD_RECIPIENTS (comma-separated) still works — its first address
+// becomes To and the rest become Cc.
+function splitRecipients() {
+  const to = (process.env.SC_LEAD_TO || "").trim();
+  const cc = (process.env.SC_LEAD_CC || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (to) return { to, cc };
+  const legacy = (process.env.SC_LEAD_RECIPIENTS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const list = legacy.length
+    ? legacy
+    : ["scdesignandconstruction1@gmail.com", "matthewjtaylor1985@icloud.com"];
+  return { to: list[0], cc: list.slice(1) };
+}
+const SC_MAIL = splitRecipients();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -108,7 +122,8 @@ async function notifySean(row) {
 
   try {
     await mailer.send({
-      to: SC_RECIPIENTS,
+      to: SC_MAIL.to,
+      cc: SC_MAIL.cc,
       replyTo: replyValid ? row.email : undefined,
       subject,
       html,
