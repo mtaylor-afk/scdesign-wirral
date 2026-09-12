@@ -1,0 +1,48 @@
+{
+  "_comment": "Manifest for scripts/process-brief-images.mjs. `src` = media file extracted from Sean's brief (Matt Website page.docx -> word/media). `rotate` is applied first (Word displayed these rotated 90deg); `fill` (white-out) and `blur` boxes are [left, top, width, height] in post-rotation pixels. Privacy: house numbers blurred; drawing 'WORK IN PROGRESS' stamps whited out. Google Street View / aerial captures (brief #33, #40), a news-site screenshot (#56) and a possible Street View (#11) are deliberately NOT included.",
+  "images": [
+    { "id": "loftRearDormerBefore", "brief": 30, "src": "image29.jpeg", "out": "work/loft-rear-dormer/before.jpg", "kind": "photo", "alt": "Rear of a brick semi-detached house before its loft conversion" },
+    { "id": "loftRearDormerDrawing", "brief": 31, "src": "image30.png", "out": "work/loft-rear-dormer/drawing.png", "kind": "drawing", "alt": "Proposed rear elevation drawing showing a full-width dormer with Juliet balconies" },
+    { "id": "loftRearDormerAfter", "brief": 32, "src": "image31.png", "publish": false, "note": "Looks like a Google Street View capture — held until Sean confirms it is his own photo", "out": "work/loft-rear-dormer/after.jpg", "kind": "photo", "alt": "Completed rear dormer loft conversion with Juliet balconies" },
+
+    { "id": "loftDormerDrawing", "brief": 34, "src": "image33.png", "out": "work/loft-dormer/drawing.png", "kind": "drawing", "alt": "Proposed rear elevation drawing of a dormer loft conversion" },
+    { "id": "loftDormerAfter", "brief": 35, "src": "image34.jpeg", "out": "work/loft-dormer/after.jpg", "kind": "photo", "alt": "Completed dormer loft conversion with dark grey cladding" },
+
+    { "id": "loftTileHung", "brief": 37, "src": "image36.jpeg", "out": "work/lofts/tile-hung-dormer.jpg", "kind": "photo", "alt": "Completed tile-hung dormer with oak-effect windows" },
+    { "id": "loftTimberClad", "brief": 38, "src": "image37.jpeg", "rotate": 90, "out": "work/lofts/timber-clad-dormer.jpg", "kind": "photo", "alt": "Completed timber-clad dormer on a brick house" },
+    { "id": "loftRear", "brief": 39, "src": "image38.jpeg", "out": "work/lofts/rear-loft-conversion.jpg", "kind": "photo", "alt": "Rear of a house with a completed loft conversion" },
+
+    { "id": "garage1BeforeInterior", "brief": 41, "src": "image40.jpeg", "rotate": 90, "out": "work/garage-conversion-1/before-interior.jpg", "kind": "photo", "alt": "Inside the garage before conversion" },
+    { "id": "garage1After", "brief": 42, "src": "image41.jpeg", "rotate": 90, "out": "work/garage-conversion-1/after.jpg", "kind": "photo", "alt": "Front of the house after the garage was converted, with a new window in place of the garage door" },
+    { "id": "garage1During", "brief": 43, "src": "image42.jpeg", "rotate": 90, "out": "work/garage-conversion-1/during.jpg", "kind": "photo", "alt": "The converted garage room during the works" },
+    { "id": "garage1AfterInterior", "brief": 44, "src": "image43.jpeg", "rotate": 90, "out": "work/garage-conversion-1/after-interior.jpg", "kind": "photo", "alt": "The finished room inside the converted garage" },
+
+    { "id": "garage2Before", "brief": 45, "src": "image44.png", "publish": false, "note": "Looks like a Google Street View capture (and pairs with #46 to identify the house) — held until Sean confirms", "blur": [[262, 418, 36, 30]], "out": "work/garage-conversion-2/before.jpg", "kind": "photo", "alt": "Semi-detached house with an integral garage before conversion" },
+    { "id": "garage2After", "brief": 46, "src": "image45.jpeg", "blur": [[68, 90, 20, 18]], "out": "work/garage-conversion-2/after.jpg", "kind": "photo", "alt": "The same frontage after the garage conversion, with a new window and extended porch canopy" },
+    { "id": "garage2Interior", "brief": 47, "src": "image46.jpeg", "out": "work/garage-conversion-2/interior.jpg", "kind": "photo", "alt": "Boot room with built-in timber seating and storage inside the converted garage" },
+
+    { "id": "extLanternDrawing", "brief": 20, "src": "image20.png", "fill": [[575, 598, 177, 27]], "out": "work/extension-lantern/drawing.png", "kind": "drawing", "alt": "Proposed rear elevation drawing with a single-storey extension and roof lantern" },
+    { "id": "extLanternAfter", "brief": 19, "src": "image19.jpeg", "out": "work/extension-lantern/after.jpg", "kind": "photo", "alt": "Completed single-storey extension with a roof lantern and bi-fold doors" },
+
+    { "id": "extRearPebbledash", "brief": 28, "src": "image27.jpeg", "out": "work/extensions/rear-extension.jpg", "kind": "photo", "alt": "Completed single-storey rear extension with sliding doors on a semi-detached house" },
+    { "id": "extBeforeGarden", "brief": 21, "src": "image21.jpeg", "rotate": 90, "out": "work/extensions/before-rear.jpg", "kind": "photo", "alt": "Rear of a semi-detached house before an extension" },
+    { "id": "extCorner", "brief": 23, "src": "image23.jpeg", "out": "work/extensions/extension-corner.jpg", "kind": "photo", "alt": "Newly built rendered rear extension with French doors" },
+
+    { "id": "planningElevations", "brief": 50, "src": "image49.png", "out": "work/planning/proposed-elevations.png", "kind": "drawing", "alt": "Coloured proposed elevations prepared for a householder planning application" },
+
+    { "id": "houseSectionsAB", "brief": 48, "src": "image47.png", "fill": [[745, 666, 201, 32]], "out": "work/new-house/sections-a-b.png", "kind": "drawing", "alt": "Sections A and B through a new detached house" },
+    { "id": "houseSectionsCF", "brief": 49, "src": "image48.png", "out": "work/new-house/sections-c-f.png", "kind": "drawing", "alt": "Further sections through the new detached house" },
+    { "id": "houseRoofPlan", "brief": 51, "src": "image50.png", "out": "work/new-house/roof-plan.png", "kind": "drawing", "alt": "Roof plan of the new detached house" },
+    { "id": "houseRearSide", "brief": 52, "src": "image51.png", "out": "work/new-house/rear-side-elevations.png", "kind": "drawing", "alt": "Rear and side elevations of the new detached house" },
+    { "id": "houseFloorPlan", "brief": 53, "src": "image52.png", "fill": [[620, 490, 224, 20]], "out": "work/new-house/ground-floor-plan.png", "kind": "drawing", "alt": "Ground-floor plan of the new detached house with a double garage" },
+    { "id": "houseFrontSide", "brief": 54, "src": "image53.png", "fill": [[618, 574, 237, 22]], "out": "work/new-house/front-side-elevations.png", "kind": "drawing", "alt": "Front and side elevations of the new detached house" },
+    { "id": "houseSketchViews", "brief": 55, "src": "image54.png", "out": "work/new-house/3d-views.png", "kind": "drawing", "alt": "Three-dimensional line views of the new detached house" },
+
+    { "id": "vizBifold", "brief": 26, "src": "image25.jpeg", "out": "portfolio/viz-bifold-extension.jpg", "kind": "render", "alt": "Design visualisation of a rendered rear extension with bi-fold doors" },
+    { "id": "vizFlatRoofLantern", "brief": 27, "src": "image26.jpeg", "out": "portfolio/viz-flat-roof-extension.jpg", "kind": "render", "alt": "Design visualisation of a flat-roof extension with a roof lantern and corner glazing" },
+    { "id": "vizTimberClad", "brief": 29, "src": "image28.jpeg", "out": "portfolio/viz-timber-clad-extension.jpg", "kind": "render", "alt": "Design visualisation of a timber-clad garden extension with decking" },
+
+    { "id": "heroDuring", "brief": 5, "src": "image5.jpeg", "out": "portfolio/hero-during.jpg", "kind": "photo", "alt": "The rear extension during the build, before landscaping" },
+    { "id": "chapelRender", "brief": 12, "src": "image12.jpeg", "out": "portfolio/chapel-render.jpg", "kind": "render", "alt": "Design render of the chapel-to-gallery conversion" }
+  ]
+}

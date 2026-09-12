@@ -5,6 +5,7 @@ import { ServiceCard } from "@/components/ui/ServiceCard";
 import { CTASection } from "@/components/ui/CTASection";
 import { JsonLd } from "@/components/JsonLd";
 import { services, serviceCategories } from "@/lib/services";
+import { getServiceMedia } from "@/lib/media";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 
 export const metadata = pageMeta({
@@ -18,27 +19,27 @@ export const metadata = pageMeta({
 const situations: { when: string; service: string; href: string }[] = [
   {
     when: "I have an idea but want to explore what's possible",
-    service: "Concept & feasibility",
+    service: "Concept design & feasibility studies",
     href: "/services/concept-design-feasibility",
   },
   {
     when: "I want one designer from concept to approval",
-    service: "Full architectural design",
+    service: "Full architectural design services",
     href: "/services/residential-design",
   },
   {
     when: "I need accurate drawings of my existing home",
-    service: "Measured building survey",
+    service: "Measured building surveys & existing drawings",
     href: "/services/measured-building-surveys",
   },
   {
     when: "I need planning permission",
-    service: "Planning drawings",
+    service: "Planning permission drawings & consultancy",
     href: "/services/planning-drawings-wirral",
   },
   {
     when: "I want a builder to quote, or building control asked for drawings",
-    service: "Building regulations drawings",
+    service: "Building regulations drawings & technical packages",
     href: "/services/building-regulations-drawings-wirral",
   },
   {
@@ -98,9 +99,10 @@ export default function ServicesPage() {
                 {group.map((s) => (
                   <ServiceCard
                     key={s.slug}
-                    title={s.h1 ?? s.title}
+                    title={s.title}
                     blurb={s.blurb}
                     href={`/services/${s.slug}`}
+                    image={getServiceMedia(s.slug).card}
                   />
                 ))}
               </div>

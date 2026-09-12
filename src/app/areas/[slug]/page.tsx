@@ -138,7 +138,7 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
               <Card key={s.slug} hover>
                 <h3 className="text-lg">
                   <Link href={`/services/${s.slug}`} className="hover:text-accent-strong">
-                    {s.h1 ?? s.title}
+                    {s.title}
                   </Link>
                 </h3>
                 <p className="mt-2 text-sm text-muted">{s.blurb}</p>

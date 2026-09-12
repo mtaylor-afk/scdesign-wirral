@@ -288,15 +288,15 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
           <div className="mt-10 rounded-[var(--radius)] border border-line bg-paper-card p-5">
             {ctaService && (
               <p className="text-pretty text-ink-soft">
-                Need {ctaService.title.toLowerCase()}? We can prepare them — clear, coordinated and
-                ready for builders and building control.
+                Need help with this? Our {ctaService.title} service covers it — clear, coordinated
+                drawings ready for builders and building control.
               </p>
             )}
             <div className={ctaService ? "mt-4 flex flex-wrap gap-3" : "flex flex-wrap gap-3"}>
               <LinkButton href={cta.primary.href}>{cta.primary.label}</LinkButton>
               {ctaService ? (
                 <LinkButton href={`/services/${ctaService.slug}`} variant="ghost">
-                  See our {ctaService.title} service
+                  See the {ctaService.short} service
                 </LinkButton>
               ) : (
                 <LinkButton href={cta.visualiser.href} variant="ghost">

@@ -5,6 +5,8 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
 import { GoogleRatingLine } from "@/components/ui/Testimonials";
 import { FAQList } from "@/components/ui/FAQItem";
+import { WorkGallery } from "@/components/ui/WorkGallery";
+import { getServiceMedia } from "@/lib/media";
 import { JsonLd } from "@/components/JsonLd";
 import { services, getService } from "@/lib/services";
 import { guides } from "@/lib/guides";
@@ -83,6 +85,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
   const related = relatedServiceCards(service.relatedServices);
   const relatedGuidePaths = service.relatedGuides ?? [];
   const heading = service.h1 ?? service.title;
+  const media = getServiceMedia(slug);
 
   return (
     <>
@@ -161,6 +164,28 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           </div>
         </Container>
       </Section>
+
+      {/* Examples of this work — Sean's photos, drawings and labelled visualisations */}
+      {media.gallery && media.gallery.length > 0 && (
+        <Section tone="mist">
+          <Container>
+            <SectionHeading
+              eyebrow="Examples"
+              title="Examples of this work"
+              intro="Photos, drawings and design visualisations from Sean's projects — each one labelled, so you always know what you're looking at."
+            />
+            <WorkGallery images={media.gallery} className="mt-8" />
+            <p className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+              <Link href="/before-and-after" className="font-medium text-accent-strong underline">
+                See before &amp; after
+              </Link>
+              <Link href="/projects" className="font-medium text-accent-strong underline">
+                Read the case studies
+              </Link>
+            </p>
+          </Container>
+        </Section>
+      )}
 
       {/* Planning / building regs / local / send-first / extra prose */}
       {(service.planningRoute ||
