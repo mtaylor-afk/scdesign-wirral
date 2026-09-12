@@ -2,7 +2,8 @@ import { ImageResponse } from "next/og";
 
 export const dynamic = "force-static";
 
-export const alt = "SC Design Wirral — Architectural Design across Wirral, Cheshire & North Wales";
+export const alt =
+  "SC Design Wirral — Architectural Design across Wirral, Liverpool, Cheshire, Warrington & North Wales";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -27,7 +28,7 @@ export default function OpengraphImage() {
         Architectural design for extensions, lofts &amp; planning across Wirral
       </div>
       <div style={{ fontSize: 28, marginTop: 32, color: "rgba(245,239,229,0.7)" }}>
-        15+ years · Wirral, Cheshire &amp; North Wales · design to planning-ready
+        15+ years · Wirral, Liverpool, Cheshire &amp; North Wales · design to planning-ready
       </div>
     </div>,
     { ...size }

@@ -75,6 +75,16 @@ export const areasServed = [
   "Liverpool",
   "Chester",
   "Crosby",
+  // Wider areas from Sean's brief (Sep 2026) — genuinely served, no local pages.
+  "Warrington",
+  "Runcorn",
+  "Northwich",
+  "Frodsham",
+  "Southport",
+  "Wrexham",
+  "Mold",
+  "Cheshire West and Chester",
+  "Flintshire",
 ];
 
 const serviceTypes = [
@@ -112,6 +122,7 @@ export function localBusinessJsonLd() {
     telephone: site.phoneE164,
     email: site.email,
     image: `${siteUrl}/opengraph-image`,
+    logo: `${siteUrl}${site.logo}`,
     areaServed: areasServed.map((name) => ({ "@type": "Place", name })),
     serviceType: serviceTypes,
     knowsAbout: serviceTypes,
@@ -234,7 +245,7 @@ export function personJsonLd() {
       {
         "@type": "EducationalOccupationalCredential",
         credentialCategory: "degree",
-        name: site.credentials.degree, // "BSc Architectural Science"
+        name: site.credentials.degree, // "BSc Architectural Technology"
       },
     ],
     worksFor: { "@id": `${siteUrl}/#business` },

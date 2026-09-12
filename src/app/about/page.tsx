@@ -1,14 +1,14 @@
 import { Container, Section, StatCard, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
+import { MeetSean } from "@/components/ui/MeetSean";
 import { JsonLd } from "@/components/JsonLd";
 import { site } from "@/lib/site";
 import { pageMeta, breadcrumbJsonLd, personJsonLd } from "@/lib/seo";
 
 export const metadata = pageMeta({
   title: "About — Sean Corser MCIAT, Architectural Designer",
-  description:
-    "SC Design Wirral is led by Sean Corser MCIAT, a Chartered Architectural Technologist (BSc Architectural Science) with 15+ years designing homes for families across Wirral and selected surrounding areas. Design only — we prepare drawings so you can approach builders for like-for-like quotations.",
+  description: `SC Design Wirral is led by Sean Corser MCIAT, a Chartered Architectural Technologist (${site.credentials.degree}) with 15+ years designing homes for families across ${site.serviceArea}. Design only — we prepare drawings so you can approach builders for like-for-like quotations.`,
   path: "/about",
 });
 
@@ -65,20 +65,13 @@ export default function AboutPage() {
       <Section>
         <Container className="max-w-3xl space-y-6 text-pretty text-lg text-muted">
           <h2 className="text-2xl text-ink">Meet Sean</h2>
-          {/* TODO (real business input): add Sean's professional headshot here. */}
-          <p>
-            {site.contactName} is a <strong className="text-ink">Chartered Architectural Technologist
-            (MCIAT)</strong> with a <strong className="text-ink">BSc in Architectural Science</strong>{" "}
-            and over 15 years designing homes across Merseyside. Before that he spent six years working
-            on site as a builder — so he understands not just how a design should look, but how it
-            actually gets built. That combination means practical, buildable designs and drawings a
-            contractor can price and construct with confidence.
-          </p>
-          <p>
+          <MeetSean showAboutLink={false} className="pt-4" />
+          <p className="pt-2">
             The approach is simple: good home design starts with a proper conversation. Every property
             and every family is different, so Sean takes the time to understand how you actually live —
             from the period terraces of Wallasey and Birkenhead to the larger plots of Heswall and West
-            Kirby, and selected surrounding areas — before putting pen to paper.
+            Kirby, and on into Liverpool, Cheshire, Warrington and North Wales — before putting pen to
+            paper.
           </p>
 
           <h2 className="pt-2 text-2xl text-ink">Design-led, with the right people to build it</h2>
@@ -99,8 +92,11 @@ export default function AboutPage() {
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
             <StatCard value="MCIAT" label="Chartered Architectural Technologist" />
             <StatCard value={`${site.yearsExperience}+`} label="Years in architectural design" />
-            <StatCard value="6 yrs" label="Prior on-site building experience" />
-            <StatCard value="BSc" label="Architectural Science" />
+            <StatCard
+              value={`${site.yearsAsBuilder} yrs`}
+              label="Prior on-site building experience"
+            />
+            <StatCard value="BSc" label={site.credentials.degreeSubject} />
           </div>
         </Container>
       </Section>

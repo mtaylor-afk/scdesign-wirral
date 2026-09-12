@@ -22,12 +22,30 @@ export const site = {
   // Credentials — ARB-safe ("architectural technologist"; NEVER "architect").
   // "Chartered Architectural Technologist" / MCIAT — CONFIRMED current (June 2026).
   // (A legally restricted title; valid only while CIAT membership stays current.)
+  // Degree per Sean's own brief ("Bachelor of Science – Architectural Technology"),
+  // confirmed by Matthew 2026-09-12. Single source — never hardcode it elsewhere.
   credentials: {
     jobTitle: "Chartered Architectural Technologist",
     postNominals: "MCIAT",
-    degree: "BSc Architectural Science",
+    degree: "BSc Architectural Technology",
+    degreeSubject: "Architectural Technology",
   },
   yearsAsBuilder: 6,
+
+  // Sean's own words (from his website brief) — shown as a first-person quote on
+  // the homepage + About. ARB-safe as written ("architecture" is not protected).
+  bioQuote: [
+    "I have over 15 years of experience in architecture throughout Merseyside, specialising in residential design and helping homeowners unlock the full potential of their properties.",
+    "Prior to this, I spent 6 years working as a builder on residential projects, giving me a strong understanding of how good design translates into successful construction. This combination of design expertise and hands-on building experience allows me to deliver creative, practical solutions tailored to each client's needs.",
+  ],
+
+  // Sean's professional headshot. null until he supplies one — every slot that
+  // uses it falls back to the SC logo roundel, so there is never a visible
+  // placeholder. Set e.g. { src: "/brand/sean-corser.jpg", alt: "Sean Corser MCIAT" }.
+  headshot: null as { src: string; alt: string } | null,
+
+  // Brand logo (Sean's red serif "SC" roundel) — avatar fallback + JSON-LD logo.
+  logo: "/brand/sc-logo-roundel.png",
 
   // Design-only practice. Homeowners appoint their own builder to price and build
   // from Sean's drawings; a structural engineer covers any structural calculations.
@@ -42,9 +60,9 @@ export const site = {
 
   // Positioning (architectural design, design-only — no construction)
   tagline:
-    "Architectural design for home extensions, loft conversions and planning across Wirral and selected surrounding areas.",
+    "Architectural design for home extensions, loft conversions and planning across Wirral, Liverpool, Cheshire, Warrington and North Wales.",
   positioning:
-    "Friendly, practical architectural design for growing families across Wirral and selected surrounding areas — from first idea to clear planning, building-regulations and builder-quote drawings.",
+    "Friendly, practical architectural design for growing families across Wirral, Liverpool, Cheshire, Warrington and North Wales — from first idea to clear planning, building-regulations and builder-quote drawings.",
   yearsExperience: 15,
 
   // NAP — the Wallasey TRADING/contact address (distinct from the registered
@@ -59,7 +77,13 @@ export const site = {
   },
   addressDisplay: "20 Ripon Road, Wallasey, Wirral, CH45 6TR",
   addressIsPublic: false, // service-area-only — the Wallasey trading address is NOT published
-  serviceArea: "Wirral and selected surrounding areas",
+
+  // Service area — Sean's brief: "Wirral peninsula, North Wales, Liverpool,
+  // Warrington, Southport" + "Wirral, Liverpool, Cheshire, Warrington, Merseyside".
+  // `serviceArea` is the one-line form used in running copy; `regions` is the
+  // list form (homepage strip, areas page). Full town lists: lib/serviceAreas.ts.
+  serviceArea: "Wirral, Liverpool, Cheshire, Warrington & North Wales",
+  regions: ["Wirral peninsula", "Liverpool & Merseyside", "Cheshire", "Warrington", "North Wales"],
 
   phoneDisplay: "07749 456528",
   phoneE164: "+447749456528",
@@ -101,7 +125,14 @@ export const defaultWhatsAppMessage =
 /** Canonical CTA copy used across the site. */
 export const cta = {
   // Lower-friction primary project CTA — "capture first, qualify second".
+  // Nav, hero and the mobile bar use this.
   primary: { label: "Send Sean your idea", href: "/contact" },
+  // Bottom-of-page panels (CTASection default) + the homepage closing form —
+  // Sean's own wording from his brief/flyers (owner-approved 2026-09-12).
+  consultation: {
+    label: "Book a free consultation",
+    href: "/contact?source_type=consultation",
+  },
   whatsapp: { label: "WhatsApp Sean", href: whatsappLink(defaultWhatsAppMessage) },
   visualiser: { label: "Try the Extension Concept Visualiser", href: "/visualiser" },
   call: { label: "Call Sean", href: `tel:${site.phoneE164}` },

@@ -18,12 +18,13 @@ export function Section({
 }: {
   children: ReactNode;
   className?: string;
-  tone?: "paper" | "card" | "ink";
+  tone?: "paper" | "card" | "mist" | "ink";
   id?: string;
 }) {
   const tones = {
     paper: "bg-paper text-ink",
     card: "bg-paper-card text-ink",
+    mist: "bg-mist text-ink",
     ink: "bg-ink text-paper",
   } as const;
   return (

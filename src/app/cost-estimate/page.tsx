@@ -9,7 +9,7 @@ import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 export const metadata = pageMeta({
   title: "Extension & Loft Cost Estimate — Wirral",
   description:
-    "A quick, honest guide to the likely build cost of a home extension, loft conversion, garage conversion or garden room across Wirral and selected surrounding areas. Estimate only.",
+    "A quick, honest guide to the likely build cost of a home extension, loft conversion, garage conversion or garden room across Wirral, Liverpool, Cheshire, Warrington and North Wales. Estimate only.",
   path: "/cost-estimate",
 });
 

@@ -10,6 +10,7 @@
   --color-ink-soft: #46413b;
   --color-paper: #f5efe5; /* warm cream/beige — page background */
   --color-paper-card: #ffffff; /* clean white cards */
+  --color-mist: #efedea; /* light warm grey — alternate sections (muted text ~5.4:1) */
   --color-line: #e7ded1; /* soft warm-grey border */
   --color-muted: #645f58; /* muted body text (AA on cream, ~4.8:1) */
   --color-muted-soft: #918b81; /* decorative only — not for body text */
