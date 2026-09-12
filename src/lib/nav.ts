@@ -81,24 +81,31 @@ export const exploreLinks: NavLink[] = [
   { label: "Contact", href: "/contact" },
 ];
 
+// Footer labels follow Sean's own service names (brief, Sep 2026).
 export const footerDesignServices: NavLink[] = [
-  { label: "House extension drawings", href: "/services/house-extensions" },
-  { label: "Loft conversion design", href: "/services/loft-conversions" },
-  { label: "Full architectural design", href: "/services/residential-design" },
-  { label: "Front porch design", href: "/services/front-porch-extension-design" },
-  { label: "Bespoke garden rooms", href: "/services/bespoke-garden-room-design" },
+  { label: "House extensions design & planning", href: "/services/house-extensions" },
+  { label: "Loft conversion design & planning", href: "/services/loft-conversions" },
+  { label: "Full architectural design services", href: "/services/residential-design" },
+  { label: "Front porch extension design", href: "/services/front-porch-extension-design" },
+  { label: "Bespoke garden room design", href: "/services/bespoke-garden-room-design" },
   { label: "Garage conversion drawings", href: "/services/garage-conversion-drawings-wirral" },
 ];
 
 export const footerPlanningServices: NavLink[] = [
-  { label: "Planning drawings", href: "/services/planning-drawings-wirral" },
   {
-    label: "Building regulations drawings",
+    label: "Planning permission drawings & consultancy",
+    href: "/services/planning-drawings-wirral",
+  },
+  {
+    label: "Building regulations drawings & technical packages",
     href: "/services/building-regulations-drawings-wirral",
   },
   { label: "Change of use applications", href: "/services/change-of-use-applications" },
-  { label: "Measured building surveys", href: "/services/measured-building-surveys" },
-  { label: "Concept & feasibility", href: "/services/concept-design-feasibility" },
+  {
+    label: "Measured building surveys & existing drawings",
+    href: "/services/measured-building-surveys",
+  },
+  { label: "Concept design & feasibility studies", href: "/services/concept-design-feasibility" },
 ];
 
 export const footerLegalLinks: NavLink[] = [
