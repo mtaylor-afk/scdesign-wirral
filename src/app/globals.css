@@ -31,17 +31,21 @@
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
 
-  /* Radii */
-  --radius-sm: 6px;
-  --radius: 12px;
-  --radius-lg: 20px;
+  /* Radii — larger, Apple-style rounded tiles (brand kept) */
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
 
-  /* Shadows — softer/flatter for the friendlier, less "expensive" feel */
+  /* Shadows — soft/layered; tiles a touch more present for Apple-style depth */
   --shadow-card: 0 1px 2px rgba(33, 30, 27, 0.03), 0 6px 16px rgba(33, 30, 27, 0.045);
   --shadow-card-hover: 0 2px 4px rgba(33, 30, 27, 0.05), 0 10px 24px rgba(33, 30, 27, 0.07);
+  --shadow-tile: 0 1px 2px rgba(33, 30, 27, 0.04), 0 10px 30px rgba(33, 30, 27, 0.06);
+  --shadow-tile-hover: 0 4px 10px rgba(33, 30, 27, 0.06), 0 18px 44px rgba(33, 30, 27, 0.1);
 
-  /* Spacing rhythm */
-  --spacing-section: 5.5rem;
+  /* Spacing rhythm — more generous vertical breathing room (Apple-style) */
+  --spacing-section: clamp(4rem, 8vw, 7rem);
+  --color-fog: #faf7f1; /* very light warm ground for alternating sections */
 }
 
 /* ---------- Base ---------- */
@@ -54,6 +58,8 @@ body {
   background-color: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  font-size: 17px; /* Apple-style body size */
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
@@ -68,7 +74,8 @@ body {
   h4 {
     font-family: var(--font-display);
     font-weight: 500;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em; /* tighter, Apple-style display headings */
+    line-height: 1.05;
     color: var(--color-ink);
   }
 }
@@ -104,4 +111,25 @@ body {
 }
 .text-pretty {
   text-wrap: pretty;
+}
+
+/* ---------- Scroll-reveal (Apple-style, progressive enhancement) ----------
+   Content is visible by default (no-JS / SSR / reduced-motion). The hidden
+   start-state only applies once ScrollReveal adds `js-reveal` to <html> AND the
+   user hasn't asked for reduced motion. `.is-visible` (added by the observer)
+   returns it to rest. Optional per-element `--reveal-delay` staggers groups. */
+@media (prefers-reduced-motion: no-preference) {
+  html.js-reveal [data-reveal] {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 0.6s ease,
+      transform 0.6s ease;
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform;
+  }
+  html.js-reveal [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+  }
 }

@@ -8,6 +8,7 @@ import { ConsentBanner } from "@/components/ConsentBanner";
 import { Analytics } from "@/components/Analytics";
 import { ClickTracking } from "@/components/ClickTracking";
 import { ErrorTracking } from "@/components/ErrorTracking";
+import { ScrollReveal } from "@/components/ScrollReveal";
 import { JsonLd } from "@/components/JsonLd";
 import { localBusinessJsonLd, webSiteJsonLd, siteUrl } from "@/lib/seo";
 import { site } from "@/lib/site";
@@ -66,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
         <ClickTracking />
         <ErrorTracking />
+        <ScrollReveal />
       </body>
     </html>
   );
