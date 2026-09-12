@@ -110,7 +110,7 @@ export const generalFaqs: Faq[] = [
   {
     category: "areas",
     q: "Do you cover Wallasey, Birkenhead, Heswall, West Kirby, Hoylake, Bebington and Bromborough?",
-    a: "Yes — all of those are within our core Wirral area, along with New Brighton, Moreton, Upton, Greasby, Oxton, Port Sunlight, Eastham and Prenton. We also work across surrounding areas including Neston, Ellesmere Port, Liverpool, Chester and Crosby.",
+    a: "Yes — all of those are within our core Wirral area, along with New Brighton, Moreton, Upton, Greasby, Oxton, Port Sunlight, Eastham, Prenton and the rest of the peninsula. We also cover Neston, Ellesmere Port and Chester, Warrington, Runcorn and Northwich, Liverpool, Crosby and Southport, and North Wales including Wrexham, Mold and Connah Quay.",
   },
 
   /* What SC does / does not do */
@@ -128,6 +128,35 @@ export const generalFaqs: Faq[] = [
     category: "scope",
     q: "Do you carry out the building work?",
     a: "No — we are design-only. We design your project and prepare planning and building-regulations drawings. You then take those drawings to builders to quote and carry out the work, and we're happy to explain that stage.",
+  },
+
+  /* House-feature questions (interactive planning guide, Sep 2026). Appended at
+     the END so the homepage's generalFaqs.slice(0, 6) is unchanged. England
+     guidance — always confirm with the local planning authority. */
+  {
+    category: "permitted-development",
+    q: "Does a front porch need planning permission?",
+    a: "Often not. In England a small porch is usually permitted development if its external footprint is no more than 3m², no part is higher than 3m and it's at least 2m from any boundary facing a road. Flats, conservation areas and Article 4 areas differ, and a porch outside those limits needs a planning application. Porches are often exempt from building regulations too, if under 30m² and the front door stays in place.",
+  },
+  {
+    category: "permitted-development",
+    q: "Do I need planning permission for a dormer loft conversion?",
+    a: "A rear dormer is often permitted development within volume limits — 40m³ for terraced homes and 50m³ for semi-detached and detached — but a front dormer facing the road usually needs planning permission. Either way, a habitable loft conversion always needs building-regulations approval.",
+  },
+  {
+    category: "planning",
+    q: "Is a garage conversion a 'change of use'?",
+    a: "Not normally in planning terms. Turning an attached garage into a room for your own home is usually permitted development, provided the work stays within the existing structure and no planning condition has removed those rights; changing the frontage can sometimes need permission. It does need building-regulations approval — insulation, damp-proofing, ventilation and fire safety.",
+  },
+  {
+    category: "planning",
+    q: "What is 'prior approval' for a larger rear extension?",
+    a: "It's a lighter-touch route for single-storey rear extensions beyond the normal permitted-development depths — up to 6m on a semi-detached or terraced house and 8m on a detached house. You notify the council, which consults your neighbours before deciding. It isn't available on designated land such as conservation areas.",
+  },
+  {
+    category: "planning",
+    q: "Are the rules different in Wales?",
+    a: "Yes. Permitted-development rights in Wales differ from England in several respects, so the planning guidance on this site is for England. If your home is in North Wales, send us your postcode and we'll confirm the right route with your local authority.",
   },
 ];
 

@@ -5,31 +5,57 @@ import Link from "next/link";
 import {
   houseFeatures,
   featureOrder,
+  needLabel,
+  needTone,
   type FeatureId,
   type HouseView,
+  type NeedLevel,
 } from "@/lib/houseFeatures";
 import { getService } from "@/lib/services";
 import { whatsappLink, defaultWhatsAppMessage } from "@/lib/site";
 
-/* ---- Simple, friendly flat-illustration houses (front + rear) ---- */
+/* ---- Simple, friendly flat-illustration houses (front + rear) ----
+   Every hotspot sits on a drawn feature (porch, dormers, garage, side and rear
+   extensions, garden room) — positions in houseFeatures.ts are % of 400x300. */
+const GLASS = "#cfe0ea";
+const WALL = "#fbf7f0";
+const WALL_ALT = "#f1ebe0";
+
 function HouseFront() {
   return (
     <svg viewBox="0 0 400 300" className="h-full w-full" role="presentation" aria-hidden>
       <rect width="400" height="300" fill="var(--color-paper)" />
       <rect y="250" width="400" height="50" fill="#e3e7e0" />
-      {/* garage block */}
-      <rect x="20" y="170" width="90" height="80" fill="#fbf7f0" stroke="var(--color-line)" />
-      <rect x="30" y="195" width="70" height="55" fill="#ede6da" stroke="var(--color-line)" />
+      {/* garage block (new garage / garage conversion) */}
+      <rect x="20" y="170" width="90" height="80" fill={WALL} stroke="var(--color-line)" />
       <polygon points="15,170 65,140 115,170" fill="var(--color-accent)" />
+      <rect x="30" y="195" width="70" height="55" fill="#ede6da" stroke="var(--color-line)" />
+      <line x1="30" y1="208" x2="100" y2="208" stroke="var(--color-line)" />
+      <line x1="30" y1="222" x2="100" y2="222" stroke="var(--color-line)" />
+      <line x1="30" y1="236" x2="100" y2="236" stroke="var(--color-line)" />
       {/* main house */}
-      <rect x="120" y="120" width="180" height="130" fill="#fbf7f0" stroke="var(--color-line)" />
+      <rect x="120" y="120" width="180" height="130" fill={WALL} stroke="var(--color-line)" />
       <polygon points="112,120 210,60 308,120" fill="var(--color-accent)" />
-      <rect x="252" y="74" width="16" height="26" fill="#7a1414" />
-      {/* door + windows */}
-      <rect x="196" y="185" width="34" height="65" fill="#6b4a2b" />
-      <rect x="140" y="150" width="40" height="34" fill="#cfe0ea" stroke="var(--color-line)" />
-      <rect x="240" y="150" width="40" height="34" fill="#cfe0ea" stroke="var(--color-line)" />
-      <rect x="140" y="200" width="40" height="34" fill="#cfe0ea" stroke="var(--color-line)" />
+      <rect x="252" y="70" width="16" height="30" fill="#7a1414" />
+      {/* front dormer */}
+      <polygon points="186,86 210,72 234,86" fill="#7a1414" />
+      <rect x="190" y="86" width="40" height="24" fill={WALL_ALT} stroke="var(--color-line)" />
+      <rect x="197" y="91" width="26" height="15" fill={GLASS} stroke="var(--color-line)" />
+      {/* first-floor windows */}
+      <rect x="140" y="140" width="40" height="34" fill={GLASS} stroke="var(--color-line)" />
+      <rect x="240" y="140" width="40" height="34" fill={GLASS} stroke="var(--color-line)" />
+      {/* ground-floor window */}
+      <rect x="140" y="200" width="40" height="34" fill={GLASS} stroke="var(--color-line)" />
+      {/* front porch around the door */}
+      <polygon points="182,198 213,182 244,198" fill="var(--color-accent)" />
+      <rect x="186" y="198" width="54" height="52" fill={WALL_ALT} stroke="var(--color-line)" />
+      <rect x="201" y="208" width="24" height="42" fill="#6b4a2b" />
+      <rect x="190" y="210" width="8" height="22" fill={GLASS} stroke="var(--color-line)" />
+      <rect x="228" y="210" width="8" height="22" fill={GLASS} stroke="var(--color-line)" />
+      {/* single-storey side extension */}
+      <rect x="300" y="186" width="72" height="64" fill={WALL_ALT} stroke="var(--color-line)" />
+      <polygon points="296,186 300,178 372,178 376,186" fill="#7a1414" />
+      <rect x="318" y="202" width="36" height="28" fill={GLASS} stroke="var(--color-line)" />
     </svg>
   );
 }
@@ -40,17 +66,48 @@ function HouseRear() {
       <rect width="400" height="300" fill="var(--color-paper)" />
       <rect y="250" width="400" height="50" fill="#cfe0c4" />
       {/* main house */}
-      <rect x="90" y="120" width="190" height="130" fill="#fbf7f0" stroke="var(--color-line)" />
+      <rect x="90" y="120" width="190" height="130" fill={WALL} stroke="var(--color-line)" />
       <polygon points="82,120 185,60 288,120" fill="var(--color-accent)" />
       {/* rear dormer */}
-      <rect x="160" y="80" width="50" height="40" fill="#5b6066" stroke="#3a3d42" />
-      {/* bi-fold doors + windows */}
-      <rect x="120" y="180" width="80" height="70" fill="#cfe0ea" stroke="var(--color-line)" />
-      <rect x="220" y="150" width="40" height="34" fill="#cfe0ea" stroke="var(--color-line)" />
+      <rect x="150" y="82" width="50" height="38" fill="#5b6066" stroke="#3a3d42" />
+      <rect x="158" y="90" width="34" height="20" fill={GLASS} stroke="#3a3d42" />
+      {/* two-storey rear projection with its own gable */}
+      <polygon points="210,122 245,94 280,122" fill="#7a1414" />
+      <rect x="214" y="122" width="62" height="128" fill={WALL_ALT} stroke="var(--color-line)" />
+      <rect x="229" y="136" width="32" height="30" fill={GLASS} stroke="var(--color-line)" />
+      <rect x="229" y="196" width="32" height="30" fill={GLASS} stroke="var(--color-line)" />
+      {/* single-storey rear extension with roof lantern + bi-folds */}
+      <rect x="96" y="190" width="110" height="60" fill={WALL_ALT} stroke="var(--color-line)" />
+      <rect x="92" y="184" width="118" height="8" fill="#5b6066" />
+      <polygon points="128,184 138,174 164,174 174,184" fill={GLASS} stroke="#5b6066" />
+      <rect x="108" y="202" width="86" height="48" fill={GLASS} stroke="var(--color-line)" />
+      <line x1="129" y1="202" x2="129" y2="250" stroke="var(--color-line)" />
+      <line x1="151" y1="202" x2="151" y2="250" stroke="var(--color-line)" />
+      <line x1="173" y1="202" x2="173" y2="250" stroke="var(--color-line)" />
       {/* garden room */}
-      <rect x="310" y="195" width="70" height="55" fill="#eef0ec" stroke="var(--color-line)" />
-      <rect x="318" y="205" width="54" height="38" fill="#cfe0ea" stroke="var(--color-line)" />
+      <rect x="306" y="192" width="78" height="58" fill="#eef0ec" stroke="var(--color-line)" />
+      <rect x="302" y="186" width="86" height="7" fill="#5b6066" />
+      <rect x="314" y="202" width="62" height="40" fill={GLASS} stroke="var(--color-line)" />
     </svg>
+  );
+}
+
+const toneClass = {
+  strong: "border-accent-strong/30 bg-accent-soft text-accent-deep",
+  mid: "border-line bg-paper text-ink",
+  light: "border-success/30 bg-success/10 text-success",
+} as const;
+
+function NeedBadge({ label, level }: { label: string; level: NeedLevel }) {
+  return (
+    <span
+      className={
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium " +
+        toneClass[needTone(level)]
+      }
+    >
+      <span className="font-semibold">{label}:</span> {needLabel[level]}
+    </span>
   );
 }
 
@@ -162,10 +219,18 @@ export function InteractiveHouse() {
         {feat ? (
           <div className="rounded-lg border border-line bg-paper-card p-6 shadow-card">
             <h3 className="text-xl">{feat.label}</h3>
-            <p className="mt-1 font-medium text-accent-strong">{feat.headline}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <NeedBadge label="Planning" level={feat.needs.planning} />
+              <NeedBadge label="Building regs" level={feat.needs.buildingRegs} />
+            </div>
+            <p className="mt-3 font-medium text-accent-strong">{feat.headline}</p>
             <p className="mt-3 text-pretty text-muted">{feat.summary}</p>
             <p className="mt-3 text-pretty text-sm text-muted">
               <strong className="text-ink">Building control:</strong> {feat.buildingRegs}
+            </p>
+            <p className="mt-3 text-pretty text-sm text-muted">
+              <strong className="text-ink">What we&apos;d typically prepare:</strong>{" "}
+              {feat.scPackage}
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
               <a

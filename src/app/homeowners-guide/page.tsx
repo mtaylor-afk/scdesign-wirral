@@ -3,8 +3,15 @@ import { Container, Section, SectionHeading, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { InteractiveHouse } from "@/components/ui/InteractiveHouse";
 import { CTASection } from "@/components/ui/CTASection";
+import { FAQList } from "@/components/ui/FAQItem";
 import { JsonLd } from "@/components/JsonLd";
-import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
+import { generalFaqs } from "@/lib/faqs";
+import { pageMeta, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
+
+// Planning / PD / building-regs / conservation FAQs (incl. the house-feature ones).
+const guideFaqs = generalFaqs.filter((f) =>
+  ["planning", "permitted-development", "building-regs", "conservation"].includes(f.category)
+);
 
 export const metadata = pageMeta({
   title: "Homeowners Guide — Do I Need Planning Permission?",
@@ -40,10 +47,13 @@ export default function HomeownersGuidePage() {
   return (
     <>
       <JsonLd
-        data={breadcrumbJsonLd([
-          { name: "Home", path: "/" },
-          { name: "Homeowners Guide", path: "/homeowners-guide" },
-        ])}
+        data={[
+          breadcrumbJsonLd([
+            { name: "Home", path: "/" },
+            { name: "Homeowners Guide", path: "/homeowners-guide" },
+          ]),
+          faqJsonLd(guideFaqs),
+        ]}
       />
 
       <Section tone="card" className="pt-16">
@@ -84,6 +94,7 @@ export default function HomeownersGuidePage() {
                 <tr>
                   <th scope="col" className="px-4 py-3 font-semibold text-ink">Project</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-ink">Planning</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-ink">Building regs</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line bg-white">
@@ -91,11 +102,16 @@ export default function HomeownersGuidePage() {
                   <tr key={r.project}>
                     <td className="px-4 py-3 text-ink-soft">{r.project}</td>
                     <td className="px-4 py-3 text-muted">{r.planning}</td>
+                    <td className="px-4 py-3 text-muted">Needed</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <p className="mt-3 text-sm font-medium text-ink-soft">
+            All of these need building-regulations approval — even when planning permission
+            isn&apos;t required.
+          </p>
           <p className="mt-4 rounded-[var(--radius)] border border-accent-soft bg-accent-soft/40 p-4 text-sm text-ink-soft">
             <strong className="text-ink">Cover Wales too?</strong> We design for homes across North
             Wales as well — permitted-development rules differ there, so the guidance above is for
@@ -105,8 +121,27 @@ export default function HomeownersGuidePage() {
         </Container>
       </Section>
 
-      {/* Deeper guides */}
+      {/* FAQs — accordions (Sean's brief: "add these at the bottom") */}
       <Section>
+        <Container className="max-w-3xl">
+          <SectionHeading
+            eyebrow="Good to know"
+            title="Planning & building regs — common questions"
+            align="center"
+          />
+          <div className="mt-8">
+            <FAQList faqs={guideFaqs} />
+          </div>
+          <p className="mt-8 text-center text-sm text-muted">
+            <Link href="/faqs" className="font-medium text-accent-strong underline">
+              See all FAQs
+            </Link>
+          </p>
+        </Container>
+      </Section>
+
+      {/* Deeper guides */}
+      <Section tone="card">
         <Container className="max-w-3xl">
           <SectionHeading eyebrow="Go deeper" title="Homeowner guides" />
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
@@ -124,8 +159,7 @@ export default function HomeownersGuidePage() {
       <CTASection
         heading="Not sure what applies to your property?"
         sub="Send Sean your name and one way to contact you — you'll get an honest first view of the likely planning route, with no obligation. A postcode and photos help if you have them, but aren't required to start."
-        primaryLabel="Ask Sean for an honest first view"
-        ctaHref="/contact?source_type=guide&source_page=/homeowners-guide"
+        ctaHref="/contact?source_type=consultation&source_page=/homeowners-guide"
       />
     </>
   );
