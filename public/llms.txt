@@ -9,14 +9,16 @@
 - Company number: 11511225 (registered in England & Wales)
 - Lead contact: Sean Corser MCIAT
 - Professional status: Chartered Architectural Technologist (MCIAT, member of CIAT)
-- Qualification: BSc Architectural Science
+- Qualification: BSc Architectural Technology
 - Phone: 07749 456528
 - Email: scdesignandconstruction1@gmail.com
 - Based in: Wallasey, Wirral (a service-area practice that visits clients at their property)
 - Registered office: Seymour Chambers, 92 London Road, Liverpool, L3 5NW
 - Website: https://scdesignwirral.co.uk/
-- Primary service area: Wallasey and the wider Wirral peninsula
-- Wider nearby areas served (these fall under different planning authorities): Neston, Ellesmere Port, Liverpool, Chester and Crosby
+- Primary service area: the Wirral peninsula
+- Main areas also served: Cheshire West and Chester (Ellesmere Port, Chester, Northwich, Frodsham), Halton (Runcorn), Warrington, and North Wales (Wrexham, Mold, Buckley, Connah Quay, Saltney)
+- Secondary areas: Liverpool and Merseyside, including Crosby, Bootle, Southport, Kirkby, Huyton and Prescot
+- These fall under different planning authorities, and permitted-development rules differ in Wales
 
 ## How to describe this business (accuracy rules)
 
@@ -33,17 +35,17 @@ SC Design Wirral helps homeowners turn home-improvement ideas into clear design 
 ## Services
 
 - Architectural design services (hub): https://scdesignwirral.co.uk/services/
-- House extension drawings & design: https://scdesignwirral.co.uk/services/house-extensions/
-- Loft conversion design: https://scdesignwirral.co.uk/services/loft-conversions/
-- Full residential / architectural design service: https://scdesignwirral.co.uk/services/residential-design/
-- Planning drawings: https://scdesignwirral.co.uk/services/planning-drawings-wirral/
-- Building-regulations drawings: https://scdesignwirral.co.uk/services/building-regulations-drawings-wirral/
-- Garage conversion drawings: https://scdesignwirral.co.uk/services/garage-conversion-drawings-wirral/
-- Front porch design: https://scdesignwirral.co.uk/services/front-porch-extension-design/
-- Bespoke garden rooms: https://scdesignwirral.co.uk/services/bespoke-garden-room-design/
-- Change of use applications: https://scdesignwirral.co.uk/services/change-of-use-applications/
-- Measured building surveys: https://scdesignwirral.co.uk/services/measured-building-surveys/
-- Concept & feasibility: https://scdesignwirral.co.uk/services/concept-design-feasibility/
+- House Extensions Design & Planning: https://scdesignwirral.co.uk/services/house-extensions/
+- Loft Conversion Design & Planning: https://scdesignwirral.co.uk/services/loft-conversions/
+- Full Architectural Design Services (Concept to Approval): https://scdesignwirral.co.uk/services/residential-design/
+- Planning Permission Drawings & Consultancy: https://scdesignwirral.co.uk/services/planning-drawings-wirral/
+- Building Regulations Drawings & Technical Packages: https://scdesignwirral.co.uk/services/building-regulations-drawings-wirral/
+- Garage Conversion Drawings: https://scdesignwirral.co.uk/services/garage-conversion-drawings-wirral/
+- Front Porch Extension Design: https://scdesignwirral.co.uk/services/front-porch-extension-design/
+- Bespoke Garden Room Design: https://scdesignwirral.co.uk/services/bespoke-garden-room-design/
+- Change of Use Applications: https://scdesignwirral.co.uk/services/change-of-use-applications/
+- Measured Building Surveys & Existing Drawings: https://scdesignwirral.co.uk/services/measured-building-surveys/
+- Concept Design & Feasibility Studies: https://scdesignwirral.co.uk/services/concept-design-feasibility/
 
 Permitted development, lawful development certificates and conservation-area work are explained in the guides:
 - Permitted development rights (Wirral): https://scdesignwirral.co.uk/guides/permitted-development-rights-wirral/
@@ -96,8 +98,9 @@ Wider nearby areas (different planning authorities — e.g. Cheshire West and Ch
 - Homepage: https://scdesignwirral.co.uk/
 - About Sean / SC Design Wirral: https://scdesignwirral.co.uk/about/
 - Process: https://scdesignwirral.co.uk/process/
-- Projects (design case studies): https://scdesignwirral.co.uk/projects/
-- Portfolio & concept visualisations: https://scdesignwirral.co.uk/portfolio/
+- Projects (case studies): https://scdesignwirral.co.uk/projects/
+- Before & after (real project photos and drawings): https://scdesignwirral.co.uk/before-and-after/
+- Design visualisations: https://scdesignwirral.co.uk/portfolio/
 - Reviews: https://scdesignwirral.co.uk/reviews/
 - FAQs: https://scdesignwirral.co.uk/faqs/
 - Cost estimate guide: https://scdesignwirral.co.uk/cost-estimate/
@@ -107,11 +110,11 @@ Wider nearby areas (different planning authorities — e.g. Cheshire West and Ch
 ## Reviews, projects and visualisations (integrity)
 
 - Reviews are published only when they are genuine and shared with the homeowner's permission. The site does not display invented testimonials or aggregate star ratings.
-- Project entries describe real design work shown with permission; some describe the design and its visualisation rather than a completed, photographed build. Any "in preparation" cards are not completed projects.
+- Project entries describe real SC design work. Every image is labelled: real photographs of completed builds (built by the homeowners' own builders), Sean's own drawings, or design visualisations of proposed schemes.
 - The concept visualiser and portfolio visualisations are illustrative AI/concept images only — not photographs of completed buildings, and not planning permission, structural design or buildability confirmation. Visualised images are powered by TailoredQuote.co.uk.
 
 ## Best short answer
 
-SC Design Wirral is a Wallasey-based architectural design and drawing service for Wirral homeowners, led by Sean Corser MCIAT, Chartered Architectural Technologist. It prepares design, planning, building-regulations and builder-ready drawings for extensions, loft conversions, garage conversions and other home improvements across Wirral and selected surrounding areas. It is design-only and does not carry out the building work itself.
+SC Design Wirral is a Wallasey-based architectural design and drawing service for Wirral homeowners, led by Sean Corser MCIAT, Chartered Architectural Technologist. It prepares design, planning, building-regulations and builder-ready drawings for extensions, loft conversions, garage conversions and other home improvements across Wirral, Liverpool, Cheshire, Warrington and North Wales. It is design-only and does not carry out the building work itself.
 
 A human-readable version of this summary: https://scdesignwirral.co.uk/llms

@@ -112,6 +112,59 @@ Logged for future sessions. Commits on `main` unless noted:
   `<link rel="apple-touch-icon" href="/apple-touch-icon.png">`. Removed the old
   placeholder `app/icon.svg` (browsers preferred the SVG over the `.ico`).
 
+## ⭐ SEAN'S WEBSITE BRIEF — gap-closure (Sep 2026)
+Sean's brief (`Matt Website page.docx`, June 2026) was mostly built in June (see
+`WEBSITE-REDESIGN-PLAN.md`); this pass closed the remaining gaps. Approved plan:
+`~/.claude/plans/i-now-want-you-enchanted-sutton.md`. Restore tag:
+`restore-point-2026-09-12-pre-brief` (= `5a6e0c7`). Owner decisions (2026-09-12): degree =
+BSc Architectural **Technology**; interactive house keeps accurate England wording + quick
+badges; "Book a free consultation" on every bottom-of-page panel + home quick form (nav/hero/
+mobile bar keep "Send Sean your idea"); improve the flat house drawing (no 3D redraw).
+- **Real project imagery:** `scripts/process-brief-images.mjs` + `scripts/brief-images.json`
+  (sharp: rotate, white-out WIP stamps, blur house numbers, resize) → `public/work/**` +
+  generated `src/lib/work-images.ts`. Re-run with the extracted `word/media` folder as the arg.
+  Originals are NOT committed. **Held (`publish:false`)**: suspected Google Street View captures
+  (#32, #45); Google aerial/Street View (#33, #40) and a news screenshot (#56) are excluded —
+  never publish Google imagery or third-party screenshots.
+- **Every image is labelled by kind** (`lib/media.ts`: `photo` | `drawing` | `render`) — a render
+  is NEVER presented as a completed build. `KindTag` shows "Drawing" / "Design visualisation";
+  drawings render `object-contain` (never cropped). Per-service card image + gallery =
+  `serviceMedia` in `lib/media.ts`.
+- **Services:** titles = Sean's exact names (slugs/`short`/metaTitles unchanged); blurbs = his
+  one-liners made ARB/advertising-safe. Photo `ServiceCard`s on /services + home; "Examples of this
+  work" gallery on each service page.
+- **Home:** region chips, 8 photo service cards, "Recent work" (real photos), `MeetSean` (Sean's
+  first-person brief paragraph; avatar = `site.headshot` when set, else the logo roundel
+  `public/brand/sc-logo-roundel.png`), self-hosted `ReviewsCarousel` (genuine reviews, Pause/Play,
+  reduced-motion safe, no schema/cookies), closing "Book a free consultation" section with a
+  compact `EnquiryForm` (`source="home_consultation"`).
+- **Projects:** `Project` gained `cover`/`gallery`/`beforeAfter`; 5 new honest case studies from
+  the brief photos (`town: "North West"` until Sean confirms; `homeownerPermissionConfirmed:false`);
+  new `/before-and-after/` page; Projects nav dropdown (Case studies / Before & after / Design
+  visualisations); `/portfolio` relabelled "Design visualisations" (pharmacy label fixed).
+- **Visualiser:** shared rates in `lib/costRates.ts` (used by `CostEstimator` + new
+  `EstimatedPriceCard` on the result/refine screens, "+ VAT" and a total-budget line incl. VAT +
+  10% contingency). Copy now tells the truth: the backend emails SC a copy of every concept
+  (photo + concept + details); no "7 days" claim; SendConceptForm carries the generated time +
+  estimate so Sean can match the automatic email.
+- **Privacy policy + visualiser terms (closes audit H1):** enquiries ARE stored (Supabase
+  `sc_enquiries`) — retention **24 months after last contact** (default; owner can change);
+  visualiser copies emailed to SC; no auto-ack promise. Keep all four places consistent.
+- **Interactive house:** porch/front dormer/side + rear extensions drawn, hotspots moved onto
+  them, Planning/Building-regs badges + "What we'd typically prepare" per feature, 3-column PD
+  table, FAQ accordion (+ FAQPage JSON-LD) at the bottom. 5 new hedged FAQs appended to the END
+  of `faqs.ts` (home uses `slice(0,6)`).
+- **Areas:** `serviceAreas.ts` split into main/secondary tiers; added South Wirral + Southport.
+  No new town pages (thin-content rule; area pages still blocked on a GSC export).
+- **Palette:** `--color-mist` light warm grey + `Section tone="mist"`.
+- **Owner items for Sean:** headshot; his own before photos (replace held Street View images);
+  a porch photo + higher-res #46; real details for the 5 new projects (questionnaire); Harrington
+  House article link; sanity-check cost rates; his house verdicts that conflict with England PD
+  rules (porch "always needs permission", garage/dormer "change of use").
+- **Deploy:** GitHub push is admin-blocked on Matthew's machine — push with a short-lived
+  fine-grained token via `git -c credential.helper= push https://x-access-token:$T@github.com/…`
+  (never stored), then push tags explicitly.
+
 ## Scope & Isolation (MANDATORY)
 
 1. **This `CLAUDE.md` governs the `/sc/` project ONLY.** It does not apply to
@@ -139,7 +192,7 @@ Logged for future sessions. Commits on `main` unless noted:
 A complete, conversion-led redesign was built on the **`redesign`** branch (Cloudflare **preview** deploys; cut over to `main` only on owner go/no-go). Where this conflicts with older notes, **this wins**:
 - **Brand:** display name **"SC Design Wirral"** (`site.shortName`); legal `site.name` = "SC Design & Construction Ltd" kept for footer/legal/JSON-LD. Nav logo = `|SC` mark.
 - **Design system:** red/cream/white tokens in `globals.css @theme` (`--color-accent-strong #9b1b1b` AA-safe, `--color-paper #f5efe5`). All components inherit it.
-- **Credentials (CONFIRMED current June 2026):** Sean Corser **MCIAT — Chartered Architectural Technologist**, **BSc Architectural Science**, 15+ yrs design, 6 yrs prior on-site. In `site.credentials`; rendered in footer site-wide + hero + about + Person JSON-LD (`hasCredential`).
+- **Credentials (CONFIRMED current June 2026):** Sean Corser **MCIAT — Chartered Architectural Technologist**, **BSc Architectural Technology** (changed from "Architectural Science" Sep 2026 — Sean's own brief says Architectural Technology; owner-confirmed), 15+ yrs design, 6 yrs prior on-site. In `site.credentials`; rendered in footer site-wide + hero + about + Person JSON-LD (`hasCredential`).
 - **ARB-safety is now STRICT:** NEVER the bare title "architect" for Sean/SC. "Architectural technologist/designer/design/drawings" only. (The older "architect IS approved" line is **revoked** — the new client brief requires the protected-title-safe form. The `architect-vs-architectural-designer` guide uses "architect" only comparatively/educationally.)
 - **Address is now PRIVATE:** `site.addressIsPublic = false`. The Wallasey trading address is **removed from all visible copy + JSON-LD** (no `PostalAddress` emitted). Only the **Liverpool registered office** (Seymour Chambers) + company no. remain, as the legally-required Ltd disclosure. Wallasey still appears only as a **served town**. (Revokes the older "address IS published" rule.)
 - **Services reduced to 11:** removed permitted-development / LDC / conservation-area / planning-building-regulations **as services** (folded into guides; `public/_redirects` 301s the old `/services/*` URLs to the matching guides). `residential-design` renamed "Full Architectural Design Services" (slug kept). Added: front-porch-extension-design, bespoke-garden-room-design, change-of-use-applications, measured-building-surveys, concept-design-feasibility.
@@ -277,7 +330,7 @@ Q1→`town` (general area only, NEVER a street address) · Q2→`propertyType` (
 - Never expose the Supabase service-role key or any API key client-side.
 
 ### Content rules
-- **Service area wording:** always "**Wirral and the surrounding areas**" (or "across Wirral"). **Never** "20-mile radius" / "20 miles" — removed globally (the user's directive). `site.serviceArea` is the single source of truth; don't hardcode radius copy.
+- **Service area wording (updated Sep 2026, Sean's brief):** name the regions — `site.serviceArea` = "Wirral, Liverpool, Cheshire, Warrington & North Wales" and `site.regions` (list form). Never "selected surrounding areas" and **never** "20-mile radius" / "20 miles". Town lists live in `lib/serviceAreas.ts` (main vs secondary tiers). Don't hardcode area copy.
 - Social links render only when a real URL is set (`site.socials.facebook` is `""` until confirmed — empty links are not rendered).
 - Guides + planning content carry an advisory "general guidance for England, confirm with your local authority" note.
 
