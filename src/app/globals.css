@@ -59,14 +59,18 @@ body {
   overflow-x: hidden;
 }
 
-h1,
-h2,
-h3,
-h4 {
-  font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--color-ink);
+/* In the base layer so colour utilities (e.g. text-paper on dark sections) win —
+   unlayered, this rule beat every utility and made headings on bg-ink invisible. */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
 }
 
 /* Strong, visible focus states for accessibility */
