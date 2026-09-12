@@ -1,17 +1,20 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Container, Section, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
 import { BeforeAfterSlider } from "@/components/ui/BeforeAfterSlider";
+import { WorkFigure, WorkGallery } from "@/components/ui/WorkGallery";
 import { JsonLd } from "@/components/JsonLd";
-import { projects, getProject } from "@/lib/projects";
+import { publishedProjects, getProject, type Project } from "@/lib/projects";
+import type { WorkImage } from "@/lib/media";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 
 // Only the known (real) projects are built; no on-demand fallback.
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return projects.map((p) => ({ slug: p.slug }));
+  return publishedProjects.map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -26,7 +29,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   });
 }
 
-function Detail({ heading, body }: { heading: string; body: string }) {
+function Detail({ heading, body }: { heading: string; body?: string }) {
+  if (!body) return null;
   return (
     <div>
       <h2 className="text-xl">{heading}</h2>
@@ -35,15 +39,35 @@ function Detail({ heading, body }: { heading: string; body: string }) {
   );
 }
 
+/** Honest image note generated from the kinds of image actually shown. */
+function imageNote(p: Project): string {
+  const imgs: WorkImage[] = [
+    ...(p.cover ? [p.cover] : []),
+    ...(p.gallery ?? []),
+    ...(p.beforeAfter ? [p.beforeAfter.before, p.beforeAfter.drawing, p.beforeAfter.after] : []),
+  ].filter((i): i is WorkImage => Boolean(i));
+  const kinds = new Set(imgs.map((i) => i.kind));
+  const parts: string[] = [];
+  if (kinds.has("photo"))
+    parts.push(
+      "Photos show the real project — designed by SC Design Wirral and built by the homeowner's own builder."
+    );
+  if (kinds.has("drawing")) parts.push("Drawings are SC Design Wirral's own.");
+  if (kinds.has("render"))
+    parts.push(
+      "Images labelled “Design visualisation” show the proposed design, not a photograph of a finished build."
+    );
+  return parts.join(" ");
+}
+
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const project = getProject(slug);
   if (!project) notFound();
 
-  // A genuine before photo + after = an interactive comparison; a single design
-  // render = a framed image clearly captioned as a design visualisation.
-  const hasPair = Boolean(project.beforeImage && project.afterImage);
-  const singleImage = !hasPair ? project.afterImage || project.beforeImage : undefined;
+  const ba = project.beforeAfter;
+  const showSlider = Boolean(ba?.aligned && ba.before);
+  const note = imageNote(project);
 
   return (
     <>
@@ -72,39 +96,39 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         </Container>
       </Section>
 
-      {hasPair ? (
+      {showSlider && ba?.before ? (
         <Section>
           <Container className="max-w-3xl">
             <BeforeAfterSlider
-              before={project.beforeImage!}
-              after={project.afterImage!}
-              beforeAlt={`${project.title} — before`}
-              afterAlt={`${project.title} — proposed design`}
-              caption={`${project.title}, ${project.town} · drag to compare`}
+              before={ba.before.src}
+              after={ba.after.src}
+              beforeAlt={ba.before.alt}
+              afterAlt={ba.after.alt}
+              caption={`Before → ${ba.after.kind === "render" ? "design visualisation" : "after"}. Drag to compare.`}
             />
           </Container>
         </Section>
-      ) : singleImage ? (
+      ) : project.cover ? (
         <Section>
           <Container className="max-w-3xl">
-            <figure className="overflow-hidden rounded-lg border border-line bg-paper-card shadow-card">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={singleImage}
-                alt={`${project.title} — design visualisation`}
-                width={1200}
-                height={800}
-                loading="lazy"
-                decoding="async"
-                className="aspect-[3/2] w-full object-cover"
-              />
-              <figcaption className="px-4 py-3 text-sm text-muted">
-                {project.title}, {project.town} · design visualisation
-              </figcaption>
-            </figure>
+            <WorkFigure
+              image={project.cover}
+              aspect="3 / 2"
+              zoom={project.cover.kind === "drawing"}
+              priority
+            />
           </Container>
         </Section>
       ) : null}
+
+      {project.gallery && project.gallery.length > 0 && (
+        <Section tone="mist">
+          <Container>
+            <h2 className="text-2xl">Project images</h2>
+            <WorkGallery images={project.gallery} className="mt-6" />
+          </Container>
+        </Section>
+      )}
 
       <Section tone="card">
         <Container className="max-w-3xl space-y-8">
@@ -136,9 +160,14 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             </Card>
           )}
 
-          <p className="text-xs text-muted">
-            Images are design visualisations prepared by SC Design Wirral to show the proposed
-            scheme — indicative of the design intent.
+          {note && <p className="text-xs text-muted">{note}</p>}
+          <p className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            <Link href="/projects" className="font-medium text-accent-strong underline">
+              All case studies
+            </Link>
+            <Link href="/before-and-after" className="font-medium text-accent-strong underline">
+              See before &amp; after
+            </Link>
           </p>
         </Container>
       </Section>

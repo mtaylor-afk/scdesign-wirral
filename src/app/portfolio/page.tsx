@@ -1,14 +1,16 @@
 import { Container, Section, SectionHeading, LinkButton } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { BeforeAfterSlider } from "@/components/ui/BeforeAfterSlider";
+import { WorkGallery } from "@/components/ui/WorkGallery";
 import { CTASection } from "@/components/ui/CTASection";
 import { JsonLd } from "@/components/JsonLd";
+import { portfolioImages, wi, type WorkImage } from "@/lib/media";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 
 export const metadata = pageMeta({
-  title: "Project Examples & Design Visualisations — Wirral",
+  title: "Design Visualisations & Concept Examples — Wirral",
   description:
-    "Concept visualisations showing the kind of transformation thoughtful architectural design makes possible. Clearly labelled as illustrative AI examples, not completed projects.",
+    "Sean's design visualisations for extensions, garden rooms and conversions, plus illustrative AI before/after concepts. Clearly labelled — not photographs of completed projects.",
   path: "/portfolio",
 });
 
@@ -47,39 +49,18 @@ const concepts = [
   },
 ];
 
-// Sean's OWN concept renders (genuine design work). Concept visualisations —
-// NOT photographs of completed builds (those follow on /projects with permission).
-const visualisations = [
-  {
-    src: "/portfolio/viz-garden-extension.jpg",
-    alt: "Concept visualisation of a brick garden-room extension with bi-fold doors and a lit patio",
-    caption: "Garden-room extension",
-  },
-  {
-    src: "/portfolio/viz-lantern-extension.jpg",
-    alt: "Concept visualisation of a rear extension with a glazed roof lantern and bi-fold doors",
-    caption: "Rear extension with roof lantern",
-  },
-  {
-    src: "/portfolio/viz-single-storey.jpg",
-    alt: "Concept visualisation of a single-storey brick building at dusk",
-    caption: "Single-storey design",
-  },
-  {
-    src: "/portfolio/hero-after.jpg",
-    alt: "Concept visualisation of a single-storey rear extension on a rendered semi",
-    caption: "Rear extension concept",
-  },
-  {
-    src: "/portfolio/viz-concept-a.jpg",
-    alt: "Concept visualisation of a converted building",
-    caption: "Conversion concept",
-  },
-  {
-    src: "/portfolio/viz-concept-b.jpg",
-    alt: "Concept visualisation of a home extension",
-    caption: "Extension concept",
-  },
+// Sean's OWN design visualisations (genuine design work) — renders of proposed
+// schemes, NOT photographs of completed builds (those are on /before-and-after).
+const visualisations: WorkImage[] = [
+  { ...portfolioImages.gardenRoom, caption: "Brick garden room extension" },
+  { ...portfolioImages.lanternExtension, caption: "Rear extension with roof lantern" },
+  wi("vizFlatRoofLantern", "Flat-roof extension with corner glazing"),
+  wi("vizBifold", "Rendered rear extension with bi-folds"),
+  wi("vizTimberClad", "Timber-clad garden extension"),
+  { ...portfolioImages.heroAfter, caption: "Rear extension & garden remodel" },
+  { ...portfolioImages.chapelGallery, caption: "Chapel-to-gallery conversion" },
+  { ...portfolioImages.singleStorey, caption: "Single-storey commercial building" },
+  { ...portfolioImages.pharmacy, caption: "Pharmacy shopfront & fit-out" },
 ];
 
 export default function PortfolioPage() {
@@ -88,7 +69,7 @@ export default function PortfolioPage() {
       <JsonLd
         data={breadcrumbJsonLd([
           { name: "Home", path: "/" },
-          { name: "Portfolio", path: "/portfolio" },
+          { name: "Design visualisations", path: "/portfolio" },
         ])}
       />
       <Section tone="card" className="pt-16">
@@ -96,21 +77,20 @@ export default function PortfolioPage() {
           <Breadcrumbs
             items={[
               { name: "Home", path: "/" },
-              { name: "Portfolio", path: "/portfolio" },
+              { name: "Design visualisations", path: "/portfolio" },
             ]}
           />
-          <h1 className="text-balance text-4xl sm:text-5xl">
-            Project examples &amp; design visualisations
-          </h1>
+          <h1 className="text-balance text-4xl sm:text-5xl">Design visualisations</h1>
           <p className="mt-5 text-pretty text-lg text-muted">
-            The before/after sliders below are AI concept visualisations — a useful way to picture
-            the kind of transformation thoughtful design makes possible. They are illustrative only,
-            not SC&apos;s own completed projects. Real, permissioned project case studies are being
-            prepared.
+            Sean&apos;s design visualisations show how a proposed scheme will look before anything is
+            built, and the AI before/after sliders further down illustrate the kind of
+            transformation good design makes possible. None of these are photographs of finished
+            builds — for real completed work, see the before &amp; after photos and case studies.
           </p>
-          <div className="mt-7">
+          <div className="mt-7 flex flex-wrap gap-3">
+            <LinkButton href="/before-and-after">See real before &amp; after</LinkButton>
             <LinkButton href="/projects" variant="ghost">
-              See real project case studies
+              Read the case studies
             </LinkButton>
           </div>
         </Container>
@@ -120,39 +100,13 @@ export default function PortfolioPage() {
         <Container>
           <SectionHeading
             eyebrow="Our design work"
-            title="Design visualisations"
-            intro="A selection of Sean's own concept visualisations for Wirral and North West homes — extensions, garden rooms and rear remodels. These are concept renders that show the intended design, not photographs of finished builds."
+            title="Sean's design visualisations"
+            intro="Extensions, garden rooms, conversions and commercial schemes — each one a visualisation of the proposed design, labelled as such."
           />
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {visualisations.map((v) => (
-              <figure
-                key={v.src}
-                className="overflow-hidden rounded-lg border border-line bg-paper-card shadow-card"
-              >
-                {/* Sean's genuine renders — fixed dims to avoid layout shift; lazy below the fold. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={v.src}
-                  alt={v.alt}
-                  width={900}
-                  height={600}
-                  loading="lazy"
-                  decoding="async"
-                  className="aspect-[3/2] w-full object-cover"
-                />
-                <figcaption className="flex items-baseline justify-between gap-3 px-4 py-3">
-                  <span className="text-sm font-medium text-ink">{v.caption}</span>
-                  <span className="shrink-0 text-xs uppercase tracking-[0.14em] text-muted">
-                    Concept
-                  </span>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
+          <WorkGallery images={visualisations} className="mt-10" />
           <p className="mt-6 text-sm text-muted">
-            Concept visualisations only — illustrative of the design intent, not planning drawings
-            and not photographs of completed work. Real, permissioned project case studies are being
-            prepared.
+            Design visualisations only — illustrative of the design intent, not planning drawings
+            and not photographs of completed work.
           </p>
         </Container>
       </Section>

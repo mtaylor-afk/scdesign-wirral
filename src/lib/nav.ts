@@ -62,7 +62,15 @@ export const primaryNav: NavNode[] = [
       { label: "All guides", href: "/guides" },
     ],
   },
-  { label: "Projects", href: "/projects" },
+  {
+    label: "Projects",
+    href: "/projects",
+    children: [
+      { label: "Case studies", href: "/projects" },
+      { label: "Before & after", href: "/before-and-after" },
+      { label: "Design visualisations", href: "/portfolio" },
+    ],
+  },
   { label: "About", href: "/about" },
   { label: "Visualiser", href: "/visualiser" },
 ];
@@ -73,6 +81,7 @@ export const exploreLinks: NavLink[] = [
   { label: "Areas we cover", href: "/areas" },
   { label: "Guides", href: "/guides" },
   { label: "Projects", href: "/projects" },
+  { label: "Before & after", href: "/before-and-after" },
   { label: "Reviews", href: "/reviews" },
   { label: "Process", href: "/process" },
   { label: "About", href: "/about" },

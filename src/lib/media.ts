@@ -46,6 +46,20 @@ export const portfolioImages = {
     kind: "render",
     alt: "Design visualisation of a former chapel converted into an art gallery",
   },
+  singleStorey: {
+    src: "/portfolio/viz-single-storey.jpg",
+    width: 900,
+    height: 740,
+    kind: "render",
+    alt: "Design visualisation of a single-storey brick commercial building with parking",
+  },
+  pharmacy: {
+    src: "/portfolio/viz-concept-b.jpg",
+    width: 903,
+    height: 626,
+    kind: "render",
+    alt: "Design visualisation of a pharmacy shopfront and fit-out",
+  },
 } satisfies Record<string, WorkImage>;
 
 type ServiceMedia = { card?: WorkImage; gallery?: WorkImage[] };

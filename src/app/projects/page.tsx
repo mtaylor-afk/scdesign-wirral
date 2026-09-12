@@ -3,7 +3,9 @@ import { Container, Section, SectionHeading, Card, LinkButton } from "@/componen
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
 import { JsonLd } from "@/components/JsonLd";
-import { projects, projectPlaceholders } from "@/lib/projects";
+import { KindTag } from "@/components/ui/WorkGallery";
+import { publishedProjects as projects, projectPlaceholders } from "@/lib/projects";
+import { withBase } from "@/lib/base";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 
 export const metadata = pageMeta({
@@ -47,11 +49,16 @@ export default function ProjectsPage() {
           />
           <h1 className="text-balance text-4xl sm:text-5xl">Projects &amp; case studies</h1>
           <p className="mt-5 text-pretty text-lg text-muted">
-            A selection of real SC Design Wirral projects — home extensions and remodels across
-            Wirral, plus commercial and conversion work. Each one shows the brief, the design
-            response and the drawings prepared. Images are design visualisations of the proposed
-            schemes.
+            A selection of real SC Design Wirral projects — extensions, loft and garage conversions,
+            a new house, plus commercial and conversion work. Each one shows the brief, the design
+            response and the drawings prepared. Every image is labelled: real photos, Sean&apos;s
+            drawings, or design visualisations of the proposed scheme.
           </p>
+          <div className="mt-6">
+            <LinkButton href="/before-and-after" variant="ghost">
+              See before &amp; after
+            </LinkButton>
+          </div>
         </Container>
       </Section>
 
@@ -62,17 +69,28 @@ export default function ProjectsPage() {
               {projects.map((p) => (
                 <Link key={p.slug} href={`/projects/${p.slug}`} className="group block h-full">
                   <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper-card shadow-card transition-shadow hover:shadow-card-hover">
-                    {p.afterImage && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={p.afterImage}
-                        alt={`${p.title} — design visualisation`}
-                        width={900}
-                        height={600}
-                        loading="lazy"
-                        decoding="async"
-                        className="aspect-[3/2] w-full object-cover"
-                      />
+                    {p.cover && (
+                      <div
+                        className={
+                          "relative aspect-[3/2] w-full " +
+                          (p.cover.kind === "drawing" ? "bg-white" : "bg-paper")
+                        }
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={withBase(p.cover.src)}
+                          alt={p.cover.alt}
+                          width={p.cover.width}
+                          height={p.cover.height}
+                          loading="lazy"
+                          decoding="async"
+                          className={
+                            "absolute inset-0 h-full w-full " +
+                            (p.cover.kind === "drawing" ? "object-contain p-2" : "object-cover")
+                          }
+                        />
+                        <KindTag kind={p.cover.kind} />
+                      </div>
                     )}
                     <div className="flex flex-1 flex-col p-5">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">

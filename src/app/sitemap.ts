@@ -4,7 +4,7 @@ import { siteUrl, absUrl } from "@/lib/seo";
 import { services } from "@/lib/services";
 import { locations } from "@/lib/locations";
 import { guides } from "@/lib/guides";
-import { projects } from "@/lib/projects";
+import { publishedProjects as projects } from "@/lib/projects";
 
 export const dynamic = "force-static";
 
@@ -17,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/guides",
     "/homeowners-guide",
     "/projects",
+    "/before-and-after",
     "/reviews",
     "/portfolio",
     "/process",

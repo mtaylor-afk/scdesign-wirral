@@ -1,19 +1,29 @@
 /**
- * Real project case studies. EMPTY until SC supplies real, permissioned project
- * details and photos — we never invent projects. When a real case study is
- * added here, the /projects hub and /projects/[slug] template render it and the
- * sitemap picks it up automatically.
+ * Real project case studies. We never invent projects — every entry is genuine
+ * SC Design work supplied by Sean (June 2026 design pack + the project photos and
+ * drawings in his Sep 2026 website brief). Copy describes only what the images
+ * and drawings show; general area only (no street address); no invented dates,
+ * planning references or testimonials. Sean refines specifics via
+ * PROJECTS-QUESTIONS.txt.
  *
- * The `placeholders` below are clearly-labelled "coming soon" cards shown while
- * the real list is empty. They are NOT presented as completed projects.
+ * Imagery is labelled by kind (see lib/media.ts): "photo" = real photograph,
+ * "drawing" = Sean's drawings, "render" = design visualisation — a render is never
+ * presented as a completed build.
  *
- * CASE-STUDY ROUTE: the per-project page template lives in
- * `project-templates/case-study-page.tsx.txt`. The static export can't build an
- * empty dynamic route, so the `/projects/[slug]` route is intentionally NOT
- * present while this array is empty. When you add a real project below, copy the
- * template to `src/app/projects/[slug]/page.tsx` to enable the case-study pages
- * (and add the route to `sitemap.ts`).
+ * The /projects hub, /projects/[slug] template, /before-and-after page and the
+ * sitemap all read from this array.
  */
+import { portfolioImages, wi, type WorkImage } from "./media";
+
+export type BeforeAfterSet = {
+  /** Short, minimal caption for the before & after page. */
+  label: string;
+  before?: WorkImage;
+  drawing?: WorkImage;
+  after: WorkImage;
+  /** Same viewpoint → an interactive drag-to-compare slider is meaningful. */
+  aligned?: boolean;
+};
 
 export type Project = {
   slug: string;
@@ -22,23 +32,25 @@ export type Project = {
   propertyType: string;
   projectType: string;
   brief: string;
-  challenge: string;
-  designResponse: string;
-  planningRoute: string;
-  buildingRegsRoute: string;
+  challenge?: string;
+  designResponse?: string;
+  planningRoute?: string;
+  buildingRegsRoute?: string;
   drawings: string[];
-  outcome: string;
-  beforeImage?: string; // public path
-  afterImage?: string; // public path
+  outcome?: string;
+  /** Hub card + page hero image (labelled by kind). */
+  cover?: WorkImage;
+  /** Further labelled photos / drawings / renders for the case-study page. */
+  gallery?: WorkImage[];
+  /** Feeds /before-and-after (minimal-caption visual comparison). */
+  beforeAfter?: BeforeAfterSet;
   testimonial?: { quote: string; attribution: string }; // ONLY if real + permissioned
   reviewed: string;
 
-  /* ---- Future case-study fields (optional; fill only for real, permissioned
-     projects). Until homeownerPermissionConfirmed is true a project must NOT be
-     published/indexed as an individual page. ---- */
   status?: "draft" | "published";
   summary?: string; // one-line teaser for the hub card
-  constraints?: string; // site/planning constraints faced
+  constraints?: string;
+  /** Sean supplied the images for the site; true once the homeowner's OK is confirmed. */
   homeownerPermissionConfirmed?: boolean;
   relatedServices?: string[]; // service slugs
   relatedAreas?: string[]; // area slugs
@@ -46,11 +58,168 @@ export type Project = {
   metaDescription?: string;
 };
 
+const GARAGE_PLANNING =
+  "Converting a garage within the existing structure is often permitted development, but a change to the frontage or an old planning condition can mean permission is needed — always confirmed against the specific property first.";
+const GARAGE_REGS =
+  "A garage conversion needs building-regulations approval — insulation, damp-proofing, floor levels, ventilation and fire separation.";
+const LOFT_REGS =
+  "A habitable loft conversion always needs building-regulations approval — structure, fire safety and escape, stairs and insulation.";
+
 export const projects: Project[] = [
-  // NOTE (June 2026): first real projects added from Sean's supplied design pack
-  // at the owner's instruction ("feature all"). Copy describes what each design
-  // visualisation shows; general area only (no street address); no invented
-  // testimonials, dates or planning references — the owner is refining specifics.
+  /* ---- Real completed work from Sean's brief (Sep 2026) ---- */
+  {
+    slug: "garage-conversion-living-room",
+    title: "Garage conversion to a new living room",
+    town: "North West",
+    propertyType: "Semi-detached house",
+    projectType: "Garage conversion",
+    summary:
+      "A cluttered integral garage turned into a bright, finished room — with a new window where the garage door used to be.",
+    brief:
+      "Turn an under-used, cluttered garage into a comfortable room that feels like part of the house.",
+    designResponse:
+      "The garage door was replaced with an insulated brick wall and a new window to match the house, and the space was insulated, lined and finished as a habitable room.",
+    planningRoute: GARAGE_PLANNING,
+    buildingRegsRoute: GARAGE_REGS,
+    drawings: ["Proposed plans and elevations", "Building-regulations drawing package"],
+    outcome:
+      "A bright, finished room in place of a storage garage — and a tidier frontage with a window that sits naturally with the house.",
+    cover: wi("garage1After", "After — new window in place of the garage door"),
+    gallery: [
+      wi("garage1BeforeInterior", "Before — the garage as it was"),
+      wi("garage1During", "During — the new room taking shape"),
+      wi("garage1AfterInterior", "After — the finished room"),
+      wi("garage1After", "After — the new frontage"),
+    ],
+    beforeAfter: {
+      label: "Garage conversion",
+      before: wi("garage1BeforeInterior", "Before"),
+      after: wi("garage1AfterInterior", "After"),
+    },
+    reviewed: "September 2026",
+    status: "published",
+    homeownerPermissionConfirmed: false,
+    relatedServices: ["garage-conversion-drawings-wirral", "building-regulations-drawings-wirral"],
+  },
+  {
+    slug: "dormer-loft-conversion",
+    title: "Contemporary dormer loft conversion",
+    town: "North West",
+    propertyType: "Two-storey house",
+    projectType: "Loft conversion (dormer)",
+    summary:
+      "A crisp, dark-clad dormer that adds a light-filled new room at the top of the house — from drawing to finished build.",
+    brief: "Add a bright new room in the roof space with a clean, contemporary dormer.",
+    designResponse:
+      "A box dormer with full-height glazing and French doors, clad in dark grey to sit quietly against the roof, bringing daylight and views into the new room.",
+    planningRoute:
+      "Rear dormers are often achievable under permitted development within volume limits — always confirmed against the specific property first.",
+    buildingRegsRoute: LOFT_REGS,
+    drawings: ["Proposed elevations", "Building-regulations drawing package"],
+    outcome:
+      "The completed dormer adds a bright new room at the top of the house, with a contemporary finish that suits the roofline.",
+    cover: wi("loftDormerAfter", "The completed dormer"),
+    gallery: [
+      wi("loftDormerDrawing", "Proposed elevation"),
+      wi("loftDormerAfter", "The completed dormer"),
+    ],
+    beforeAfter: {
+      label: "Dormer loft conversion",
+      drawing: wi("loftDormerDrawing", "Proposed drawing"),
+      after: wi("loftDormerAfter", "Completed"),
+    },
+    reviewed: "September 2026",
+    status: "published",
+    homeownerPermissionConfirmed: false,
+    relatedServices: ["loft-conversions", "building-regulations-drawings-wirral"],
+  },
+  {
+    slug: "single-storey-extension-roof-lantern",
+    title: "Single-storey extension with roof lantern",
+    town: "North West",
+    propertyType: "Rendered family house",
+    projectType: "Single-storey extension",
+    summary:
+      "A single-storey extension with a glazed roof lantern and bi-fold doors — the proposed drawing and the finished build.",
+    brief: "Add a bright ground-floor living space that opens onto the garden.",
+    designResponse:
+      "A single-storey extension with a glazed roof lantern and bi-fold doors, rendered to match the house so it reads as part of the original building.",
+    planningRoute:
+      "Single-storey extensions are often achievable under permitted development or prior approval within the size limits — confirmed against the specific property first.",
+    buildingRegsRoute:
+      "Building-regulations drawings cover the structure, roof lantern, insulation, glazing and drainage.",
+    drawings: ["Proposed rear elevation", "Building-regulations drawing package"],
+    outcome: "The finished extension, built to the drawings, with its lantern and bi-folds in place.",
+    cover: wi("extLanternAfter", "The finished extension"),
+    gallery: [
+      wi("extLanternDrawing", "Proposed rear elevation"),
+      wi("extLanternAfter", "The finished extension"),
+    ],
+    beforeAfter: {
+      label: "Single-storey extension",
+      drawing: wi("extLanternDrawing", "Proposed drawing"),
+      after: wi("extLanternAfter", "Completed"),
+    },
+    reviewed: "September 2026",
+    status: "published",
+    homeownerPermissionConfirmed: false,
+    relatedServices: ["house-extensions", "planning-drawings-wirral"],
+  },
+  {
+    slug: "rear-dormer-loft-conversion",
+    title: "Rear dormer loft conversion with Juliet balconies",
+    town: "North West",
+    propertyType: "Semi-detached house",
+    projectType: "Loft conversion (rear dormer)",
+    summary:
+      "A full-width rear dormer with two sets of French doors and Juliet balconies, adding a new top floor to a family semi.",
+    brief: "Convert the loft into additional living space with a full-width rear dormer.",
+    designResponse:
+      "A full-width rear dormer with two sets of French doors behind Juliet balconies, bringing light and outlook into the new rooms — with the specification keyed onto the drawing for building control and the builder.",
+    planningRoute:
+      "Rear dormers are often achievable under permitted development within volume limits — always confirmed against the specific property first.",
+    buildingRegsRoute: LOFT_REGS,
+    drawings: [
+      "Proposed rear elevation with keyed specification notes",
+      "Building-regulations drawing package",
+    ],
+    cover: wi("loftRearDormerDrawing", "Proposed rear elevation"),
+    gallery: [
+      wi("loftRearDormerBefore", "Before — the rear of the house"),
+      wi("loftRearDormerDrawing", "Proposed rear elevation"),
+    ],
+    reviewed: "September 2026",
+    status: "published",
+    homeownerPermissionConfirmed: false,
+    relatedServices: ["loft-conversions", "building-regulations-drawings-wirral"],
+  },
+  {
+    slug: "garage-conversion-boot-room",
+    title: "Garage conversion & porch with boot room",
+    town: "North West",
+    propertyType: "Semi-detached house",
+    projectType: "Garage conversion & porch",
+    summary:
+      "A garage turned into a practical boot room with built-in timber storage, under an extended porch canopy.",
+    brief: "Convert the garage into practical, everyday space at the front of the house.",
+    designResponse:
+      "The garage door was replaced with a window and brick infill under a continued porch canopy, and the space fitted out with built-in timber seating and storage.",
+    planningRoute: GARAGE_PLANNING,
+    buildingRegsRoute: GARAGE_REGS,
+    drawings: ["Proposed plans and elevations", "Building-regulations drawing package"],
+    outcome: "A tidier frontage and a practical boot room with built-in storage.",
+    cover: wi("garage2Interior", "The finished boot room"),
+    gallery: [
+      wi("garage2After", "The new frontage and porch canopy"),
+      wi("garage2Interior", "Built-in seating and storage"),
+    ],
+    reviewed: "September 2026",
+    status: "published",
+    homeownerPermissionConfirmed: false,
+    relatedServices: ["garage-conversion-drawings-wirral", "front-porch-extension-design"],
+  },
+
+  /* ---- Sean's June 2026 design pack ---- */
   {
     slug: "rear-extension-garden-remodel",
     title: "Rear extension & garden transformation",
@@ -75,8 +244,14 @@ export const projects: Project[] = [
     ],
     outcome:
       "A fairly ordinary rear elevation becomes the best room in the house — a bright, garden-connected living space for everyday family life.",
-    beforeImage: "/portfolio/hero-before.jpg",
-    afterImage: "/portfolio/hero-after.jpg",
+    cover: portfolioImages.heroAfter,
+    gallery: [wi("heroDuring", "During the build — before rendering and landscaping")],
+    beforeAfter: {
+      label: "Rear extension & garden",
+      before: { ...portfolioImages.heroBefore, caption: "Before" },
+      after: { ...portfolioImages.heroAfter, caption: "Design visualisation" },
+      aligned: true,
+    },
     reviewed: "June 2026",
     status: "published",
     homeownerPermissionConfirmed: true,
@@ -106,7 +281,7 @@ export const projects: Project[] = [
     ],
     outcome:
       "A warm, light-filled garden room that works as a year-round living space rather than a bolt-on.",
-    afterImage: "/portfolio/viz-garden-extension.jpg",
+    cover: portfolioImages.gardenRoom,
     reviewed: "June 2026",
     status: "published",
     homeownerPermissionConfirmed: true,
@@ -136,11 +311,49 @@ export const projects: Project[] = [
     ],
     outcome:
       "A bright, contemporary rear living space that stays light through the middle thanks to the roof lantern.",
-    afterImage: "/portfolio/viz-lantern-extension.jpg",
+    cover: portfolioImages.lanternExtension,
     reviewed: "June 2026",
     status: "published",
     homeownerPermissionConfirmed: true,
     relatedServices: ["house-extensions", "residential-design"],
+  },
+  {
+    slug: "new-detached-house-design",
+    title: "New detached house design",
+    town: "North West",
+    propertyType: "New-build detached house",
+    projectType: "New house — planning & technical drawings",
+    summary:
+      "A contemporary detached family home with glazed feature gables and a double garage — plans, elevations, sections, roof plan and 3D views.",
+    brief:
+      "Design a contemporary detached family home with feature glazed gables, open-plan living and a double garage.",
+    designResponse:
+      "Twin glazed gables anchor the design, with a finishes schedule keyed onto every elevation. The drawing set runs from floor and roof plans through elevations and sections to 3D line views, so the planning application, building control and builders all work from the same information.",
+    planningRoute:
+      "A new dwelling needs full planning permission — the plans, elevations and 3D views are prepared to support the application.",
+    buildingRegsRoute:
+      "The technical set — sections, a wall-type key and specification — carries the scheme through building control and into builders' quotations.",
+    drawings: [
+      "Ground-floor plan with wall key and room schedule",
+      "Front, rear and side elevations with external finishes",
+      "Sections through the house",
+      "Roof plan",
+      "3D line views",
+    ],
+    cover: wi("houseSketchViews", "3D line views"),
+    gallery: [
+      wi("houseSketchViews", "3D line views"),
+      wi("houseFrontSide", "Front and side elevations"),
+      wi("houseRearSide", "Rear and side elevations"),
+      wi("houseFloorPlan", "Ground-floor plan"),
+      wi("houseRoofPlan", "Roof plan"),
+      wi("houseSectionsAB", "Sections A and B"),
+      wi("houseSectionsCF", "Further sections"),
+    ],
+    reviewed: "September 2026",
+    status: "published",
+    homeownerPermissionConfirmed: false,
+    relatedServices: ["residential-design", "planning-drawings-wirral", "building-regulations-drawings-wirral"],
   },
   {
     slug: "single-storey-commercial-building",
@@ -166,7 +379,7 @@ export const projects: Project[] = [
     ],
     outcome:
       "A tidy, contemporary commercial unit that makes the most of a compact site — design capability beyond domestic extensions.",
-    afterImage: "/portfolio/viz-single-storey.jpg",
+    cover: portfolioImages.singleStorey,
     reviewed: "June 2026",
     status: "published",
     homeownerPermissionConfirmed: true,
@@ -196,7 +409,8 @@ export const projects: Project[] = [
     ],
     outcome:
       "A redundant building given a viable, attractive new life — showing how thoughtful conversion can unlock a property's potential.",
-    afterImage: "/portfolio/viz-concept-a.jpg",
+    cover: portfolioImages.chapelGallery,
+    gallery: [wi("chapelRender", "Design render of the conversion")],
     reviewed: "June 2026",
     status: "published",
     homeownerPermissionConfirmed: true,
@@ -226,7 +440,7 @@ export const projects: Project[] = [
     ],
     outcome:
       "A bright, accessible retail space with a strong street presence — commercial fit-out design alongside the residential work.",
-    afterImage: "/portfolio/viz-concept-b.jpg",
+    cover: portfolioImages.pharmacy,
     reviewed: "June 2026",
     status: "published",
     homeownerPermissionConfirmed: true,
@@ -234,15 +448,18 @@ export const projects: Project[] = [
   },
 ];
 
+export const publishedProjects = projects.filter((p) => p.status !== "draft");
+
+/** Projects with a before/after (or drawing/after) set, for /before-and-after. */
+export const beforeAfterProjects = publishedProjects.filter((p) => p.beforeAfter);
+
 export function getProject(slug: string): Project | undefined {
   return projects.find((p) => p.slug === slug);
 }
 
 /**
- * Clearly-labelled "coming soon" cards shown while `projects` is empty. These are
- * NOT completed projects — each card is explicitly labelled and carries the same
- * honest note. They illustrate the *kind* of work case studies will cover, never
- * a claim that the work has been done.
+ * Clearly-labelled "coming soon" cards — only shown if `projects` is ever empty.
+ * NOT completed projects.
  */
 const PLACEHOLDER_NOTE =
   "Case study details to be added once homeowner permission and project information are confirmed.";
