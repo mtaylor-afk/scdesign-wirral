@@ -11,7 +11,10 @@ import { site } from "@/lib/site";
 
 /**
  * Visualiser concept handoff — the EXPLICIT, user-initiated "send this concept
- * to Sean" step. Generating a concept never contacts Sean; only this form does.
+ * to Sean" step (an enquiry). NOTE: the render backend separately emails SC an
+ * automatic copy of every concept (photo + concept + details) — the visible copy
+ * says so. This form adds the visitor's name/note and asks Sean to reply; the
+ * generated time + email let Sean match it to that automatic email.
  *
  * Sends server-side to the same enquiry endpoint the contact form uses (emails
  * BOTH recipients, reply-to = the enquirer, handled server-side) + a durable
@@ -31,6 +34,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function SendConceptForm({
   resultId,
   resultUrl,
+  generatedAt,
+  estimate,
   email,
   phone,
   projectType,
@@ -40,6 +45,10 @@ export function SendConceptForm({
 }: {
   resultId: string;
   resultUrl: string;
+  /** When the concept was generated (matches the automatic render email). */
+  generatedAt?: string;
+  /** The estimated build-price line shown with the concept. */
+  estimate?: string;
   /** Reused from the visualiser step — the user already gave this to get the result. */
   email: string;
   phone?: string;
@@ -71,7 +80,13 @@ export function SendConceptForm({
       storeys ? `Storeys: ${storeys}` : "",
       style ? `Style: ${style}` : "",
       notes ? `What they asked to see: ${notes}` : "",
+      estimate ? `Estimated build price shown: ${estimate}` : "",
       `Concept ref: ${resultId}`,
+      generatedAt
+        ? `Concept generated: ${generatedAt}${
+            knownEmail ? ` — matches the automatic visualiser email for ${knownEmail}` : ""
+          }`
+        : "",
       resultUrl ? `Concept link: ${resultUrl}` : "",
       "",
       `Their note: ${userNote || "—"}`,

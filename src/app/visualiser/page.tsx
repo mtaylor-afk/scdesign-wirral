@@ -43,12 +43,12 @@ export default function VisualiserPage() {
       <Section className="pt-6">
         <Container>
           <p className="mx-auto mb-6 max-w-3xl text-sm text-muted">
-            By uploading a photo you confirm you have the right to use it. Your source photo is used
-            only to create the concept and isn&apos;t stored afterwards; the generated concept is kept
-            briefly (currently up to {process.env.VISUALISER_RESULT_EXPIRY_DAYS || "7"} days) so we
-            can show it to you and send it on if you ask. Generate your concept below, then — if
-            you&apos;d like an honest first view — choose to send it to Sean with a short note. A
-            postcode helps but isn&apos;t required.
+            By uploading a photo you confirm you have the right to use it. Your photo is used to
+            create the concept and isn&apos;t kept on our website servers afterwards. We email you
+            the result, and a copy of your photo, the concept and the details you enter goes to SC
+            Design Wirral so Sean can see what was created. Generate your concept below — you&apos;ll
+            also get an estimated build-price guide — then, if you&apos;d like an honest first view,
+            send it to Sean with a short note. A postcode helps but isn&apos;t required.
           </p>
 
           <div className="mx-auto mb-6 max-w-3xl">
@@ -116,8 +116,8 @@ export default function VisualiserPage() {
           <Card>
             <h2 className="text-lg">Curious what it might cost?</h2>
             <p className="mt-2 text-pretty text-muted">
-              Get a rough, honest idea of the likely build cost before you commit — clearly marked as
-              an estimate, not a quote.
+              Your concept comes with a quick estimated build price. For more control — project
+              type, size and finish — try the full cost estimate. Always an estimate, never a quote.
             </p>
             <div className="mt-4">
               <LinkButton href="/cost-estimate" variant="ghost">

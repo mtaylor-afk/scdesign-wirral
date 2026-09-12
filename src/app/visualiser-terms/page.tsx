@@ -12,7 +12,7 @@ export const metadata = pageMeta({
 
 export default function VisualiserTermsPage() {
   return (
-    <LegalLayout title="Extension Concept Visualiser — Terms & Disclaimer" updated="June 2026">
+    <LegalLayout title="Extension Concept Visualiser — Terms & Disclaimer" updated="September 2026">
       <h2>Concept visualisation only</h2>
       <p>
         The Extension Concept Visualiser uses AI to generate a concept-style image based on the
@@ -39,10 +39,12 @@ export default function VisualiserTermsPage() {
 
       <h2>Data handling</h2>
       <p>
-        Your uploaded source image is deleted promptly after processing. The generated concept image
-        is stored briefly so it can be shown to you and, if you choose, sent to us — and then
-        expires after a short period (currently {process.env.VISUALISER_RESULT_EXPIRY_DAYS || "7"}{" "}
-        days). See our <a href={withBase("/privacy-policy")}>Privacy Policy</a> for more.
+        Your photo is sent to our image-generation provider to create the concept and is not kept
+        on our website servers afterwards. We email the result to the address you enter, and a
+        copy of your photo, the concept and the details you entered is emailed to {site.name} and
+        our website administrator so we can see what the tool produced and help if you get in
+        touch. See our <a href={withBase("/privacy-policy")}>Privacy Policy</a> for how long we keep
+        it.
       </p>
 
       <h2>No guarantee of results</h2>

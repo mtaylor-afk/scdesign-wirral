@@ -4,7 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Card } from "@/components/ui";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { SendConceptForm } from "./SendConceptForm";
+import { EstimatedPriceCard } from "./EstimatedPriceCard";
 import { track } from "@/components/Analytics";
+import {
+  visualiserCostKey,
+  getCostProject,
+  estimateRange,
+  formatRange,
+} from "@/lib/costRates";
 import { withBase } from "@/lib/base";
 import { renderConcept, presizeToNative, addWatermark } from "@/lib/concept-canvas";
 import {
@@ -24,6 +31,12 @@ const VISUALISER_ENDPOINT =
   "https://q-cbuild1.vercel.app/api/sc-visualise-v4";
 
 type Status = "upload" | "loading" | "result" | "refine" | "error";
+
+/** "ai-<ms>" / "local-<ms>" result id → a readable UK date-time for Sean's matching. */
+function conceptTime(id: string): string {
+  const ms = Number(id.split("-").pop());
+  return Number.isFinite(ms) ? new Date(ms).toLocaleString("en-GB") : "";
+}
 type Result = { id: string; url: string; before: string; mocked: boolean };
 type Refine = { url: string; before: string; suggestions: string[]; score: number | null };
 
@@ -43,6 +56,16 @@ export function VisualiserApp() {
     email: "",
     phone: "",
   });
+  // Estimated build price (shared rates with /cost-estimate). null override =
+  // use the typical size for the chosen project type.
+  const [estAreaOverride, setEstAreaOverride] = useState<number | null>(null);
+  const costMatch = visualiserCostKey(opts.projectType, opts.storeys);
+  const estArea = estAreaOverride ?? costMatch?.defaultArea ?? 20;
+  const estimateText = costMatch
+    ? `${getCostProject(costMatch.key).label}, approx ${estArea} m²: ${formatRange(
+        estimateRange(costMatch.key, estArea)
+      )} + VAT (build-cost guide)`
+    : "";
   const fileInput = useRef<HTMLInputElement>(null);
   // Separate input carrying `capture` so mobile devices open the camera app
   // directly (desktop browsers ignore `capture` and fall back to a file picker).
@@ -79,7 +102,7 @@ export function VisualiserApp() {
 
   async function generate(overrideNotes?: string) {
     if (!preview) {
-      setError("Please choose a photo of your home, or try the sample.");
+      setError("Please choose or take a photo of your home first.");
       return;
     }
     const email = opts.email.trim();
@@ -232,6 +255,7 @@ export function VisualiserApp() {
     setResult(null);
     setRefine(null);
     setRefineNotes("");
+    setEstAreaOverride(null);
     setError("");
     setStatus("upload");
   }
@@ -306,18 +330,29 @@ export function VisualiserApp() {
               design can be built. SC Design &amp; Construction will review your property properly
               before giving advice.
             </p>
+            <div className="mt-4">
+              <EstimatedPriceCard
+                costKey={costMatch?.key ?? null}
+                area={estArea}
+                onAreaChange={setEstAreaOverride}
+              />
+            </div>
           </div>
 
           <Card>
             <h3 className="text-xl">Want Sean&apos;s honest first view?</h3>
             <p className="mt-1 text-sm text-muted">
-              Send this concept to Sean with a short note — this is optional, and you can also just
-              keep the concept. Nothing is sent to Sean until you choose to here.
+              Send this concept to Sean with a short note — it&apos;s optional, and you can just
+              keep the concept. Sean automatically receives a copy of each concept (with your photo
+              and the details you entered), but he&apos;ll only be in touch if you send it to him
+              here, or if you added a phone number for a follow-up.
             </p>
             <div className="mt-4">
               <SendConceptForm
                 resultId={result.id}
                 resultUrl={result.url.startsWith("data:") ? "" : result.url}
+                generatedAt={conceptTime(result.id)}
+                estimate={estimateText}
                 email={opts.email}
                 phone={opts.phone}
                 projectType={
@@ -379,6 +414,13 @@ export function VisualiserApp() {
               design can be built. SC Design &amp; Construction will review your property properly
               before giving advice.
             </p>
+            <div className="mt-4">
+              <EstimatedPriceCard
+                costKey={costMatch?.key ?? null}
+                area={estArea}
+                onAreaChange={setEstAreaOverride}
+              />
+            </div>
           </div>
 
           <Card>
@@ -486,9 +528,10 @@ export function VisualiserApp() {
               </button>
             </div>
             <p className="mt-3 text-xs text-muted">
-              By uploading you confirm you have the right to use this image. Your source photo is used
-              only to create the concept and isn&apos;t stored afterwards; the concept itself is kept
-              briefly so we can show and send it to you. See the{" "}
+              By uploading you confirm you have the right to use this image. Your photo is used to
+              create the concept and isn&apos;t kept on our website servers afterwards. We email you
+              the result, and a copy of your photo, the concept and your details is emailed to SC
+              Design Wirral. See the{" "}
               <a href={withBase("/visualiser-terms")} className="underline">
                 visualiser terms
               </a>

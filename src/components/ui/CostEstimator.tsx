@@ -4,60 +4,47 @@ import { useState } from "react";
 import Link from "next/link";
 import { whatsappLink } from "@/lib/site";
 import { track } from "@/components/Analytics";
+import {
+  COST_PROJECTS,
+  FINISHES,
+  AREA_MIN,
+  AREA_MAX,
+  RATES_REVIEWED,
+  estimateRange,
+  totalBudgetRange,
+  formatRange,
+  costHandoffHref,
+} from "@/lib/costRates";
 
 /**
  * Indicative BUILD-cost estimator (the contractor's price, NOT our design fee
- * and NOT a quote). Ranges are rough North-West-of-England guides per m² of new
- * floor area — heavily hedged. Real cost depends on site, spec and access and is
- * only confirmed by a builder after a survey. No fabricated precision.
- *
- * (If the TailoredQuote pricing service is later wired in, this self-contained
- * model can be swapped for it — the UI + disclaimers stay the same.)
+ * and NOT a quote). Rates live in lib/costRates.ts (shared with the visualiser's
+ * estimated-price card). Real cost depends on site, spec and access and is only
+ * confirmed by a builder after a survey. No fabricated precision.
  */
-const PROJECTS: { key: string; label: string; low: number; high: number; defaultArea: number }[] = [
-  { key: "single", label: "Single-storey extension", low: 2200, high: 3200, defaultArea: 20 },
-  { key: "double", label: "Two-storey extension", low: 2000, high: 3000, defaultArea: 36 },
-  { key: "loft", label: "Loft conversion (dormer)", low: 1500, high: 2500, defaultArea: 25 },
-  { key: "garage", label: "Garage conversion", low: 1100, high: 1900, defaultArea: 15 },
-  { key: "garden", label: "Garden room", low: 1800, high: 3200, defaultArea: 15 },
-];
-
-const FINISHES: { key: string; label: string; mult: number }[] = [
-  { key: "standard", label: "Standard", mult: 1 },
-  { key: "high", label: "High spec", mult: 1.25 },
-];
-
-const ROUND_TO = 1000; // indicative figures are rounded to the nearest £1,000
-function round(n: number) {
-  return Math.round(n / ROUND_TO) * ROUND_TO;
-}
-function gbp(n: number) {
-  return "£" + n.toLocaleString("en-GB");
-}
-
 export function CostEstimator() {
-  const [projectKey, setProjectKey] = useState(PROJECTS[0].key);
-  const [area, setArea] = useState(PROJECTS[0].defaultArea);
+  const [projectKey, setProjectKey] = useState(COST_PROJECTS[0].key);
+  const [area, setArea] = useState(COST_PROJECTS[0].defaultArea);
   const [finishKey, setFinishKey] = useState("standard");
 
-  const project = PROJECTS.find((p) => p.key === projectKey)!;
+  const project = COST_PROJECTS.find((p) => p.key === projectKey)!;
   const finish = FINISHES.find((f) => f.key === finishKey)!;
-  const low = round(area * project.low * finish.mult);
-  const high = round(area * project.high * finish.mult);
+  const range = estimateRange(project.key, area, finish.mult);
+  const budget = totalBudgetRange(range);
 
   // Low-friction handoff: carry the (non-sensitive) estimate context to the
   // streamlined contact page so the message is pre-filled — no separate form,
   // and the calculator itself stays instant and ungated.
-  const estimateRange = `${gbp(low)} – ${gbp(high)}`;
-  const contactHref =
-    `/contact?source_type=cost_estimate` +
-    `&calculator_project=${encodeURIComponent(project.label)}` +
-    `&calculator_area_m2=${area}` +
-    `&calculator_finish=${encodeURIComponent(finish.label)}` +
-    `&calculator_estimate_range=${encodeURIComponent(estimateRange)}`;
+  const estimateText = `${formatRange(range)} + VAT`;
+  const contactHref = costHandoffHref({
+    project: project.label,
+    areaM2: area,
+    finish: finish.label,
+    range: estimateText,
+  });
   const whatsAppMessage =
     `Hi Sean, I used the cost estimate for a ${area} m² ${project.label.toLowerCase()} ` +
-    `(${finish.label.toLowerCase()} finish) — estimated ${estimateRange}. ` +
+    `(${finish.label.toLowerCase()} finish) — estimated ${estimateText}. ` +
     `Could you sense-check this for my project?`;
 
   return (
@@ -68,13 +55,13 @@ export function CostEstimator() {
           <select
             value={projectKey}
             onChange={(e) => {
-              const p = PROJECTS.find((x) => x.key === e.target.value)!;
+              const p = COST_PROJECTS.find((x) => x.key === e.target.value)!;
               setProjectKey(p.key);
               setArea(p.defaultArea);
             }}
             className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2 text-ink"
           >
-            {PROJECTS.map((p) => (
+            {COST_PROJECTS.map((p) => (
               <option key={p.key} value={p.key}>
                 {p.label}
               </option>
@@ -87,8 +74,8 @@ export function CostEstimator() {
           <span className="mt-1 flex items-center gap-2">
             <input
               type="range"
-              min={6}
-              max={80}
+              min={AREA_MIN}
+              max={AREA_MAX}
               value={area}
               onChange={(e) => setArea(Number(e.target.value))}
               className="w-full accent-[var(--color-accent-strong)]"
@@ -116,13 +103,17 @@ export function CostEstimator() {
 
       <div className="mt-6 rounded-[var(--radius)] bg-accent-soft/40 p-5 text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
-          Indicative build cost — estimate only
+          Estimated build price — guide only
         </p>
         <p className="mt-1 font-display text-3xl text-ink sm:text-4xl">
-          {gbp(low)} – {gbp(high)}
+          {formatRange(range)} <span className="text-lg text-muted">+ VAT</span>
         </p>
         <p className="mt-1 text-sm text-muted">
           for a {area} m² {project.label.toLowerCase()} ({finish.label.toLowerCase()} finish)
+        </p>
+        <p className="mt-3 text-sm text-ink-soft">
+          Typical total budget, allowing for VAT (if your builder charges it) and a 10% contingency:{" "}
+          <strong className="text-ink">{formatRange(budget)}</strong>
         </p>
       </div>
 
@@ -130,8 +121,9 @@ export function CostEstimator() {
         A rough guide to typical <strong>build costs</strong> in the North West — this is the
         contractor&apos;s price, <strong>not</strong> our design fee and <strong>not a quote</strong>.
         Real costs vary widely with site conditions, specification, access and finishes, and are only
-        confirmed by a builder after a proper survey. Figures exclude VAT, professional fees, planning
-        and building-control fees, and any structural or party-wall work.
+        confirmed by a builder after a proper survey. The build price excludes VAT, professional fees,
+        planning and building-control fees, and any structural or party-wall work. Rates reviewed{" "}
+        {RATES_REVIEWED}.
       </p>
 
       <div className="mt-6 rounded-[var(--radius)] border border-line bg-paper p-5">
