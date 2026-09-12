@@ -24,7 +24,7 @@ export function ServiceCard({
 }) {
   return (
     <Link href={href} className="group block h-full" data-conversion="service-cta">
-      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper-card shadow-card transition-shadow hover:shadow-card-hover">
+      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper-card shadow-tile transition-shadow hover:shadow-tile-hover">
         {image && (
           <div
             className={cn(

@@ -68,7 +68,7 @@ export default function ProjectsPage() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((p) => (
                 <Link key={p.slug} href={`/projects/${p.slug}`} className="group block h-full">
-                  <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper-card shadow-card transition-shadow hover:shadow-card-hover">
+                  <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper-card shadow-tile transition-shadow hover:shadow-tile-hover">
                     {p.cover && (
                       <div
                         className={

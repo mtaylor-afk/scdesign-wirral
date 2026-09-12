@@ -80,11 +80,12 @@ body {
   }
 }
 
-/* Strong, visible focus states for accessibility */
+/* Strong, visible focus states for accessibility. No forced border-radius — the
+   outline follows each element's own shape (pill buttons, 28px bento tiles, etc.),
+   so large rounded controls no longer snap to square corners on keyboard focus. */
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
-  border-radius: 4px;
 }
 
 /* Respect reduced-motion preferences */
@@ -131,5 +132,6 @@ body {
   html.js-reveal [data-reveal].is-visible {
     opacity: 1;
     transform: none;
+    will-change: auto; /* release the compositor hint once revealed */
   }
 }

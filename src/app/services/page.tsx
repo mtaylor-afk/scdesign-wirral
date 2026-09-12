@@ -94,7 +94,7 @@ export default function ServicesPage() {
         return (
           <Section key={cat.key} tone={idx % 2 === 0 ? "paper" : "card"}>
             <Container>
-              <SectionHeading eyebrow={cat.label} title={cat.label} intro={cat.blurb} />
+              <SectionHeading title={cat.label} intro={cat.blurb} />
               <div className="mt-8 grid gap-5 sm:grid-cols-2">
                 {group.map((s) => (
                   <ServiceCard

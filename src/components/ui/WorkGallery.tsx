@@ -56,7 +56,7 @@ export function WorkFigure({
   return (
     <figure
       className={cn(
-        "flex flex-col overflow-hidden rounded-lg border border-line bg-paper-card shadow-card",
+        "flex flex-col overflow-hidden rounded-lg border border-line bg-paper-card shadow-tile",
         className
       )}
     >

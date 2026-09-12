@@ -71,7 +71,8 @@ type ServiceMedia = { card?: WorkImage; gallery?: WorkImage[] };
  */
 export const serviceMedia: Record<string, ServiceMedia> = {
   "house-extensions": {
-    card: wi("extRearPebbledash"),
+    // extCorner (677×666) is sharper than extRearPebbledash for the large home tile.
+    card: wi("extCorner"),
     gallery: [
       wi("extRearPebbledash", "Completed single-storey rear extension"),
       wi("extLanternAfter", "Completed extension with roof lantern"),

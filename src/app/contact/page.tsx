@@ -40,8 +40,8 @@ export default function ContactPage() {
             the building work.
           </p>
           <p className="mt-3 text-pretty text-muted">
-            <strong className="text-ink">Want to book a free consultation?</strong> Use the form
-            below or call Sean — he&apos;ll come back to you to arrange it.
+            <strong className="text-ink">Want to book a free consultation?</strong>{" "}
+            Use the form below or call Sean — he&apos;ll come back to you to arrange it.
           </p>
         </Container>
       </Section>

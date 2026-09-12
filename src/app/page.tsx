@@ -18,6 +18,7 @@ import { EnquiryForm } from "@/components/EnquiryForm";
 import { JsonLd } from "@/components/JsonLd";
 import { withBase } from "@/lib/base";
 import { generalFaqs } from "@/lib/faqs";
+import { KindTag } from "@/components/ui/WorkGallery";
 import { getService } from "@/lib/services";
 import { getServiceMedia, wi, type WorkImage } from "@/lib/media";
 import { site, cta, whatsappLink, defaultWhatsAppMessage } from "@/lib/site";
@@ -99,11 +100,13 @@ const homeGuides: { title: string; blurb: string; href: string }[] = [
   },
 ];
 
-/** Image tile (Apple bento) — photo fills, gradient + label at the bottom. */
+/** Image tile (Apple bento) — photo fills, gradient + label at the bottom.
+ *  Non-photo images (drawings/renders) carry a KindTag so they're never passed
+ *  off as completed builds, and a stronger gradient keeps the title legible over
+ *  light line-art. */
 function ImageTile({
   image,
   title,
-  kicker,
   href,
   span,
   tall = false,
@@ -111,12 +114,12 @@ function ImageTile({
 }: {
   image?: WorkImage;
   title: string;
-  kicker?: string;
   href?: string;
   span: number;
   tall?: boolean;
   track?: string;
 }) {
+  const drawing = image?.kind === "drawing";
   return (
     <BentoTile span={span} tone="ink" href={href} track={track} className={tall ? "min-h-72" : "min-h-56"}>
       {image && (
@@ -128,18 +131,19 @@ function ImageTile({
           height={image.height}
           loading="lazy"
           decoding="async"
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+          className={
+            "absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-[1.04] " +
+            (drawing ? "bg-white object-contain p-3" : "object-cover")
+          }
         />
       )}
+      {image && <KindTag kind={image.kind} />}
       <span
         aria-hidden
-        className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/25 to-transparent"
+        className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/45 to-transparent"
       />
       <div className="relative mt-auto p-5 sm:p-6">
-        {kicker && (
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-paper/70">{kicker}</p>
-        )}
-        <h3 className={tall ? "mt-1 text-2xl text-paper" : "mt-1 text-xl text-paper"}>{title}</h3>
+        <h3 className={tall ? "text-2xl text-paper" : "text-xl text-paper"}>{title}</h3>
         {href && (
           <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-paper/90 transition-[gap] group-hover:gap-2.5">
             Explore <span aria-hidden>→</span>
@@ -230,21 +234,24 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      {/* TRUST BAR — bento of stat tiles */}
+      {/* TRUST BAR — stat tiles (2-up on mobile, 4 across on desktop) */}
       <Section tone="fog" className="py-14">
         <Container>
-          <Bento>
+          <div data-reveal className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
             {[
               { value: "MCIAT", label: "Chartered Architectural Technologist" },
               { value: `${site.yearsExperience}+`, label: "Years in architectural design" },
               { value: "Local", label: "Wirral, Liverpool, Cheshire & N. Wales" },
               { value: "Builder-ready", label: "Clear drawings for like-for-like quotations" },
             ].map((s) => (
-              <BentoTile key={s.label} span={3} tone="card" className="items-center justify-center p-8 lg:col-span-3 xl:col-span-3">
+              <div
+                key={s.label}
+                className="flex items-center justify-center rounded-[var(--radius-xl)] border border-line bg-paper-card p-6 shadow-tile sm:p-8"
+              >
                 <StatCard value={s.value} label={s.label} />
-              </BentoTile>
+              </div>
             ))}
-          </Bento>
+          </div>
         </Container>
       </Section>
 
@@ -408,6 +415,21 @@ export default function HomePage() {
               />
             </div>
           </div>
+        </Container>
+      </Section>
+
+      {/* FAQs */}
+      <Section tone="fog">
+        <Container className="max-w-3xl">
+          <SectionHeading eyebrow="Good to know" title="Frequently asked questions" align="center" />
+          <div data-reveal className="mt-8">
+            <FAQList faqs={generalFaqs.slice(0, 6)} />
+          </div>
+          <p className="mt-8 text-center text-sm text-muted">
+            <Link href="/faqs" className="font-medium text-accent-strong underline">
+              See all FAQs
+            </Link>
+          </p>
         </Container>
       </Section>
 
