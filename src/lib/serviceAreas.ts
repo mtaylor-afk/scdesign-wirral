@@ -6,6 +6,10 @@
  * "we also cover" list — NO thin per-town pages (Google penalises templated
  * doorway pages). Towns that DO have a dedicated page link to it; the rest are
  * plain text.
+ *
+ * Tiers follow Sean's brief (Sep 2026): MAIN areas (Wirral, Cheshire West /
+ * Halton / Warrington, North Wales) and SECONDARY areas (Liverpool & Merseyside).
+ * Saltney sits under North Wales (it is in Flintshire) for planning accuracy.
  */
 
 import { locations } from "./locations";
@@ -19,36 +23,43 @@ function slugify(name: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
-export type AreaRegion = { region: string; note?: string; towns: string[] };
+export type AreaTier = "main" | "secondary";
+export type AreaRegion = { region: string; tier: AreaTier; note?: string; towns: string[] };
 
 export const serviceAreaRegions: AreaRegion[] = [
   {
-    region: "Wirral",
+    region: "Wirral peninsula",
+    tier: "main",
     towns: [
       "Wallasey", "New Brighton", "Leasowe", "Moreton", "Meols", "Hoylake", "West Kirby",
       "Greasby", "Upton", "Birkenhead", "Oxton", "Prenton", "Bebington", "Port Sunlight",
       "Irby", "Pensby", "Heswall", "Bromborough", "Eastham", "Parkgate", "Neston",
-      "Little Neston", "Willaston",
+      "Little Neston", "Willaston", "South Wirral",
     ],
   },
   {
-    region: "Cheshire",
+    region: "Cheshire & Warrington",
+    tier: "main",
+    note: "Cheshire West and Chester, Halton (Runcorn) and Warrington councils — we prepare drawings to the right authority's requirements.",
     towns: [
-      "Ellesmere Port", "Little Sutton", "Great Sutton", "Frodsham", "Whitby", "Chester",
+      "Ellesmere Port", "Little Sutton", "Great Sutton", "Whitby", "Frodsham", "Chester",
       "Hoole", "Blacon", "Christleton", "Northwich", "Runcorn", "Warrington",
     ],
   },
   {
     region: "North Wales",
+    tier: "main",
     note: "Permitted-development rules differ in Wales — we account for the right local authority in your drawings.",
     towns: ["Saltney", "Connah Quay", "Buckley", "Mold", "Wrexham"],
   },
   {
     region: "Liverpool & Merseyside",
+    tier: "secondary",
     towns: [
-      "Liverpool", "Crosby", "Waterloo", "Bootle", "Walton", "Fazakerley", "Aintree", "Kirkby",
-      "Knowsley", "West Derby", "Tuebrook", "Norris Green", "Croxteth", "Mossley Hill", "Woolton",
-      "Wavertree", "Aigburth", "Childwall", "Belle Vale", "Huyton", "Prescot", "Kirkdale",
+      "Liverpool", "Crosby", "Waterloo", "Bootle", "Southport", "Walton", "Fazakerley",
+      "Aintree", "Kirkby", "Knowsley", "West Derby", "Tuebrook", "Norris Green", "Croxteth",
+      "Mossley Hill", "Woolton", "Wavertree", "Aigburth", "Childwall", "Belle Vale", "Huyton",
+      "Prescot", "Kirkdale",
     ],
   },
 ];

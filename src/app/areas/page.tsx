@@ -104,10 +104,15 @@ export default function AreasPage() {
           <SectionHeading
             eyebrow="Full coverage"
             title="Everywhere we work"
-            intro="We design for homes right across the North West and into North Wales. Towns with a link have a local page; we cover the rest too — just send your postcode."
+            intro="We design for homes across the Wirral peninsula, Liverpool, Cheshire, Warrington and North Wales. Towns with a link have a local page; we cover the rest too — just send your postcode."
           />
-          <div className="mt-8 grid gap-8 sm:grid-cols-2">
-            {serviceAreaRegions.map((r) => (
+          {(["main", "secondary"] as const).map((tier) => (
+          <div key={tier} className="mt-10">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
+            {tier === "main" ? "Main areas" : "Also covering"}
+          </h3>
+          <div className="mt-4 grid gap-8 sm:grid-cols-2">
+            {serviceAreaRegions.filter((r) => r.tier === tier).map((r) => (
               <div key={r.region}>
                 <h3 className="text-lg text-ink">{r.region}</h3>
                 {r.note && <p className="mt-1 text-xs text-muted">{r.note}</p>}
@@ -135,6 +140,8 @@ export default function AreasPage() {
               </div>
             ))}
           </div>
+          </div>
+          ))}
         </Container>
       </Section>
 
