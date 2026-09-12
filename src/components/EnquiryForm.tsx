@@ -49,13 +49,26 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type Status = "idle" | "submitting" | "success-mailto";
 type Errors = { name?: string; contact?: string; email?: string; consent?: string };
 
-export function EnquiryForm() {
+export function EnquiryForm({
+  source,
+  heading,
+  intro,
+  compact = false,
+}: {
+  /** Default source_type when the URL carries none (e.g. "home_consultation"). */
+  source?: string;
+  heading?: string;
+  intro?: string;
+  /** Sean's short form: name, phone, email and a brief description (+ consent). */
+  compact?: boolean;
+} = {}) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const successRef = useRef<HTMLHeadingElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
 
   const [projectType, setProjectType] = useState("");
+  const [isConsultation, setIsConsultation] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [errors, setErrors] = useState<Errors>({});
 
@@ -84,6 +97,8 @@ export function EnquiryForm() {
       const v = get(k);
       if (v) src[k] = v;
     });
+    // Embedded forms (e.g. the homepage) tag their own source; URL params win.
+    if (!src.source_type && source) src.source_type = source;
     sourceRef.current = src;
 
     // Map an incoming project_type to a chip if it matches one.
@@ -113,7 +128,17 @@ export function EnquiryForm() {
         msgEl.value = `${parts.join(", ")}. Could you sense-check this for my project?`;
       }
     }
-  }, []);
+
+    // Arrived from a "Book a free consultation" button (bottom-of-page panels).
+    if (src.source_type === "consultation") {
+      // One-shot init from the URL query string, guarded to run on mount only.
+      setIsConsultation(true);
+      const msgEl = formRef.current?.elements.namedItem("message") as
+        | HTMLTextAreaElement
+        | null;
+      if (msgEl && !msgEl.value) msgEl.value = "I'd like to book a free consultation about my project.";
+    }
+  }, [source]);
 
   // Focus the success heading when the mailto-fallback view appears.
   useEffect(() => {
@@ -220,7 +245,10 @@ export function EnquiryForm() {
     }
 
     setStatus("submitting");
-    track("contact_form_submitted", { project_type: payload.projectType || "unspecified" });
+    track("contact_form_submitted", {
+      project_type: payload.projectType || "unspecified",
+      form_location: sourceRef.current.source_type || "contact",
+    });
 
     // Durable backup: stores in SQL AND emails Sean server-side (both addresses,
     // Reply-To = enquirer). Started now; only awaited if the primary endpoint
@@ -318,10 +346,12 @@ export function EnquiryForm() {
       )}
 
       <div>
-        <h2 className="text-lg font-semibold text-ink">Quick project enquiry</h2>
+        <h2 className="text-lg font-semibold text-ink">
+          {heading ?? (isConsultation ? "Book your free consultation" : "Quick project enquiry")}
+        </h2>
         <p className="mt-1 text-sm text-muted">
-          This takes about 60 seconds. Only your name and one contact method are needed — the rest is
-          optional.
+          {intro ??
+            "This takes about 60 seconds. Only your name and one contact method are needed — the rest is optional."}
         </p>
       </div>
 
@@ -404,7 +434,8 @@ export function EnquiryForm() {
         />
       </Field>
 
-      {/* Optional project context. */}
+      {/* Optional project context (full form only). */}
+      {!compact && (
       <fieldset className="border-0 p-0">
         <legend className="text-sm font-medium text-ink">
           What are you thinking of doing?{" "}
@@ -432,7 +463,9 @@ export function EnquiryForm() {
           })}
         </div>
       </fieldset>
+      )}
 
+      {!compact && (
       <div className="grid gap-5 sm:grid-cols-2">
         <Field
           label="Property postcode"
@@ -449,9 +482,10 @@ export function EnquiryForm() {
           />
         </Field>
       </div>
+      )}
 
       <Field
-        label="Anything you'd like to add?"
+        label={compact ? "Brief description of your project" : "Anything you'd like to add?"}
         htmlFor="message"
         optional
         hint="A sentence is plenty — you can send photos by WhatsApp or email afterwards."

@@ -5,8 +5,10 @@ export function CTASection({
   heading = "Ready to talk about your project?",
   sub = "All you need to start is your name and one way to contact you. A short description, postcode or a few photos help if you have them — but they're not required.",
   track = "contact-cta",
-  primaryLabel = cta.primary.label,
-  ctaHref = cta.primary.href,
+  // Bottom-of-page panels use Sean's "Book a free consultation" (owner-approved
+  // 2026-09-12); nav / hero / mobile bar keep cta.primary.
+  primaryLabel = cta.consultation.label,
+  ctaHref = cta.consultation.href,
 }: {
   heading?: string;
   sub?: string;

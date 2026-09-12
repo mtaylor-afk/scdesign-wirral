@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { Container, Section, LinkButton, StatCard, SectionHeading, Card } from "@/components/ui";
-import { CTASection } from "@/components/ui/CTASection";
-import { ReviewsSummary, Testimonials } from "@/components/ui/Testimonials";
+import { ReviewsSummary, GoogleRatingLine } from "@/components/ui/Testimonials";
+import { ReviewsCarousel } from "@/components/ui/ReviewsCarousel";
 import { BeforeAfterSlider } from "@/components/ui/BeforeAfterSlider";
 import { FAQList } from "@/components/ui/FAQItem";
+import { ServiceCard } from "@/components/ui/ServiceCard";
+import { MeetSean } from "@/components/ui/MeetSean";
+import { WorkFigure } from "@/components/ui/WorkGallery";
+import { EnquiryForm } from "@/components/EnquiryForm";
 import { JsonLd } from "@/components/JsonLd";
 import { generalFaqs } from "@/lib/faqs";
+import { getService } from "@/lib/services";
+import { getServiceMedia, wi } from "@/lib/media";
 import { site, cta, whatsappLink, defaultWhatsAppMessage } from "@/lib/site";
 import { faqJsonLd, pageMeta } from "@/lib/seo";
 
@@ -13,23 +19,32 @@ export const metadata = pageMeta({
   title:
     "Architectural Designer Wirral | Extensions, Lofts & Planning Drawings | SC Design & Construction",
   description:
-    "Wirral architectural designer helping homeowners with house extension drawings, loft conversion design, planning drawings and building-regulations drawings. Led by a Chartered Architectural Technologist (MCIAT).",
+    "Wirral architectural designer helping homeowners across Wirral, Liverpool, Cheshire, Warrington and North Wales with house extension drawings, loft conversion design, planning and building-regulations drawings. Led by a Chartered Architectural Technologist (MCIAT).",
   path: "/",
 });
 
-// "What we help with" — maps to the service pages.
-const helpWith: { label: string; href: string }[] = [
-  { label: "House extension drawings", href: "/services/house-extensions" },
-  { label: "Loft conversion design", href: "/services/loft-conversions" },
-  { label: "Front porch design", href: "/services/front-porch-extension-design" },
-  { label: "Bespoke garden rooms", href: "/services/bespoke-garden-room-design" },
-  { label: "Planning permission drawings", href: "/services/planning-drawings-wirral" },
-  {
-    label: "Building-regulations drawings",
-    href: "/services/building-regulations-drawings-wirral",
-  },
-  { label: "Garage conversion drawings", href: "/services/garage-conversion-drawings-wirral" },
-  { label: "Full architectural design service", href: "/services/residential-design" },
+// Sean's main services (brief: "modified to the main service I offer") — each a
+// photo card that opens the full service breakdown.
+const mainServiceSlugs = [
+  "house-extensions",
+  "loft-conversions",
+  "garage-conversion-drawings-wirral",
+  "front-porch-extension-design",
+  "bespoke-garden-room-design",
+  "planning-drawings-wirral",
+  "building-regulations-drawings-wirral",
+  "residential-design",
+];
+const mainServices = mainServiceSlugs
+  .map((slug) => getService(slug))
+  .filter((s): s is NonNullable<typeof s> => Boolean(s));
+
+// "A few project images" (brief) — real photographs of completed work.
+const recentWork = [
+  wi("loftDormerAfter", "Dormer loft conversion"),
+  wi("garage1After", "Garage conversion"),
+  wi("extRearPebbledash", "Single-storey rear extension"),
+  wi("loftTileHung", "Tile-hung dormer"),
 ];
 
 const drawingsHelp: { term: string; body: string; href: string; cta: string }[] = [
@@ -88,7 +103,7 @@ export default function HomePage() {
           <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
             <div>
               <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
-                Architectural design · {site.serviceArea}
+                Architectural design · Wirral &amp; beyond
               </p>
               <h1 className="text-balance text-4xl leading-[1.08] sm:text-5xl lg:text-[3.4rem]">
                 <span className="text-accent-strong">Architectural Designer</span>{" "}
@@ -97,11 +112,25 @@ export default function HomePage() {
                 Planning Drawings
               </h1>
               <p className="mt-5 max-w-xl text-pretty text-lg text-muted">
-                Friendly, practical home design for growing families across Wirral and selected
-                surrounding areas — led by Sean Corser MCIAT, Chartered Architectural Technologist.
-                From your first idea to clear planning, building-regulations and builder-quote
-                drawings.
+                Friendly, practical home design for growing families — led by Sean Corser MCIAT,
+                Chartered Architectural Technologist. From your first idea to clear planning,
+                building-regulations and builder-quote drawings.
               </p>
+              <div className="mt-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
+                  Main areas we cover
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-2" aria-label="Main areas we cover">
+                  {site.regions.map((r) => (
+                    <li
+                      key={r}
+                      className="rounded-full border border-line bg-paper px-3 py-1 text-sm text-ink-soft"
+                    >
+                      {r}
+                    </li>
+                  ))}
+                </ul>
+              </div>
               <div className="mt-8 flex flex-wrap gap-3">
                 <LinkButton href={cta.primary.href} size="lg" track="contact-cta">
                   {cta.primary.label}
@@ -148,34 +177,90 @@ export default function HomePage() {
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
             <StatCard value="MCIAT" label="Chartered Architectural Technologist" />
             <StatCard value={`${site.yearsExperience}+`} label="Years in architectural design" />
-            <StatCard value="Local" label="Wirral & surrounding areas" />
+            <StatCard value="Local" label="Wirral, Liverpool, Cheshire & N. Wales" />
             <StatCard value="Builder-ready" label="Clear drawings for like-for-like quotations" />
           </div>
         </Container>
       </Section>
 
-      {/* WHAT WE HELP WITH */}
+      {/* OUR MAIN SERVICES — photo cards */}
       <Section tone="card">
         <Container>
           <SectionHeading
             eyebrow="What we help with"
-            title="From a first idea to planning-ready drawings"
-            intro="Whatever stage you're at, there's a service to suit. Design only — we don't carry out the building work, which keeps our advice focused on getting your design right."
+            title="Our main services"
+            intro="Tap a service to see what's involved. Design only — we don't carry out the building work, which keeps our advice focused on getting your design right."
           />
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {helpWith.map((h) => (
-              <Link key={h.href} href={h.href} className="group block">
-                <Card hover className="flex h-full items-start gap-3">
-                  <span className="mt-0.5 text-accent-strong" aria-hidden>
-                    ◆
-                  </span>
-                  <span className="font-medium text-ink group-hover:text-accent-strong">
-                    {h.label}
-                  </span>
-                </Card>
-              </Link>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {mainServices.map((s) => (
+              <ServiceCard
+                key={s.slug}
+                title={s.title}
+                href={`/services/${s.slug}`}
+                image={getServiceMedia(s.slug).card}
+                compact
+              />
             ))}
           </div>
+          <div className="mt-8">
+            <LinkButton href="/services" variant="ghost">
+              See all services
+            </LinkButton>
+          </div>
+        </Container>
+      </Section>
+
+      {/* RECENT WORK — real project photos */}
+      <Section tone="mist">
+        <Container>
+          <SectionHeading
+            eyebrow="Recent work"
+            title="Real projects, designed by Sean"
+            intro="A few completed extensions, loft and garage conversions designed by SC Design Wirral and built by the homeowners' own builders."
+          />
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {recentWork.map((img) => (
+              <WorkFigure key={img.src} image={img} />
+            ))}
+          </div>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <LinkButton href="/before-and-after">See before &amp; after</LinkButton>
+            <LinkButton href="/projects" variant="ghost">
+              Read the case studies
+            </LinkButton>
+            <LinkButton href="/portfolio" variant="ghost">
+              Design visualisations
+            </LinkButton>
+          </div>
+        </Container>
+      </Section>
+
+      {/* MEET SEAN */}
+      <Section>
+        <Container className="max-w-4xl">
+          <SectionHeading eyebrow="Meet Sean" title="Design experience — backed by years on site" />
+          <MeetSean className="mt-12" />
+        </Container>
+      </Section>
+
+      {/* REVIEWS — rotating window of genuine Google reviews */}
+      <Section tone="card">
+        <Container>
+          <SectionHeading
+            eyebrow="Reviews"
+            title="What homeowners and builders say"
+            intro="Genuine, verified reviews from the SC Design Google profile."
+            align="center"
+          />
+          <div className="mt-8 flex justify-center">
+            <ReviewsSummary align="center" />
+          </div>
+          <ReviewsCarousel className="mt-10" />
+          <p className="mt-8 text-center text-sm text-muted">
+            <Link href="/reviews" className="font-medium text-accent-strong underline">
+              See all reviews
+            </Link>
+          </p>
         </Container>
       </Section>
 
@@ -201,42 +286,12 @@ export default function HomePage() {
               </Card>
             ))}
           </div>
-        </Container>
-      </Section>
-
-      {/* LOCAL DESIGN KNOWLEDGE */}
-      <Section tone="card">
-        <Container>
-          <div className="grid items-start gap-10 lg:grid-cols-2">
-            <SectionHeading
-              eyebrow="Local knowledge"
-              title="Local design knowledge across Wirral"
-              intro="Working right across Wirral, we know the local housing and the planning context that shapes what's achievable — and where to take extra care."
-            />
-            <ul className="space-y-3 text-pretty text-muted">
-              <li>
-                <strong className="text-ink">Period homes</strong> in Wallasey, Birkenhead and Oxton
-                that reward a sympathetic design approach.
-              </li>
-              <li>
-                <strong className="text-ink">Conservation sensitivity</strong> around Port Sunlight,
-                Oxton and parts of Bebington — confirmed with Wirral Council for your address.
-              </li>
-              <li>
-                <strong className="text-ink">Coastal &amp; sloping sites</strong> in Heswall, West
-                Kirby and Hoylake, designed around light, levels and outlook.
-              </li>
-              <li>
-                <strong className="text-ink">Family extensions</strong> across Bromborough, Moreton,
-                Upton and Greasby that add real, everyday space.
-              </li>
-            </ul>
-          </div>
-          <div className="mt-8">
-            <LinkButton href="/areas" variant="ghost">
-              See all the areas we cover
-            </LinkButton>
-          </div>
+          <p className="mt-8 text-sm text-muted">
+            Wondering whether your project needs permission at all?{" "}
+            <Link href="/homeowners-guide" className="font-medium text-accent-strong underline">
+              Try the interactive planning guide
+            </Link>
+          </p>
         </Container>
       </Section>
 
@@ -253,8 +308,8 @@ export default function HomePage() {
               </h2>
               <p className="mt-4 max-w-lg text-pretty text-paper/70">
                 Upload a photo of your home, choose a few options and get an AI concept visualisation
-                in moments. A fun, no-pressure way to picture possibilities — and an easy first step
-                toward a real conversation.
+                — with an estimated build-cost guide — in moments. A fun, no-pressure way to picture
+                possibilities and an easy first step toward a real conversation.
               </p>
               <p className="mt-3 text-sm text-paper/50">
                 Concept visualisation only — not an architectural drawing or planning advice.
@@ -278,40 +333,39 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      {/* PROJECT EXAMPLES VS REAL */}
+      {/* LOCAL DESIGN KNOWLEDGE */}
       <Section tone="card">
         <Container>
-          <SectionHeading
-            eyebrow="See the possibilities"
-            title="Project examples &amp; design visuals"
-            intro="We keep these two things separate and honest: illustrative concept visualisations now, and real project case studies as they're ready."
-          />
-          <div className="mt-10 grid gap-6 lg:grid-cols-2">
-            <Card className="flex h-full flex-col">
-              <h3 className="text-xl">Concept visualisations</h3>
-              <p className="mt-2 flex-1 text-pretty text-muted">
-                AI before/after examples that show the kind of transformation good design makes
-                possible. Clearly labelled as illustrative — not completed projects.
-              </p>
-              <div className="mt-4">
-                <LinkButton href="/portfolio" variant="ghost">
-                  View concept visualisations
-                </LinkButton>
-              </div>
-            </Card>
-            <Card className="flex h-full flex-col">
-              <h3 className="text-xl">Real project case studies</h3>
-              <p className="mt-2 flex-1 text-pretty text-muted">
-                Real SC Design Wirral projects — home extensions and remodels across Wirral, plus
-                commercial and conversion work — each with the brief, the design response and the
-                drawings prepared.
-              </p>
-              <div className="mt-4">
-                <LinkButton href="/projects" variant="ghost">
-                  See our projects
-                </LinkButton>
-              </div>
-            </Card>
+          <div className="grid items-start gap-10 lg:grid-cols-2">
+            <SectionHeading
+              eyebrow="Local knowledge"
+              title="Local design knowledge across Wirral and beyond"
+              intro="Based on the Wirral and working across Liverpool, Cheshire, Warrington and North Wales, we know the local housing and the planning context that shapes what's achievable — and where to take extra care."
+            />
+            <ul className="space-y-3 text-pretty text-muted">
+              <li>
+                <strong className="text-ink">Period homes</strong> in Wallasey, Birkenhead and Oxton
+                that reward a sympathetic design approach.
+              </li>
+              <li>
+                <strong className="text-ink">Conservation sensitivity</strong> around Port Sunlight,
+                Oxton and parts of Bebington — confirmed with Wirral Council for your address.
+              </li>
+              <li>
+                <strong className="text-ink">Coastal &amp; sloping sites</strong> in Heswall, West
+                Kirby and Hoylake, designed around light, levels and outlook.
+              </li>
+              <li>
+                <strong className="text-ink">Different councils, different rules</strong> — from
+                Cheshire West and Chester to Liverpool, Warrington and the Welsh authorities, where
+                permitted-development rules differ.
+              </li>
+            </ul>
+          </div>
+          <div className="mt-8">
+            <LinkButton href="/areas" variant="ghost">
+              See all the areas we cover
+            </LinkButton>
           </div>
         </Container>
       </Section>
@@ -331,34 +385,13 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      {/* REVIEWS */}
-      <Section>
-        <Container>
-          <SectionHeading
-            eyebrow="Reviews"
-            title="What homeowners and builders say"
-            intro="Genuine, verified reviews from the SC Design Google profile."
-            align="center"
-          />
-          <div className="mt-8 flex justify-center">
-            <ReviewsSummary align="center" />
-          </div>
-          <Testimonials limit={3} className="mt-10" />
-          <p className="mt-8 text-center text-sm text-muted">
-            <Link href="/reviews" className="font-medium text-accent-strong underline">
-              Read more reviews
-            </Link>
-          </p>
-        </Container>
-      </Section>
-
       {/* HELPFUL HOMEOWNER GUIDES */}
       <Section tone="card">
         <Container>
           <SectionHeading
             eyebrow="Homeowner guides"
             title="Helpful homeowner guides"
-            intro="Plain-English answers to the planning and building-control questions Wirral homeowners ask most — written to help you decide before you get in touch."
+            intro="Plain-English answers to the planning and building-control questions homeowners ask most — written to help you decide before you get in touch."
           />
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {homeGuides.map((g) => (
@@ -381,10 +414,68 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      <CTASection
-        heading="Ready to see what's possible for your home?"
-        sub="All you need to start is your name and one way to contact you. A postcode, a few photos or a short description help if you have them — but they're not required. You'll get an honest first view of the likely design route, with no obligation."
-      />
+      {/* BOOK A FREE CONSULTATION — Sean's closing CTA + quick form */}
+      <Section tone="ink" id="book">
+        <Container>
+          <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+                Free &amp; no obligation
+              </p>
+              <h2 className="text-balance text-3xl text-paper sm:text-4xl">
+                {cta.consultation.label}
+              </h2>
+              <p className="mt-4 max-w-md text-pretty text-paper/70">
+                Tell Sean about your project — your name, one way to contact you and a brief
+                description is all it takes. You&apos;ll get an honest first view of the likely
+                design and planning route, with no obligation.
+              </p>
+              <ul className="mt-6 space-y-2 text-sm text-paper/80">
+                <li className="flex gap-2">
+                  <span aria-hidden className="text-accent">
+                    ✓
+                  </span>
+                  Only your name and a phone number or email are required
+                </li>
+                <li className="flex gap-2">
+                  <span aria-hidden className="text-accent">
+                    ✓
+                  </span>
+                  Photos and a postcode help, but can follow later
+                </li>
+                <li className="flex gap-2">
+                  <span aria-hidden className="text-accent">
+                    ✓
+                  </span>
+                  Design only — impartial advice, no sales pitch for a build
+                </li>
+              </ul>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <LinkButton href={`tel:${site.phoneE164}`} variant="light" track="phone-click">
+                  Call {site.phoneDisplay}
+                </LinkButton>
+                <LinkButton
+                  href={whatsappLink(defaultWhatsAppMessage)}
+                  variant="light"
+                  external
+                  track="whatsapp-click"
+                >
+                  {cta.whatsapp.label}
+                </LinkButton>
+              </div>
+            </div>
+            <div className="rounded-lg bg-paper-card p-6 text-ink shadow-card sm:p-8">
+              <GoogleRatingLine className="mb-5" />
+              <EnquiryForm
+                source="home_consultation"
+                heading="Tell us about your project"
+                intro="Name, one way to contact you and a brief description — that's all Sean needs to get started."
+                compact
+              />
+            </div>
+          </div>
+        </Container>
+      </Section>
     </>
   );
 }

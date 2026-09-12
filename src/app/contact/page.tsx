@@ -39,6 +39,10 @@ export default function ContactPage() {
             need anything prepared to start. No obligation; we design only and don&apos;t carry out
             the building work.
           </p>
+          <p className="mt-3 text-pretty text-muted">
+            <strong className="text-ink">Want to book a free consultation?</strong> Use the form
+            below or call Sean — he&apos;ll come back to you to arrange it.
+          </p>
         </Container>
       </Section>
 
