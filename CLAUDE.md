@@ -36,6 +36,24 @@ repository — the repo is only being used here as a convenient testing host.
   Cloudflare keeps the **last good version** live, so a bad push never takes
   the site down.
 
+### `/samantha` — private design sandbox (added 13 Sep 2026)
+
+A **guest** project hosted on this domain, unrelated to SC Design: the redesign
+draft for **Wallasey Trusted Home Cleans** (Matthew's niece Samantha), parked at
+https://scdesignwirral.co.uk/samantha/ so she can view it on a real URL.
+
+- **Source of truth:** `public/samantha/` in this repo. Plain static HTML — it is
+  copied verbatim into `out/samantha/` by `next build`; **no Next route, no React,
+  no import from `src/`**. Iterate by editing that folder and pushing to `main`.
+- **Must never be indexed.** Three independent layers, keep them in step:
+  (1) `<meta name="robots" content="noindex,…">` in `public/samantha/index.html`;
+  (2) `X-Robots-Tag: noindex, …` on `/samantha` + `/samantha/*` in `public/_headers`;
+  (3) `/samantha` + `/samantha/` in the `disallow` list in `src/app/robots.ts`.
+  It is also deliberately **orphaned** — never link to it from the SC site, and
+  never add it to `sitemap.ts`.
+- **Do not let it leak into SC's SEO surface:** not in the sitemap, not in
+  `llms.txt`, no JSON-LD, no internal links. It is a sandbox, not a page.
+
 ## Standing authorization — no approval prompts, auto-continue (MANDATORY)
 
 Matthew has granted **full, permanent, standing approval** for this project. This

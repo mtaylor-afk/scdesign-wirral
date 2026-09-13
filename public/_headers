@@ -27,3 +27,18 @@
   Cache-Control: no-store, max-age=0
 /admin/*
   Cache-Control: no-store, max-age=0
+
+# /samantha — PRIVATE DESIGN SANDBOX (Wallasey Trusted Home Cleans draft).
+# Must NEVER be indexed, cached by a search engine, summarised by an AI crawler,
+# or have its images picked up. X-Robots-Tag is the belt; the page's own <meta
+# name="robots"> and the Disallow in src/app/robots.ts are the braces. Deleting
+# any one of the three weakens it — change all three together or none.
+# no-store also means a design change is visible on refresh, with no CDN lag.
+# Security headers come from /* above — do NOT repeat them here (Cloudflare
+# Pages APPENDS matching rules, so a repeat emits duplicate headers).
+/samantha
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
+  Cache-Control: no-store, max-age=0
+/samantha/*
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
+  Cache-Control: no-store, max-age=0
