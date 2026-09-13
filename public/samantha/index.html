@@ -158,6 +158,18 @@ a{color:var(--accent);text-underline-offset:3px}
   .nav .mark{max-width:23rem}
 }
 .mark{margin-right:auto}
+/* body sets overflow-wrap:anywhere as a safety net for the largest accessibility
+   text sizes. Inside a squeezed flex row that turned the nav into "Servic/es"
+   and "Conta/ct". Links now stay whole; the row is given the room to hold them
+   instead — tighter gaps below 1120px, and the long phone number in the Call
+   button only appears once there is space for it. Verified by rendering at
+   900 / 960 / 1024 / 1120 / 1280. */
+.navlinks a{white-space:nowrap;overflow-wrap:normal}
+.nav .mark{overflow-wrap:normal}
+@media (min-width:900px){.navlinks{gap:16px}}
+@media (min-width:1120px){.navlinks{gap:22px}}
+.numlong{display:none}
+@media (min-width:1120px){.numlong{display:inline}}
 
 /* ---------- buttons ---------- */
 .btn{
@@ -169,10 +181,16 @@ a{color:var(--accent);text-underline-offset:3px}
   transition:transform .15s ease-out, background-color .15s ease-out;
 }
 .btn:active{transform:scale(.97)}
-.btn-primary{background:var(--accent);color:var(--paper)}
-:root[data-theme="dark"] .btn-primary,
-:root:not([data-theme="light"]) .btn-primary{color:#06201C}
+.btn-primary{background:var(--accent);color:#FFFFFF}
+/* Corrected 13 Sep 2026. The dark-mode ink was leaking into light mode:
+   `:root:not([data-theme="light"])` matches whenever no explicit theme is set,
+   which is the DEFAULT IN LIGHT MODE TOO — so every tinted button was painting
+   #06201C on #125E58. Measured 2.25:1: a straight AA failure on the page's
+   primary action, in the mode nearly everyone sees. The dark rules are now
+   confined to dark mode, where the accent is the light mint and dark ink is
+   right. White on #125E58 is 7.59:1. */
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn-primary{color:#06201C}}
+:root[data-theme="dark"] .btn-primary{color:#06201C}
 .btn-primary:hover{background:var(--accent-press)}
 .btn-ghost{background:transparent;color:var(--ink);border-color:var(--line)}
 .btn-ghost:hover{border-color:var(--ink-2)}
@@ -351,6 +369,165 @@ h2{
 .step p{color:var(--ink-2);font-size:1.0312rem;grid-column:2/-1}
 @media (min-width:760px){.step p{grid-column:3/-1}}
 
+/* ---------- booking ---------- */
+/* buttons.md > Style: "Keep the number of prominent buttons to one or two per view."
+   Three booking choices sit side by side, so all three actions are ghost, not
+   tinted. Hierarchy comes from the cards, not from three competing fills. */
+.bk-grid{display:grid;gap:18px;margin-top:44px}
+@media (min-width:760px){.bk-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.bk-card{
+  background:var(--paper);border:1px solid var(--line);border-radius:20px;
+  padding:26px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--e1);
+  min-width:0;
+}
+.bk-card.is-active{border-color:var(--accent);box-shadow:var(--e2)}
+.bk-card h3{font-family:var(--serif);font-size:min(1.375rem,7vw);font-weight:600;letter-spacing:-.011em;line-height:1.2}
+.bk-card .len{font-size:0.875rem;font-weight:600;letter-spacing:.01em;color:var(--accent);overflow-wrap:break-word}
+.bk-card p{font-size:0.9688rem;color:var(--ink-2);line-height:1.5}
+.bk-card .btn{margin-top:auto;width:100%;padding-inline:14px}
+
+.bk-panel{
+  margin-top:26px;background:var(--paper);border:1px solid var(--line);
+  border-radius:24px;box-shadow:var(--e2);overflow:hidden;
+}
+.bk-head{
+  display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;justify-content:space-between;
+  padding:18px 20px;border-bottom:1px solid var(--line);
+}
+.bk-head p{font-weight:600;font-size:1.0625rem;min-width:0;overflow-wrap:break-word}
+.bk-head .btn{flex:none}
+.bk-mount{min-height:300px;padding:6px}
+.bk-msg{padding:24px 20px;font-size:1rem;line-height:1.55;color:var(--ink-2);max-width:62ch}
+.bk-msg b{color:var(--ink)}
+.bk-msg a{font-weight:600}
+.bk-setup{
+  margin:20px;padding:18px 20px;border-left:3px solid var(--accent);
+  background:var(--accent-tint);border-radius:0 14px 14px 0;
+  font-size:0.9688rem;line-height:1.55;color:var(--ink-2);max-width:62ch;
+}
+.bk-setup b{color:var(--ink)}
+.bk-setup code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:0.9em;
+  background:var(--paper);padding:2px 6px;border-radius:6px;overflow-wrap:anywhere;
+}
+.bk-note{margin-top:22px;font-size:0.875rem;line-height:1.5;color:var(--ink-3);max-width:62ch}
+@media (prefers-contrast: more){
+  .bk-card,.bk-panel{border-color:var(--ink-2)}
+}
+
+/* ---------- booking · the demonstration booker ---------- */
+/* Runs when CAL_USER is empty. Same behaviour as the real thing — real dates,
+   real Monday/Tuesday rules, real 9–4 slots, a real form — but nothing leaves
+   the page. Every screen says so. When CAL_USER is filled in, this is hidden
+   and the Cal.com embed takes the same space. */
+.bk-demo{
+  margin:0;padding:13px 20px;background:var(--accent-tint);color:var(--accent);
+  border-bottom:1px solid var(--line);
+  font-size:0.875rem;font-weight:600;line-height:1.5;
+}
+.bkd{display:grid;--err:#B3261E}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .bkd{--err:#FF9A8F}}
+:root[data-theme="dark"] .bkd{--err:#FF9A8F}
+@media (min-width:900px){.bkd{grid-template-columns:15.5rem 1fr}}
+.bkd-rail{padding:22px 20px;border-bottom:1px solid var(--line);min-width:0}
+@media (min-width:900px){.bkd-rail{border-bottom:0;border-right:1px solid var(--line)}}
+.bkd-rail h3{font-family:var(--serif);font-size:min(1.375rem,7vw);font-weight:600;letter-spacing:-.011em;line-height:1.2}
+.bkd-facts{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:11px}
+.bkd-facts li{display:flex;gap:10px;align-items:flex-start;font-size:0.9375rem;line-height:1.45;color:var(--ink-2);min-width:0}
+.bkd-facts svg{flex:none;width:18px;height:18px;color:var(--accent);margin-top:3px}
+.bkd-main{padding:22px 20px;min-width:0}
+
+.bkd-dur{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:22px}
+.bkd-dur button{
+  font:inherit;font-size:0.9375rem;font-weight:600;cursor:pointer;min-height:44px;
+  border:1.5px solid var(--line);background:transparent;color:var(--ink);
+  border-radius:999px;padding:8px 18px;
+}
+.bkd-dur button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#FFFFFF}
+@media (max-width:559px){.bkd-dur button{flex:1 1 8rem;min-width:0}}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .bkd-dur button[aria-pressed="true"]{color:#06201C}}
+:root[data-theme="dark"] .bkd-dur button[aria-pressed="true"]{color:#06201C}
+
+.bkd-pick{display:grid;gap:28px}
+/* Cap the calendar. Left free, seven 1fr columns with aspect-ratio:1 grow into
+   117px squares on a desktop panel, which reads as a wall of tiles rather than
+   a month. 24rem keeps the cells at a natural ~50px. */
+@media (min-width:1040px){.bkd-pick{grid-template-columns:minmax(0,24rem) minmax(0,1fr);gap:34px;align-items:start}}
+.bkd-cal{min-width:0;max-width:24rem}
+.bkd-cal-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.bkd-cal-head p{flex:1;min-width:0;text-align:center;font-weight:600;font-size:1.0625rem}
+.bkd-nav{
+  flex:none;width:42px;height:42px;border-radius:999px;cursor:pointer;padding:0;
+  border:1.5px solid var(--line);background:transparent;color:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+}
+.bkd-nav svg{width:18px;height:18px}
+.bkd-nav[disabled]{opacity:.3;cursor:default}
+.bkd-dow,.bkd-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.bkd-dow{margin-bottom:6px}
+.bkd-dow span{text-align:center;font-size:0.75rem;font-weight:700;letter-spacing:.04em;color:var(--ink-3)}
+.bkd-day{
+  aspect-ratio:1;min-height:38px;padding:0;border-radius:12px;
+  border:1.5px solid transparent;background:transparent;color:var(--ink-3);
+  font:inherit;font-size:0.9375rem;font-variant-numeric:tabular-nums;
+  display:flex;align-items:center;justify-content:center;
+}
+.bkd-day.free{background:var(--accent-tint);color:var(--accent);font-weight:700;cursor:pointer}
+.bkd-day.free:hover{border-color:var(--accent)}
+.bkd-day.full{text-decoration:line-through}
+.bkd-day.sel{background:var(--accent);color:#FFFFFF;font-weight:700}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .bkd-day.sel{color:#06201C}}
+:root[data-theme="dark"] .bkd-day.sel{color:#06201C}
+.bkd-day.blank{visibility:hidden}
+/* pointers.md / layout.md > Hit targets. Seven columns inside a 390px phone can
+   only be ~40px wide, so below 480px the cells drop aspect-ratio and take the
+   height back instead — 41x46 beats a square 39x39. */
+@media (max-width:479px){
+  .bkd-dow,.bkd-days{gap:4px}
+  .bkd-day{aspect-ratio:auto;min-height:46px}
+}
+.bkd-key{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:16px;font-size:0.8125rem;color:var(--ink-3)}
+.bkd-key span{display:inline-flex;align-items:center;gap:7px}
+.bkd-key s{font-variant-numeric:tabular-nums}
+.bkd-tz{margin-top:9px;font-size:0.8125rem;color:var(--ink-3)}
+.bkd-sw{width:13px;height:13px;border-radius:4px;flex:none;background:var(--accent-tint)}
+.bkd-sw.b{background:var(--accent)}
+
+.bkd-times{min-width:0}
+.bkd-times h4{margin:0 0 12px;font-size:0.9375rem;font-weight:700;letter-spacing:.01em;line-height:1.4}
+.bkd-slots{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(min(6.75rem,100%),1fr))}
+@media (min-width:1040px){.bkd-slots{grid-template-columns:minmax(0,1fr)}}
+.bkd-slot{
+  font:inherit;font-size:1rem;font-weight:600;cursor:pointer;min-height:46px;padding:0 10px;
+  border:1.5px solid var(--line);background:transparent;color:var(--ink);
+  border-radius:12px;font-variant-numeric:tabular-nums;
+}
+.bkd-slot:hover{border-color:var(--accent);color:var(--accent)}
+.bkd-hint{font-size:0.9375rem;line-height:1.5;color:var(--ink-2)}
+
+.bkd-form{display:grid;gap:16px;max-width:34rem}
+.bkd-sum{background:var(--paper-2);border-radius:16px;padding:16px 18px;display:grid;gap:5px}
+.bkd-sum b{font-family:var(--serif);font-size:min(1.25rem,6.5vw);font-weight:600;letter-spacing:-.01em;line-height:1.25}
+.bkd-sum span{font-size:0.9375rem;color:var(--ink-2);line-height:1.45}
+.bkd-err{font-size:0.8125rem;font-weight:600;color:var(--err);line-height:1.4}
+.bkd-form .field input[aria-invalid="true"],.bkd-form .field textarea[aria-invalid="true"]{border-color:var(--err)}
+.bkd-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.bkd-fine{font-size:0.8125rem;color:var(--ink-3);line-height:1.5}
+
+.bkd-done{display:grid;gap:16px;max-width:38rem;justify-items:start}
+.bkd-tick{
+  width:52px;height:52px;border-radius:999px;flex:none;
+  background:var(--accent-tint);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+}
+.bkd-tick svg{width:26px;height:26px}
+.bkd-done h3{font-family:var(--serif);font-size:min(clamp(1.625rem,1.2rem + 1.6vw,2.125rem),9vw);font-weight:600;letter-spacing:-.013em;line-height:1.15}
+.bkd-done p{color:var(--ink-2);line-height:1.55}
+@media (prefers-contrast: more){
+  .bkd-slot,.bkd-nav,.bkd-dur button{border-color:var(--ink-2)}
+  .bkd-day.free{border-color:var(--accent)}
+}
+
 /* ---------- reviews (honest empty state) ---------- */
 .rev-grid{display:grid;gap:18px;margin-top:44px}
 @media (min-width:820px){.rev-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -470,8 +647,8 @@ h2{
   <div class="wrap">
     <b>Private preview — design draft</b>
     <span>Wallasey Trusted Home Cleans</span>
-    <span>Morning Light v3.1 · 13 Sep 2026</span>
-    <span>Not the live website · the Call buttons dial a placeholder number</span>
+    <span>Morning Light v3.3 · 13 Sep 2026</span>
+    <span>Not the live website · placeholder phone number · the booking calendar is a working demonstration — nothing is sent</span>
   </div>
 </div>
 
@@ -483,6 +660,7 @@ h2{
       <a href="#prices">Prices</a>
       <a href="#families">For families</a>
       <a href="#about">About</a>
+      <a href="#book">Book</a>
       <a href="#contact">Contact</a>
     </nav>
     <a class="btn btn-primary btn-sm navcall" href="tel:01510000000">Call<span class="numlong"> 0151 000 0000</span></a>
@@ -499,7 +677,7 @@ h2{
     <h1>A cleaner home. A friendly face. Someone you can trust.</h1>
     <p class="lead">Professional home cleaning with a personal touch, backed by eight years of professional domiciliary home-care experience.</p>
     <div class="cta-row">
-      <a class="btn btn-primary" href="#contact">Arrange a free chat</a>
+      <a class="btn btn-primary" href="#book">Book a free chat</a>
       <a class="btn btn-ghost" href="tel:01510000000">Call 0151 000 0000</a>
     </div>
     <p class="avail"><span class="dot"></span>Mondays &amp; Tuesdays · 9:00am–4:00pm</p>
@@ -526,7 +704,7 @@ h2{
       <h2>Hello — I'm Samantha.</h2>
       <p class="sub">I spent eight years in professional domiciliary home care across the Wirral before starting Wallasey Trusted Home Cleans. That background is the whole reason I do this differently: I notice the loose rug, the expired milk, the walkway that isn't quite clear.</p>
       <p class="sub">I'm fully insured, DBS checked, and I bring everything with me. You get the same face every visit — never a rota, never an agency.</p>
-      <div class="cta-row"><a class="btn btn-ghost" href="#contact">Arrange a free 10-minute chat</a></div>
+      <div class="cta-row"><a class="btn btn-ghost" href="#book">Book a free 10-minute chat</a></div>
     </div>
   </div>
 </section>
@@ -622,7 +800,7 @@ h2{
       <h2>Helping someone feel comfortable at home.</h2>
       <p class="sub">Finding help for a parent, relative or loved one is about more than finding somebody who can clean. You're looking for somebody you'd trust with a key, who'll notice if something has changed, and who won't make your mum feel like she's being managed.</p>
       <p class="sub">Start with a free, informal 10-minute chat or a home visit. No obligation, no sales call.</p>
-      <div class="cta-row"><a class="btn btn-primary" href="#contact">Arrange a home visit</a></div>
+      <div class="cta-row"><a class="btn btn-primary" href="#book">Book a home visit</a></div>
     </div>
     <div>
       <p class="pullquote">“We don't just clean your home — we look after it.”</p>
@@ -636,7 +814,7 @@ h2{
     <p class="kicker">How it works</p>
     <h2>Four steps, and the first one is a conversation.</h2>
     <div class="steps">
-      <div class="step"><span class="num">1</span><h3>Get in touch</h3><p>Call, or send the form. Tell us a little about your home and what you'd like help with.</p></div>
+      <div class="step"><span class="num">1</span><h3>Pick a time</h3><p>Take a slot straight from the diary, or ring if you'd rather speak to someone. Tell us a little about your home and what you'd like help with.</p></div>
       <div class="step"><span class="num">2</span><h3>Have a chat</h3><p>A free, informal 10-minute chat or a home visit, so we understand what would actually help.</p></div>
       <div class="step"><span class="num">3</span><h3>Choose your visit</h3><p>A standard 2-hour or 3-hour visit at £18 per hour, subject to availability.</p></div>
       <div class="step"><span class="num">4</span><h3>We take care of it</h3><p>We bring the equipment and the products, then get on with the jobs that matter to you.</p></div>
@@ -657,12 +835,125 @@ h2{
   </div>
 </section>
 
-<section id="contact">
+<section id="book">
+  <div class="wrap">
+    <p class="kicker">Book a visit</p>
+    <h2>Pick a time that suits you.</h2>
+    <p class="sub">Choose what you'd like, then take a slot from Samantha's diary. Every booking is confirmed by Samantha herself — you'll get an email the moment she has, so nothing is fixed until a real person has said yes.</p>
+    <p class="avail"><span class="dot"></span>Mondays &amp; Tuesdays · 9:00am–4:00pm</p>
+
+    <div class="bk-grid">
+      <div class="bk-card" data-card="chat">
+        <h3>A free 10-minute chat</h3>
+        <p class="len">10 minutes · on the phone</p>
+        <p>No obligation and no sales call. A quick conversation about your home and what would actually help.</p>
+        <button class="btn btn-ghost bk-open" type="button" data-event="chat" aria-expanded="false" aria-controls="bk-panel">Choose a time</button>
+      </div>
+      <div class="bk-card" data-card="visit">
+        <h3>A free home visit</h3>
+        <p class="len">About 20 minutes · at your home</p>
+        <p>Best if you're arranging help for a parent or relative. Samantha comes to you, has a look round and answers any questions.</p>
+        <button class="btn btn-ghost bk-open" type="button" data-event="visit" aria-expanded="false" aria-controls="bk-panel">Choose a time</button>
+      </div>
+      <div class="bk-card" data-card="clean">
+        <h3>A cleaning visit</h3>
+        <p class="len">2 hours £36 · 3 hours £54</p>
+        <p>Book a clean straight in at £18 an hour. All the products and equipment come with her.</p>
+        <button class="btn btn-ghost bk-open" type="button" data-event="clean" aria-expanded="false" aria-controls="bk-panel">Choose a time</button>
+      </div>
+    </div>
+
+    <noscript>
+      <p class="bk-note" style="color:var(--ink-2)">The diary needs JavaScript to show its times. Please ring <a href="tel:01510000000">0151 000 0000</a> or use the form below and Samantha will come straight back to you.</p>
+    </noscript>
+
+    <div class="bk-panel" id="bk-panel" tabindex="-1" hidden>
+      <div class="bk-head">
+        <p id="bk-title">Choose a time</p>
+        <button class="btn btn-ghost btn-sm" type="button" id="bk-close">Close</button>
+      </div>
+      <p class="bk-demo" id="bk-demo" hidden>Demonstration — every date, time and step below is real, but nothing is sent and no appointment is made.</p>
+
+      <div class="bk-body">
+        <p class="bk-msg" id="bk-msg" hidden></p>
+        <div class="bk-mount" id="bk-mount-chat" hidden></div>
+        <div class="bk-mount" id="bk-mount-visit" hidden></div>
+        <div class="bk-mount" id="bk-mount-clean" hidden></div>
+
+        <div class="bkd" id="bkd" hidden>
+          <aside class="bkd-rail">
+            <h3 id="bkd-title">A free 10-minute chat</h3>
+            <ul class="bkd-facts" id="bkd-facts"></ul>
+          </aside>
+          <div class="bkd-main">
+
+            <div id="bkd-pick">
+              <div class="bkd-dur" id="bkd-dur" role="group" aria-label="How long a visit?" hidden></div>
+              <div class="bkd-pick">
+                <div class="bkd-cal">
+                  <div class="bkd-cal-head">
+                    <button class="bkd-nav" type="button" id="bkd-prev" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg></button>
+                    <p id="bkd-month" aria-live="polite">—</p>
+                    <button class="bkd-nav" type="button" id="bkd-next" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg></button>
+                  </div>
+                  <div class="bkd-dow" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+                  <div class="bkd-days" id="bkd-days"></div>
+                  <div class="bkd-key">
+                    <span><i class="bkd-sw" aria-hidden="true"></i>Available</span>
+                    <span><i class="bkd-sw b" aria-hidden="true"></i>Chosen</span>
+                    <span><s aria-hidden="true">15</s>Fully booked</span>
+                  </div>
+                  <p class="bkd-tz">All times are UK time.</p>
+                </div>
+                <div class="bkd-times" id="bkd-times">
+                  <h4 id="bkd-dayname">Pick a day</h4>
+                  <div class="bkd-slots" id="bkd-slots"></div>
+                  <p class="bkd-hint" id="bkd-hint">Mondays and Tuesdays are the days Samantha works. Choose one and her free times will appear here.</p>
+                </div>
+              </div>
+            </div>
+
+            <form class="bkd-form" id="bkd-form" novalidate hidden>
+              <div class="bkd-sum" id="bkd-sum1"></div>
+              <div class="duo">
+                <div class="field"><label for="d-name">Your name</label><input id="d-name" type="text" autocomplete="name" placeholder="Jean Whitfield"><p class="bkd-err" id="e-name" hidden></p></div>
+                <div class="field"><label for="d-phone">Phone number</label><input id="d-phone" type="tel" autocomplete="tel" placeholder="07700 900123"><p class="bkd-err" id="e-phone" hidden></p></div>
+              </div>
+              <div class="duo">
+                <div class="field"><label for="d-email">Email address</label><input id="d-email" type="email" autocomplete="email" placeholder="jean@example.co.uk"><p class="bkd-err" id="e-email" hidden></p></div>
+                <div class="field"><label for="d-addr">Address or postcode</label><input id="d-addr" type="text" autocomplete="postal-code" placeholder="12 Rowson Street, CH45"><p class="bkd-err" id="e-addr" hidden></p></div>
+              </div>
+              <div class="field"><label for="d-note">Anything Samantha should know? <span style="font-weight:400;color:var(--ink-3)">Optional</span></label><textarea id="d-note" placeholder="Stairs to the front door, a dog in the back room, a key safe — anything at all."></textarea></div>
+              <div class="bkd-row">
+                <button class="btn btn-primary" type="submit">Request this time</button>
+                <button class="btn btn-ghost" type="button" id="bkd-back">Back</button>
+              </div>
+              <p class="bkd-fine">Samantha confirms every booking herself, so this asks for the time rather than taking it. She'll email you, usually the same day.</p>
+            </form>
+
+            <div class="bkd-done" id="bkd-done" hidden>
+              <span class="bkd-tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg></span>
+              <h3>Your time has been requested.</h3>
+              <div class="bkd-sum" id="bkd-sum2"></div>
+              <p id="bkd-donetext"></p>
+              <button class="btn btn-ghost" type="button" id="bkd-again">Book another time</button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="bk-note">Slots only ever show Mondays and Tuesdays, 9:00am to 4:00pm, and the calendar only loads once you choose a time — nothing is fetched, and nothing is sent, until you ask for it. Prefer to speak to someone? <a href="tel:01510000000">Ring 0151 000 0000</a>.</p>
+  </div>
+</section>
+
+<section id="contact" class="alt">
   <div class="wrap contact-grid">
     <div>
       <p class="kicker">Get in touch</p>
       <h2>Let's talk.</h2>
-      <p class="sub">Ring for a free, informal 10-minute chat — or leave your details and we'll come back to you. We keep things simple.</p>
+      <p class="sub">Ring for a free, informal 10-minute chat — or leave your details and we'll come back to you. We keep things simple. If you'd rather pick a time yourself, <a href="#book">take a slot from the diary</a>.</p>
       <div class="callout">
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--accent)"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A15 15 0 0 1 4 5a1 1 0 0 1 1-1z"/></svg>
         <span><b><a href="tel:01510000000">0151 000 0000</a></b><span>Mondays &amp; Tuesdays, 9:00am–4:00pm</span></span>
@@ -719,9 +1010,447 @@ h2{
 </footer>
 
 <div class="mobilebar">
-  <a class="btn btn-ghost" href="#contact">Request a chat</a>
+  <a class="btn btn-ghost" href="#book">Book a time</a>
   <a class="btn btn-primary" href="tel:01510000000">Call</a>
 </div>
+
+<!-- ==================================================================
+     BOOKING — Cal.com inline embed (open source: github.com/calcom/cal.com)
+
+     Nothing from Cal.com is requested until a visitor presses "Choose a
+     time". The page's own Lighthouse score and its no-cookie-banner
+     position both depend on that staying true — do not move the loader
+     to page load.
+
+     ONE-OFF SETUP in Samantha's Cal.com account (the free plan covers it):
+       1. Sign up at cal.com, then Apps > Google Calendar, so anything
+          already in her diary blocks the slot automatically.
+       2. Availability > new schedule: Monday and Tuesday only,
+          09:00–16:00, timezone Europe/London. Make it the default.
+       3. Create three event types with these exact URL slugs:
+            chat         10 min · phone call · free
+            home-visit   20 min · in person (attendee address) · free
+            clean       120 min · in person (attendee address)
+          On "clean", switch on Multiple duration and offer 120 and 180
+          minutes. If that option isn't there, add a second event type
+          "clean-3hr" and a fourth card in the booking section above.
+       4. On every event type: Advanced > Requires confirmation ON (so a
+          slot is only *requested* until she approves it), minimum notice
+          24 hours, and a buffer after the event for travel.
+       5. Booking questions: "Address / postcode" (required) and
+          "Anything I should know?" (optional).
+       6. Put her Cal.com username in CAL_USER below. That is the only
+          change needed: the demonstration booker switches itself off and the
+          real Cal.com calendar takes the same space.
+
+     UNTIL THEN — the demonstration booker. With CAL_USER empty the panel runs a
+     self-contained booker built in this page's own design language: a real
+     month calendar with only Mondays and Tuesdays selectable, 24 hours' notice
+     enforced, 9:00am–4:00pm slots sized to the visit, a stable pseudo-diary so
+     the same date always shows the same free times, a validated details form
+     and a confirmation screen. Nothing is transmitted; every screen says so.
+     It exists so the site can be shown and understood before the account is
+     created — it is not a booking system and must not be left in place once
+     CAL_USER is set.
+     ================================================================== -->
+<script>
+(function () {
+  "use strict";
+
+  /* ===== SET THIS TO GO LIVE ===== */
+  var CAL_USER = "";              /* Cal.com username, e.g. "wallasey-trusted-home-cleans" */
+  /* =============================== */
+
+  var CAL_ORIGIN = "https://cal.com";
+  var EMBED_JS   = "https://app.cal.com/embed/embed.js";
+  var PHONE_HTML = '<a href="tel:01510000000">0151 000 0000</a>';
+  var DEMO       = !CAL_USER;     /* no account yet → the working demonstration */
+
+  var OPEN_MIN = 9 * 60, CLOSE_MIN = 16 * 60;   /* 9:00am–4:00pm, Mon & Tue only */
+
+  var EVENTS = {
+    chat: {
+      slug: "chat", title: "A free 10-minute chat",
+      where: "On the phone — Samantha rings you", icon: "phone", step: 30,
+      durations: [{ mins: 10, label: "10 minutes", price: "Free" }]
+    },
+    visit: {
+      slug: "home-visit", title: "A free home visit",
+      where: "At your home", icon: "pin", step: 60,
+      durations: [{ mins: 20, label: "About 20 minutes", price: "Free" }]
+    },
+    clean: {
+      slug: "clean", title: "A cleaning visit",
+      where: "At your home", icon: "pin", step: 30,
+      durations: [{ mins: 120, label: "2 hours", price: "£36" },
+                  { mins: 180, label: "3 hours", price: "£54" }]
+    }
+  };
+
+  /* Cal's own tokens mapped onto this page's palette, both themes.
+     Variable names per cal.com/docs > Customize the embed with CSS variables. */
+  var CSS_VARS = {
+    light: {
+      "cal-brand": "#125E58", "cal-brand-text": "#FFFFFF", "cal-brand-emphasis": "#0D4843",
+      "cal-bg": "#FFFFFF", "cal-bg-emphasis": "#F5F5F7", "cal-bg-subtle": "#F5F5F7", "cal-bg-muted": "#F5F5F7",
+      "cal-text": "#1D1D1F", "cal-text-emphasis": "#1D1D1F", "cal-text-subtle": "#55575C", "cal-text-muted": "#68686D",
+      "cal-border": "#D2D2D7", "cal-border-subtle": "#D2D2D7", "cal-border-emphasis": "#55575C",
+      "radius": "14px"
+    },
+    dark: {
+      "cal-brand": "#74CDBD", "cal-brand-text": "#06201C", "cal-brand-emphasis": "#93DACC",
+      "cal-bg": "#000000", "cal-bg-emphasis": "#1C1C1E", "cal-bg-subtle": "#1C1C1E", "cal-bg-muted": "#1C1C1E",
+      "cal-text": "#F5F5F7", "cal-text-emphasis": "#F5F5F7", "cal-text-subtle": "#ABABB0", "cal-text-muted": "#9A9AA0",
+      "cal-border": "#38383C", "cal-border-subtle": "#38383C", "cal-border-emphasis": "#ABABB0",
+      "radius": "14px"
+    }
+  };
+
+  function $(id) { return document.getElementById(id); }
+
+  var panel   = $("bk-panel");
+  var titleEl = $("bk-title");
+  var msgEl   = $("bk-msg");
+  var demoBar = $("bk-demo");
+  var closeEl = $("bk-close");
+  var openEls = Array.prototype.slice.call(document.querySelectorAll(".bk-open"));
+  if (!panel || !titleEl || !openEls.length) return;
+
+  /* ---------------------------------------------------------------- utils */
+
+  var ICON = {
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/>',
+    pin:   '<path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/>',
+    phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A15 15 0 0 1 4 5a1 1 0 0 1 1-1z"/>',
+    pound: '<path d="M8 20h9"/><path d="M8 13.5h6"/><path d="M9.5 20c1.4-1.6 1.8-3.3 1.8-5.3V9.4A3.4 3.4 0 0 1 18 7.8"/>',
+    cal:   '<rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/>',
+    check: '<path d="m5 12.5 4.5 4.5L19 7"/>'
+  };
+  function svg(n) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+           'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[n] + '</svg>';
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  var MONTHS = ["January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"];
+  var DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function keyOf(y, m, d) { return y + "-" + pad(m + 1) + "-" + pad(d); }
+  function fmtTime(t) {
+    var h = Math.floor(t / 60), m = t % 60, ap = h < 12 ? "am" : "pm", hh = h % 12;
+    if (!hh) hh = 12;
+    return hh + ":" + pad(m) + ap;
+  }
+  function fmtDate(y, m, d) { return DAYS[new Date(y, m, d).getDay()] + " " + d + " " + MONTHS[m]; }
+  function fmtKey(k) { var p = k.split("-"); return fmtDate(+p[0], +p[1] - 1, +p[2]); }
+
+  /* A stable pseudo-diary. The same date always shows the same free times, so
+     the demonstration doesn't reshuffle under Samantha while she looks at it. */
+  function hash(s) {
+    var h = 2166136261, i;
+    for (i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+  function dayClosed(k) { return hash(k + "#day") % 100 < 25; }
+  function slotsFor(k, mins, stepMins) {
+    if (dayClosed(k)) return [];
+    var out = [], t;
+    for (t = OPEN_MIN; t + mins <= CLOSE_MIN; t += stepMins) {
+      if (hash(k + "#" + mins + "#" + t) % 100 >= 38) out.push(t);
+    }
+    return out;
+  }
+
+  /* ------------------------------------------------------- the real Cal.com */
+
+  var mounted = {}, ready = {}, lastBtn = null;
+
+  function say(html) { msgEl.innerHTML = html; msgEl.hidden = false; }
+  function quiet() { msgEl.hidden = true; }
+
+  function loadCal() {
+    if (window.Cal) return;
+    (function (C, A, L) { var p = function (a, ar) { a.q.push(ar); }; var d = C.document; C.Cal = C.Cal || function () { var cal = C.Cal; var ar = arguments; if (!cal.loaded) { cal.ns = {}; cal.q = cal.q || []; d.head.appendChild(d.createElement("script")).src = A; cal.loaded = true; } if (ar[0] === L) { var api = function () { p(api, arguments); }; var namespace = ar[1]; api.q = api.q || []; if (typeof namespace === "string") { cal.ns[namespace] = cal.ns[namespace] || api; p(cal.ns[namespace], ar); p(cal, ["initNamespace", namespace]); } else { p(cal, ar); } return; } p(cal, ar); }; })(window, EMBED_JS, "init");
+  }
+
+  function mount(key) {
+    if (mounted[key]) return;
+    mounted[key] = true;
+    loadCal();
+    var ns = "wthc-" + key;
+    window.Cal("init", ns, { origin: CAL_ORIGIN });
+    window.Cal.ns[ns]("inline", {
+      elementOrSelector: "#bk-mount-" + key,
+      calLink: CAL_USER + "/" + EVENTS[key].slug,
+      config: { layout: "month_view", theme: "auto" }
+    });
+    window.Cal.ns[ns]("ui", {
+      theme: "auto", layout: "month_view", hideEventTypeDetails: false, cssVarsPerTheme: CSS_VARS
+    });
+    window.Cal.ns[ns]("on", { action: "linkReady",  callback: function () { ready[key] = true; quiet(); } });
+    window.Cal.ns[ns]("on", { action: "linkFailed", callback: function () { fail(key); } });
+    /* If Cal never answers — offline, blocked, or the slug doesn't exist — the
+       visitor gets a way through rather than a blank box. */
+    window.setTimeout(function () { if (!ready[key]) fail(key); }, 12000);
+  }
+
+  function fail(key) {
+    if (ready[key]) return;
+    say('<b>The calendar isn’t loading.</b> It may be your connection, or the diary may be having a moment. ' +
+        'Please ring ' + PHONE_HTML + ' (Mondays and Tuesdays, 9:00am–4:00pm) or ' +
+        '<a href="#contact">send the form</a> instead — you’ll get the same answer either way.');
+  }
+
+  /* ------------------------------------------------ the demonstration booker */
+
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var earliest = new Date(today.getTime()); earliest.setDate(earliest.getDate() + 1);  /* 24 hours' notice */
+  var minMonth = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+  var maxMonth = new Date(today.getFullYear(), today.getMonth() + 2, 1);
+
+  var st = { key: null, dur: 0, view: null, day: null, slot: null };
+
+  function ev() { return EVENTS[st.key]; }
+  function dur() { return ev().durations[st.dur]; }
+
+  function fact(icon, text) { return "<li>" + svg(icon) + "<span>" + text + "</span></li>"; }
+
+  function renderRail() {
+    var e = ev(), d = dur();
+    $("bkd-title").textContent = e.title;
+    $("bkd-facts").innerHTML =
+      fact("clock", d.label) +
+      fact(e.icon, e.where) +
+      fact("pound", d.price === "Free" ? "Free, and no obligation"
+                                       : d.price + " — £18 an hour, everything included") +
+      fact("cal", "Mondays &amp; Tuesdays, 9:00am–4:00pm") +
+      fact("check", "Samantha confirms it herself");
+  }
+
+  function renderDur() {
+    var e = ev(), box = $("bkd-dur");
+    if (e.durations.length < 2) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    box.innerHTML = e.durations.map(function (d, i) {
+      return '<button type="button" data-dur="' + i + '" aria-pressed="' + (i === st.dur) + '">' +
+             d.label + " · " + d.price + "</button>";
+    }).join("");
+  }
+
+  function renderCal() {
+    var e = ev(), mins = dur().mins;
+    var y = st.view.getFullYear(), m = st.view.getMonth();
+    $("bkd-month").textContent = MONTHS[m] + " " + y;
+    $("bkd-prev").disabled = (y === minMonth.getFullYear() && m === minMonth.getMonth());
+    $("bkd-next").disabled = (y === maxMonth.getFullYear() && m === maxMonth.getMonth());
+
+    var lead = (new Date(y, m, 1).getDay() + 6) % 7;          /* Monday-first grid */
+    var dim = new Date(y, m + 1, 0).getDate();
+    var html = "", i, d, dt, k, wd, n;
+
+    for (i = 0; i < lead; i++) html += '<span class="bkd-day blank" aria-hidden="true"></span>';
+    for (d = 1; d <= dim; d++) {
+      dt = new Date(y, m, d); wd = dt.getDay(); k = keyOf(y, m, d);
+      if (dt < earliest || (wd !== 1 && wd !== 2)) { html += '<span class="bkd-day">' + d + "</span>"; continue; }
+      n = slotsFor(k, mins, e.step).length;
+      if (!n) { html += '<span class="bkd-day full" title="Fully booked">' + d + "</span>"; continue; }
+      html += '<button type="button" class="bkd-day free' + (st.day === k ? " sel" : "") +
+              '" data-day="' + k + '" aria-label="' + fmtDate(y, m, d) + ", " + n +
+              (n === 1 ? " time" : " times") + ' free"' +
+              (st.day === k ? ' aria-current="date"' : "") + ">" + d + "</button>";
+    }
+    $("bkd-days").innerHTML = html;
+  }
+
+  function renderTimes() {
+    var e = ev(), mins = dur().mins, head = $("bkd-dayname"), hint = $("bkd-hint"), box = $("bkd-slots");
+    if (!st.day) {
+      head.textContent = "Pick a day";
+      box.innerHTML = "";
+      hint.hidden = false;
+      hint.textContent = "Mondays and Tuesdays are the days Samantha works. Choose one and her free times appear here.";
+      return;
+    }
+    var label = fmtKey(st.day);
+    head.textContent = label;
+    var slots = slotsFor(st.day, mins, e.step);
+    if (!slots.length) {
+      box.innerHTML = "";
+      hint.hidden = false;
+      hint.textContent = "That day has filled up. Please try another.";
+      return;
+    }
+    hint.hidden = true;
+    box.innerHTML = slots.map(function (t) {
+      return '<button type="button" class="bkd-slot" data-t="' + t + '" aria-label="' +
+             fmtTime(t) + " on " + label + '">' + fmtTime(t) + "</button>";
+    }).join("");
+  }
+
+  function summary() {
+    var e = ev(), d = dur();
+    return "<b>" + e.title + "</b>" +
+           "<span>" + fmtKey(st.day) + ", " + fmtTime(st.slot) + " – " + fmtTime(st.slot + d.mins) + "</span>" +
+           "<span>" + d.label + " · " + d.price + " · " + e.where + "</span>";
+  }
+
+  function stage(which) {
+    $("bkd-pick").hidden = which !== "pick";
+    $("bkd-form").hidden = which !== "form";
+    $("bkd-done").hidden = which !== "done";
+  }
+
+  function startDemo(key) {
+    st.key = key; st.dur = 0; st.day = null; st.slot = null;
+    st.view = new Date(minMonth.getTime());
+    $("bkd").hidden = false;
+    stage("pick");
+    renderRail(); renderDur(); renderCal(); renderTimes();
+  }
+
+  /* clicks inside the demo booker */
+  var bkd = $("bkd");
+  if (bkd) {
+    bkd.addEventListener("click", function (e) {
+      var t = e.target.closest ? e.target.closest("button") : null;
+      if (!t) return;
+
+      if (t.hasAttribute("data-dur")) {
+        st.dur = parseInt(t.getAttribute("data-dur"), 10);
+        /* the chosen day may not hold the longer visit any more */
+        if (st.day && !slotsFor(st.day, dur().mins, ev().step).length) { st.day = null; st.slot = null; }
+        renderRail(); renderDur(); renderCal(); renderTimes();
+        return;
+      }
+      if (t.hasAttribute("data-day")) {
+        st.day = t.getAttribute("data-day"); st.slot = null;
+        renderCal(); renderTimes();
+        var first = $("bkd-slots").querySelector(".bkd-slot");
+        if (first) first.focus();
+        return;
+      }
+      if (t.classList.contains("bkd-slot")) {
+        st.slot = parseInt(t.getAttribute("data-t"), 10);
+        $("bkd-sum1").innerHTML = summary();
+        stage("form");
+        $("d-name").focus();
+        return;
+      }
+      if (t.id === "bkd-prev" || t.id === "bkd-next") {
+        st.view = new Date(st.view.getFullYear(), st.view.getMonth() + (t.id === "bkd-next" ? 1 : -1), 1);
+        renderCal();
+        return;
+      }
+      if (t.id === "bkd-back") { stage("pick"); renderCal(); renderTimes(); return; }
+      if (t.id === "bkd-again") { startDemo(st.key); return; }
+    });
+
+    var REQ = [
+      ["d-name",  "e-name",  "Please tell Samantha your name."],
+      ["d-phone", "e-phone", "A phone number, so she can reach you."],
+      ["d-email", "e-email", "An email address — that’s where the confirmation goes."],
+      ["d-addr",  "e-addr",  "The address or postcode of the home."]
+    ];
+
+    $("bkd-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var ok = true, i, f, el, err, bad;
+      for (i = 0; i < REQ.length; i++) {
+        f = REQ[i]; el = $(f[0]); err = $(f[1]);
+        bad = !el.value.trim();
+        if (!bad && f[0] === "d-email") {
+          bad = !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(el.value.trim());
+          if (bad) { err.textContent = "That email address doesn’t look right."; }
+          else { err.textContent = ""; }
+        } else {
+          err.textContent = bad ? f[2] : "";
+        }
+        err.hidden = !bad;
+        el.setAttribute("aria-invalid", bad ? "true" : "false");
+        if (bad && ok) { el.focus(); ok = false; }
+      }
+      if (!ok) return;
+
+      $("bkd-sum2").innerHTML = summary();
+      $("bkd-donetext").innerHTML =
+        "Samantha will email <b>" + esc($("d-email").value.trim()) +
+        "</b> to confirm, usually the same day. Nothing is in her diary until she does." +
+        '<br><br><b style="color:var(--accent)">This is a demonstration.</b> No email was sent, ' +
+        "no appointment exists, and nothing you typed has left this page.";
+      stage("done");
+      $("bkd-done").querySelector("h3").scrollIntoView(
+        { behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+    });
+  }
+
+  /* ------------------------------------------------------------ open / close */
+
+  function open(key, btn) {
+    var e = EVENTS[key];
+    if (!e) return;
+
+    titleEl.textContent = e.title;
+    panel.hidden = false;
+    if (demoBar) demoBar.hidden = !DEMO;
+
+    Object.keys(EVENTS).forEach(function (k) {
+      var el = $("bk-mount-" + k);
+      if (el) el.hidden = DEMO || (k !== key);
+    });
+    openEls.forEach(function (b) {
+      var on = (b === btn);
+      b.setAttribute("aria-expanded", on ? "true" : "false");
+      b.textContent = on ? "Showing times" : "Choose a time";
+      if (b.parentNode) b.parentNode.classList.toggle("is-active", on);
+    });
+
+    if (DEMO) {
+      quiet();
+      startDemo(key);
+    } else {
+      if (bkd) bkd.hidden = true;
+      if (!ready[key]) say("Loading Samantha’s diary…");
+      mount(key);
+    }
+
+    var smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    panel.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "nearest" });
+    panel.focus({ preventScroll: true });
+    lastBtn = btn;
+  }
+
+  function close() {
+    panel.hidden = true;
+    openEls.forEach(function (b) {
+      b.setAttribute("aria-expanded", "false");
+      b.textContent = "Choose a time";
+      if (b.parentNode) b.parentNode.classList.remove("is-active");
+    });
+    if (lastBtn) lastBtn.focus();
+  }
+
+  openEls.forEach(function (b) {
+    b.addEventListener("click", function () { open(b.getAttribute("data-event"), b); });
+  });
+  if (closeEl) closeEl.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !panel.hidden) close();
+  });
+
+  /* Deep link: /samantha/#book-chat opens that option straight away. */
+  var hashName = (window.location.hash || "").replace("#book-", "");
+  if (EVENTS[hashName]) {
+    var target = document.querySelector('.bk-open[data-event="' + hashName + '"]');
+    if (target) open(hashName, target);
+  }
+})();
+</script>
 
 </body>
 </html>

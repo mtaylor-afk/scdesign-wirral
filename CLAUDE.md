@@ -53,6 +53,36 @@ https://scdesignwirral.co.uk/samantha/ so she can view it on a real URL.
   never add it to `sitemap.ts`.
 - **Do not let it leak into SC's SEO surface:** not in the sitemap, not in
   `llms.txt`, no JSON-LD, no internal links. It is a sandbox, not a page.
+- **Booking (added 13 Sep 2026, Morning Light v3.3).** The `#book` section runs a
+  **Cal.com** inline embed (`app.cal.com/embed/embed.js`), lazily: nothing is
+  requested from Cal.com until a visitor presses *Choose a time*. Keep it that way
+  — the page's Lighthouse budget and its no-cookie-banner position both depend on
+  it. Three event types are wired by slug: `chat`, `home-visit`, `clean`. Cal's
+  own CSS variables are mapped to the Morning Light palette for both themes in
+  `CSS_VARS` at the foot of the file, and every event type is meant to run with
+  *Requires confirmation* on, so a slot is only **requested** until Samantha
+  approves it. The full one-off Cal.com account setup is written out in the HTML
+  comment above that script. `CAL_USER` is empty until the account exists —
+  while it is, the panel shows a labelled "not connected yet" state rather than a
+  broken iframe. Setting `CAL_USER` is the only change needed to go live.
+- **The demonstration booker (v3.3).** While `CAL_USER` is empty the panel runs a
+  self-contained booker written in the page's own design language, so the site
+  can be shown and understood before the Cal.com account exists: a real month
+  calendar (Monday-first, only Mon/Tue selectable, 24 hours' notice enforced,
+  two months ahead), 9:00am–4:00pm slots sized to the visit, a 2hr/3hr duration
+  switch on the cleaning visit, a stable pseudo-diary (FNV-1a hash of the date,
+  so the same day always shows the same free times and never reshuffles under
+  the viewer), a validated details form and a confirmation screen. **Nothing is
+  transmitted.** A strip at the top of the panel and the confirmation screen
+  both say so outright. It is a demonstration, not a booking system: remove
+  nothing, but do not leave it reachable once `CAL_USER` is set — filling that
+  in hides it automatically and hands the space to Cal.com.
+- **Light-mode button ink (fixed 13 Sep 2026).** `:root:not([data-theme="light"])`
+  matches whenever no explicit theme is set — which is the default in LIGHT mode
+  too — so the dark-mode rule was painting `#06201C` on `#125E58` for every
+  tinted button: measured 2.25:1, an AA failure on the primary action. The dark
+  overrides are now inside `@media (prefers-color-scheme: dark)` and
+  `:root[data-theme="dark"]` only. Watch for the same pattern elsewhere.
 
 ## Standing authorization — no approval prompts, auto-continue (MANDATORY)
 
