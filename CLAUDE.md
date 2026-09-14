@@ -35,6 +35,24 @@ repository — the repo is only being used here as a convenient testing host.
   changed components, routing/config, or dependencies. If a build ever fails,
   Cloudflare keeps the **last good version** live, so a bad push never takes
   the site down.
+- **🔴 PUSHING FROM A CLOUD (Cowork) SESSION — read this before trying again.**
+  Two separate walls, and they need different fixes:
+  1. **From the cloud container.** `git clone` / `git ls-remote` work (the repo
+     is public), but `git push` returns **403 — "not in this session's
+     authorized repository set, so the proxy will not inject a credential"**.
+     That is an egress-policy denial: it must not be retried or routed around.
+     **The one real fix is to add `mtaylor-afk/scdesign-wirral` to the session's
+     sources in the Claude app.** Do that once and every future change to this
+     repo can be pushed straight from the session — no local step at all.
+  2. **From this machine, non-interactively.** `git push` fails with
+     *"could not read Username for 'https://github.com'"* (Git Credential
+     Manager, exit 34) for `manager`, `manager-core` and `wincred` alike. GCM
+     cannot raise its prompt when git is run without a console. It is **not** a
+     broken credential — running the same push from a normal terminal window,
+     or by double-clicking a `.cmd` from Explorer, lets GCM pop its dialog and
+     the push succeeds. `_deploy-samantha.cmd` in this folder does exactly that
+     (untracked, `git add`s named paths only, and pauses so the result is
+     readable). Verified 13–14 Sep 2026; log kept as `_push2.log`.
 
 ### `/samantha` — private design sandbox (added 13 Sep 2026)
 
@@ -77,6 +95,22 @@ https://scdesignwirral.co.uk/samantha/ so she can view it on a real URL.
   both say so outright. It is a demonstration, not a booking system: remove
   nothing, but do not leave it reachable once `CAL_USER` is set — filling that
   in hides it automatically and hands the space to Cal.com.
+- **`BOOK_EMAIL` — the five-minute route to a real booker (added 14 Sep 2026,
+  v3.4).** There are now **three** switches at the foot of `index.html`:
+  `CAL_USER`, `BOOK_EMAIL`, `BOOK_SMS`. Put Samantha's email in `BOOK_EMAIL`
+  (leaving `CAL_USER` empty) and the page's own booker stops being a
+  demonstration: it composes the finished request and hands it to the visitor's
+  **own** mail app, addressed to her and already written — a genuine booking
+  request with no account, no server and nothing to pay for. `BOOK_SMS` (her
+  mobile, `+44…`) adds a *Text it instead* button, shown only on `pointer:coarse`.
+  Three things flip at the same time so the page can never claim more than it
+  does: the "demonstration" strip disappears, **the invented "fully booked" days
+  disappear** (with the pseudo-diary off, every Mon/Tue shows the full 9–4 —
+  presenting a made-up diary on a page that takes real requests would be a lie
+  and would hide times she can work), and the last screen becomes *"One last
+  step — send it to Samantha"* rather than a receipt. Cal.com is still the
+  better end state (genuine live availability, automatic confirmations); this is
+  the bridge to it. All three empty = the demonstration, exactly as before.
 - **Light-mode button ink (fixed 13 Sep 2026).** `:root:not([data-theme="light"])`
   matches whenever no explicit theme is set — which is the default in LIGHT mode
   too — so the dark-mode rule was painting `#06201C` on `#125E58` for every
