@@ -44,7 +44,18 @@ export const generalFaqs: Faq[] = [
     a: "We prepare the drawings and support the submission. The application is made in your name (or your builder's), and we guide you through the process and any requested changes.",
   },
 
+  {
+    category: "planning",
+    q: "How long does planning permission take?",
+    a: "For a straightforward householder application the council's target is eight weeks from validation, and most Wirral decisions land in that window. Allow time before that for the measured survey, the design and preparing the application, and a little longer if the council asks for amendments or your property sits in a conservation area. We'll give you a realistic timeline for your project at the first conversation.",
+  },
+
   /* Permitted development */
+  {
+    category: "permitted-development",
+    q: "Can I extend under permitted development?",
+    a: "Often yes, within limits. Single-storey rear extensions, many loft conversions and most garage conversions can fall under permitted development if they stay inside the size, height and position rules for your property. Flats, conservation areas, listed buildings and homes with an Article 4 direction have reduced rights or none. We check your property against the rules and tell you honestly which route to take, confirming it with the council.",
+  },
   {
     category: "permitted-development",
     q: "What is permitted development?",
@@ -61,6 +72,11 @@ export const generalFaqs: Faq[] = [
     category: "building-regs",
     q: "Do I need building regulations approval?",
     a: "Most extensions and habitable loft conversions require building-regulations approval, which is separate from planning permission. We prepare the architectural and building-regulations drawings needed for that process.",
+  },
+  {
+    category: "building-regs",
+    q: "What's included in Building Regulations drawings?",
+    a: "A building-regulations package shows how the work is actually built. Ours typically covers foundations, floor, wall and roof build-ups, structure and steelwork positions, insulation and thermal performance, drainage layout and details, windows and glazing, internal partitions, fire safety and escape, ventilation, waterproofing, technical construction details and the written specification — coordinated with a structural engineer where calculations are needed. It's what building control assess and what your builder prices and works from.",
   },
   {
     category: "building-regs",
@@ -83,8 +99,13 @@ export const generalFaqs: Faq[] = [
   /* Costs & fees */
   {
     category: "costs",
+    q: "How much does an architect cost?",
+    a: "Registered architects commonly charge a percentage of the build cost, which on a home extension can run into several thousand pounds. We work differently: SC Design Wirral is an architectural design practice led by a Chartered Architectural Technologist, and we quote a fixed fee for an agreed scope of drawings, so you know the cost before anything starts. Tell us about the project and we'll put a figure to it.",
+  },
+  {
+    category: "costs",
     q: "How much does architectural design cost?",
-    a: "It varies with the size and complexity of the project and which drawings you need. Once we understand your property and goals, we set out a clear scope and fee up front. Our guide on design costs explains what drives the price.",
+    a: "It varies with the size and complexity of the project and which drawings you need. Once we understand your property and goals, we set out a clear scope and fixed fee up front. Our guide on design costs explains what drives the price.",
   },
 
   /* Conservation areas */
@@ -114,6 +135,11 @@ export const generalFaqs: Faq[] = [
   },
 
   /* What SC does / does not do */
+  {
+    category: "scope",
+    q: "Do I need an architect for an extension?",
+    a: "For a typical house extension, no — there is no legal requirement to use a registered architect. What you do need is someone who can design the scheme properly and produce accurate planning and building-regulations drawings. That work is carried out by Sean Corser MCIAT, a Chartered Architectural Technologist: qualified in the technical design and detailing of buildings, and a member of CIAT. We are not registered architects, because 'architect' is a title protected by UK law and reserved for those on the ARB register.",
+  },
   {
     category: "scope",
     q: "Are you architects?",
@@ -159,6 +185,24 @@ export const generalFaqs: Faq[] = [
     a: "Yes. Permitted-development rights in Wales differ from England in several respects, so the planning guidance on this site is for England. If your home is in North Wales, send us your postcode and we'll confirm the right route with your local authority.",
   },
 ];
+
+/**
+ * The six questions Sean chose for the home page (brief, Sep 2026), in his
+ * order. Looked up by question text so the home page and the FAQPage structured
+ * data always match what /faqs actually says — edit the answer once, above.
+ */
+const homeFaqQuestions = [
+  "Do I need an architect for an extension?",
+  "How long does planning permission take?",
+  "What drawings do builders need to quote?",
+  "Can I extend under permitted development?",
+  "What's included in Building Regulations drawings?",
+  "How much does an architect cost?",
+];
+
+export const homeFaqs: Faq[] = homeFaqQuestions
+  .map((q) => generalFaqs.find((f) => f.q === q))
+  .filter((f): f is Faq => Boolean(f));
 
 export const faqCategories: { key: FaqCategory; label: string }[] = [
   { key: "starting", label: "Starting a project" },

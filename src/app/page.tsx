@@ -3,13 +3,13 @@ import {
   Container,
   Section,
   LinkButton,
-  StatCard,
   SectionHeading,
   Card,
   Bento,
   BentoTile,
 } from "@/components/ui";
-import { ReviewsSummary, GoogleRatingLine } from "@/components/ui/Testimonials";
+import { ReviewsSummary, GoogleRatingLine, ReviewCard } from "@/components/ui/Testimonials";
+import { CTA_MICROCOPY } from "@/components/ui/CTASection";
 import { ReviewsCarousel } from "@/components/ui/ReviewsCarousel";
 import { BeforeAfterSlider } from "@/components/ui/BeforeAfterSlider";
 import { FAQList } from "@/components/ui/FAQItem";
@@ -17,7 +17,10 @@ import { MeetSean } from "@/components/ui/MeetSean";
 import { EnquiryForm } from "@/components/EnquiryForm";
 import { JsonLd } from "@/components/JsonLd";
 import { withBase } from "@/lib/base";
-import { generalFaqs } from "@/lib/faqs";
+import { homeFaqs } from "@/lib/faqs";
+import { reviews } from "@/lib/reviews";
+import { publishedProjects } from "@/lib/projects";
+import { ProjectCardGrid } from "@/components/ui/ProjectCard";
 import { KindTag } from "@/components/ui/WorkGallery";
 import { getService } from "@/lib/services";
 import { getServiceMedia, wi, type WorkImage } from "@/lib/media";
@@ -48,12 +51,89 @@ const mainServices = mainServiceSlugs
   .map((slug) => getService(slug))
   .filter((s): s is NonNullable<typeof s> => Boolean(s));
 
-// "A few project images" (brief) — real photographs of completed work.
-const recentWork = [
-  wi("loftDormerAfter", "Dormer loft conversion"),
-  wi("garage1After", "Garage conversion"),
-  wi("extRearPebbledash", "Single-storey rear extension"),
-  wi("loftTileHung", "Tile-hung dormer"),
+// The three projects shown on the home page. Takes the top of the published
+// order, which is Sean's own running order on /projects — so re-ordering there
+// re-orders the home page too, with nothing to keep in sync by hand.
+const featuredProjects = publishedProjects.slice(0, 3);
+
+/**
+ * Sean's step-by-step plan (brief, Sep 2026). Hedged where it has to be: the
+ * planning step only applies to some projects, and the build itself is carried
+ * out by the homeowner's own builder, not by SC Design.
+ */
+const processSteps: { title: string; body: string }[] = [
+  {
+    title: "Free consultation",
+    body: "A no-obligation conversation about what you want from the space, the likely planning route and a realistic budget.",
+  },
+  {
+    title: "Measured survey",
+    body: "We measure the property and draw it accurately as it exists today — the foundation everything else is built on.",
+  },
+  {
+    title: "Design concepts",
+    body: "Layout options to compare, developed around how you actually live and what the property will allow.",
+  },
+  {
+    title: "Planning submission",
+    body: "If your project needs permission, we prepare the drawings and supporting documents and manage the application with the council.",
+  },
+  {
+    title: "Building regulations drawings",
+    body: "The technical package — structure, insulation, fire safety, drainage and ventilation — for building control and your builder.",
+  },
+  {
+    title: "Construction support",
+    body: "We coordinate with a structural engineer for the calculations and answer builders' queries as the job progresses.",
+  },
+  {
+    title: "Builder quotes",
+    body: "With one clear drawing package, several builders can price the same scope so you compare like with like.",
+  },
+];
+
+// Hero drag-to-compare. Sean's caption ("Side Elevation & Garage Conversions")
+// describes the Wallasey Village side extension, which replaced the old garage
+// and bin store — so the hero now uses that project's real before photo and its
+// design visualisation rather than the generic pair.
+const heroBefore = wi("wvSideExtExisting");
+const heroAfter = wi("wvSideExtConcept");
+
+// The three reviews Sean picked for the home page (brief, Sep 2026), shown side
+// by side high up. Genuine Google reviews, verbatim — the array order follows
+// Sean's list rather than reviews.ts order.
+const featuredReviewAuthors = ["Graham Edge", "Ryan Hirst", "Ray Dyer"];
+const featuredReviews = featuredReviewAuthors
+  .map((author) => reviews.find((r) => r.author === author))
+  .filter((r): r is NonNullable<typeof r> => Boolean(r));
+
+/** "Why choose SC Design?" — Sean's list (brief, Sep 2026). */
+const whyPoints: { title: string; body: string }[] = [
+  { title: "MCIAT", body: "Chartered Architectural Technologist" },
+  {
+    title: `${site.yearsExperience}+ years`,
+    body: "Designing homes across Merseyside, after six years on site as a builder",
+  },
+  {
+    title: "Local Wirral specialist & surrounding areas",
+    body: "Wirral, Liverpool, Cheshire, Warrington & North Wales",
+  },
+  {
+    title: "Fixed fee quotations",
+    body: "Agreed before we start, so you know the cost from the outset",
+  },
+  {
+    title: "Friendly one-to-one service",
+    body: "You deal with Sean directly, from the first call to the final drawing",
+  },
+  {
+    title: "Builder-independent advice",
+    body: "We design only and never carry out the build, so the advice stays impartial",
+  },
+  {
+    title: "Builder-ready drawings",
+    body: "Clear packages so several builders can price like for like",
+  },
 ];
 
 const drawingsHelp: { term: string; body: string; href: string; cta: string }[] = [
@@ -157,7 +237,7 @@ function ImageTile({
 export default function HomePage() {
   return (
     <>
-      <JsonLd data={faqJsonLd(generalFaqs.slice(0, 6))} />
+      <JsonLd data={faqJsonLd(homeFaqs)} />
 
       {/* HERO — larger, more breathing room; the before/after is the LCP media. */}
       <Section tone="card" className="relative overflow-hidden pt-16 pb-24 sm:pt-24">
@@ -165,17 +245,24 @@ export default function HomePage() {
           <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
             <div>
               <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
-                Architectural design · Wirral &amp; beyond
+                Architectural Design — Wirral, Cheshire and Merseyside plus surrounding areas
               </p>
-              <h1 className="text-balance text-5xl leading-[1.03] sm:text-6xl lg:text-[4.2rem]">
-                <span className="text-accent-strong">Architectural Designer</span> in Wirral for
-                Extensions, Loft Conversions <span className="text-accent-strong">&amp;</span> Planning
-                Drawings
+              {/* Sean's wording (brief, Sep 2026): short red H1, the keyword-rich
+                  service line in black beneath it, then the grey lead. */}
+              <h1 className="text-balance text-5xl leading-[1.03] text-accent-strong sm:text-6xl lg:text-[4.2rem]">
+                Architectural Design Services in Wirral
               </h1>
+              <p className="mt-5 max-w-2xl text-pretty text-xl leading-snug font-medium text-ink sm:text-2xl">
+                Surveys, Planning, Building Regulations Packages including Home Extensions, Loft
+                &amp; Garage Conversion, Garden Rooms, Front Porch Extension and all Architectural
+                Services Across Wirral, Cheshire &amp; Merseyside.
+              </p>
               <p className="mt-6 max-w-xl text-pretty text-lg text-muted">
-                Friendly, practical home design for growing families — led by Sean Corser MCIAT,
-                Chartered Architectural Technologist. From your first idea to clear planning,
-                building-regulations and builder-quote drawings.
+                Friendly, practical, family-focused architectural design across Wirral and Cheshire.
+                Led by Sean Corser MCIAT, Chartered Architectural Technologist, we guide homeowners
+                from first ideas through planning permission, building regulations and detailed
+                construction drawings — giving builders everything they need to price and build with
+                confidence.
               </p>
               <div className="mt-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
@@ -191,10 +278,18 @@ export default function HomePage() {
                     </li>
                   ))}
                 </ul>
+                <div className="mt-4">
+                  <LinkButton href="/areas" size="md">
+                    See all the areas we cover
+                  </LinkButton>
+                </div>
               </div>
               <div className="mt-8 flex flex-wrap gap-3">
                 <LinkButton href={cta.primary.href} size="lg" track="contact-cta">
                   {cta.primary.label}
+                </LinkButton>
+                <LinkButton href={cta.visualiser.href} size="lg" track="visualiser-start">
+                  {cta.visualiser.label}
                 </LinkButton>
                 <LinkButton
                   href={whatsappLink(defaultWhatsAppMessage)}
@@ -206,26 +301,17 @@ export default function HomePage() {
                   {cta.whatsapp.label}
                 </LinkButton>
               </div>
-              <p className="mt-4 text-sm text-muted">
-                Prefer to picture it first?{" "}
-                <Link
-                  href="/visualiser"
-                  data-conversion="visualiser-start"
-                  className="font-medium text-accent-strong underline"
-                >
-                  Try the Extension Concept Visualiser
-                </Link>
-              </p>
+              <p className="mt-4 text-sm text-ink-soft">{CTA_MICROCOPY}</p>
             </div>
 
             <div className="lg:pl-4">
               <div className="overflow-hidden rounded-[var(--radius-xl)] shadow-tile">
                 <BeforeAfterSlider
-                  before="/portfolio/hero-before.jpg"
-                  after="/portfolio/hero-after.jpg"
-                  beforeAlt="Tired rear elevation of a Wirral home before redesign"
-                  afterAlt="Concept visualisation of the same home with a single-storey rear extension"
-                  caption="Before → concept visualisation. Drag to compare."
+                  before={heroBefore.src}
+                  after={heroAfter.src}
+                  beforeAlt={heroBefore.alt}
+                  afterAlt={heroAfter.alt}
+                  caption="Side Elevation & Garage Conversions Before & After — drag to compare. The ‘after’ is a design visualisation of the approved scheme."
                   priority
                 />
               </div>
@@ -234,24 +320,53 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      {/* TRUST BAR — stat tiles (2-up on mobile, 4 across on desktop) */}
+      {/* WHY CHOOSE SC DESIGN? — credentials + the promises from Sean's brief */}
       <Section tone="fog" className="py-14">
         <Container>
-          <div data-reveal className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
-            {[
-              { value: "MCIAT", label: "Chartered Architectural Technologist" },
-              { value: `${site.yearsExperience}+`, label: "Years in architectural design" },
-              { value: "Local", label: "Wirral, Liverpool, Cheshire & N. Wales" },
-              { value: "Builder-ready", label: "Clear drawings for like-for-like quotations" },
-            ].map((s) => (
+          <SectionHeading
+            eyebrow="Credentials"
+            title="Why choose SC Design?"
+            align="center"
+          />
+          <div
+            data-reveal
+            className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4"
+          >
+            {whyPoints.map((p) => (
               <div
-                key={s.label}
-                className="flex items-center justify-center rounded-[var(--radius-xl)] border border-line bg-paper-card p-6 shadow-tile sm:p-8"
+                key={p.title}
+                className="rounded-[var(--radius-xl)] border border-line bg-paper-card p-6 text-center shadow-tile"
               >
-                <StatCard value={s.value} label={s.label} />
+                <p className="font-display text-xl text-balance text-ink">{p.title}</p>
+                <p className="mt-2 text-sm text-pretty text-muted">{p.body}</p>
               </div>
             ))}
           </div>
+        </Container>
+      </Section>
+
+      {/* REVIEWS — Sean asked for these to be the 2nd/3rd thing a visitor sees. */}
+      <Section tone="card" className="py-14">
+        <Container>
+          <SectionHeading
+            eyebrow="Reviews"
+            title="What homeowners and builders say"
+            intro="Genuine, verified reviews from the SC Design Google profile."
+            align="center"
+          />
+          <div className="mt-6 flex justify-center">
+            <ReviewsSummary align="center" />
+          </div>
+          <div className="mt-8 grid gap-5 lg:grid-cols-3">
+            {featuredReviews.map((r) => (
+              <ReviewCard key={r.author} review={r} />
+            ))}
+          </div>
+          <p className="mt-8 text-center text-sm">
+            <Link href="/reviews" className="font-medium text-accent-strong underline">
+              See all reviews
+            </Link>
+          </p>
         </Container>
       </Section>
 
@@ -284,29 +399,53 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      {/* RECENT WORK — photo bento */}
+      {/* FEATURED PROJECTS — Sean's brief: three recent projects, each with a
+          large image, the town, the project type, a short description and a link
+          to the full case study. Project pages perform well in local search. */}
       <Section tone="mist">
         <Container>
           <SectionHeading
             eyebrow="Recent work"
             title="Real projects, designed by Sean"
-            intro="A few completed extensions, loft and garage conversions designed by SC Design Wirral and built by the homeowners' own builders."
+            intro="Extensions, loft and garage conversions designed by SC Design Wirral and built by the homeowners' own builders. Each one has a full case study — the brief, the design response and the drawings prepared."
           />
-          <Bento className="mt-12">
-            {recentWork.map((img, i) => (
-              <ImageTile
-                key={img.src}
-                image={img}
-                title={img.caption ?? ""}
-                span={i === 0 || i === 3 ? 4 : 2}
-                tall={i === 0 || i === 3}
-              />
-            ))}
-          </Bento>
+          <div data-reveal className="mt-12">
+            <ProjectCardGrid projects={featuredProjects} />
+          </div>
           <div className="mt-8 flex flex-wrap gap-3">
             <LinkButton href="/projects">See all projects &amp; portfolio</LinkButton>
             <LinkButton href="/portfolio" variant="ghost">
               Design visualisations
+            </LinkButton>
+          </div>
+        </Container>
+      </Section>
+
+      {/* OUR PROCESS — Sean's step-by-step plan (brief, Sep 2026) */}
+      <Section>
+        <Container>
+          <SectionHeading
+            eyebrow="How it works"
+            title="Your project, step by step"
+            intro="Most homeowner projects follow the same route. Not every step applies to every job — we'll tell you which ones yours needs at the first conversation."
+          />
+          <ol data-reveal className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {processSteps.map((s, i) => (
+              <li
+                key={s.title}
+                className="flex h-full flex-col rounded-[var(--radius-xl)] border border-line bg-paper-card p-6 shadow-tile"
+              >
+                <span className="font-display text-3xl text-accent-strong">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <h3 className="mt-3 text-lg">{s.title}</h3>
+                <p className="mt-2 text-pretty text-sm text-muted">{s.body}</p>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-8">
+            <LinkButton href="/process" variant="ghost">
+              See the full process
             </LinkButton>
           </div>
         </Container>
@@ -322,18 +461,16 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      {/* REVIEWS — rotating window of genuine Google reviews */}
+      {/* MORE REVIEWS — the rotating window of every genuine Google review.
+          The three Sean picked sit high up the page; this keeps the rest. */}
       <Section tone="fog">
         <Container>
           <SectionHeading
-            eyebrow="Reviews"
-            title="What homeowners and builders say"
-            intro="Genuine, verified reviews from the SC Design Google profile."
+            eyebrow="More reviews"
+            title="More from homeowners and builders"
+            intro="Every review below is genuine and published on the SC Design Google profile."
             align="center"
           />
-          <div data-reveal className="mt-8 flex justify-center">
-            <ReviewsSummary align="center" />
-          </div>
           <ReviewsCarousel className="mt-10" />
           <p className="mt-8 text-center text-sm text-muted">
             <Link href="/reviews" className="font-medium text-accent-strong underline">
@@ -420,7 +557,7 @@ export default function HomePage() {
         <Container className="max-w-3xl">
           <SectionHeading eyebrow="Good to know" title="Frequently asked questions" align="center" />
           <div data-reveal className="mt-8">
-            <FAQList faqs={generalFaqs.slice(0, 6)} />
+            <FAQList faqs={homeFaqs} />
           </div>
           <p className="mt-8 text-center text-sm text-muted">
             <Link href="/faqs" className="font-medium text-accent-strong underline">
