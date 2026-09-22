@@ -39,10 +39,13 @@ export const site = {
     "Prior to this, I spent 6 years working as a builder on residential projects, giving me a strong understanding of how good design translates into successful construction. This combination of design expertise and hands-on building experience allows me to deliver creative, practical solutions tailored to each client's needs.",
   ],
 
-  // Sean's professional headshot. null until he supplies one — every slot that
-  // uses it falls back to the SC logo roundel, so there is never a visible
-  // placeholder. Set e.g. { src: "/brand/sean-corser.jpg", alt: "Sean Corser MCIAT" }.
-  headshot: null as { src: string; alt: string } | null,
+  // Sean's professional headshot, supplied with his Sep 2026 brief. Processed
+  // by scripts/process-brief-images.mjs (manifest id `seanPortrait`). Before
+  // this, every slot that uses it fell back to the SC logo roundel.
+  headshot: {
+    src: "/brand/sean-corser.jpg",
+    alt: "Sean Corser MCIAT, founder of SC Design Wirral",
+  } as { src: string; alt: string } | null,
 
   // Brand logo (Sean's red serif "SC" roundel) — avatar fallback + JSON-LD logo.
   logo: "/brand/sc-logo-roundel.png",

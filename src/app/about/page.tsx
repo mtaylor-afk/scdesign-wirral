@@ -1,8 +1,9 @@
 import { Container, Section, StatCard, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
-import { MeetSean } from "@/components/ui/MeetSean";
 import { JsonLd } from "@/components/JsonLd";
+import { withBase } from "@/lib/base";
+import { wi } from "@/lib/media";
 import { site } from "@/lib/site";
 import { pageMeta, breadcrumbJsonLd, personJsonLd } from "@/lib/seo";
 
@@ -11,6 +12,9 @@ export const metadata = pageMeta({
   description: `SC Design Wirral is led by Sean Corser MCIAT, a Chartered Architectural Technologist (${site.credentials.degree}) with 15+ years designing homes for families across ${site.serviceArea}. Design only — we prepare drawings so you can approach builders for like-for-like quotations.`,
   path: "/about",
 });
+
+/** Sean's portrait, supplied with his Sep 2026 brief. */
+const portrait = wi("seanPortrait");
 
 const trustPoints = [
   {
@@ -52,37 +56,93 @@ export default function AboutPage() {
             ]}
           />
           <h1 className="text-balance text-4xl sm:text-5xl">
-            Local architectural design you can talk to
+            Local Architectural Designs, Built Around You
           </h1>
           <p className="mt-5 text-pretty text-lg text-muted">
-            Led by {site.contactName} {site.credentials.postNominals} — a Chartered Architectural
-            Technologist with {site.yearsExperience}+ years in architectural design — {site.shortName}{" "}
-            helps growing families across {site.serviceArea} get more from their homes.
+            {site.shortName} helps homeowners across Wirral and surrounding areas create practical,
+            thoughtfully designed spaces that make more of their homes and increase the value of
+            their property.
           </p>
         </Container>
       </Section>
 
+      {/* ABOUT SEAN — Sean's photo with the copy running down the side, which is
+          how his brief asks for it. Stacks above the text on narrow screens. */}
       <Section>
-        <Container className="max-w-3xl space-y-6 text-pretty text-lg text-muted">
-          <h2 className="text-2xl text-ink">Meet Sean</h2>
-          <MeetSean showAboutLink={false} className="pt-4" />
-          <p className="pt-2">
-            The approach is simple: good home design starts with a proper conversation. Every property
-            and every family is different, so Sean takes the time to understand how you actually live —
-            from the period terraces of Wallasey and Birkenhead to the larger plots of Heswall and West
-            Kirby, and on into Liverpool, Cheshire, Warrington and North Wales — before putting pen to
-            paper.
-          </p>
+        <Container>
+          <h2 className="text-2xl text-ink">About Sean</h2>
+          <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-12">
+            <div data-reveal className="mx-auto w-full max-w-sm lg:mx-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={withBase(portrait.src)}
+                alt={portrait.alt}
+                width={portrait.width}
+                height={portrait.height}
+                loading="lazy"
+                decoding="async"
+                className="w-full rounded-[var(--radius-xl)] border border-line object-cover shadow-tile"
+              />
+            </div>
+            <div className="space-y-5 text-pretty text-lg text-muted">
+              <p>
+                {site.contactName} is a Chartered Architectural Technologist (
+                {site.credentials.postNominals}) with a {site.credentials.degree} and more than{" "}
+                {site.yearsExperience} years&apos; experience designing homes across Merseyside.
+              </p>
+              <p>
+                As the founder and lead designer of {site.shortName}, Sean brings more than
+                professional design experience to every project. Before moving into architecture, he
+                spent {site.yearsAsBuilder} years working as a builder on residential extensions,
+                loft conversions, garage conversions and new-build homes. This gives him a practical
+                understanding of how a design should look and function for a family — as well as how
+                it will actually be built.
+              </p>
+              <p>
+                This combination of architectural knowledge and hands-on construction experience
+                results in attractive, practical and buildable designs, supported by clear drawings
+                that contractors can price and construct with confidence.
+              </p>
+              <p>
+                Sean&apos;s approach is simple: good home design begins with a proper conversation.
+                Every property and every family is different, so he takes the time to understand how
+                you live, what is not working and what you want your home to become.
+              </p>
+              <p>
+                From the period terraces of Wallasey and Birkenhead to the larger properties and
+                plots of Heswall and West Kirby, every proposal is carefully developed around the
+                character of the property and the needs of the people who live there.
+              </p>
+            </div>
+          </div>
+        </Container>
+      </Section>
 
-          <h2 className="pt-2 text-2xl text-ink">Design-led, with the right people to build it</h2>
+      <Section tone="card">
+        <Container className="max-w-3xl space-y-5 text-pretty text-lg text-muted">
+          <h2 className="text-2xl text-ink">Independent Design Advice, Ready for Construction</h2>
           <p>
-            We focus purely on design — exploring what&apos;s possible, shaping the concept and
-            preparing clear, accurate drawings for planning and building regulations. We don&apos;t
-            carry out the building work ourselves, which keeps our advice impartial and focused on
-            getting your design right. When you&apos;re ready to build, you can use the drawings to
-            approach builders for like-for-like quotations, and we work alongside a{" "}
-            <strong className="text-ink">structural engineer</strong> for any calculations your project
-            needs.
+            {site.shortName} focuses exclusively on architectural design — exploring what is
+            possible, developing the concept and preparing clear, accurate drawings for Planning
+            Permission and Building Regulations approval.
+          </p>
+          <p>
+            We do not undertake the building work ourselves. This keeps our advice impartial and
+            ensures the focus remains on developing the right design for your home. When you are
+            ready to build, the completed drawings can be issued to contractors to obtain clear,
+            comparable quotations. Where structural calculations are required, we work alongside a
+            trusted <strong className="text-ink">structural engineer</strong> to help provide the
+            technical information needed to progress your project.
+          </p>
+          <p className="text-base">
+            Sean is a Chartered Architectural Technologist (MCIAT) and a member of CIAT. We are{" "}
+            <strong className="text-ink">not registered architects</strong> — &ldquo;architect&rdquo;
+            is a title protected by law in the UK — and we design only: your project is built by
+            builders you appoint, who price and construct from our drawings.
+          </p>
+          <p>
+            Planning an extension, loft conversion or home alteration? Get in touch to arrange an
+            initial conversation about your project.
           </p>
         </Container>
       </Section>
@@ -145,35 +205,16 @@ export default function AboutPage() {
         </Container>
       </Section>
 
+      {/* The "Company details, qualifications & insurance" card was removed at
+          Sean's request (brief, Sep 2026). The Companies Act disclosure is
+          unaffected — the footer carries the registered name, company number and
+          registered office on every page — and the ARB wording now sits in the
+          "Independent Design Advice" section above. Insurance stays here, since
+          homeowners do ask. */}
       <Section tone="card">
         <Container className="max-w-3xl">
           <Card>
-            <h2 className="text-xl">Company details, qualifications &amp; insurance</h2>
-            <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
-              <dt className="font-semibold text-ink">Lead designer</dt>
-              <dd className="text-muted">
-                {site.contactName} {site.credentials.postNominals}
-              </dd>
-              <dt className="font-semibold text-ink">Professional</dt>
-              <dd className="text-muted">{site.credentials.jobTitle} (CIAT)</dd>
-              <dt className="font-semibold text-ink">Qualification</dt>
-              <dd className="text-muted">{site.credentials.degree}</dd>
-              <dt className="font-semibold text-ink">Registered name</dt>
-              <dd className="text-muted">{site.name}</dd>
-              <dt className="font-semibold text-ink">Company number</dt>
-              <dd className="text-muted">
-                {site.companiesHouseNumber} (registered in England &amp; Wales)
-              </dd>
-              <dt className="font-semibold text-ink">Registered office</dt>
-              <dd className="text-muted">{site.registeredOffice}</dd>
-            </dl>
-            <p className="mt-4 text-pretty text-muted">
-              {site.shortName} is an independent architectural design and drawing practice. Sean is a{" "}
-              {site.credentials.jobTitle} (MCIAT) — we are <strong>not</strong> registered architects
-              (&ldquo;architect&rdquo; is a title protected by law in the UK), and we design only:
-              your project is built by builders you appoint, who price and construct from our
-              drawings, with a structural engineer for the calculations.
-            </p>
+            <h2 className="text-xl">Insurance</h2>
             <p className="mt-3 text-pretty text-muted">
               Professional indemnity and public liability insurance cover our design work; further
               details can be provided on request where relevant to your project.
