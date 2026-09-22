@@ -21,4 +21,10 @@
 # --- Brief 2 (Sep 2026): /before-and-after retired ---
 # Sean asked for the standalone page to go; the drag-to-compare sliders now live
 # inside each case study, so /projects is the equivalent destination.
-/before-and-after   /projects   301
+#
+# BOTH forms are needed. Cloudflare Pages matches the path exactly, and the site
+# builds with trailingSlash: true — so the URL Google actually indexed is
+# /before-and-after/ . Listing only the bare path returned a 404 in production.
+# Targets carry the trailing slash too, to avoid a second hop.
+/before-and-after    /projects/   301
+/before-and-after/   /projects/   301
