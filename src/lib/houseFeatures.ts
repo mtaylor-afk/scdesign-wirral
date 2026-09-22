@@ -25,6 +25,7 @@ export type FeatureId =
   | "garage-conversion"
   | "new-garage"
   | "side-extension"
+  | "side-extension-two-storey"
   | "rear-dormer"
   | "rear-extension-single"
   | "rear-extension-two-storey"
@@ -52,9 +53,20 @@ export function needTone(level: NeedLevel): "strong" | "mid" | "light" {
 export type HouseFeature = {
   id: FeatureId;
   label: string;
-  view: HouseView;
-  /** Hotspot position as a percentage of the illustration box (left/top). */
+  /**
+   * Which view(s) the hotspot appears on. Side extensions read from both the
+   * front and the rear of the illustration, so they are listed on both — Sean's
+   * brief asks for them in each list.
+   */
+  view: HouseView[];
+  /**
+   * Hotspot position as a percentage of the illustration box (left/top), per
+   * view. The two illustrations are different photographs of the same house, so
+   * a feature visible in both needs a position for each.
+   */
   pos: { x: number; y: number };
+  /** Position on the rear view, when the feature appears on both. */
+  posRear?: { x: number; y: number };
   /** Quick badges: is planning permission / building-regs approval needed? */
   needs: { planning: NeedLevel; buildingRegs: NeedLevel };
   /** One-line plain-English headline. */
@@ -75,8 +87,8 @@ export const houseFeatures: Record<FeatureId, HouseFeature> = {
   "front-porch": {
     id: "front-porch",
     label: "Front porch",
-    view: "front",
-    pos: { x: 53, y: 70 },
+    view: ["front"],
+    pos: { x: 62, y: 52 },
     needs: { planning: "often-not", buildingRegs: "often-exempt" },
     headline: "Often permitted development — within limits",
     summary:
@@ -91,8 +103,8 @@ export const houseFeatures: Record<FeatureId, HouseFeature> = {
   "front-dormer": {
     id: "front-dormer",
     label: "Front dormer / loft window",
-    view: "front",
-    pos: { x: 52, y: 31 },
+    view: ["front"],
+    pos: { x: 45, y: 13 },
     needs: { planning: "usually", buildingRegs: "needed" },
     headline: "A front-facing dormer usually needs planning permission",
     summary:
@@ -108,8 +120,8 @@ export const houseFeatures: Record<FeatureId, HouseFeature> = {
   "garage-conversion": {
     id: "garage-conversion",
     label: "Garage conversion",
-    view: "front",
-    pos: { x: 16, y: 75 },
+    view: ["front"],
+    pos: { x: 34, y: 57 },
     needs: { planning: "often-not", buildingRegs: "needed" },
     headline: "Often permitted development if it stays within the structure",
     summary:
@@ -124,8 +136,8 @@ export const houseFeatures: Record<FeatureId, HouseFeature> = {
   "new-garage": {
     id: "new-garage",
     label: "New garage / outbuilding",
-    view: "front",
-    pos: { x: 14, y: 55 },
+    view: ["front"],
+    pos: { x: 15, y: 22 },
     needs: { planning: "often-not", buildingRegs: "often-exempt" },
     headline: "Often permitted development as an outbuilding",
     summary:
@@ -139,24 +151,42 @@ export const houseFeatures: Record<FeatureId, HouseFeature> = {
   },
   "side-extension": {
     id: "side-extension",
-    label: "Side extension",
-    view: "front",
-    pos: { x: 84, y: 72 },
+    label: "Single-storey side extension",
+    view: ["front", "rear"],
+    pos: { x: 26, y: 37 },
+    posRear: { x: 74, y: 40 },
     needs: { planning: "depends", buildingRegs: "needed" },
-    headline: "Single-storey can be PD; two-storey usually needs permission",
+    headline: "Often permitted development, within width and height limits",
     summary:
-      "A single-storey side extension can be permitted development if it's no more than half the width of the original house, single storey with a max height of 4m, and within other limits. Two-storey side extensions, and homes on designated land, usually need a full planning application. Confirm with your council.",
+      "A single-storey side extension can be permitted development if it's no more than half the width of the original house, single storey with a maximum height of 4m, and within the other limits. Homes on designated land — conservation areas, national parks, Areas of Outstanding Natural Beauty — and flats usually lose those rights. Always confirm with your council.",
     buildingRegs: "Side extensions need building-regulations approval.",
     scPackage:
       "Planning drawings (or Lawful Development Certificate drawings where it's permitted development) plus building-regulations drawings.",
     planningPortalUrl: "https://www.planningportal.co.uk/permission/common-projects/extensions",
     service: "house-extensions",
   },
+  "side-extension-two-storey": {
+    id: "side-extension-two-storey",
+    label: "Two-storey side extension",
+    view: ["front", "rear"],
+    pos: { x: 43, y: 29 },
+    posRear: { x: 63, y: 26 },
+    needs: { planning: "usually", buildingRegs: "needed" },
+    headline: "Usually needs a full planning application",
+    summary:
+      "A two-storey side extension almost always needs planning permission — permitted development rights for side extensions are limited to single storey. Even where some rights exist, a two-storey addition has to stay at least 7m from the rear boundary, sit no higher than the existing roof and match the existing materials. Overlooking, massing and the effect on neighbours all carry weight, so the design matters as much as the rules.",
+    buildingRegs:
+      "A two-storey side extension needs building-regulations approval, including structure, fire safety and escape, insulation and drainage.",
+    scPackage:
+      "A full planning application with existing and proposed plans and elevations, plus building-regulations drawings and coordination with a structural engineer.",
+    planningPortalUrl: "https://www.planningportal.co.uk/permission/common-projects/extensions",
+    service: "house-extensions",
+  },
   "rear-dormer": {
     id: "rear-dormer",
     label: "Rear dormer",
-    view: "rear",
-    pos: { x: 44, y: 33 },
+    view: ["rear"],
+    pos: { x: 52, y: 14 },
     needs: { planning: "often-not", buildingRegs: "needed" },
     headline: "Often permitted development within volume limits",
     summary:
@@ -171,9 +201,12 @@ export const houseFeatures: Record<FeatureId, HouseFeature> = {
   },
   "rear-extension-single": {
     id: "rear-extension-single",
+    // Visible from both sides of the illustration: the flat-roof extension at
+    // the top left of the front view is the same one seen full-on from the rear.
     label: "Single-storey rear extension",
-    view: "rear",
-    pos: { x: 32, y: 72 },
+    view: ["front", "rear"],
+    pos: { x: 22, y: 28 },
+    posRear: { x: 55, y: 47 },
     needs: { planning: "prior-approval", buildingRegs: "needed" },
     headline: "Often PD — larger ones need prior approval",
     summary:
@@ -187,8 +220,8 @@ export const houseFeatures: Record<FeatureId, HouseFeature> = {
   "rear-extension-two-storey": {
     id: "rear-extension-two-storey",
     label: "Two-storey rear extension",
-    view: "rear",
-    pos: { x: 61, y: 56 },
+    view: ["rear"],
+    pos: { x: 45, y: 27 },
     needs: { planning: "depends", buildingRegs: "needed" },
     headline: "Can be PD up to 3m — beyond that needs permission",
     summary:
@@ -203,8 +236,8 @@ export const houseFeatures: Record<FeatureId, HouseFeature> = {
   "garden-room": {
     id: "garden-room",
     label: "Garden room / studio",
-    view: "rear",
-    pos: { x: 86, y: 74 },
+    view: ["rear"],
+    pos: { x: 60, y: 78 },
     needs: { planning: "often-not", buildingRegs: "often-exempt" },
     headline: "Often PD as an outbuilding — not for sleeping",
     summary:
@@ -224,6 +257,7 @@ export const featureOrder: FeatureId[] = [
   "garage-conversion",
   "new-garage",
   "side-extension",
+  "side-extension-two-storey",
   "rear-dormer",
   "rear-extension-single",
   "rear-extension-two-storey",

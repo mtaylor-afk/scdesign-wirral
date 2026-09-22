@@ -64,11 +64,19 @@ export default function HomeownersGuidePage() {
               { name: "Homeowners Guide", path: "/homeowners-guide" },
             ]}
           />
-          <h1 className="text-balance text-4xl sm:text-5xl">Will my project need planning permission?</h1>
+          <h1 className="text-balance text-4xl sm:text-5xl">
+            Will My Project Need Planning Permission?
+          </h1>
           <p className="mt-5 text-pretty text-lg text-muted">
-            Click a feature on the house — a porch, dormer, garage, extension or garden room — for a
-            plain-English answer on whether it usually needs planning permission and building
-            regulations, with a link to the official guidance.
+            Explore the house below and select a porch, dormer, garage conversion, extension or
+            garden room for straightforward guidance on whether planning permission and Building
+            Regulations approval are likely to be required. Each section also includes a link to the
+            relevant official guidance, helping you understand the requirements before starting your
+            project.
+          </p>
+          <p className="mt-4 text-pretty text-muted">
+            Click a feature on our interactive house and see whether your proposed design needs
+            planning permission and/or building regulations, with links to the official guidance.
           </p>
         </Container>
       </Section>
