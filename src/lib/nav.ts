@@ -7,8 +7,13 @@ export type NavLink = { label: string; href: string };
 export type NavNode = NavLink & { children?: NavLink[] };
 
 /**
- * Top-level nav. Groups (Services / Areas / Guides) carry children that derive
- * from the data arrays, so adding a service/area/guide auto-updates the menu.
+ * Top-level nav. Groups (Services / Local Areas / Guides) carry children that
+ * derive from the data arrays, so adding a service/area/guide auto-updates the
+ * menu.
+ *
+ * Order is Sean's (brief, Sep 2026): Services, Visualiser, Projects & Portfolio,
+ * Local Areas, Guides, About, Socials. The URLs are unchanged — only the labels
+ * and the order move, so nothing Google has indexed is disturbed.
  */
 export const primaryNav: NavNode[] = [
   {
@@ -19,8 +24,17 @@ export const primaryNav: NavNode[] = [
       { label: "All services", href: "/services" },
     ],
   },
+  { label: "Visualiser", href: "/visualiser" },
   {
-    label: "Areas",
+    label: "Projects & Portfolio",
+    href: "/projects",
+    children: [
+      { label: "Case studies", href: "/projects" },
+      { label: "Design visualisations", href: "/portfolio" },
+    ],
+  },
+  {
+    label: "Local Areas",
     href: "/areas",
     children: [
       ...locations
@@ -62,31 +76,23 @@ export const primaryNav: NavNode[] = [
       { label: "All guides", href: "/guides" },
     ],
   },
-  {
-    label: "Projects",
-    href: "/projects",
-    children: [
-      { label: "Case studies", href: "/projects" },
-      { label: "Before & after", href: "/before-and-after" },
-      { label: "Design visualisations", href: "/portfolio" },
-    ],
-  },
   { label: "About", href: "/about" },
-  { label: "Visualiser", href: "/visualiser" },
+  { label: "Socials", href: "/socials" },
 ];
 
 /** Flat list of every top-level destination (used by the footer "Explore" col). */
 export const exploreLinks: NavLink[] = [
   { label: "Services", href: "/services" },
-  { label: "Areas we cover", href: "/areas" },
+  { label: "Local areas we cover", href: "/areas" },
   { label: "Guides", href: "/guides" },
-  { label: "Projects", href: "/projects" },
-  { label: "Before & after", href: "/before-and-after" },
+  { label: "Projects & portfolio", href: "/projects" },
+  { label: "Design visualisations", href: "/portfolio" },
   { label: "Reviews", href: "/reviews" },
   { label: "Process", href: "/process" },
   { label: "About", href: "/about" },
   { label: "FAQs", href: "/faqs" },
   { label: "Visualiser", href: "/visualiser" },
+  { label: "Socials", href: "/socials" },
   { label: "Contact", href: "/contact" },
 ];
 

@@ -95,9 +95,14 @@ export const site = {
   // both addresses at once. NOTE: the visitor sees both addresses in the To line.
   formRecipients: ["scdesignandconstruction1@gmail.com", "matthewjtaylor1985@icloud.com"],
 
+  // Sean's three public profiles (brief, Sep 2026). `instagramWork` is the
+  // second Instagram account, which posts site progress from the projects Sean
+  // has designed — it is NOT a claim that SC Design carries out the building
+  // work, so anywhere it is linked says whose site photos they are.
   socials: {
     facebook: "https://www.facebook.com/SCDesignAndConstruction",
     instagram: "https://www.instagram.com/sc.design.wirral",
+    instagramWork: "https://www.instagram.com/sc.construction.work",
   },
 
   // Google review link — Sean's live Google Business reviews (provided by Matthew
@@ -134,7 +139,9 @@ export const cta = {
     href: "/contact?source_type=consultation",
   },
   whatsapp: { label: "WhatsApp Sean", href: whatsappLink(defaultWhatsAppMessage) },
-  visualiser: { label: "Try the Extension Concept Visualiser", href: "/visualiser" },
+  // Sean's brief (Sep 2026) names this button "Try the Concept Visualiser", and
+  // asks for it at the same size and in the same red as the primary, beside it.
+  visualiser: { label: "Try the Concept Visualiser", href: "/visualiser" },
   call: { label: "Call Sean", href: `tel:${site.phoneE164}` },
   emailCta: { label: "Email Sean", href: `mailto:${site.email}` },
 } as const;

@@ -126,7 +126,11 @@ export function localBusinessJsonLd() {
     areaServed: areasServed.map((name) => ({ "@type": "Place", name })),
     serviceType: serviceTypes,
     knowsAbout: serviceTypes,
-    sameAs: [site.socials.facebook, site.socials.instagram].filter(Boolean),
+    sameAs: [
+      site.socials.facebook,
+      site.socials.instagram,
+      site.socials.instagramWork,
+    ].filter(Boolean),
     founder: { "@id": `${siteUrl}/about#sean-corser` },
   };
   // Service-area business: only expose a postal address when the client has

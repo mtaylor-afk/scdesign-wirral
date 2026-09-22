@@ -304,10 +304,7 @@ export default function HomePage() {
             ))}
           </Bento>
           <div className="mt-8 flex flex-wrap gap-3">
-            <LinkButton href="/before-and-after">See before &amp; after</LinkButton>
-            <LinkButton href="/projects" variant="ghost">
-              Read the case studies
-            </LinkButton>
+            <LinkButton href="/projects">See all projects &amp; portfolio</LinkButton>
             <LinkButton href="/portfolio" variant="ghost">
               Design visualisations
             </LinkButton>

@@ -50,7 +50,7 @@ const concepts = [
 ];
 
 // Sean's OWN design visualisations (genuine design work) — renders of proposed
-// schemes, NOT photographs of completed builds (those are on /before-and-after).
+// schemes, NOT photographs of completed builds (those are in the case studies).
 const visualisations: WorkImage[] = [
   { ...portfolioImages.gardenRoom, caption: "Brick garden room extension" },
   { ...portfolioImages.lanternExtension, caption: "Rear extension with roof lantern" },
@@ -85,12 +85,12 @@ export default function PortfolioPage() {
             Sean&apos;s design visualisations show how a proposed scheme will look before anything is
             built, and the AI before/after sliders further down illustrate the kind of
             transformation good design makes possible. None of these are photographs of finished
-            builds — for real completed work, see the before &amp; after photos and case studies.
+            builds — for real completed work, see the project case studies.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <LinkButton href="/before-and-after">See real before &amp; after</LinkButton>
-            <LinkButton href="/projects" variant="ghost">
-              Read the case studies
+            <LinkButton href="/projects">See real projects &amp; portfolio</LinkButton>
+            <LinkButton href="/visualiser" variant="ghost">
+              Try the concept visualiser
             </LinkButton>
           </div>
         </Container>

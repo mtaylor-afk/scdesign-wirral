@@ -9,9 +9,9 @@ import { withBase } from "@/lib/base";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 
 export const metadata = pageMeta({
-  title: "Projects & Case Studies — Architectural Design Wirral",
+  title: "Projects & Portfolio — Architectural Design Wirral",
   description:
-    "Real architectural design projects from SC Design Wirral — home extensions and remodels across Wirral, plus commercial and conversion work. See the brief, the design response and the drawings prepared.",
+    "Architectural design projects across Wirral and Merseyside — house extensions, loft and garage conversions, garden rooms and feasibility studies. Each case study shows the brief, the design response and the drawings prepared.",
   path: "/projects",
 });
 
@@ -36,7 +36,7 @@ export default function ProjectsPage() {
       <JsonLd
         data={breadcrumbJsonLd([
           { name: "Home", path: "/" },
-          { name: "Projects", path: "/projects" },
+          { name: "Projects & Portfolio", path: "/projects" },
         ])}
       />
       <Section tone="card" className="pt-16">
@@ -44,19 +44,24 @@ export default function ProjectsPage() {
           <Breadcrumbs
             items={[
               { name: "Home", path: "/" },
-              { name: "Projects", path: "/projects" },
+              { name: "Projects & Portfolio", path: "/projects" },
             ]}
           />
-          <h1 className="text-balance text-4xl sm:text-5xl">Projects &amp; case studies</h1>
+          <h1 className="text-balance text-4xl sm:text-5xl">Projects and Portfolio</h1>
           <p className="mt-5 text-pretty text-lg text-muted">
-            A selection of real SC Design Wirral projects — extensions, loft and garage conversions,
-            a new house, plus commercial and conversion work. Each one shows the brief, the design
-            response and the drawings prepared. Every image is labelled: real photos, Sean&apos;s
-            drawings, or design visualisations of the proposed scheme.
+            Explore our portfolio of architectural design projects across Wirral and Merseyside.
+            From loft conversions, house extensions and bespoke garden rooms to garage conversions
+            and feasibility studies. Each case study demonstrates our approach to considered design,
+            detailed architectural drawings and creating practical, well-designed spaces tailored to
+            our clients&apos; homes.
+          </p>
+          <p className="mt-4 text-sm text-muted">
+            Every image is labelled: real photographs, Sean&apos;s drawings, or design visualisations
+            of the proposed scheme.
           </p>
           <div className="mt-6">
-            <LinkButton href="/before-and-after" variant="ghost">
-              See before &amp; after
+            <LinkButton href="/portfolio" variant="ghost">
+              See design visualisations
             </LinkButton>
           </div>
         </Container>

@@ -17,3 +17,8 @@
 
 # --- /llm.txt compatibility → canonical machine-readable AI summary ---
 /llm.txt   /llms.txt   301
+
+# --- Brief 2 (Sep 2026): /before-and-after retired ---
+# Sean asked for the standalone page to go; the drag-to-compare sliders now live
+# inside each case study, so /projects is the equivalent destination.
+/before-and-after   /projects   301

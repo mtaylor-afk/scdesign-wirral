@@ -163,10 +163,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           {note && <p className="text-xs text-muted">{note}</p>}
           <p className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
             <Link href="/projects" className="font-medium text-accent-strong underline">
-              All case studies
+              All projects &amp; portfolio
             </Link>
-            <Link href="/before-and-after" className="font-medium text-accent-strong underline">
-              See before &amp; after
+            <Link href="/portfolio" className="font-medium text-accent-strong underline">
+              Design visualisations
             </Link>
           </p>
         </Container>

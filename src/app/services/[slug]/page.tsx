@@ -176,11 +176,11 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
             />
             <WorkGallery images={media.gallery} className="mt-8" />
             <p className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-              <Link href="/before-and-after" className="font-medium text-accent-strong underline">
-                See before &amp; after
-              </Link>
               <Link href="/projects" className="font-medium text-accent-strong underline">
                 Read the case studies
+              </Link>
+              <Link href="/portfolio" className="font-medium text-accent-strong underline">
+                Design visualisations
               </Link>
             </p>
           </Container>

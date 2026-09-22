@@ -43,27 +43,29 @@ export function Footer() {
             <strong className="font-medium text-paper/70">design &amp; drawing service</strong> — we
             prepare clear plans so homeowners can approach builders with confidence.
           </p>
-          <div className="mt-4 flex gap-4 text-sm">
-            {site.socials.instagram && (
-              <a
-                href={site.socials.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-paper/80 hover:text-white"
-              >
-                Instagram
-              </a>
-            )}
-            {site.socials.facebook && (
-              <a
-                href={site.socials.facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-paper/80 hover:text-white"
-              >
-                Facebook
-              </a>
-            )}
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+            {(
+              [
+                { label: "Facebook", href: site.socials.facebook },
+                { label: "Instagram", href: site.socials.instagram },
+                { label: "Instagram — from site", href: site.socials.instagramWork },
+              ] as const
+            )
+              .filter((s) => s.href)
+              .map((s) => (
+                <a
+                  key={s.href}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-paper/80 hover:text-white"
+                >
+                  {s.label}
+                </a>
+              ))}
+            <Link href="/socials" className="text-paper/80 hover:text-white">
+              All socials
+            </Link>
           </div>
 
           {reviewSummary.url && (
