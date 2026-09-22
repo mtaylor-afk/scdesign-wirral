@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { KindTag } from "./WorkGallery";
+import { StageBadge } from "./StageBadge";
 import { withBase } from "@/lib/base";
 import type { Project } from "@/lib/projects";
 
@@ -45,9 +46,12 @@ export function ProjectCard({
           </div>
         )}
         <div className="flex flex-1 flex-col p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
-            {p.town} · {p.projectType}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
+              {p.town} · {p.projectType}
+            </p>
+            <StageBadge stage={p.stage} />
+          </div>
           <Heading className="mt-2 text-xl group-hover:text-accent-strong">{p.title}</Heading>
           <p className="mt-2 flex-1 text-pretty text-sm text-muted">{p.summary ?? p.brief}</p>
           <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong transition-[gap] group-hover:gap-2.5">

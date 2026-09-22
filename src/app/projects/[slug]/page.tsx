@@ -5,10 +5,17 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
 import { BeforeAfterSlider } from "@/components/ui/BeforeAfterSlider";
 import { WorkFigure, WorkGallery } from "@/components/ui/WorkGallery";
+import { StageBadge } from "@/components/ui/StageBadge";
+import { RelatedProjects } from "@/components/ui/RelatedProjects";
 import { JsonLd } from "@/components/JsonLd";
-import { publishedProjects, getProject, type Project } from "@/lib/projects";
+import {
+  publishedProjects,
+  getProject,
+  relatedCaseStudies,
+  type Project,
+} from "@/lib/projects";
 import type { WorkImage } from "@/lib/media";
-import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
+import { pageMeta, breadcrumbJsonLd, articleJsonLd } from "@/lib/seo";
 
 // Only the known (real) projects are built; no on-demand fallback.
 export const dynamicParams = false;
@@ -23,8 +30,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!project)
     return pageMeta({ title: "Project", description: "", path: `/projects/${slug}`, noindex: true });
   return pageMeta({
-    title: `${project.title} — ${project.town}`,
-    description: project.summary ?? project.brief,
+    // seoTitle / metaDescription were on the type but nothing read them; a
+    // case study can now set its own without touching this template.
+    title: project.seoTitle ?? `${project.title} — ${project.town}`,
+    description: project.metaDescription ?? project.summary ?? project.brief,
     path: `/projects/${slug}`,
   });
 }
@@ -72,11 +81,19 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <JsonLd
-        data={breadcrumbJsonLd([
-          { name: "Home", path: "/" },
-          { name: "Projects", path: "/projects" },
-          { name: project.title, path: `/projects/${slug}` },
-        ])}
+        data={[
+          breadcrumbJsonLd([
+            { name: "Home", path: "/" },
+            { name: "Projects & Portfolio", path: "/projects" },
+            { name: project.title, path: `/projects/${slug}` },
+          ]),
+          articleJsonLd({
+            title: project.seoTitle ?? `${project.title} — ${project.town}`,
+            description: project.metaDescription ?? project.summary ?? project.brief,
+            path: `/projects/${slug}`,
+            reviewed: project.reviewed,
+          }),
+        ]}
       />
 
       <Section tone="card" className="pt-16">
@@ -84,13 +101,16 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           <Breadcrumbs
             items={[
               { name: "Home", path: "/" },
-              { name: "Projects", path: "/projects" },
+              { name: "Projects & Portfolio", path: "/projects" },
               { name: project.title, path: `/projects/${slug}` },
             ]}
           />
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
-            {project.town} · {project.propertyType} · {project.projectType}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
+              {project.town} · {project.propertyType} · {project.projectType}
+            </p>
+            <StageBadge stage={project.stage} />
+          </div>
           <h1 className="mt-3 text-balance text-4xl sm:text-5xl">{project.title}</h1>
           <p className="mt-5 text-pretty text-lg text-muted">{project.brief}</p>
         </Container>
@@ -171,6 +191,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           </p>
         </Container>
       </Section>
+
+      <RelatedProjects
+        projects={relatedCaseStudies(project)}
+        heading="More projects like this"
+        intro="Other SC Design Wirral case studies of a similar type."
+      />
 
       <CTASection heading="Planning something similar?" />
     </>

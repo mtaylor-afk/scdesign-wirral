@@ -14,6 +14,7 @@
  * sitemap all read from this array.
  */
 import { portfolioImages, wi, type WorkImage } from "./media";
+import { brief2Projects } from "./projects-brief2";
 
 export type BeforeAfterSet = {
   /** Short, minimal caption for the before & after page. */
@@ -25,12 +26,29 @@ export type BeforeAfterSet = {
   aligned?: boolean;
 };
 
+/**
+ * How far along the project is. Half the case studies in Sean's Sep 2026 brief
+ * are schemes that are in planning, under construction or not yet started, and
+ * the honest thing is to say so on the card and the page rather than let a
+ * design visualisation read as a finished build.
+ */
+export type ProjectStage = "completed" | "under-construction" | "in-planning" | "concept";
+
+export const stageLabel: Record<ProjectStage, string> = {
+  completed: "Completed",
+  "under-construction": "Under construction",
+  "in-planning": "In planning",
+  concept: "Concept design",
+};
+
 export type Project = {
   slug: string;
   title: string;
   town: string; // general area, NOT a full street address
   propertyType: string;
   projectType: string;
+  /** Defaults to "completed" when unset (the pre-Sep-2026 case studies). */
+  stage?: ProjectStage;
   brief: string;
   challenge?: string;
   designResponse?: string;
@@ -65,8 +83,11 @@ const GARAGE_REGS =
 const LOFT_REGS =
   "A habitable loft conversion always needs building-regulations approval — structure, fire safety and escape, stairs and insulation.";
 
-export const projects: Project[] = [
-  /* ---- Real completed work from Sean's brief (Sep 2026) ---- */
+/**
+ * The earlier set, from Sean's June 2026 design pack. Kept as-is; the Sep 2026
+ * case studies in projects-brief2.ts run ahead of these in Sean's order.
+ */
+const legacyProjects: Project[] = [
   {
     slug: "garage-conversion-living-room",
     title: "Garage conversion to a new living room",
@@ -448,6 +469,14 @@ export const projects: Project[] = [
   },
 ];
 
+/**
+ * Every case study, in the order they appear on /projects and in the sitemap:
+ * Sean's Sep 2026 running order first, then the June 2026 set. Reordering is a
+ * matter of moving entries within brief2Projects — the hub, the home page's
+ * featured three and the sitemap all follow this array.
+ */
+export const projects: Project[] = [...brief2Projects, ...legacyProjects];
+
 export const publishedProjects = projects.filter((p) => p.status !== "draft");
 
 export function getProject(slug: string): Project | undefined {
@@ -472,17 +501,21 @@ export function projectsForArea(areaSlug: string, limit = 3): Project[] {
 }
 
 /**
- * Clearly-labelled "coming soon" cards — only shown if `projects` is ever empty.
- * NOT completed projects.
+ * Other case studies to show at the foot of one — same service first, then the
+ * same project type, so a visitor reading about a loft conversion is offered
+ * more loft conversions rather than a random commercial fit-out.
  */
-const PLACEHOLDER_NOTE =
-  "Case study details to be added once homeowner permission and project information are confirmed.";
+export function relatedCaseStudies(project: Project, limit = 3): Project[] {
+  const others = publishedProjects.filter((p) => p.slug !== project.slug);
+  const sameService = others.filter((p) =>
+    p.relatedServices?.some((s) => project.relatedServices?.includes(s))
+  );
+  const sameType = others.filter(
+    (p) => p.projectType === project.projectType && !sameService.includes(p)
+  );
+  return [...sameService, ...sameType].slice(0, limit);
+}
 
-export const projectPlaceholders: { title: string; note: string }[] = [
-  { title: "Wallasey rear extension drawings", note: PLACEHOLDER_NOTE },
-  { title: "Wirral loft conversion drawings", note: PLACEHOLDER_NOTE },
-  { title: "Bebington kitchen-diner extension", note: PLACEHOLDER_NOTE },
-  { title: "Oxton conservation-area extension", note: PLACEHOLDER_NOTE },
-  { title: "Heswall or West Kirby home reconfiguration", note: PLACEHOLDER_NOTE },
-  { title: "Garage conversion or lawful development certificate drawings", note: PLACEHOLDER_NOTE },
-];
+// The "coming soon" placeholder cards and the /projects empty state they fed
+// were removed in Sep 2026 — with 40+ real case studies published, that branch
+// was unreachable dead code.
