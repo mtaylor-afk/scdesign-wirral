@@ -9,6 +9,8 @@ import { locations, getLocation } from "@/lib/locations";
 import { services, getService } from "@/lib/services";
 import { guides } from "@/lib/guides";
 import { ReviewCta } from "@/components/ui/ReviewCta";
+import { RelatedProjects } from "@/components/ui/RelatedProjects";
+import { projectsForArea } from "@/lib/projects";
 import { cta, site } from "@/lib/site";
 import { pageMeta, breadcrumbJsonLd, serviceJsonLd, faqJsonLd } from "@/lib/seo";
 
@@ -52,6 +54,9 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
 
   // Relevant services: explicit list if set, else all.
   const relevant = (loc.relevantServices?.map(getService).filter(Boolean) as typeof services) ?? services;
+
+  // Genuine case studies in or near this area (from Project.relatedAreas).
+  const localProjects = projectsForArea(slug);
 
   // Nearby: explicit list if set, else first few other areas.
   const nearby = (loc.nearby
@@ -193,16 +198,28 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
             </ul>
           </div>
 
-          <div className="rounded-[var(--radius)] border border-dashed border-line bg-paper-card p-5">
-            <h2 className="text-lg">Case studies in {loc.name}</h2>
-            <p className="mt-2 text-pretty text-muted">
-              {`Case studies for ${loc.name} will be added once homeowner permission is confirmed — we never publish a project without the homeowner's agreement.`}
-            </p>
-          </div>
+          {localProjects.length === 0 && (
+            <div className="rounded-[var(--radius)] border border-dashed border-line bg-paper-card p-5">
+              <h2 className="text-lg">Case studies in {loc.name}</h2>
+              <p className="mt-2 text-pretty text-muted">
+                {`Case studies for ${loc.name} will be added once homeowner permission is confirmed — we never publish a project without the homeowner's agreement.`}
+              </p>
+            </div>
+          )}
 
           <ReviewCta />
         </Container>
       </Section>
+
+      {/* Real local work. Sean's brief asks for a link to a genuine nearby
+          project at the foot of each area page; `relatedAreas` on the case
+          studies makes that possible for the first time. */}
+      <RelatedProjects
+        projects={localProjects}
+        heading={`Projects in and around ${loc.name}`}
+        intro={`Real SC Design Wirral case studies near ${loc.name} — the brief, the design response and the drawings prepared.`}
+        tone="mist"
+      />
 
       <CTASection
         heading={`Designing a project in ${loc.name}?`}

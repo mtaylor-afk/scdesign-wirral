@@ -3,8 +3,12 @@ import { Container, Section, SectionHeading, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
 import { JsonLd } from "@/components/JsonLd";
+import { KindTag } from "@/components/ui/WorkGallery";
 import { coreLocations, widerLocations } from "@/lib/locations";
+import { projectsForArea } from "@/lib/projects";
+import { getService } from "@/lib/services";
 import { serviceAreaRegions, townLink } from "@/lib/serviceAreas";
+import { withBase } from "@/lib/base";
 import { site } from "@/lib/site";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 
@@ -15,29 +19,81 @@ export const metadata = pageMeta({
   path: "/areas",
 });
 
+/**
+ * Area card — Sean's brief asks for a strong local image, the town name, a
+ * property-focused line, the most relevant services and a link.
+ *
+ * The image is the cover of a real SC Design project in that area rather than a
+ * stock or third-party photograph: it is Sean's own work, it is genuinely local,
+ * and there is no licensing question. Areas with no published project yet simply
+ * show the text card.
+ */
 function AreaCard({
   name,
   slug,
   emphasis,
+  relevantServices,
 }: {
   name: string;
   slug: string;
   emphasis: string;
+  relevantServices?: string[];
 }) {
+  const localProject = projectsForArea(slug, 1)[0];
+  const cover = localProject?.cover;
+  const topServices = (relevantServices ?? [])
+    .map(getService)
+    .filter((s): s is NonNullable<typeof s> => Boolean(s))
+    .slice(0, 3);
+
   return (
-    <Card hover className="flex h-full flex-col">
-      <h3 className="text-lg">
-        <Link href={`/areas/${slug}`} className="hover:text-accent-strong">
-          Architectural design in {name}
+    <Card hover className="flex h-full flex-col overflow-hidden !p-0">
+      {cover && (
+        <Link href={`/areas/${slug}`} className="group relative block aspect-[3/2] w-full bg-paper">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={withBase(cover.src)}
+            alt={cover.alt}
+            width={cover.width}
+            height={cover.height}
+            loading="lazy"
+            decoding="async"
+            className={
+              "absolute inset-0 h-full w-full " +
+              (cover.kind === "drawing" ? "bg-white object-contain p-2" : "object-cover")
+            }
+          />
+          <KindTag kind={cover.kind} />
         </Link>
-      </h3>
-      <p className="mt-2 flex-1 text-sm text-muted">{emphasis}</p>
-      <Link
-        href={`/areas/${slug}`}
-        className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong"
-      >
-        {name} <span aria-hidden>→</span>
-      </Link>
+      )}
+      <div className="flex flex-1 flex-col p-6">
+        <h3 className="text-lg">
+          <Link href={`/areas/${slug}`} className="hover:text-accent-strong">
+            Architectural design in {name}
+          </Link>
+        </h3>
+        <p className="mt-2 flex-1 text-pretty text-sm text-muted">{emphasis}</p>
+        {topServices.length > 0 && (
+          <ul className="mt-4 flex flex-wrap gap-1.5">
+            {topServices.map((s) => (
+              <li key={s.slug}>
+                <Link
+                  href={`/services/${s.slug}`}
+                  className="inline-flex rounded-full border border-line px-2.5 py-1 text-xs text-ink-soft hover:border-accent hover:text-accent-strong"
+                >
+                  {s.short}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Link
+          href={`/areas/${slug}`}
+          className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong"
+        >
+          View {name} services <span aria-hidden>→</span>
+        </Link>
+      </div>
     </Card>
   );
 }
@@ -78,7 +134,13 @@ export default function AreasPage() {
           />
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {coreLocations.map((l) => (
-              <AreaCard key={l.slug} name={l.name} slug={l.slug} emphasis={l.emphasis[0]} />
+              <AreaCard
+                key={l.slug}
+                name={l.name}
+                slug={l.slug}
+                emphasis={l.emphasis[0]}
+                relevantServices={l.relevantServices}
+              />
             ))}
           </div>
         </Container>
@@ -93,7 +155,13 @@ export default function AreasPage() {
           />
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {widerLocations.map((l) => (
-              <AreaCard key={l.slug} name={l.name} slug={l.slug} emphasis={l.emphasis[0]} />
+              <AreaCard
+                key={l.slug}
+                name={l.name}
+                slug={l.slug}
+                emphasis={l.emphasis[0]}
+                relevantServices={l.relevantServices}
+              />
             ))}
           </div>
         </Container>
