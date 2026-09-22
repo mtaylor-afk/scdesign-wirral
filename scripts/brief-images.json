@@ -220,6 +220,6 @@
     { "id": "seanPortrait", "dir": "sep", "src": "image157.png", "out": "brand/sean-corser.jpg", "kind": "photo", "alt": "Sean Corser MCIAT, founder of SC Design Wirral" },
     { "id": "guideHouseFront", "dir": "sep", "src": "image160.jpeg", "out": "guide/house-front.jpg", "kind": "render", "alt": "Illustration of a house from the front showing a porch, garage, side extension, front dormer and rear extension" },
     { "id": "guideHouseRear", "dir": "sep", "src": "image161.jpeg", "out": "guide/house-rear.jpg", "kind": "render", "alt": "Illustration of the same house from the rear showing a rear dormer, single-storey rear extension and a garden room" },
-    { "id": "brandWordmark", "dir": "sep", "src": "image2.png", "out": "brand/sc-design-wirral-wordmark.png", "kind": "render", "alt": "SC Design Wirral" }
+    { "id": "brandWordmark", "dir": "sep", "src": "image2.png", "inline": true, "out": "brand/sc-design-wirral-wordmark.png", "kind": "render", "alt": "SC Design Wirral" }
   ]
 }

@@ -1,6 +1,5 @@
-import fs from "node:fs";
-import path from "node:path";
 import { ImageResponse } from "next/og";
+import { brandAssets } from "@/lib/brand-assets";
 
 export const dynamic = "force-static";
 
@@ -15,17 +14,18 @@ export const contentType = "image/png";
  *
  * Sean asked for the brand lockup here instead of the old text-only card, so the
  * thumbnail beside a search result is the SC Design Wirral wordmark rather than
- * whichever page photo Google happened to pick. Read off disk and inlined as a
- * data URI because `output: "export"` renders this at build time — there is no
- * server to fetch a relative URL from.
+ * whichever page photo Google happened to pick.
+ *
+ * The artwork comes from the generated brand-assets module rather than being
+ * read off disk: `output: "export"` renders this at build time, and a disk read
+ * would resolve against process.cwd(), which is whatever directory the build or
+ * dev server started in.
  *
  * Note: this is the strongest signal we can send, not a guarantee. Google still
  * chooses what it shows, and the image beside a Business Profile panel comes
  * from that profile, not from the website.
  */
-const wordmark = `data:image/png;base64,${fs
-  .readFileSync(path.join(process.cwd(), "public/brand/sc-design-wirral-wordmark.png"))
-  .toString("base64")}`;
+const wordmark = brandAssets.brandWordmark;
 
 export default function OpengraphImage() {
   return new ImageResponse(
@@ -46,7 +46,7 @@ export default function OpengraphImage() {
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={wordmark} alt="" width={820} height={266} />
+        <img src={wordmark.src} alt="" width={820} height={266} />
         <div
           style={{
             display: "flex",
