@@ -122,7 +122,6 @@ export const workImages = {
   wkLoftConceptFront: { src: "/work/west-kirby-loft-conversion/concept-front.jpg", width: 755, height: 571, kind: "render", alt: "Design visualisation of the proposed dormer loft conversion from the front" },
   wkLoftConceptSide: { src: "/work/west-kirby-loft-conversion/concept-side.jpg", width: 599, height: 563, kind: "render", alt: "Design visualisation of the proposed dormer loft conversion from the side" },
   wkLoft3d: { src: "/work/west-kirby-loft-conversion/3d-concept.jpg", width: 837, height: 936, kind: "render", alt: "Three-dimensional concept view of the proposed loft conversion" },
-  wkLoftRoofPlan: { src: "/work/west-kirby-loft-conversion/roof-plan.png", width: 1032, height: 824, kind: "drawing", alt: "Proposed roof plan showing the new dormers" },
   wkLoftExistingProposed3d: { src: "/work/west-kirby-loft-conversion/existing-proposed-3d.jpg", width: 1194, height: 601, kind: "render", alt: "Existing and proposed three-dimensional views side by side" },
   wvLoftJulietExisting: { src: "/work/wallasey-village-loft-conversion/existing.jpg", width: 559, height: 559, kind: "photo", alt: "The rear of the house before the loft conversion" },
   wvLoftJulietConcept: { src: "/work/wallasey-village-loft-conversion/concept.jpg", width: 472, height: 562, kind: "render", alt: "Design visualisation of the proposed dormer with full-height glazing and Juliet balconies" },

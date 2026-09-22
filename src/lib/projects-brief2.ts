@@ -452,7 +452,6 @@ export const brief2Projects: Project[] = [
       wi("wkLoftConceptSide", "Design visualisation from the side"),
       wi("wkLoft3d", "Three-dimensional concept view"),
       wi("wkLoftExistingProposed3d", "Existing and proposed views side by side"),
-      wi("wkLoftRoofPlan", "Proposed roof plan showing the new dormers"),
     ],
     relatedServices: ["loft-conversions", "planning-drawings-wirral"],
     relatedAreas: ["west-kirby"],
