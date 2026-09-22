@@ -450,11 +450,25 @@ export const projects: Project[] = [
 
 export const publishedProjects = projects.filter((p) => p.status !== "draft");
 
-/** Projects with a before/after (or drawing/after) set, for /before-and-after. */
-export const beforeAfterProjects = publishedProjects.filter((p) => p.beforeAfter);
-
 export function getProject(slug: string): Project | undefined {
   return projects.find((p) => p.slug === slug);
+}
+
+/**
+ * Case studies to show on a service page — the "few clickable links from the
+ * projects page" Sean's brief asks for on nearly every service. Reads
+ * `relatedServices`, which was already on every project but had nothing using
+ * it. Order follows the published order, so the strongest work comes first.
+ */
+export function projectsForService(serviceSlug: string, limit = 3): Project[] {
+  return publishedProjects
+    .filter((p) => p.relatedServices?.includes(serviceSlug))
+    .slice(0, limit);
+}
+
+/** Case studies in or near a given area — used at the foot of an area page. */
+export function projectsForArea(areaSlug: string, limit = 3): Project[] {
+  return publishedProjects.filter((p) => p.relatedAreas?.includes(areaSlug)).slice(0, limit);
 }
 
 /**

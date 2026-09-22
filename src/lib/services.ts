@@ -39,14 +39,14 @@ export const services: Service[] = [
     title: "House Extensions Design & Planning",
     short: "Extensions",
     category: "design",
-    h1: "House Extensions Design & Planning in Wirral",
-    metaTitle: "House Extension Drawings Wirral",
+    h1: "House Extension Designs in Wirral & Surrounding Areas",
+    metaTitle: "House Extension Designs & Drawings Wirral",
     metaDescription:
-      "House extension design and planning drawings for Wirral homeowners, including rear, side, wraparound and kitchen-diner extensions. 15+ years' experience.",
+      "House extension design and drawings for Wirral homeowners — concepts, planning drawings and detailed Building Regulations packages. Independent design practice, 15+ years' experience.",
     blurb:
       "Bespoke house extensions designed to enhance space, flow and property value — with drawings fully prepared for planning and construction.",
     intro:
-      "A well-designed extension can transform how a home works without the upheaval of moving. We prepare the design and the drawings — concept, planning and building-regulations — so Wirral homeowners can take a clear, accurate scheme to builders to price and build. We design only; we don't carry out the building work, which keeps our advice focused on getting your design right.",
+      "A thoughtfully designed extension can transform the way you live, giving you more space without the upheaval of moving. We provide a complete architectural design service, from initial concepts and planning drawings through to detailed Building Regulations packages. The result is a clear, accurate design that builders can confidently price and construct. As an independent design practice, our focus remains entirely on creating the right solution for your home, lifestyle and budget.",
     whoFor: [
       "Homeowners who want more space, light or a better layout without moving",
       "Families needing an open-plan kitchen-diner or extra ground-floor room",
@@ -127,7 +127,7 @@ export const services: Service[] = [
       },
       {
         q: "Can you help if I'm in a conservation area?",
-        a: "Yes. Conservation-area work needs a sensitive, well-justified design — see our conservation area design service. We prepare drawings with that context in mind.",
+        a: "Yes. Conservation-area work needs a sensitive, well-justified design — our guide to conservation area extensions in Wirral explains what the council looks for. We prepare drawings with that context in mind.",
       },
     ],
     relatedServices: [
@@ -149,14 +149,14 @@ export const services: Service[] = [
     title: "Loft Conversion Design & Planning",
     short: "Loft Conversions",
     category: "design",
-    h1: "Loft Conversion Design & Planning in Wirral",
-    metaTitle: "Loft Conversion Drawings Wirral",
+    h1: "Loft Conversion Designs in Wirral & Surrounding Areas",
+    metaTitle: "Loft Conversion Designs & Drawings Wirral",
     metaDescription:
-      "Loft conversion design and building-regulations drawings for Wirral homes, including dormer, rooflight and hip-to-gable conversions. 15+ years' experience.",
+      "Loft conversion design and drawings for Wirral homes — dormer, rooflight and hip-to-gable conversions, from concepts and planning to Building Regulations packages.",
     blurb:
       "Transform your loft into a high-quality living space with expert design tailored to meet permitted development or full planning requirements.",
     intro:
-      "A loft conversion is often the most cost-effective way to add a bedroom, home office or en-suite to a Wirral home. We design the layout, staircase and rooflines to make the most of head height and light, and prepare the planning and building-regulations drawings your project needs — ready for a builder to price and build.",
+      "A well-designed loft conversion can unlock the unused potential within your home, creating valuable space for a new bedroom, home office or en-suite. We carefully design the layout, staircase and roof alterations to maximise headroom, natural light and practicality. From initial concepts and planning drawings to detailed Building Regulations packages, you'll receive a clear, accurate design that builders can confidently price and construct.",
     whoFor: [
       "Homeowners needing an extra bedroom, office or bathroom",
       "Owners of semis and terraces with usable roof space",
@@ -251,14 +251,14 @@ export const services: Service[] = [
     title: "Full Architectural Design Services (Concept to Approval)",
     short: "Full Design Service",
     category: "design",
-    h1: "Full Architectural Design Services in Wirral (Concept to Approval)",
+    h1: "Full Architectural Design Services in Wirral & Surrounding Areas",
     metaTitle: "Full Architectural Design Services Wirral",
     metaDescription:
-      "Bespoke residential design, concept layouts and space planning for Wirral homeowners looking to improve, extend or reconfigure their homes.",
+      "Complete architectural design for Wirral homeowners — from the first idea through layout options to detailed, approval-ready drawings for extensions and reconfigurations.",
     blurb:
       "A complete, start-to-finish architectural service — from initial concept through planning and technical design, delivered with clarity and expertise.",
     intro:
-      "Our full architectural design service takes your project from first idea to approval-ready drawings. We help you explore what's possible, plan the space, weigh up options and turn a vague idea into a clear, considered design you can take forward with confidence — whether that's an extension, a reconfiguration, or making an awkward house finally work.",
+      "Our complete architectural design service guides your project from the initial idea through to detailed, approval-ready drawings. We'll explore what's possible, develop the layout and compare design options to create a solution tailored to your home, lifestyle and budget. Whether you're planning an extension, reconfiguring your existing space or transforming an awkward layout, we'll give you a clear, considered design that you can take forward with confidence.",
     whoFor: [
       "Homeowners with a rough idea who want to explore it properly",
       "Anyone wrestling with an awkward layout or wasted space",
@@ -341,14 +341,14 @@ export const services: Service[] = [
     title: "Planning Permission Drawings & Consultancy",
     short: "Planning Drawings",
     category: "planning",
-    h1: "Planning Permission Drawings & Consultancy in Wirral",
+    h1: "Planning Drawings in Wirral & Surrounding Areas",
     metaTitle: "Planning Drawings Wirral | Householder Planning Support",
     metaDescription:
-      "Planning drawings for Wirral home extensions, loft conversions and alterations, including existing and proposed plans, elevations and site plans.",
+      "Planning drawings for Wirral home extensions, loft conversions and alterations — existing and proposed plans, elevations and site plans, plus listed building consent and lawful development certificates.",
     blurb:
       "Clear, policy-aware drawings with expert guidance to give your planning application the best chance of approval.",
     intro:
-      "If you've been told you need 'planning drawings', this is the page for you. We prepare the accurate, scaled drawings a householder planning application needs and explain what each one is for — so your application to Wirral Council is well presented and easy to understand.",
+      "Clear, accurate planning drawings are essential for presenting your proposal properly to the local authority. We prepare all the scaled drawings required for your application, clearly showing the existing property and proposed alterations. We'll also explain what's needed, manage the submission on your behalf and liaise with Wirral Council throughout the application process — making everything as clear and straightforward as possible. This includes listed building consent and lawful development certificate applications.",
     whoFor: [
       "Homeowners told their extension or loft needs planning permission",
       "Anyone preparing a householder planning application",
@@ -429,14 +429,14 @@ export const services: Service[] = [
     title: "Building Regulations Drawings & Technical Packages",
     short: "Building Regs Drawings",
     category: "planning",
-    h1: "Building Regulations Drawings & Technical Packages in Wirral",
+    h1: "Building Regulations Drawings in Wirral & Surrounding Areas",
     metaTitle: "Building Regulations Drawings Wirral",
     metaDescription:
-      "Building-regulations drawings for Wirral extensions, loft conversions and alterations — technical sections, details and specifications for building control.",
+      "Building Regulations drawings for Wirral extensions, loft conversions and alterations — structure, insulation, fire safety, drainage and ventilation, for building control and your builder.",
     blurb:
       "Comprehensive technical drawings designed to meet UK Building Regulations — helping ensure compliance and a smooth build process.",
     intro:
-      "Building-regulations drawings are the technical drawings that show how your project is built — structure, insulation, fire safety, drainage and ventilation. They're separate from planning drawings and are what building control (and your builder) work from. We prepare them clearly so the standards are met and quotes are accurate.",
+      "Detailed Building Regulations drawings explain exactly how your project should be constructed, covering essential elements such as structure, insulation, fire safety, drainage and ventilation. Separate from planning drawings, they provide Building Control and your builder with the technical information needed to assess, price and construct the work correctly. We prepare clear, comprehensive drawing packages to support compliance, reduce uncertainty on site and help your project progress smoothly.",
     whoFor: [
       "Homeowners moving from planning to the build stage",
       "Anyone whose builder or building control has asked for technical drawings",
@@ -513,14 +513,14 @@ export const services: Service[] = [
     title: "Garage Conversion Drawings",
     short: "Garage Conversions",
     category: "design",
-    h1: "Garage Conversion Drawings in Wirral",
-    metaTitle: "Garage Conversion Drawings Wirral",
+    h1: "Garage Conversion Designs in Wirral & Surrounding Areas",
+    metaTitle: "Garage Conversion Designs & Drawings Wirral",
     metaDescription:
-      "Garage conversion design and building-regulations drawings for Wirral homeowners turning an integral or attached garage into usable living space.",
+      "Garage conversion design and Building Regulations drawings for Wirral homeowners — home office, utility, playroom or bedroom, covering insulation, damp, ventilation, floor levels and fire safety.",
     blurb:
       "Design and drawings to turn an under-used garage into a usable room — office, snug, playroom or extra bedroom.",
     intro:
-      "Converting a garage is one of the most cost-effective ways to gain a room, because the structure is largely there already. We design the new space and prepare the building-regulations drawings — covering insulation, damp, floor levels and fire separation — so a Wirral builder can quote and build with confidence.",
+      "A garage conversion is a practical and cost-effective way to create valuable living space within your existing home. Whether you need a home office, utility room, playroom or additional bedroom, we'll design a space that feels like a natural part of the property. Our detailed Building Regulations drawings cover insulation, damp protection, ventilation, floor levels and fire safety, giving builders the clear information they need to price and construct the project confidently.",
     whoFor: [
       "Homeowners with an integral or attached garage they rarely use for the car",
       "Anyone needing a home office, snug, playroom or extra bedroom",
@@ -594,11 +594,11 @@ export const services: Service[] = [
     "title": "Front Porch Extension Design",
     "short": "Front Porches",
     "category": "design",
-    "h1": "Front Porch Extension Drawings & Design in Wirral",
-    "metaTitle": "Front Porch Extension Design Wirral",
-    "metaDescription": "Front porch design and drawings for Wirral homes — better kerb appeal, a sheltered entrance and handy storage. Design-only, builder-ready plans. 15+ years' experience.",
+    "h1": "Front Porch Designs in Wirral & Surrounding Areas",
+    "metaTitle": "Front Porch Designs & Drawings Wirral",
+    "metaDescription": "Front porch design and drawings for Wirral homes — a warmer, sheltered entrance with space for coats, shoes and deliveries, detailed to complement your property.",
     "blurb": "Enhance your home's entrance with a well-designed porch that improves kerb appeal while staying within planning or permitted development guidelines.",
-    "intro": "A well-designed front porch does more than look smart — it shelters your entrance from Wirral weather, keeps draughts out of the hallway and gives you somewhere to drop coats, boots and parcels. We prepare the design and the drawings so you can take a clear, accurate scheme to a builder to price and build. We design only; we don't carry out the building work, which keeps our advice focused on getting the look, proportions and detailing right.",
+    "intro": "A thoughtfully designed front porch can improve your home's appearance while creating a warmer, more practical entrance. It provides shelter from the weather, reduces draughts and offers useful space for coats, shoes and deliveries. We carefully consider the porch's proportions, materials and detailing so it complements the character of your property, providing clear and accurate drawings that builders can confidently price and construct.",
     "whoFor": [
       "Homeowners who want to lift the kerb appeal and first impression of their home",
       "Families wanting a sheltered entrance and somewhere to store coats, shoes and parcels",
@@ -701,11 +701,11 @@ export const services: Service[] = [
     "title": "Bespoke Garden Room Design",
     "short": "Garden Rooms",
     "category": "design",
-    "h1": "Bespoke Garden Room Design in Wirral",
-    "metaTitle": "Bespoke Garden Room Design Wirral",
-    "metaDescription": "Bespoke garden room, studio and home-office design for Wirral homes — year-round insulated outbuildings designed for work, leisure or a gym, ready to build.",
+    "h1": "Bespoke Garden Room Designs in Wirral & Surrounding Areas",
+    "metaTitle": "Bespoke Garden Room Designs Wirral",
+    "metaDescription": "Bespoke garden room, studio and home-office design for Wirral homes — extra space without extending the house, designed around layout, siting, insulation and natural light.",
     "blurb": "Professionally designed garden rooms for work, leisure or living — designed to comply with the rules, energy-efficient and tailored to your property.",
-    "intro": "A well-designed garden room gives you a genuine extra space — a quiet home office, a studio, a gym or a garden lounge — without extending the house itself. We prepare the design and the drawings so you have a considered, properly insulated building that works all year round, ready for a builder to price and construct. We design only; we don't carry out the building work, which keeps our advice focused on getting the layout, siting and specification right for how you'll actually use it.",
+    "intro": "A thoughtfully designed garden room can provide valuable additional space without extending your home. Whether you need a peaceful home office, creative studio, gym or garden lounge, we'll design it around how you intend to use it. From the layout and position within your garden to insulation, natural light and external finishes, every detail is carefully considered to create a comfortable, practical space that can be enjoyed throughout the year.",
     "whoFor": [
       "Homeowners wanting a dedicated home office away from the main house",
       "Anyone needing a studio, gym, hobby space or quiet garden retreat",
@@ -809,11 +809,11 @@ export const services: Service[] = [
     "title": "Change of Use Applications",
     "short": "Change of Use",
     "category": "planning",
-    "h1": "Change of Use Planning Support & Drawings in Wirral",
+    "h1": "Change of Use Planning Support in Wirral & Surrounding Areas",
     "metaTitle": "Change of Use Applications Wirral",
-    "metaDescription": "Change of use drawings and planning support for Wirral — annexes, garage-to-room, commercial-to-residential and self-contained units. Hedged, plain-English help.",
+    "metaDescription": "Change of use drawings and planning support for Wirral — annexes, garage-to-room, commercial-to-residential and self-contained units. Clear, practical guidance from the outset.",
     "blurb": "Strategic planning support to help you make a clear case for changing how a property or space is used.",
-    "intro": "Changing the way a building or part of a building is used — its planning \"use class\" — can need permission in its own right, even when you aren't building much. We prepare the supporting drawings and the planning statement, and liaise on your behalf, so you can put a clear, honest case to Wirral Council (or your local planning authority). We're design-only: we don't carry out building work, and whether any particular change needs permission depends entirely on the property, the local plan and how the use is actually changing — so everything here is a starting point to confirm with the council, not a promise of approval.",
+    "intro": "Changing how a building or part of a property is used may require planning permission, even when little or no construction work is involved. We'll assess your proposal, prepare the necessary drawings and supporting planning statement, and manage the application with the local authority on your behalf. Every property and proposed use is different, so we provide clear, practical guidance from the outset while developing the strongest possible case for approval. We're design-only, and whether any particular change needs permission depends on the property, the local plan and how the use is actually changing — so everything here is a starting point to confirm with the council, not a promise of approval.",
     "whoFor": [
       "Homeowners wanting an annexe or ancillary accommodation for family",
       "Owners turning a garage, outbuilding or store into habitable space",
@@ -918,11 +918,11 @@ export const services: Service[] = [
     "title": "Measured Building Surveys & Existing Drawings",
     "short": "Measured Surveys",
     "category": "design",
-    "h1": "Measured Building Surveys & Existing Drawings in Wirral",
+    "h1": "Measured Building Surveys & Existing Drawings in Wirral & Surrounding Areas",
     "metaTitle": "Measured Building Surveys Wirral",
-    "metaDescription": "Accurate measured building surveys and scaled \"existing\" plans and elevations for Wirral homes — the reliable basis for any extension, planning or building-regs design.",
+    "metaDescription": "Accurate measured building surveys and scaled existing plans and elevations for Wirral homes — the reliable foundation for any extension, planning or building-regulations design.",
     "blurb": "Accurate on-site surveys with detailed existing drawings — providing a reliable foundation for planning, design and construction.",
-    "intro": "Every good design starts with knowing exactly what's already there. We carry out a measured survey of your property and turn it into a set of accurate, scaled \"existing\" drawings — plans and elevations — that everything else is built on. Getting this right first avoids costly mistakes later and lets builders price from real measurements rather than guesswork. We're design-only: we prepare the survey and drawings, and the building work is carried out by your chosen contractor.",
+    "intro": "Every successful project begins with an accurate understanding of the existing property. We carry out a detailed measured survey and produce clear, scaled floor plans and elevations that form the foundation of your design. Recording the building correctly from the outset helps prevent costly errors, supports accurate planning and allows builders to price the proposed work with greater confidence.",
     "whoFor": [
       "Homeowners planning an extension, loft or conversion who need accurate base drawings",
       "Anyone whose only floorplan is an estate-agent sketch that isn't to scale",
@@ -1038,11 +1038,11 @@ export const services: Service[] = [
     "title": "Concept Design & Feasibility Studies",
     "short": "Concept & Feasibility",
     "category": "design",
-    "h1": "Concept Design & Feasibility Studies in Wirral",
+    "h1": "Concept Design & Feasibility Studies in Wirral & Surrounding Areas",
     "metaTitle": "Concept Design & Feasibility Studies Wirral",
-    "metaDescription": "Early concept design and feasibility advice for Wirral homeowners — explore options, test what fits your plot and budget, and see the likely planning route before you commit.",
+    "metaDescription": "Early concept design and feasibility advice for Wirral homeowners — explore what's achievable within your space, budget and planning constraints before committing to a full design.",
     "blurb": "Explore what's possible with expert design insight and feasibility advice — helping you make informed decisions before committing.",
-    "intro": "It's easy to fall in love with an idea before knowing whether it will work on your plot, win approval, or sit within your budget. A concept and feasibility stage answers those questions early. We explore a few design options, sketch how they could look and work, and give you a clear, honest view of the likely planning route and any constraints — so you can decide with confidence. We design only; we don't carry out the building work, which keeps our advice focused and impartial. Think of it as a low-cost way to test the idea before committing to a full project.",
+    "intro": "A feasibility study allows you to explore your project's potential before committing to a full design. We assess your property, discuss your priorities and develop initial concepts to establish what may be achievable within your space, budget and planning constraints. You'll receive clear, practical guidance on the available options and likely planning route, helping you make informed decisions and move forward with confidence. We design only and don't carry out the building work, which keeps the advice focused and impartial.",
     "whoFor": [
       "Homeowners weighing up an extension, loft or remodel but unsure what's realistically possible",
       "Growing families deciding between options — extend, convert the loft, or reconfigure what's there",

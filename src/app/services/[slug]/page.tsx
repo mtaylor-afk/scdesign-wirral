@@ -6,7 +6,9 @@ import { CTASection } from "@/components/ui/CTASection";
 import { GoogleRatingLine } from "@/components/ui/Testimonials";
 import { FAQList } from "@/components/ui/FAQItem";
 import { WorkGallery } from "@/components/ui/WorkGallery";
+import { RelatedProjects } from "@/components/ui/RelatedProjects";
 import { getServiceMedia } from "@/lib/media";
+import { projectsForService } from "@/lib/projects";
 import { JsonLd } from "@/components/JsonLd";
 import { services, getService } from "@/lib/services";
 import { guides } from "@/lib/guides";
@@ -186,6 +188,15 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           </Container>
         </Section>
       )}
+
+      {/* Case studies of this service — Sean's "clickable links from the
+          projects page". Renders nothing until a project is tagged with this
+          service slug in projects.ts. */}
+      <RelatedProjects
+        projects={projectsForService(service.slug)}
+        heading={`${service.short} projects we've designed`}
+        tone={media.gallery && media.gallery.length > 0 ? "paper" : "mist"}
+      />
 
       {/* Planning / building regs / local / send-first / extra prose */}
       {(service.planningRoute ||
