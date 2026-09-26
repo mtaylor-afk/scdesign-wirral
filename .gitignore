@@ -24,6 +24,16 @@ yarn-error.log*
 .env*.local
 .env.local
 
+# Local push/deploy helpers — NEVER commit. One of these holds a GitHub token,
+# and this repo is public: a committed token is published and auto-revoked.
+# They were untracked but unignored, so a single `git add -A` would have staged
+# them. Patterns are deliberately broad.
+*token*.txt
+*TOKEN*.txt
+/_deploy-*.cmd
+/_deploy-*.txt
+/_push*.log
+
 # vercel
 .vercel
 
