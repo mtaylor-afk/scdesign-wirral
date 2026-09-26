@@ -391,6 +391,216 @@ table.tbl tr:hover td { background: #faf6ef; }
 .errtbl tbody tr.errrow.login-failed:hover td { background: #fbeae8; }
 .errtbl tbody tr.errrow.login-failed + .errdetailrow td { border-bottom: 2px solid #f3d6d2; }
 
+/* ============================================================
+   Projects & portfolio (the CMS section — public/admin/projects.js)
+   ------------------------------------------------------------
+   Placed before the single responsive block on purpose, so the
+   mobile overrides at the bottom of this file still win.
+   ============================================================ */
+
+/* ---------- Form controls the analytics views never needed ---------- */
+.prj-field { margin-bottom: 16px; min-width: 0; }
+.prj-field > label {
+  display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+.prj-field input[type="text"],
+.prj-field textarea,
+.prj-field select {
+  width: 100%; font-family: inherit; font-size: 14px; color: var(--ink);
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 10px 12px; line-height: 1.5;
+}
+.prj-field textarea { resize: vertical; min-height: 68px; }
+.prj-field select { appearance: none; -webkit-appearance: none; padding-right: 30px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 18px, calc(100% - 11px) 18px;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+}
+.prj-field input:focus, .prj-field textarea:focus, .prj-field select:focus,
+.prj-confinput:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.prj-field input[readonly] { background: var(--paper); color: var(--muted); }
+.prj-help { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.55; }
+.prj-help code { background: var(--paper); padding: 1px 5px; border-radius: 4px; }
+.prj-req {
+  font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--accent-strong); background: var(--accent-soft); border-radius: 999px;
+  padding: 1px 7px; margin-left: 6px; vertical-align: 1px;
+}
+.prj-count { float: right; font-size: 11px; font-weight: 500; color: var(--muted-soft); font-variant-numeric: tabular-nums; }
+.prj-err {
+  font-size: 12.5px; color: #8a1f1f; background: #fdf1ef; border-left: 3px solid var(--danger);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding: 7px 10px; margin-top: 7px;
+}
+.prj-field.prj-bad > input, .prj-field.prj-bad > textarea, .prj-field.prj-bad > select { border-color: var(--danger); }
+.prj-check { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; color: var(--ink); cursor: pointer; line-height: 1.5; }
+.prj-check input { accent-color: var(--accent-strong); margin: 2px 0 0; flex: 0 0 auto; width: 16px; height: 16px; }
+.prj-check-big {
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 13px 15px; font-size: 13.5px; font-weight: 500;
+}
+.prj-inline { display: flex; gap: 8px; }
+.prj-inline select { flex: 1; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #963325; }
+.btn[disabled], .btn-danger[disabled] { opacity: 0.45; pointer-events: none; }
+.prj-sm { padding: 6px 13px; font-size: 12.5px; }
+
+/* ---------- The list ---------- */
+.prj-listtop { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 4px 0 16px; }
+.prjtbl td { vertical-align: top; }
+.prjtbl .prj-ord { white-space: nowrap; width: 62px; }
+.prj-arrow {
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  color: var(--muted); width: 24px; height: 24px; line-height: 1; padding: 0; font-size: 12px;
+}
+.prj-arrow:hover { border-color: var(--accent); color: var(--accent-deep); }
+.prj-arrow[disabled] { opacity: 0.3; pointer-events: none; }
+.prj-linkbtn {
+  background: none; border: none; padding: 0; font: inherit; font-weight: 700;
+  color: var(--accent-strong); text-align: left; text-decoration: underline;
+  text-decoration-color: rgba(155, 27, 27, 0.3);
+}
+.prj-linkbtn:hover { color: var(--accent-deep); text-decoration-color: currentColor; }
+.prj-rowsub { font-size: 11px; color: var(--muted-soft); font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; margin-top: 3px; }
+.prj-rowstatus { display: none; } /* narrow screens only — see the media query */
+/* Both of these wrap rather than hold the table open: with a 246px sidebar a
+   1100px laptop is already tight, and a table wider than its card would push
+   the whole page sideways. */
+.prj-when { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.prj-rowacts { text-align: right; }
+.prj-rowacts .btn { margin: 2px 0 2px 6px; }
+.prj-confirmrow td { background: #fbf8f2; padding: 0 !important; }
+
+/* ---------- Notices ---------- */
+.prj-notice {
+  display: flex; align-items: flex-start; gap: 12px;
+  border-radius: var(--radius); padding: 13px 16px; font-size: 13px; margin-bottom: 18px;
+  line-height: 1.6;
+}
+.prj-notice-ok { background: #e8f2eb; border: 1px solid #cfe3d6; color: #26523a; }
+.prj-notice-warn { background: #fdf1ef; border: 1px solid #f0d4cf; color: #7a2418; }
+.prj-notice a { text-decoration: underline; }
+.prj-notice-ok a { color: #26523a; }
+.prj-noticex { background: none; border: none; color: inherit; opacity: 0.55; font-size: 13px; margin-left: auto; padding: 0 2px; }
+.prj-noticex:hover { opacity: 1; }
+
+/* ---------- Two-step confirmations ---------- */
+.prj-confirm {
+  background: #fdf7f2; border: 1px solid #ecd9c9; border-left: 3px solid var(--accent-strong);
+  border-radius: var(--radius-sm); padding: 16px 18px; margin-top: 14px;
+}
+.prj-confirm-danger { background: #fdf1ef; border-color: #f0d4cf; border-left-color: var(--danger); }
+.prj-confirm-inline { margin-top: 10px; padding: 12px 14px; }
+.prj-confirm h4 { font-family: var(--font-sans); font-size: 13.5px; font-weight: 700; margin: 0 0 8px; color: var(--ink); }
+.prj-confirm p { margin: 0 0 10px; font-size: 13px; color: var(--ink-soft); line-height: 1.6; }
+.prj-confirm code { background: #fff; border: 1px solid var(--line); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+.prj-confirmacts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.prj-conflabel { display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft); margin: 4px 0 6px; }
+.prj-confinput {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 13px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 11px;
+  width: 100%; max-width: 340px; margin-bottom: 12px; background: #fff; color: var(--ink);
+}
+.prj-confnote { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+
+/* ---------- The editor ---------- */
+.prj-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.prj-headtitle { font-family: var(--font-display); font-size: 19px; font-weight: 600; min-width: 0; }
+.prj-headbits { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.prj-headmeta { font-size: 11.5px; color: var(--muted); }
+.prj-head .btn { margin-left: 0; }
+.prj-head a.btn { margin-left: auto; }
+.prj-section { margin-bottom: 16px; }
+.prj-section > h3 { font-size: 15px; }
+.prj-section-bad { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(179, 64, 47, 0.08); }
+.prj-problems { border-color: var(--danger); margin-bottom: 18px; }
+.prj-problems h3 { color: #8a1f1f; }
+.prj-problems .errf dt { color: var(--muted); }
+.prj-actions { position: sticky; bottom: 0; z-index: 5; }
+.prj-actrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* ---------- Service / area chips ---------- */
+.prj-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 9px; min-height: 26px; }
+.prj-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-soft); color: var(--accent-deep); border-radius: 999px;
+  padding: 4px 6px 4px 12px; font-size: 12.5px; font-weight: 600;
+}
+.prj-chipx { background: none; border: none; color: inherit; opacity: 0.6; font-size: 11px; padding: 0 4px; line-height: 1; }
+.prj-chipx:hover { opacity: 1; }
+.prj-none { font-size: 12.5px; color: var(--muted-soft); font-style: italic; }
+
+/* ---------- Adding pictures ---------- */
+.prj-addrow { display: grid; grid-template-columns: 220px 1fr; gap: 14px; align-items: start; margin-bottom: 16px; }
+.prj-drop {
+  position: relative; /* the visually-hidden file input is absolute inside this */
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  text-align: center; border: 2px dashed var(--line); border-radius: var(--radius);
+  background: var(--paper); padding: 20px 18px; cursor: pointer; font-size: 13px; color: var(--ink-soft);
+}
+.prj-drop:hover, .prj-drop.is-over { border-color: var(--accent); background: var(--accent-soft); }
+.prj-drop .prj-help { margin-top: 2px; }
+.prj-drop input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.prj-lock {
+  background: var(--paper); border: 1px dashed var(--line); border-radius: var(--radius-sm);
+  padding: 14px 16px; font-size: 13px; color: var(--muted); margin-bottom: 16px;
+}
+.prj-mediahint { font-size: 11.5px; color: var(--muted-soft); margin: 4px 0 12px; }
+.prj-mediahint .prj-linkbtn { font-weight: 600; font-size: 11.5px; }
+
+.prj-pend { background: #fbf8f2; border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 18px; }
+.prj-pend h4 { font-family: var(--font-sans); font-size: 12.5px; font-weight: 700; margin: 0 0 6px; }
+.prj-penditem { display: flex; gap: 14px; padding: 14px 0; border-top: 1px solid var(--line); margin-top: 12px; }
+.prj-pendthumb { flex: 0 0 120px; width: 120px; }
+.prj-pendthumb img { width: 100%; height: auto; display: block; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+.prj-pendbody { min-width: 0; flex: 1; }
+.prj-pendbody code { font-size: 12px; color: var(--ink); word-break: break-all; }
+.prj-pendacts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
+.prj-pendfoot { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.prj-errbox {
+  background: #fdf1ef; border: 1px solid #f0d4cf; border-radius: var(--radius-sm);
+  padding: 10px 13px; font-size: 12.5px; color: #7a2418; margin: 10px 0; line-height: 1.6;
+}
+
+/* ---------- Drag-a-box redaction ---------- */
+.prj-redwrap { margin-top: 12px; }
+.prj-redmode { margin: 10px 0; }
+.prj-redsurface {
+  position: relative; display: block; max-width: 560px; margin: 0 0 10px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden;
+  cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.prj-redsurface img { display: block; width: 100%; height: auto; pointer-events: none; }
+.prj-redbox { position: absolute; background: rgba(33, 30, 27, 0.55); border: 1px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.4); }
+.prj-redbox.is-solid { background: rgba(255, 255, 255, 0.85); border-color: var(--accent-strong); }
+.prj-redlive { position: absolute; background: rgba(168, 50, 50, 0.3); border: 1px dashed var(--accent-strong); }
+
+/* ---------- The picture list ---------- */
+.prj-imgs { display: flex; flex-direction: column; gap: 14px; }
+.prj-img {
+  display: grid; grid-template-columns: 170px 1fr; gap: 16px;
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; background: #fff;
+}
+.prj-img.is-cover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.prj-imgthumb { position: relative; }
+.prj-imgthumb img { width: 100%; height: auto; display: block; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--paper); }
+.prj-nothumb {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  aspect-ratio: 4 / 3; border: 1px dashed var(--line); border-radius: var(--radius-sm);
+  font-size: 11px; color: var(--muted-soft); background: var(--paper); line-height: 1.4;
+}
+.prj-coverflag {
+  position: absolute; left: 7px; top: 7px; background: var(--accent-strong); color: #fff;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 2px 8px; border-radius: 999px;
+}
+.prj-imgbody { min-width: 0; }
+.prj-imgname { margin-bottom: 10px; }
+.prj-imgname code { font-size: 12px; color: var(--muted); word-break: break-all; }
+.prj-imgfoot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; padding-top: 10px; border-top: 1px solid #f1ebe0; }
+.prj-imgacts { display: inline-flex; align-items: center; gap: 6px; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .sidebar { position: fixed; left: 0; top: 0; transform: translateX(-100%); transition: transform 0.2s; z-index: 50; box-shadow: var(--shadow-hover); }
@@ -413,4 +623,32 @@ table.tbl tr:hover td { background: #faf6ef; }
   .errf { grid-template-columns: 104px 1fr; gap: 8px; }
   .errmsg { max-width: 160px; }
   .errtbl th:nth-child(4), .errtbl td:nth-child(4) { display: none; } /* hide Page col on small screens */
+
+  /* ---- Projects & portfolio ---- */
+  .prj-listtop { flex-direction: column; align-items: stretch; }
+  .prj-listtop .btn { width: 100%; }
+  /* Order, Town, Stage, Status and Pictures go — the status moves into the
+     project cell instead, so the title has the width to read properly.
+     Reordering stays a desktop job; the row copy says so. */
+  .prjtbl th:nth-child(1), .prjtbl td:nth-child(1),
+  .prjtbl th:nth-child(3), .prjtbl td:nth-child(3),
+  .prjtbl th:nth-child(4), .prjtbl td:nth-child(4),
+  .prjtbl th:nth-child(5), .prjtbl td:nth-child(5),
+  .prjtbl th:nth-child(6), .prjtbl td:nth-child(6),
+  .prjtbl th:nth-child(7), .prjtbl td:nth-child(7) { display: none; }
+  .prj-rowstatus { display: block; margin-top: 7px; }
+  .prjtbl th, .prjtbl td { padding: 8px 6px; }
+  .prj-rowsub { word-break: break-all; }
+  .prj-rowacts { text-align: left; }
+  .prj-rowacts .btn { margin: 2px 4px 2px 0; }
+  .prj-head a.btn { margin-left: 0; }
+  .prj-headtitle { font-size: 17px; width: 100%; }
+  .prj-addrow { grid-template-columns: 1fr; }
+  .prj-img { grid-template-columns: 1fr; gap: 12px; }
+  .prj-imgthumb { max-width: 220px; }
+  .prj-penditem { flex-direction: column; gap: 10px; }
+  .prj-pendthumb { flex: 0 0 auto; width: 180px; }
+  .prj-actions { position: static; }
+  .prj-actrow .btn { flex: 1 1 auto; }
+  .prj-confinput { max-width: none; }
 }

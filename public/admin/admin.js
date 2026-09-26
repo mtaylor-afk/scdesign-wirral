@@ -11,6 +11,9 @@ const LOGOUT = API_BASE + "/api/sc-admin-logout";
 const STATS = API_BASE + "/api/sc-admin-stats";
 const ENQUIRIES = API_BASE + "/api/sc-admin-enquiries";
 const ERROR_LOGS = API_BASE + "/api/sc-admin-error-logs";
+/* Projects CMS — read/write the editing store, and commit to the live repo. */
+const PROJECTS = API_BASE + "/api/sc-admin-projects";
+const PUBLISH = API_BASE + "/api/sc-admin-publish";
 
 const state = {
   range: "7d",
@@ -1217,19 +1220,30 @@ function viewDataAvailable() {
     </div>`;
 }
 
+/* The Projects section lives in its own file (projects.js, loaded first). Every
+   hook is guarded so this dashboard still works if that file fails to load. */
+function viewProjectsSection() {
+  return window.SCProjects
+    ? window.SCProjects.view()
+    : '<div class="card"><div class="empty">The projects editor did not load. Reload the page and try again.</div></div>';
+}
+
 const VIEWS = {
-  overview: viewOverview, enquiries: viewEnquiries, trends: viewTrends, pages: viewPages, journeys: viewJourneys, flow: viewFlow, sources: viewSources,
+  overview: viewOverview, enquiries: viewEnquiries, projects: viewProjectsSection, trends: viewTrends, pages: viewPages, journeys: viewJourneys, flow: viewFlow, sources: viewSources,
   locations: viewLocations, devices: viewDevices, engagement: viewEngagement,
   realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, errors: viewErrors, logins: viewLogins, data: viewDataAvailable,
 };
 const TITLES = {
-  overview: "Overview", enquiries: "New customer enquiry", trends: "Traffic trends", pages: "Pages", journeys: "Visitor journeys", flow: "Path flow", sources: "Sources",
+  overview: "Overview", enquiries: "New customer enquiry",
+  projects: (window.SCProjects && window.SCProjects.title) || "Projects & portfolio",
+  trends: "Traffic trends", pages: "Pages", journeys: "Visitor journeys", flow: "Path flow", sources: "Sources",
   locations: "Locations", devices: "Devices & technology", engagement: "Engagement",
   realtime: "Real-time", events: "Events & conversions", visualiser: "Visualiser", errors: "Error logs", logins: "Login attempts", data: "Data available",
 };
 const NAV = [
   { items: [{ id: "overview", label: "Overview" }] },
   { group: "Leads", items: [{ id: "enquiries", label: "Customer enquiries" }] },
+  { group: "Content", items: [{ id: "projects", label: "Projects & portfolio" }] },
   { group: "Traffic", items: [
     { id: "trends", label: "Trends" }, { id: "pages", label: "Pages" }, { id: "journeys", label: "Journeys" },
     { id: "flow", label: "Path flow" }, { id: "sources", label: "Sources" },
@@ -1306,6 +1320,9 @@ function renderView() {
   state.enquiries = null;
   state.errorLogs = null;
   state.logins = null;
+  // Clears the fetched project list only — the open editor is deliberately kept,
+  // because Refresh and the topbar controls come through here too.
+  if (window.SCProjects) window.SCProjects.reset();
   document.getElementById("pageTitle").textContent = TITLES[state.view];
   setPageMeta();
   const el = document.getElementById("view");
@@ -1314,6 +1331,8 @@ function renderView() {
   if (v === "realtime") {
     loadRealtime();
     state.rtTimer = setInterval(loadRealtime, 15000);
+  } else if (v === "projects") {
+    if (window.SCProjects) window.SCProjects.load();
   } else if (v === "journeys") loadJourneys();
   else if (v === "flow") loadFlow();
   else if (v === "enquiries") loadEnquiries(state.enqPage);
@@ -1361,6 +1380,18 @@ function setView(id) {
 function apiGet(url) {
   const sep = url.indexOf("?") === -1 ? "?" : "&";
   return fetch(url + sep + "_=" + Date.now(), { credentials: "include", cache: "no-store" });
+}
+/* Every mutation is a POST with an `action` in the body: the API advertises only
+   GET/POST/OPTIONS and only the Content-Type header, so PUT/PATCH/DELETE and any
+   custom header would fail the CORS preflight. */
+function apiPost(url, body) {
+  return fetch(url, {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
 }
 function markFresh() {
   const el = document.getElementById("lastUpdated");
@@ -1585,6 +1616,8 @@ function wire() {
     setNavOpen(!(app && app.classList.contains("nav-open")));
   });
   document.getElementById("view").addEventListener("click", (e) => {
+    // The Projects section handles its own clicks and says so by returning true.
+    if (window.SCProjects && window.SCProjects.onClick(e)) return;
     const m = e.target.closest("[data-m]");
     if (m) { state.trendMetric = m.getAttribute("data-m"); document.getElementById("view").innerHTML = viewTrends(); return; }
     const jt = e.target.closest("[data-jtoggle]");
@@ -1664,6 +1697,7 @@ function wire() {
     }
   });
   document.getElementById("view").addEventListener("change", (e) => {
+    if (window.SCProjects && window.SCProjects.onChange(e)) return;
     const fs = e.target.closest("[data-flowsel]");
     if (fs) {
       state.flowPage = fs.value;

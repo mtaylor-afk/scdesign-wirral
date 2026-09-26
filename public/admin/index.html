@@ -58,6 +58,10 @@
 
   <!-- Error capture first, so it also catches admin.js init failures. -->
   <script src="./error-capture.js"></script>
+  <!-- image-prep.js and projects.js must run BEFORE admin.js, which reads
+       window.SCImagePrep / window.SCProjects as it wires its views. -->
+  <script src="./image-prep.js" defer></script>
+  <script src="./projects.js" defer></script>
   <script src="./admin.js" defer></script>
 </body>
 </html>

@@ -588,6 +588,371 @@ async function sbCountErrors(sinceIso, botMode, kind) {
   return 0;
 }
 
+// ---------------------------------------------------------------------------
+// Projects CMS — Postgres (sc_projects + sc_project_events)
+// ---------------------------------------------------------------------------
+// The EDITING store for Sean's case studies. Publishing copies the content and
+// images into the git repo, so nothing here is ever read by the public site.
+
+/**
+ * The one true slug shape, kept identical to serverlib/cms.js's `slug` regex.
+ * Duplicated (not imported) on purpose: cms.js pulls in zod, and this file is
+ * deliberately dependency-free. It exists so that every helper which puts a
+ * slug into a URL can prove the slug is safe FIRST — see sbDeleteProject.
+ */
+const PROJECT_SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function isProjectSlug(v) {
+  return typeof v === "string" && PROJECT_SLUG_RE.test(v);
+}
+
+/**
+ * Select a page of projects in Sean's running order. Returns { rows, total }.
+ *
+ * `select=*` rather than a column list: the list view needs the summary columns
+ * AND `content` (the caller derives the image count from content.images), which
+ * is all but two columns — so naming them buys nothing and would need editing
+ * every time the table grows one. Throws on failure, like sbSelectEnquiries.
+ */
+async function sbSelectProjects(limit, offset) {
+  limit = limit || 50;
+  offset = offset || 0;
+  const url =
+    `${sbBase()}/rest/v1/sc_projects?select=*` +
+    `&order=sort_order.asc.nullslast,updated_at.desc` +
+    `&limit=${limit}&offset=${offset}`;
+  const res = await fetch(url, {
+    headers: sbHeaders({ Prefer: "count=exact", Range: `${offset}-${offset + limit - 1}` }),
+  });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    throw new Error(`Supabase projects select failed (${res.status}): ${error}`);
+  }
+  const rows = await res.json();
+  // Content-Range looks like "0-9/123"; the part after "/" is the total.
+  let total = rows.length;
+  const cr = res.headers.get("content-range");
+  if (cr && cr.includes("/")) {
+    const n = parseInt(cr.split("/")[1], 10);
+    if (Number.isFinite(n)) total = n;
+  }
+  return { rows, total };
+}
+
+/** One project row by slug, or null if there is no such row. Throws on failure. */
+async function sbGetProject(slug) {
+  const url =
+    `${sbBase()}/rest/v1/sc_projects?select=*` +
+    `&slug=eq.${encodeURIComponent(slug)}&limit=1`;
+  const res = await fetch(url, { headers: sbHeaders() });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    throw new Error(`Supabase project select failed (${res.status}): ${error}`);
+  }
+  const rows = await res.json();
+  if (!Array.isArray(rows) || !rows.length) return null;
+  return rows[0];
+}
+
+/**
+ * Insert-or-update one project row (keyed on slug). Returns {ok, status, error}.
+ *
+ * POST + `resolution=merge-duplicates`, not PUT: PostgREST's PUT replaces the
+ * whole row and demands the full primary key in the query string, so a save
+ * that omitted a column would blank it. The two Prefer tokens must travel as
+ * ONE comma-separated value — a second `Prefer` key would just overwrite the
+ * first in the headers object.
+ */
+async function sbUpsertProject(row) {
+  const url = `${sbBase()}/rest/v1/sc_projects?on_conflict=slug`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: sbHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify(row),
+  });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    return { ok: false, status: res.status, error };
+  }
+  return { ok: true, status: res.status };
+}
+
+/**
+ * Delete one project row. Returns {ok, status, error, deleted} where `deleted`
+ * is the number of rows actually removed — so a caller can tell "gone" from
+ * "there was nothing there".
+ *
+ * HAZARD, and the reason for the guard below: PostgREST treats a DELETE with no
+ * filter in the query string as "delete every row in this table". There is no
+ * confirmation and no undo. So the slug is validated against the strict slug
+ * pattern BEFORE the URL is built: an empty string, undefined, or a value
+ * carrying `&`/`?` can never reach the wire as a missing or broken filter.
+ */
+async function sbDeleteProject(slug) {
+  if (!isProjectSlug(slug)) return { ok: false, status: 0, error: "bad slug", deleted: 0 };
+  const url = `${sbBase()}/rest/v1/sc_projects?slug=eq.${encodeURIComponent(slug)}`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    // return=representation so the response body is the rows that went, which
+    // is the only way to distinguish "deleted 1" from "matched 0" (both 200).
+    headers: sbHeaders({ Prefer: "return=representation" }),
+  });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    return { ok: false, status: res.status, error, deleted: 0 };
+  }
+  const rows = await res.json().catch(() => []);
+  return { ok: true, status: res.status, deleted: Array.isArray(rows) ? rows.length : 0 };
+}
+
+/**
+ * Write Sean's running order: each slug's sort_order becomes its array index.
+ * Returns {ok, updated} (plus {status, error} when a row failed).
+ *
+ * Same unfiltered-write hazard as sbDeleteProject — an unfiltered PATCH would
+ * renumber the ENTIRE table — so every slug is validated before any request is
+ * sent, and the whole call is refused if one is bad rather than half-applied.
+ * These are separate requests, not a transaction: if one fails mid-list the
+ * earlier rows keep their new numbers. That is safe because the operation is
+ * idempotent — the caller can simply send the same order again.
+ */
+async function sbSetProjectOrder(slugs) {
+  if (!Array.isArray(slugs) || !slugs.length) return { ok: false, updated: 0, error: "no slugs" };
+  for (const s of slugs) {
+    if (!isProjectSlug(s)) return { ok: false, updated: 0, error: "bad slug" };
+  }
+  let updated = 0;
+  for (let i = 0; i < slugs.length; i++) {
+    const url = `${sbBase()}/rest/v1/sc_projects?slug=eq.${encodeURIComponent(slugs[i])}`;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: sbHeaders({ Prefer: "return=minimal" }),
+      body: JSON.stringify({ sort_order: i }),
+    });
+    if (!res.ok) {
+      const error = await res.text().catch(() => "");
+      return { ok: false, status: res.status, error, updated };
+    }
+    updated++;
+  }
+  return { ok: true, updated };
+}
+
+/**
+ * Append one row to the sc_project_events audit trail. Returns {ok, status,
+ * error}. Modelled on sbInsertEnquiry: publishing and deleting both change the
+ * live website, so every attempt is recorded whether it succeeded or not.
+ *
+ * The payload is assembled from the known columns only, so a stray field from a
+ * caller can't 400 the insert and lose the trail. `actor` must come from
+ * process.env.SC_ADMIN_USER server-side — the session token carries only {exp},
+ * and a username from the request body would be attacker-chosen.
+ */
+async function sbInsertProjectEvent(row) {
+  const src = row || {};
+  const detail = src.detail === undefined || src.detail === null ? null : String(src.detail);
+  const payload = {
+    slug: src.slug || null,
+    action: src.action || null,
+    outcome: src.outcome || null,
+    // A refusal detail can be a whole list of validation problems; cap it so one
+    // bad save can't write a huge audit row.
+    detail: detail === null ? null : detail.slice(0, 4000),
+    commit_sha: src.commit_sha || null,
+    actor: src.actor || null,
+    ip_hash: src.ip_hash || null,
+  };
+  const url = `${sbBase()}/rest/v1/sc_project_events`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: sbHeaders({ Prefer: "return=minimal" }),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    return { ok: false, status: res.status, error };
+  }
+  return { ok: true, status: res.status };
+}
+
+// ---------------------------------------------------------------------------
+// Projects CMS — Supabase Storage (private `project-media` bucket)
+// ---------------------------------------------------------------------------
+// Staging area for uploaded photos while Sean works. Publishing downloads them
+// from here and commits them to the repo, so the bucket is a workbench, not a
+// CDN — the admin previews through short-lived signed URLs.
+
+function sbBucket() {
+  return process.env.SC_PROJECT_MEDIA_BUCKET || "project-media";
+}
+
+// sbBase() already strips a trailing /rest/v1, so this is the Storage root.
+function sbStorageBase() {
+  return `${sbBase()}/storage/v1`;
+}
+
+// Keys are "<slug>/<file>". encodeURI, never encodeURIComponent: the latter
+// would escape the "/" and create one oddly-named object instead of a file
+// inside the slug's folder.
+function sbStorageKeyPath(key) {
+  return encodeURI(String(key || "").replace(/^\/+/, ""));
+}
+
+/**
+ * Upload one object. Returns {ok, status, error, key}.
+ *
+ * Two things to note. (1) sbHeaders() defaults Content-Type to
+ * application/json; for a binary upload that lie is stored as the object's own
+ * content type and served back later, so it MUST be overridden here. (2) The
+ * body is the raw Buffer — JSON.stringify()ing it would store a JSON rendering
+ * of the byte array, not an image.
+ */
+async function sbStorageUpload(key, bytes, contentType) {
+  const url = `${sbStorageBase()}/object/${sbBucket()}/${sbStorageKeyPath(key)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: sbHeaders({
+      "Content-Type": contentType || "application/octet-stream",
+      // Re-uploading the same key is a correction, not an error: fixing a photo
+      // or republishing reuses "<slug>/<file>", so upsert keeps it idempotent.
+      "x-upsert": "true",
+      "cache-control": "max-age=3600",
+    }),
+    body: bytes,
+  });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    return { ok: false, status: res.status, error, key };
+  }
+  return { ok: true, status: res.status, key };
+}
+
+/**
+ * Download one staged object as a Buffer. Throws on failure — publishing must
+ * abort rather than commit a project with a missing image.
+ */
+async function sbStorageDownload(key) {
+  const url = `${sbStorageBase()}/object/authenticated/${sbBucket()}/${sbStorageKeyPath(key)}`;
+  const res = await fetch(url, { headers: sbHeaders() });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    throw new Error(`Supabase storage download failed (${res.status}): ${error}`);
+  }
+  return Buffer.from(await res.arrayBuffer());
+}
+
+/**
+ * Every object key under `prefix` (e.g. a slug's folder). Returns an array of
+ * FULL keys, ready to pass to sbStorageDeleteMany or sbStorageDownload. Throws
+ * on failure.
+ *
+ * Two traps the loops below exist to avoid:
+ *  1. Listing is NON-recursive, and each returned `name` is relative to the
+ *     prefix — not a full key. Entries with `id: null` are sub-folders, not
+ *     objects. Returning `name` as-is would point every later download or
+ *     delete at the bucket root, where it silently matches nothing.
+ *  2. Listing is PAGINATED. Without looping on `offset` until a short page
+ *     arrives, anything past the first page is invisible here — which for a
+ *     delete means orphaned files left behind in the bucket for ever.
+ */
+async function sbStorageList(prefix) {
+  const url = `${sbStorageBase()}/object/list/${sbBucket()}`;
+  const pageSize = 100;
+  const out = [];
+  const queue = [String(prefix || "").replace(/^\/+/, "").replace(/\/+$/, "")];
+  const seen = Object.create(null); // a folder is only ever walked once
+  while (queue.length) {
+    const dir = queue.shift();
+    if (seen[dir]) continue;
+    seen[dir] = true;
+    let offset = 0;
+    while (true) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: sbHeaders(),
+        body: JSON.stringify({
+          prefix: dir,
+          limit: pageSize,
+          offset,
+          sortBy: { column: "name", order: "asc" },
+        }),
+      });
+      if (!res.ok) {
+        const error = await res.text().catch(() => "");
+        throw new Error(`Supabase storage list failed (${res.status}): ${error}`);
+      }
+      const rows = await res.json();
+      if (!Array.isArray(rows) || !rows.length) break;
+      for (const row of rows) {
+        const name = row && row.name ? String(row.name) : "";
+        if (!name) continue;
+        const full = dir ? `${dir}/${name}` : name;
+        if (!row.id) queue.push(full); // id === null => sub-folder, walk into it
+        else out.push(full);
+      }
+      if (rows.length < pageSize) break; // a short page is the last page
+      offset += pageSize;
+    }
+  }
+  return out;
+}
+
+/**
+ * Delete objects by exact key. Returns {ok, deleted, error}.
+ *
+ * TRAP: despite the request field being called `prefixes`, Storage matches each
+ * entry as an EXACT object key — it is not a wildcard. "my-slug/" deletes
+ * nothing at all and still answers 200, so a caller clearing a folder must
+ * sbStorageList() first and pass the full keys. The length comparison below is
+ * what turns a silent partial delete into a reported one.
+ */
+async function sbStorageDeleteMany(keys) {
+  const list = Array.isArray(keys) ? keys.filter((k) => typeof k === "string" && k) : [];
+  if (!list.length) return { ok: true, deleted: 0 };
+  const res = await fetch(`${sbStorageBase()}/object/${sbBucket()}`, {
+    method: "DELETE",
+    headers: sbHeaders(),
+    body: JSON.stringify({ prefixes: list }),
+  });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    return { ok: false, deleted: 0, error };
+  }
+  const rows = await res.json().catch(() => []);
+  const deleted = Array.isArray(rows) ? rows.length : 0;
+  if (deleted !== list.length) {
+    return { ok: false, deleted, error: `deleted ${deleted} of ${list.length} objects` };
+  }
+  return { ok: true, deleted };
+}
+
+/**
+ * A short-lived signed URL for previewing a staged image, or null. The bucket is
+ * private, so this is the only way the admin page can show an unpublished photo.
+ *
+ * Never throws: a preview that can't be signed must degrade to a missing
+ * thumbnail, not break the whole editor screen. The API's `signedURL` comes back
+ * as a path relative to the Storage root, so it is made absolute here.
+ */
+async function sbStorageSignedUrl(key, expiresIn) {
+  const ttl = Number.isFinite(expiresIn) && expiresIn > 0 ? Math.floor(expiresIn) : 3600;
+  try {
+    const url = `${sbStorageBase()}/object/sign/${sbBucket()}/${sbStorageKeyPath(key)}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: sbHeaders(),
+      body: JSON.stringify({ expiresIn: ttl }),
+    });
+    if (!res.ok) return null;
+    const body = await res.json();
+    const rel = body && body.signedURL ? String(body.signedURL) : "";
+    if (!rel) return null;
+    return `${sbStorageBase()}${rel.charAt(0) === "/" ? "" : "/"}${rel}`;
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   ALLOWED_ORIGINS,
   applyCors,
@@ -615,4 +980,17 @@ module.exports = {
   sbInsertError,
   sbSelectErrors,
   sbCountErrors,
+  // Projects CMS — Postgres
+  sbSelectProjects,
+  sbGetProject,
+  sbUpsertProject,
+  sbDeleteProject,
+  sbSetProjectOrder,
+  sbInsertProjectEvent,
+  // Projects CMS — Storage
+  sbStorageUpload,
+  sbStorageDownload,
+  sbStorageList,
+  sbStorageDeleteMany,
+  sbStorageSignedUrl,
 };
