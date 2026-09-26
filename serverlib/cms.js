@@ -16,7 +16,13 @@
  */
 
 const { z } = require("zod");
-const { SERVICE_SLUGS, AREA_SLUGS, STAGES, IMAGE_KINDS } = require("./cms-vocab");
+const {
+  SERVICE_SLUGS,
+  AREA_SLUGS,
+  STAGES,
+  IMAGE_KINDS,
+  RESERVED_SLUGS,
+} = require("./cms-vocab");
 
 /* ------------------------------------------------------------------ *
  * Schema                                                              *
@@ -143,6 +149,18 @@ function lintProject(p) {
   const problems = [];
   const fail = (field, rule, message) => problems.push({ field, rule, message });
 
+  // A slug already used by a hand-authored case study is a BUILD-BREAKING
+  // collision, not a cosmetic clash: sync-cms-projects.mjs treats a slug living
+  // in both places as a hard error, so publishing one would make every
+  // subsequent Cloudflare build fail and freeze the whole website. Caught here
+  // it is just a sentence in the form, so this runs on save as well as publish.
+  if (RESERVED_SLUGS.includes(p.slug))
+    fail(
+      "slug",
+      "slug-taken",
+      `There is already a case study at /projects/${p.slug}/. Choose a different web address — try adding the town or the type of work.`
+    );
+
   const texts = [];
   for (const f of PROSE_FIELDS) if (typeof p[f] === "string" && p[f]) texts.push([f, p[f]]);
   for (const [i, d] of (p.drawings || []).entries()) texts.push([`drawings[${i}]`, d]);
@@ -228,7 +246,17 @@ function validateProject(input) {
     return {
       ok: false,
       problems: parsed.error.issues.map((i) => ({
-        field: i.path.join(".") || "(root)",
+        // Bracket notation for array indexes — `images[0].alt`, not zod's
+        // default `images.0.alt`. lintProject already emits the bracket form and
+        // the admin parses that shape to highlight the offending field, so a
+        // dotted index silently lost both the label and the highlight and Sean
+        // saw an unattached error message.
+        field:
+          i.path.reduce(
+            (acc, seg) =>
+              typeof seg === "number" ? `${acc}[${seg}]` : acc ? `${acc}.${seg}` : String(seg),
+            ""
+          ) || "(root)",
         rule: "schema",
         message: i.message,
       })),
@@ -437,4 +465,5 @@ module.exports = {
   AREA_SLUGS,
   STAGES,
   IMAGE_KINDS,
+  RESERVED_SLUGS,
 };

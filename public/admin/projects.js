@@ -120,7 +120,13 @@
     busy: "",
     restored: false,
     loadError: null,
+    // When the last publish/unpublish happened, so the editor does not offer a
+    // "View the live page" link to a page Cloudflare has not built yet.
+    justPublishedAt: 0,
   };
+
+  /** Roughly how long a Cloudflare rebuild takes before the page is there. */
+  var REBUILD_MS = 180000;
 
   /* ------------------------------------------------------------------ *
    * Small helpers                                                       *
@@ -767,7 +773,17 @@
           '<div class="prj-pendbody">' +
           "<div><code>" + E(p.name) + "</code></div>" +
           '<div class="prj-help">' + E(label(KINDS, p.kind)) + " · " + E(p.w + "×" + p.h) + " · " + E(kb(p.bytes)) +
-          (p.boxes.length ? " · " + p.boxes.length + (p.boxes.length === 1 ? " area hidden" : " areas hidden") : "") +
+          // Say "hidden" only when the preview actually carries the redaction.
+          // Boxes drawn but not yet applied are described as "marked", because
+          // claiming a house number is hidden when the picture still shows it is
+          // the one thing this must never do. (Uploading applies them anyway —
+          // see addPending — so this is about not lying in the meantime.)
+          (p.boxes.length
+            ? " · " +
+              p.boxes.length +
+              (p.boxes.length === 1 ? " area " : " areas ") +
+              (JSON.stringify(p.boxes) === (p.applied || "[]") ? "hidden" : "marked, not yet applied")
+            : "") +
           "</div>" +
           '<div class="prj-pendacts">' +
           '<button class="btn btn-ghost prj-sm" data-projredact="' + i + '">' + (open ? "Done hiding" : "Hide something out ▸") + "</button>" +
@@ -907,7 +923,17 @@
       '<button class="btn btn-ghost prj-sm" data-projback>← All projects</button>' +
       '<div class="prj-headtitle">' + E(w.title || (S.isNew ? "New project" : w.slug)) + "</div>" +
       '<div class="prj-headbits">' + bits.join("") + "</div>" +
-      (live ? '<a class="btn btn-ghost prj-sm" href="' + E(live) + '" target="_blank" rel="noopener noreferrer">View the live page</a>' : "") +
+      // A page that was just published does not exist yet — the commit has to
+      // go through a Cloudflare build first. Offering the link straight away
+      // means the first thing Sean clicks is a 404, which reads as "publishing
+      // is broken". Hold it back until the rebuild has plausibly finished.
+      (live
+        ? S.justPublishedAt && Date.now() - S.justPublishedAt < REBUILD_MS
+          ? '<span class="prj-headmeta">The page will be here once the site has rebuilt</span>'
+          : '<a class="btn btn-ghost prj-sm" href="' +
+            E(live) +
+            '" target="_blank" rel="noopener noreferrer">View the live page</a>'
+        : "") +
       "</div>"
     );
   }
@@ -941,9 +967,17 @@
     var slugLocked = !!S.savedSlug;
     return (
       editorHead() +
+      // The ✕ here was identical to the dismiss ✕ on an ordinary notice, but it
+      // threw the recovered work away rather than closing the message. Two
+      // labelled buttons instead, and discarding goes through the normal
+      // confirm panel — unsaved writing lost to a misread icon is gone for good.
       (S.restored
         ? '<div class="prj-notice prj-notice-warn"><div>These are changes you had not saved. Press <strong>Save draft</strong> ' +
-          'to keep them.</div><button class="prj-noticex" data-projdiscard aria-label="Discard">✕</button></div>'
+          "to keep them.</div>" +
+          '<div class="prj-pendacts">' +
+          '<button class="btn btn-ghost prj-sm" data-projkeeprestored>Keep these changes</button>' +
+          '<button class="btn btn-ghost prj-sm" data-projdiscard>Throw them away</button>' +
+          "</div></div>"
         : "") +
       noticeBlock() +
       problemsBlock() +
@@ -1309,6 +1343,12 @@
           S.meta.publishedAt = new Date().toISOString();
           S.meta.lastPublishSha = r.json.commitSha || null;
           S.problems = null;
+          // Suppress the live-page link until the rebuild has plausibly landed,
+          // and repaint once it has so the link appears without Sean reloading.
+          S.justPublishedAt = Date.now();
+          setTimeout(function () {
+            if (S.editing) paint();
+          }, REBUILD_MS + 1000);
           showToast("Published");
           S.notice = {
             kind: "ok",
@@ -1394,13 +1434,27 @@
           clearLocal();
         }
         showToast("Deleted");
+        // The API tells us when the page came down but some stored pictures did
+        // not. Reporting that as a clean "deleted, along with its pictures"
+        // would leave Sean believing photographs of a customer's home were gone
+        // when they are still sitting in storage, so say what actually happened.
+        var leftovers = r.json.warning || (r.json.notRemoved && r.json.notRemoved.length);
         S.notice = {
-          kind: "ok",
+          kind: leftovers ? "warn" : "ok",
           text:
-            "“" + slug + "” has been deleted, along with its pictures." +
+            "“" + slug + "” has been deleted" +
+            (leftovers ? "" : ", along with its pictures") +
+            "." +
             (wasPublished
               ? " The website is rebuilding — a minute or two — after which the old address will send visitors to the projects page."
-              : " It was only ever a draft, so nothing on the website changes."),
+              : " It was only ever a draft, so nothing on the website changes.") +
+            (leftovers
+              ? " Some of the uploaded pictures could not be removed from storage" +
+                (r.json.notRemoved && r.json.notRemoved.length
+                  ? " (" + r.json.notRemoved.length + " of them)"
+                  : "") +
+                " — tell Matthew so they can be cleared."
+              : ""),
         };
         state.projects = null;
         loadProjects();
@@ -1511,6 +1565,10 @@
           p.w = out.width;
           p.h = out.height;
           S.busy = "";
+          // Record WHICH boxes this preview was made from. addPending compares
+          // against this before uploading, so a box drawn but never applied
+          // cannot go up as the original photo.
+          p.applied = JSON.stringify(p.boxes || []);
           // Applying closes the panel; "start again" leaves it open to redraw.
           if (p.boxes.length) S.redactIdx = null;
           showToast(p.boxes.length ? "Areas hidden" : "Picture restored");
@@ -1535,13 +1593,40 @@
     var chain = Promise.resolve();
     var added = 0;
     S.pending.slice().forEach(function (p) {
-      chain = chain.then(function () {
-        return post(PROJECTS, {
-          action: "upload",
-          slug: slug,
-          file: p.name,
-          dataBase64: prep.base64Of(p.preview),
-        }).then(function (r) {
+      chain = chain
+        .then(function () {
+          /**
+           * Last line of defence for the redaction.
+           *
+           * p.preview is only re-made when Sean presses Apply, but the card
+           * says "N areas hidden" as soon as a box is DRAWN. Drawing a box over
+           * a house number and then pressing Add without Apply would upload the
+           * original photo while the screen said the area was hidden — the one
+           * failure this feature must never have. So re-make it here from the
+           * boxes that actually exist, rather than trusting that he pressed a
+           * button. No-op when the preview is already in step.
+           */
+          var want = JSON.stringify(p.boxes || []);
+          if (want === (p.applied || "[]")) return null;
+          return prep
+            .prepare(p.file, { png: p.kind === "drawing", redactions: p.boxes })
+            .then(function (out) {
+              p.preview = out.dataUrl;
+              p.bytes = out.bytes;
+              p.w = out.width;
+              p.h = out.height;
+              p.applied = want;
+            });
+        })
+        .then(function () {
+          return post(PROJECTS, {
+            action: "upload",
+            slug: slug,
+            file: p.name,
+            dataBase64: prep.base64Of(p.preview),
+          });
+        })
+        .then(function (r) {
           if (r.halt) throw new Error("halt");
           if (!r.ok || !r.json.ok) {
             S.pendErrors.push(p.name + ": " + errText(r.json));
@@ -1560,7 +1645,6 @@
           S.dirty = true;
           saveLocal();
         });
-      });
     });
     chain
       .then(function () {
@@ -1700,7 +1784,17 @@
     var el;
 
     if ((el = hit(e, "data-projnoticex"))) { S.notice = null; paint(); return true; }
-    if ((el = hit(e, "data-projdiscard"))) { S.restored = false; clearLocal(); closeEditor(); return true; }
+    // Keeping the recovered work is just dismissing the banner — the changes are
+    // already loaded in the editor and Save draft keeps them as normal.
+    if ((el = hit(e, "data-projkeeprestored"))) { S.restored = false; paint(); return true; }
+    // Throwing it away destroys writing that exists nowhere else, so route it
+    // through the same confirm panel as leaving with unsaved changes rather than
+    // acting on one click.
+    if ((el = hit(e, "data-projdiscard"))) {
+      S.confirm = { mode: "leave", where: "editor", slug: S.editing ? S.editing.slug : "" };
+      paint();
+      return true;
+    }
     if ((el = hit(e, "data-projreload"))) { loadProjects(); return true; }
 
     /* ---- list ---- */

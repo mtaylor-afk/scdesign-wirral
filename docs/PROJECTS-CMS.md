@@ -251,6 +251,31 @@ a cookieless identifier.
 
 ---
 
+## 7a. Known issue: concurrent pushes during a publish
+
+**Top follow-up.** Publishing reads `content/removed-projects.json` and the list
+of already-committed images *before* it starts the commit sequence. If the
+`main` branch moves between that read and the commit landing, the GitHub client
+retries against the new branch head — but re-uses the file contents derived from
+the earlier read.
+
+- **Trigger:** something else pushes to `main` inside the few seconds a publish
+  takes. In practice that means Matthew pushing from his machine while Sean
+  publishes, or two publishes genuinely overlapping.
+- **Consequence:** a redirect entry added by the other operation can be dropped,
+  or an image that should have been swept is left behind. A left-behind image
+  will fail the next build (the build refuses an unreferenced file under a
+  project's folder), which is loud rather than silent.
+- **Recovery:** republish, or unpublish and republish. Nothing is lost.
+- **Proper fix:** give `commitChanges` a per-attempt hook so the mutable files
+  are re-derived from each attempt's own base tree, inside the compare-and-swap
+  window, rather than once before it.
+
+This was deliberately not fixed in the first release: the correct fix rewrites
+the retry loop in the commit path, and shipping an untested refactor there is a
+worse risk than a race that a single operator cannot realistically produce. It
+should be fixed before more than one person ever publishes.
+
 ## 8. Limits worth knowing
 
 - **Publishing takes 1–3 minutes.** Inherent to a static site; it is what buys the SEO.

@@ -127,8 +127,16 @@ for (const s of serviceSlugsFromNav()) {
 const existingSlugs = new Set();
 for (const rel of ["src/lib/projects.ts", "src/lib/projects-brief2.ts"]) {
   const src = fs.readFileSync(path.join(root, rel), "utf8");
-  for (const m of src.matchAll(/^\s*slug:\s*"([^"]+)"/gm)) existingSlugs.add(m[1]);
+  for (const m of src.matchAll(SLUG_LINE)) existingSlugs.add(m[1]);
 }
+
+// The admin refuses a slug that a hand-authored case study already owns, using
+// RESERVED_SLUGS in cms-vocab.js — the Vercel functions cannot read TypeScript.
+// If someone adds a case study to projects-brief2.ts without updating that list,
+// the admin would start accepting a slug the build rejects, and the first
+// publish of it would freeze every later deploy. So fail here instead, loudly,
+// while it is still just a build error on someone's machine.
+checkDrift("RESERVED_SLUGS", [...existingSlugs], cms.RESERVED_SLUGS);
 
 /* ------------------------------------------------------------------ *
  * 3. Read, validate and measure                                       *
