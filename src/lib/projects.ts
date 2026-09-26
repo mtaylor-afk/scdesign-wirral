@@ -15,6 +15,7 @@
  */
 import { portfolioImages, wi, type WorkImage } from "./media";
 import { brief2Projects } from "./projects-brief2";
+import { cmsProjects } from "./projects-cms";
 
 export type BeforeAfterSet = {
   /** Short, minimal caption for the before & after page. */
@@ -471,11 +472,16 @@ const legacyProjects: Project[] = [
 
 /**
  * Every case study, in the order they appear on /projects and in the sitemap:
- * Sean's Sep 2026 running order first, then the June 2026 set. Reordering is a
- * matter of moving entries within brief2Projects — the hub, the home page's
- * featured three and the sitemap all follow this array.
+ * the ones Sean publishes himself through /admin/ first (newest work leads),
+ * then Sean's Sep 2026 running order, then the June 2026 set. Reordering the
+ * hand-authored sets is a matter of moving entries within brief2Projects — the
+ * hub, the home page's featured three and the sitemap all follow this array.
+ *
+ * cmsProjects is GENERATED from content/projects/*.json by
+ * scripts/sync-cms-projects.mjs (npm "prebuild"). It is an empty array until
+ * Sean publishes something, so this costs nothing until it is used.
  */
-export const projects: Project[] = [...brief2Projects, ...legacyProjects];
+export const projects: Project[] = [...cmsProjects, ...brief2Projects, ...legacyProjects];
 
 export const publishedProjects = projects.filter((p) => p.status !== "draft");
 

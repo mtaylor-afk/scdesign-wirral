@@ -5,6 +5,8 @@
   "description": "SC Design & Construction — premium design-led website + AI Extension Concept Visualiser",
   "scripts": {
     "dev": "next dev",
+    "cms:sync": "node scripts/sync-cms-projects.mjs",
+    "prebuild": "node scripts/sync-cms-projects.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
