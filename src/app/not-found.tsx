@@ -1,8 +1,10 @@
 import { Container, Section, LinkButton } from "@/components/ui";
+import { NotFoundBeacon } from "@/components/NotFoundBeacon";
 
 export default function NotFound() {
   return (
     <Section>
+      <NotFoundBeacon />
       <Container className="py-16 text-center">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">404</p>
         <h1 className="mt-3 text-4xl">Page not found</h1>

@@ -475,6 +475,70 @@ async function sbSelectEnquiries(limit, offset) {
 }
 
 /**
+ * Every enquiry saved since `sinceIso`, oldest first.
+ *
+ * Separate from sbSelectEnquiries (which pages newest-first for the on-screen list)
+ * because the reports that use this one have to line enquiries up against analytics
+ * events over a whole period, and a page at a time cannot do that.
+ *
+ * `select=*`: the source drill-down shows every field of a matched enquiry, which is
+ * every column. Capped so a busy year cannot turn one report into an unbounded scan.
+ */
+async function sbSelectEnquiriesSince(sinceIso, cap) {
+  cap = cap || 5000;
+  const pageSize = 1000;
+  let offset = 0;
+  const all = [];
+  while (true) {
+    const url =
+      `${sbBase()}/rest/v1/sc_enquiries?select=*` +
+      `&created_at=gte.${encodeURIComponent(sinceIso)}` +
+      `&order=created_at.asc&limit=${pageSize}&offset=${offset}`;
+    const res = await fetch(url, { headers: sbHeaders() });
+    if (!res.ok) {
+      const error = await res.text().catch(() => "");
+      throw new Error(`Supabase enquiries range select failed (${res.status}): ${error}`);
+    }
+    const rows = await res.json();
+    all.push(...rows);
+    if (rows.length < pageSize || all.length >= cap) break;
+    offset += pageSize;
+  }
+  return all;
+}
+
+/**
+ * The timestamp of the most recent row in a table — "when did this last happen?".
+ *
+ * Backs the Health page's "quiet since" panel. Health answers *is it configured*;
+ * this answers *did it stop*, which is the other half of the same question and the
+ * one nothing on the panel could answer before.
+ *
+ * Never throws (same contract as sbProbeTable — on that page a failure is an answer).
+ * Both identifiers are validated before the URL is built, because this is a helper
+ * that builds a URL out of names.
+ */
+async function sbLastTimestamp(table, tsCol, filter) {
+  const ident = /^[a-z_][a-z0-9_]*$/;
+  if (!ident.test(String(table || "")) || !ident.test(String(tsCol || "")))
+    return { ok: false, ts: null, error: "bad identifier" };
+  if (!process.env.SC_SUPABASE_URL || !process.env.SC_SUPABASE_SERVICE_ROLE_KEY)
+    return { ok: false, ts: null, error: "not_configured" };
+  try {
+    const res = await fetch(
+      `${sbBase()}/rest/v1/${table}?select=${tsCol}${filter || ""}` +
+        `&order=${tsCol}.desc&limit=1`,
+      { headers: sbHeaders() }
+    );
+    if (!res.ok) return { ok: false, ts: null, error: `http_${res.status}` };
+    const rows = await res.json();
+    return { ok: true, ts: (rows && rows[0] && rows[0][tsCol]) || null, error: null };
+  } catch (e) {
+    return { ok: false, ts: null, error: "unreachable" };
+  }
+}
+
+/**
  * Insert one row into sc_errors (the client error log + admin login audit).
  * Retries transient failures (cold Supabase compute / schema-cache reload) with
  * a short backoff so a low-traffic error or login row isn't silently dropped on
@@ -638,6 +702,41 @@ async function sbCountErrors(sinceIso, botMode, kind, party) {
     /* best-effort KPI only */
   }
   return 0;
+}
+
+/**
+ * Just the timestamp + type of every error since `sinceIso`, oldest first.
+ *
+ * Two columns, not `select=*`: this feeds a per-day chart, and the stack traces,
+ * breadcrumbs and prop bags in a full row are several kilobytes each that the chart
+ * would download and discard. Honours the same bot/party/kind filters as the list so
+ * the trend and the table can never disagree about what they are counting.
+ */
+async function sbSelectErrorTrend(sinceIso, botMode, kind, party, cap) {
+  cap = cap || 5000;
+  let botFilter = "";
+  if (botMode === "only") botFilter = "&is_bot=eq.true";
+  else if (botMode !== "include") botFilter = "&is_bot=eq.false";
+  const pageSize = 1000;
+  let offset = 0;
+  const all = [];
+  while (true) {
+    const url =
+      `${sbBase()}/rest/v1/sc_errors?select=ts,type,severity` +
+      `&ts=gte.${encodeURIComponent(sinceIso)}${botFilter}` +
+      `${errPartyFilter(party)}${errKindFilter(kind)}` +
+      `&order=ts.asc&limit=${pageSize}&offset=${offset}`;
+    const res = await fetch(url, { headers: sbHeaders() });
+    if (!res.ok) {
+      const error = await res.text().catch(() => "");
+      throw new Error(`Supabase error trend select failed (${res.status}): ${error}`);
+    }
+    const rows = await res.json();
+    all.push(...rows);
+    if (rows.length < pageSize || all.length >= cap) break;
+    offset += pageSize;
+  }
+  return all;
 }
 
 /**
@@ -1101,11 +1200,14 @@ module.exports = {
   sbSelectEvents,
   sbInsertEnquiry,
   sbSelectEnquiries,
+  sbSelectEnquiriesSince,
   sbInsertError,
   sbSelectErrors,
   sbCountErrors,
+  sbSelectErrorTrend,
   sbProbeTable,
   sbProbeStorage,
+  sbLastTimestamp,
   // Projects CMS — Postgres
   sbSelectProjects,
   sbGetProject,

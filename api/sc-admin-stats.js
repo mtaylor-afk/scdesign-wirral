@@ -12,8 +12,10 @@ const {
   applyCors,
   requireSession,
   sbSelectEvents,
+  sbSelectEnquiriesSince,
   sbProbeTable,
   sbProbeStorage,
+  sbLastTimestamp,
 } = require("../serverlib/common");
 const github = require("../serverlib/github");
 
@@ -145,33 +147,38 @@ function sessionDurationS(s) {
   return Math.round(Math.max(0, ms) / 1000);
 }
 
-function coreMetrics(rows) {
+function coreMetrics(rows, sessionsIn) {
   const pv = rows.filter((r) => r.type === "pageview");
-  // "engaged" is an internal time-on-page beacon, not a real user event — it is kept
-  // out of the event counts, but it IS the only source of visit duration, so it has
-  // to reach buildSessions.
-  const ev = rows.filter((r) => r.type === "event" && r.name !== "engaged");
-  const engaged = rows.filter((r) => r.type === "event" && r.name === "engaged");
-  const sessions = buildSessions(pv, engaged);
+  // The internal measurement beacons are kept out of the event counts, but `engaged`
+  // IS the only source of visit duration, so it has to reach buildSessions.
+  const ev = rows.filter((r) => r.type === "event" && !INTERNAL_EVENTS.has(r.name));
+  const engaged = dedupeEngaged(rows.filter((r) => r.type === "event" && r.name === "engaged"));
+  const sessions = sessionsIn || buildSessions(pv, engaged);
   const bounces = sessions.filter((s) => s.pages === 1).length;
   const totalDur = sessions.reduce((a, s) => a + sessionDurationS(s), 0);
-  const convNames = new Set([
-    "phone_click",
-    "email_click",
-    "whatsapp_click",
-    "form_submit",
-    "visualiser_start",
-  ]);
-  const conv = ev.filter((e) => convNames.has(e.name)).length;
+  const visitors = distinct(pv, vidOf);
+  const count = (set) => ev.filter((e) => set.has(e.name)).length;
+  const enquiries = count(ENQUIRY_EVENTS);
+  const intents = count(INTENT_EVENTS);
   return {
     pageviews: pv.length,
     events: ev.length,
-    visitors: distinct(pv, vidOf),
+    visitors,
     sessions: sessions.length,
     bounceRate: sessions.length ? Math.round((bounces / sessions.length) * 100) : 0,
     avgDuration: sessions.length ? Math.round(totalDur / sessions.length) : 0,
     pagesPerVisit: sessions.length ? +(pv.length / sessions.length).toFixed(2) : 0,
-    conversions: conv,
+    // An enquiry is a lead whose details reached us; an intent is somebody reaching
+    // for the phone. Both are worth knowing and they are not the same thing, so
+    // they are counted apart as well as together.
+    enquiries,
+    intents,
+    engagementActions: count(ENGAGE_EVENTS),
+    // Presses of a send button, including ones that failed validation or tripped the
+    // honeypot — deliberately NOT counted as enquiries. See ENQUIRY_EVENTS.
+    formAttempts: ev.filter((e) => e.name === "form_submit").length,
+    enquiryRate: visitors ? +((enquiries / visitors) * 100).toFixed(1) : 0,
+    conversions: enquiries + intents,
   };
 }
 
@@ -270,6 +277,747 @@ function screenLabel(r) {
   return w && h ? `${w}×${h}` : "";
 }
 
+function scrollOf(row) {
+  const s = row.props && row.props.scroll;
+  return Number.isFinite(s) ? s : 0;
+}
+
+// ---- what counts as what --------------------------------------------------
+
+/**
+ * Props the COLLECTOR writes itself, which therefore say nothing about the event.
+ *
+ * Mirrors the server-derived block in api/sc-analytics-collect.js. Kept as a list
+ * here so the prop breakdowns below don't offer you a "breakdown of visitor id" with
+ * one row per visitor, and don't leak the visitor hash into a chart.
+ */
+const SERVER_PROPS = new Set([
+  "vid", "ref", "channel", "title", "sw", "sh", "vw", "vh", "dpr", "lang", "tz",
+  "region", "city", "bv", "osv", "bot", "dur", "scroll", "utm", "pvid",
+]);
+
+/**
+ * Internal measurements, not things a person did. Excluded from every event count
+ * and from the events table, exactly as `engaged` always has been — each of these
+ * fires automatically once (or more) per page view, so counting them would swamp
+ * the real actions.
+ */
+const INTERNAL_EVENTS = new Set(["engaged", "vitals", "cta_view"]);
+
+/**
+ * A real enquiry: somebody's details actually reached us.
+ *
+ * NOT `form_submit`. That one comes from a document-level capture listener in
+ * ClickTracking.tsx which runs BEFORE the form's own validation, so it also fires
+ * for a submission that failed validation and never sent, and for a spam bot that
+ * tripped the honeypot. It stays in the events table (it is a genuine record of
+ * "somebody pressed send") but it is not a lead.
+ */
+const ENQUIRY_EVENTS = new Set(["contact_form_success", "visualiser_handoff_submitted"]);
+
+/** Somebody reaching for the phone. A lead signal, but not a captured enquiry. */
+const INTENT_EVENTS = new Set(["phone_click", "email_click", "whatsapp_click"]);
+
+/** Interest, short of making contact. `visualiser_start` lives here, not in leads. */
+const ENGAGE_EVENTS = new Set([
+  "cta_click", "service_click", "location_click", "google_review_click", "outbound_link",
+  "visualiser_start", "visualiser_complete", "visualiser_download", "visualiser_refine",
+  "visualiser_estimate_shown", "cost_estimate_handoff_clicked", "reviews_carousel",
+]);
+
+function campaignKey(utm) {
+  if (!utm) return "";
+  return `${utm.source || "(none)"} / ${utm.medium || "(none)"} / ${utm.campaign || "(none)"}`;
+}
+
+/**
+ * Collapse repeated "engaged" beacons for the same page view.
+ *
+ * The tracker can now report engagement more than once for one page — it sends what
+ * it has when the tab is hidden, and again with the cumulative total if the visitor
+ * comes back and carries on reading. Each beacon carries a `pvid` identifying the
+ * page view it belongs to, and the LATER one supersedes the earlier: its `dur` is a
+ * running total, so adding them would count the first stretch twice and report a
+ * six-minute read as nine.
+ *
+ * Beacons with no `pvid` pass through untouched. That is every row written before
+ * this shipped, and it keeps their behaviour bit-for-bit identical.
+ */
+function dedupeEngaged(rows) {
+  const best = new Map();
+  const plain = [];
+  for (const r of rows) {
+    const pv = r.props && r.props.pvid;
+    if (!pv) {
+      plain.push(r);
+      continue;
+    }
+    const d = durMs(r);
+    const s = scrollOf(r);
+    const cur = best.get(pv);
+    if (!cur) {
+      best.set(pv, { row: r, dur: d, scroll: s });
+      continue;
+    }
+    // Longest reading wins outright, and scroll is a high-water mark either way.
+    if (d > cur.dur) {
+      cur.row = r;
+      cur.dur = d;
+    }
+    if (s > cur.scroll) cur.scroll = s;
+  }
+  const merged = [];
+  for (const b of best.values()) {
+    if (b.dur === durMs(b.row) && b.scroll === scrollOf(b.row)) merged.push(b.row);
+    else
+      merged.push(
+        Object.assign({}, b.row, {
+          props: Object.assign({}, b.row.props, { dur: b.dur, scroll: b.scroll }),
+        })
+      );
+  }
+  // Timestamp order is load-bearing: buildSessions attributes a beacon to the
+  // session that had already begun when it fired.
+  return plain.concat(merged).sort((a, b) => t(a) - t(b));
+}
+
+/**
+ * Where each visitor actually came from, taken from their FIRST page view.
+ *
+ * This exists because `track()` does not send a referrer, so the collector sees none
+ * and every EVENT row is stamped `channel: "direct"`. Attributing a conversion to
+ * its own row's channel would therefore report every single lead as direct traffic.
+ * The visitor's first page view is the only row that knows the truth.
+ */
+function attribution(pageviews) {
+  const first = new Map();
+  for (const r of pageviews) {
+    const v = vidOf(r);
+    const tt = t(r);
+    const prev = first.get(v);
+    if (!prev || tt < prev.tt) first.set(v, { tt, row: r });
+  }
+  const out = new Map();
+  for (const [v, f] of first.entries()) {
+    const p = f.row.props || {};
+    out.set(v, {
+      channel: p.channel || "direct",
+      referrerHost: f.row.referrer_host || "",
+      campaign: campaignKey(p.utm),
+      utm: p.utm || null,
+      entry: f.row.path || "/",
+      device: f.row.device || "",
+      country: f.row.country || "",
+      firstTs: f.row.ts,
+    });
+  }
+  return out;
+}
+
+/**
+ * Break every event down by the values of its own props.
+ *
+ * The props have been collected since June and were thrown away at this step: the
+ * aggregator grouped events by name and by page and nothing else. `contact_form_
+ * success.mode` alone is a per-submission record of whether the email chain worked,
+ * which is the thing nobody could see while six leads went unanswered.
+ *
+ * Bounded deliberately: six prop keys per event, twelve values per key, and the
+ * distinct count kept so the page can say how much it is not showing.
+ */
+function propBreakdowns(events) {
+  const byName = new Map();
+  for (const e of events) {
+    const p = e.props;
+    if (!p) continue;
+    let keys = byName.get(e.name);
+    if (!keys) {
+      keys = new Map();
+      byName.set(e.name, keys);
+    }
+    for (const k of Object.keys(p)) {
+      if (SERVER_PROPS.has(k)) continue;
+      const v = p[k];
+      if (v === null || v === undefined || v === "" || typeof v === "object") continue;
+      let vals = keys.get(k);
+      if (!vals) {
+        vals = new Map();
+        keys.set(k, vals);
+      }
+      const s = String(v).slice(0, 160);
+      vals.set(s, (vals.get(s) || 0) + 1);
+    }
+  }
+  const out = {};
+  for (const [name, keys] of byName.entries()) {
+    const ranked = [...keys.entries()].map(([k, vals]) => {
+      let total = 0;
+      for (const n of vals.values()) total += n;
+      return { k, vals, total };
+    });
+    ranked.sort((a, b) => b.total - a.total);
+    const entry = {};
+    for (const { k, vals, total } of ranked.slice(0, 6)) {
+      const items = [...vals.entries()]
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count);
+      entry[k] = { total, distinct: items.length, items: items.slice(0, 12) };
+    }
+    if (Object.keys(entry).length) out[name] = entry;
+  }
+  return out;
+}
+
+// ---- content, sources, speed, quality ------------------------------------
+
+/** The site's own shape. Order matters — the first match wins. */
+const CONTENT_GROUPS = [
+  { key: "home", label: "Home", re: /^\/$/ },
+  { key: "services", label: "Services", re: /^\/services(\/|$)/ },
+  { key: "areas", label: "Areas covered", re: /^\/areas(\/|$)/ },
+  { key: "projects", label: "Case studies", re: /^\/(projects|portfolio)(\/|$)/ },
+  { key: "guides", label: "Guides & advice", re: /^\/(guides|homeowners-guide|faqs|process)(\/|$)/ },
+  { key: "visualiser", label: "Visualiser", re: /^\/(visualiser|cost-estimate)/ },
+  { key: "contact", label: "Contact", re: /^\/contact/ },
+  { key: "about", label: "About & reviews", re: /^\/(about|reviews|socials)(\/|$)/ },
+  { key: "legal", label: "Legal", re: /^\/(privacy-policy|cookie-policy|visualiser-terms)(\/|$)/ },
+];
+
+function groupOf(path) {
+  for (const g of CONTENT_GROUPS) if (g.re.test(path)) return g;
+  return { key: "other", label: "Other pages" };
+}
+
+/**
+ * Do the 42 case studies and 20 area pages earn their keep?
+ *
+ * Grouped server-side and over EVERY page view, not over the top-50 `pages` list the
+ * bundle already carries — the site has 78 URLs, so a client-side grouping of that
+ * list would quietly omit the long tail, which is exactly the part being judged.
+ */
+function contentGroups(pageviews, engaged, leadPaths) {
+  const durByPath = new Map();
+  const scrollByPath = new Map();
+  for (const e of engaged) {
+    const p = e.path || "/";
+    const d = durMs(e);
+    if (d > 0) {
+      if (!durByPath.has(p)) durByPath.set(p, []);
+      durByPath.get(p).push(d);
+    }
+    const s = scrollOf(e);
+    if (s > 0) {
+      if (!scrollByPath.has(p)) scrollByPath.set(p, []);
+      scrollByPath.get(p).push(s);
+    }
+  }
+  const mean = (a) => (a && a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+
+  const groups = new Map();
+  const G = (g) => {
+    if (!groups.has(g.key))
+      groups.set(g.key, {
+        key: g.key, label: g.label, views: 0, vids: new Set(),
+        pageMap: new Map(), durs: [], scrolls: [], leads: 0,
+      });
+    return groups.get(g.key);
+  };
+  for (const r of pageviews) {
+    const path = r.path || "/";
+    const g = G(groupOf(path));
+    g.views += 1;
+    g.vids.add(vidOf(r));
+    g.pageMap.set(path, (g.pageMap.get(path) || 0) + 1);
+    const ds = durByPath.get(path);
+    if (ds) g.durs.push(mean(ds));
+    const ss = scrollByPath.get(path);
+    if (ss) g.scrolls.push(mean(ss));
+  }
+  for (const [path, n] of leadPaths.entries()) {
+    G(groupOf(path)).leads += n;
+  }
+
+  return [...groups.values()]
+    .map((g) => ({
+      key: g.key,
+      label: g.label,
+      views: g.views,
+      visitors: g.vids.size,
+      pages: [...g.pageMap.entries()]
+        .map(([path, views]) => ({ path, views }))
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 12),
+      pageCount: g.pageMap.size,
+      avgTime: Math.round(mean(g.durs) / 1000),
+      avgScroll: Math.round(mean(g.scrolls)),
+      leads: g.leads,
+    }))
+    .sort((a, b) => b.views - a.views);
+}
+
+/**
+ * Visitors, leads and lead rate for one way of slicing the audience.
+ *
+ * `keyOf` turns a vid's attribution into a bucket name. Conversions are counted
+ * against the visitor's bucket, never the event row's own — see attribution().
+ */
+function sourcePerformance(attrib, pvByVid, leadVids, intentVids, keyOf, limit) {
+  const rows = new Map();
+  const R = (k) => {
+    if (!rows.has(k)) rows.set(k, { key: k, visitors: 0, pageviews: 0, enquiries: 0, intents: 0 });
+    return rows.get(k);
+  };
+  for (const [vid, a] of attrib.entries()) {
+    const k = keyOf(a);
+    if (k === null || k === undefined || k === "") continue;
+    const r = R(k);
+    r.visitors += 1;
+    r.pageviews += pvByVid.get(vid) || 0;
+    if (leadVids.has(vid)) r.enquiries += 1;
+    if (intentVids.has(vid)) r.intents += 1;
+  }
+  const out = [...rows.values()].map((r) =>
+    Object.assign(r, {
+      rate: r.visitors ? +((r.enquiries / r.visitors) * 100).toFixed(1) : 0,
+    })
+  );
+  out.sort((a, b) => b.enquiries - a.enquiries || b.visitors - a.visitors);
+  return limit ? out.slice(0, limit) : out;
+}
+
+/** 75th percentile — the figure Core Web Vitals is scored on, not the average. */
+function p75(arr) {
+  if (!arr || !arr.length) return null;
+  const s = arr.slice().sort((a, b) => a - b);
+  return s[Math.min(s.length - 1, Math.floor(s.length * 0.75))];
+}
+
+const VITAL_KEYS = ["lcp", "cls", "inp", "ttfb"];
+
+function vitalsSummary(rows) {
+  const pick = (list, k) =>
+    list.map((r) => (r.props ? r.props[k] : null)).filter((v) => Number.isFinite(v));
+  const overall = {};
+  for (const k of VITAL_KEYS) {
+    const vals = pick(rows, k);
+    overall[k] = { p75: p75(vals), samples: vals.length };
+  }
+  const devices = {};
+  for (const r of rows) {
+    const d = r.device || "unknown";
+    (devices[d] = devices[d] || []).push(r);
+  }
+  const byDevice = Object.keys(devices).map((d) => {
+    const entry = { device: d, samples: devices[d].length };
+    for (const k of VITAL_KEYS) entry[k] = p75(pick(devices[d], k));
+    return entry;
+  });
+  const byPath = new Map();
+  for (const r of rows) {
+    const p = r.path || "/";
+    if (!byPath.has(p)) byPath.set(p, []);
+    byPath.get(p).push(r);
+  }
+  const pages = [...byPath.entries()]
+    .map(([path, list]) => {
+      const entry = { path, samples: list.length };
+      for (const k of VITAL_KEYS) entry[k] = p75(pick(list, k));
+      return entry;
+    })
+    .sort((a, b) => b.samples - a.samples)
+    .slice(0, 25);
+  return { overall, byDevice, pages, samples: rows.length };
+}
+
+/**
+ * How much of this traffic is plausibly a person?
+ *
+ * The bot filter is a user-agent regex, and a growing share of automated traffic
+ * does not announce itself. A visit of one page with no measured time and no scroll
+ * is not proof of a crawler — it is also what a real person who left immediately
+ * looks like — so this is reported as an open question, never subtracted from the
+ * headline figures.
+ */
+function trafficQuality(sessions) {
+  const unverified = sessions.filter((s) => s.pages === 1 && !s.engagedSum).length;
+  return {
+    sessions: sessions.length,
+    unverified,
+    pct: sessions.length ? Math.round((unverified / sessions.length) * 100) : 0,
+  };
+}
+
+// ---- journeys -------------------------------------------------------------
+
+const JOURNEY_CONV = new Set([
+  "phone_click", "email_click", "whatsapp_click", "form_submit",
+  "visualiser_start", "visualiser_complete", "cta_click",
+]);
+
+/** Actions that mean a form actually went through — used to tie a journey to a
+ *  saved enquiry when the row predates visitor stamping. */
+const FORM_ACTIONS = new Set([
+  "contact_form_success", "visualiser_handoff_submitted", "form_submit",
+]);
+
+const SESSION_GAP_S = SESSION_GAP / 1000;
+const MAX_STEPS = 60;
+
+/**
+ * One visitor's ordered timeline, from their raw rows.
+ *
+ * Extracted from the `report=journeys` branch unchanged so the source drill-down can
+ * build the same objects rather than growing a second, subtly different notion of
+ * what a journey is.
+ *
+ * A journey = one cookieless visitor (vid) within the range. The visitor hash
+ * re-salts every UTC day, so in practice that is one visitor on one day — there is
+ * no cross-day tracking, by design.
+ */
+function buildJourneys(jrows) {
+  const byVid = new Map();
+  for (const r of jrows) {
+    const v = vidOf(r);
+    if (!byVid.has(v)) byVid.set(v, []);
+    byVid.get(v).push(r);
+  }
+
+  // Close out the current step, choosing the most accurate time-on-page:
+  // navigation delta to the next pageview within a session, otherwise the
+  // measured "engaged" duration (last page of a session / end of data).
+  function closeStep(cur, steps, nextTs, endedSession) {
+    let tp;
+    if (!endedSession && nextTs != null) tp = Math.round((nextTs - cur.startTs) / 1000);
+    else tp = Math.round((cur.engagedDur || 0) / 1000);
+    if (!Number.isFinite(tp) || tp < 0) tp = 0;
+    if (tp > SESSION_GAP_S) tp = SESSION_GAP_S; // guard against tab-left-open outliers
+    cur.timeOnPage = tp;
+    delete cur.startTs;
+    delete cur.engagedDur;
+    steps.push(cur);
+  }
+
+  const journeys = [];
+  for (const [vid, evs] of byVid.entries()) {
+    evs.sort((a, b) => t(a) - t(b));
+    const steps = [];
+    let cur = null;
+    let prevPvTs = null;
+    let sessionCount = 0;
+
+    for (const e of evs) {
+      const tt = t(e);
+      if (e.type === "pageview") {
+        const newSession = prevPvTs === null || tt - prevPvTs > SESSION_GAP;
+        if (newSession) sessionCount++;
+        if (cur) closeStep(cur, steps, tt, newSession);
+        cur = {
+          path: e.path || "/",
+          title: (e.props && e.props.title) || "",
+          ts: e.ts,
+          startTs: tt,
+          engagedDur: 0,
+          scroll: 0,
+          newSession,
+          actions: [],
+        };
+        prevPvTs = tt;
+      } else if (e.type === "event" && e.name === "engaged") {
+        if (cur) {
+          const d = durMs(e);
+          if (d > cur.engagedDur) cur.engagedDur = d;
+          const sc = scrollOf(e);
+          if (sc > cur.scroll) cur.scroll = sc;
+        }
+      } else if (e.type === "event" && INTERNAL_EVENTS.has(e.name)) {
+        // A measurement, not something the visitor did — it belongs on the page's
+        // numbers (handled above for `engaged`), never in the visible timeline.
+      } else if (e.type === "event") {
+        const act = { name: e.name, ts: e.ts, props: e.props || {} };
+        if (cur) cur.actions.push(act);
+        else {
+          cur = {
+            path: e.path || "/",
+            title: "",
+            ts: e.ts,
+            startTs: tt,
+            engagedDur: 0,
+            scroll: 0,
+            newSession: true,
+            actions: [act],
+          };
+        }
+      }
+    }
+    if (cur) closeStep(cur, steps, null, true);
+
+    const pvCount = evs.filter((r) => r.type === "pageview").length;
+    const pv0 = evs.find((r) => r.type === "pageview") || evs[0] || {};
+    const allActions = steps.reduce((a, s) => a + s.actions.length, 0);
+    const converted = steps.some((s) => s.actions.some((a) => JOURNEY_CONV.has(a.name)));
+    const totalTime = steps.reduce((a, s) => a + s.timeOnPage, 0);
+
+    // What KIND of outcome, and when. The drill-down needs this to label a journey
+    // and to find the enquiry that belongs to it.
+    const acts = steps.reduce((a, s) => a.concat(s.actions), []);
+    const formTs = acts
+      .filter((a) => FORM_ACTIONS.has(a.name))
+      .map((a) => new Date(a.ts).getTime())
+      .filter((n) => Number.isFinite(n));
+    const outcome = {
+      enquiry: acts.some((a) => ENQUIRY_EVENTS.has(a.name)),
+      intent: acts.some((a) => INTENT_EVENTS.has(a.name)),
+      visualiser: acts.some((a) => /^visualiser/.test(a.name)),
+      attempted: acts.some((a) => a.name === "form_submit"),
+    };
+
+    journeys.push({
+      vid,
+      firstTs: evs[0].ts,
+      lastTs: evs[evs.length - 1].ts,
+      date: (evs[0].ts || "").slice(0, 10),
+      durationS: totalTime,
+      pages: pvCount,
+      sessions: sessionCount || (steps.length ? 1 : 0),
+      actionsCount: allActions,
+      converted,
+      outcome,
+      formTs,
+      entry: steps.length ? steps[0].path : pv0.path || "/",
+      exit: steps.length ? steps[steps.length - 1].path : "",
+      device: pv0.device || "",
+      browser: pv0.browser || "",
+      bv: (pv0.props && pv0.props.bv) || "",
+      os: pv0.os || "",
+      country: pv0.country || "",
+      region: (pv0.props && pv0.props.region) || "",
+      city: (pv0.props && pv0.props.city) || "",
+      channel: (pv0.props && pv0.props.channel) || "direct",
+      referrerHost: pv0.referrer_host || "",
+      utm: (pv0.props && pv0.props.utm) || null,
+      steps: steps.slice(0, MAX_STEPS),
+      stepsTruncated: steps.length > MAX_STEPS,
+    });
+  }
+
+  journeys.sort((a, b) => new Date(b.lastTs).getTime() - new Date(a.lastTs).getTime());
+  return journeys;
+}
+
+function journeySummary(journeys) {
+  return {
+    visitors: journeys.length,
+    converters: journeys.filter((j) => j.converted).length,
+    multiPage: journeys.filter((j) => j.pages >= 2).length,
+    avgPages: journeys.length
+      ? +(journeys.reduce((a, j) => a + j.pages, 0) / journeys.length).toFixed(1)
+      : 0,
+    avgDuration: journeys.length
+      ? Math.round(journeys.reduce((a, j) => a + j.durationS, 0) / journeys.length)
+      : 0,
+    totalActions: journeys.reduce((a, j) => a + j.actionsCount, 0),
+  };
+}
+
+// ---- tying journeys to saved enquiries ------------------------------------
+
+function srcMatches(j, kind, value) {
+  if (kind === "all") return true;
+  if (kind === "channel") return (j.channel || "direct") === value;
+  if (kind === "referrer") return (j.referrerHost || "") === value;
+  if (kind === "campaign") return campaignKey(j.utm) === value;
+  if (kind === "entry") return (j.entry || "") === value;
+  return false;
+}
+
+/**
+ * Put the saved enquiry next to the visit that produced it.
+ *
+ * Two passes, and the difference between them is stated on screen rather than
+ * quietly averaged away:
+ *
+ *  1. STAMPED. Enquiries saved from now on carry the same cookieless visitor hash
+ *     the analytics uses, so the join is exact and there is nothing to guess.
+ *  2. HISTORY. Every row written before that carries no visitor id, so the only
+ *     evidence is the clock — the journey's own send event and the saved row are the
+ *     same interaction if they are minutes apart. Reported as "likely", never as
+ *     fact, because on a busy day two visitors could genuinely overlap.
+ */
+function attachEnquiries(journeys, enquiries) {
+  const byVid = new Map();
+  for (const e of enquiries) {
+    const v = e.meta && e.meta.vid;
+    if (!v) continue;
+    if (!byVid.has(v)) byVid.set(v, []);
+    byVid.get(v).push(e);
+  }
+  const claimed = new Set();
+  for (const j of journeys) {
+    const mine = byVid.get(j.vid) || [];
+    j.enquiries = mine.map((row) => ({ row, confidence: "confirmed" }));
+    for (const e of mine) claimed.add(e.id);
+  }
+  const legacy = enquiries.filter((e) => !(e.meta && e.meta.vid) && !claimed.has(e.id));
+  if (legacy.length) {
+    const NEAR = 5 * 60 * 1000;
+    for (const j of journeys) {
+      if (!j.formTs || !j.formTs.length) continue;
+      for (const e of legacy) {
+        const et = new Date(e.created_at).getTime();
+        if (!Number.isFinite(et)) continue;
+        if (j.formTs.some((ts) => Math.abs(et - ts) <= NEAR))
+          j.enquiries.push({ row: e, confidence: "likely" });
+      }
+    }
+  }
+  return journeys;
+}
+
+/** Everything the visualiser recorded during one visit, in order. */
+function visualiserDetail(j) {
+  const acts = [];
+  for (const s of j.steps || []) {
+    for (const a of s.actions || []) {
+      if (/^(visualiser|cost_estimate)/.test(a.name)) acts.push(Object.assign({ path: s.path }, a));
+    }
+  }
+  if (!acts.length) return null;
+  acts.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+  const counts = {};
+  for (const a of acts) counts[a.name] = (counts[a.name] || 0) + 1;
+  return {
+    steps: acts,
+    counts,
+    started: !!counts.visualiser_start,
+    refined: !!counts.visualiser_refine,
+    completed: !!counts.visualiser_complete,
+    downloaded: !!counts.visualiser_download,
+    handedOff: !!counts.visualiser_handoff_submitted,
+    errored: !!counts.visualiser_error,
+  };
+}
+
+// ---- delivery check (the reconciliation) ----------------------------------
+
+const THANKYOU_PATHS = new Set(["/contact/thank-you", "/contact/thank-you/"]);
+
+/**
+ * Four independent records of the same submission, lined up day by day.
+ *
+ * A contact submission leaves the tracker's `contact_form_submitted`, its
+ * `contact_form_success` with the route that actually worked, a row in
+ * `sc_enquiries`, and a view of the thank-you page. Nothing compared them, so
+ * between July and September 2026 the main email route failed and the only trace was
+ * a line in a log nobody reads. Comparing them costs one extra query.
+ */
+function deliveryReport(rows, enquiries, sinceMs) {
+  const day = (iso) => String(iso || "").slice(0, 10);
+  const days = new Map();
+  const D = (k) => {
+    if (!days.has(k))
+      days.set(k, {
+        day: k, submitted: 0, attempts: 0, validationErrors: 0,
+        online: 0, backup: 0, mailto: 0, handoffs: 0,
+        savedContact: 0, savedOther: 0, thankYou: 0,
+      });
+    return days.get(k);
+  };
+
+  for (const r of rows) {
+    if (t(r) < sinceMs) continue;
+    const k = day(r.ts);
+    if (r.type === "pageview") {
+      if (THANKYOU_PATHS.has(r.path || "")) D(k).thankYou += 1;
+      continue;
+    }
+    const n = r.name;
+    const mode = (r.props && r.props.mode) || "";
+    if (n === "contact_form_submitted") D(k).submitted += 1;
+    else if (n === "form_submit") D(k).attempts += 1;
+    else if (n === "contact_form_validation_error") D(k).validationErrors += 1;
+    else if (n === "contact_form_success" || n === "visualiser_handoff_submitted") {
+      if (n === "visualiser_handoff_submitted") D(k).handoffs += 1;
+      if (mode === "online") D(k).online += 1;
+      else if (mode === "backup_email") D(k).backup += 1;
+      else D(k).mailto += 1;
+    }
+  }
+  for (const e of enquiries) {
+    const k = day(e.created_at);
+    if ((e.form || "contact") === "contact") D(k).savedContact += 1;
+    else D(k).savedOther += 1;
+  }
+
+  const list = [...days.values()].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+  const sum = (f) => list.reduce((a, d) => a + f(d), 0);
+  const totals = {
+    submitted: sum((d) => d.submitted),
+    attempts: sum((d) => d.attempts),
+    validationErrors: sum((d) => d.validationErrors),
+    online: sum((d) => d.online),
+    backup: sum((d) => d.backup),
+    mailto: sum((d) => d.mailto),
+    handoffs: sum((d) => d.handoffs),
+    saved: sum((d) => d.savedContact + d.savedOther),
+    savedContact: sum((d) => d.savedContact),
+    savedOther: sum((d) => d.savedOther),
+    thankYou: sum((d) => d.thankYou),
+  };
+  const sent = totals.online + totals.backup + totals.mailto;
+  totals.sent = sent;
+  totals.mainRouteRate = sent ? Math.round((totals.online / sent) * 100) : null;
+
+  const problems = [];
+  const lostDays = list.filter((d) => d.submitted > d.savedContact);
+  if (lostDays.length) {
+    const n = lostDays.reduce((a, d) => a + (d.submitted - d.savedContact), 0);
+    problems.push({
+      severity: "bad",
+      text: `${n} contact ${n === 1 ? "submission" : "submissions"} left no saved record at all — the database write itself failed.`,
+      days: lostDays.map((d) => d.day),
+    });
+  }
+  const fallbackDays = list.filter((d) => d.backup + d.mailto > 0);
+  if (fallbackDays.length) {
+    const n = fallbackDays.reduce((a, d) => a + d.backup + d.mailto, 0);
+    problems.push({
+      severity: "warn",
+      text: `The main email route failed for ${n} ${n === 1 ? "enquiry" : "enquiries"} and a fallback had to be used.`,
+      days: fallbackDays.map((d) => d.day),
+    });
+  }
+  const mailtoDays = list.filter((d) => d.mailto > 0);
+  if (mailtoDays.length) {
+    const n = mailtoDays.reduce((a, d) => a + d.mailto, 0);
+    problems.push({
+      severity: "bad",
+      text: `${n} ${n === 1 ? "enquiry" : "enquiries"} sent no notification from the server at all — the visitor was handed their own email app, and may never have pressed send.`,
+      days: mailtoDays.map((d) => d.day),
+    });
+  }
+  // The reverse gap is informative rather than alarming: a saved enquiry with no
+  // analytics event means the tracker was blocked in that browser, not that
+  // anything was lost.
+  const untrackedDays = list.filter((d) => d.savedContact > d.submitted);
+  if (untrackedDays.length) {
+    const n = untrackedDays.reduce((a, d) => a + (d.savedContact - d.submitted), 0);
+    problems.push({
+      severity: "info",
+      text: `${n} saved ${n === 1 ? "enquiry" : "enquiries"} had no matching analytics event — usually an ad-blocker or JavaScript turned off. The enquiry itself is safe.`,
+      days: untrackedDays.map((d) => d.day),
+    });
+  }
+
+  const good = list.filter((d) => d.online > 0);
+  return {
+    days: list,
+    totals,
+    problems,
+    lastMainRouteSuccess: good.length ? good[good.length - 1].day : null,
+    firstFallback: fallbackDays.length ? fallbackDays[0].day : null,
+  };
+}
+
 // ---- health report --------------------------------------------------------
 
 /** Every setting the site reads, grouped by what stops working without it. */
@@ -328,6 +1076,22 @@ async function healthReport(now) {
     }
   }
 
+  // "Is it configured" is only half the question. The other half — did it STOP — has
+  // no error message either, and a site that quietly recorded nothing for a fortnight
+  // looks exactly like a quiet fortnight. Four timestamps answer it.
+  const [lastEvent, lastEnquiry, lastError, lastOnline] = await Promise.all([
+    sbLastTimestamp("sc_events", "ts"),
+    sbLastTimestamp("sc_enquiries", "created_at"),
+    sbLastTimestamp("sc_errors", "ts"),
+    sbLastTimestamp("sc_events", "ts", "&name=eq.contact_form_success&props->>mode=eq.online"),
+  ]);
+  const activity = {
+    lastEvent: lastEvent.ts,
+    lastEnquiry: lastEnquiry.ts,
+    lastError: lastError.ts,
+    lastMainRouteEmail: lastOnline.ts,
+  };
+
   return {
     ok: true,
     report: "health",
@@ -336,6 +1100,7 @@ async function healthReport(now) {
     tables,
     storage,
     github: gh,
+    activity,
   };
 }
 
@@ -421,139 +1186,9 @@ module.exports = async (req, res) => {
       if (!includeBots) jrows = jrows.filter((r) => !(r.props && r.props.bot));
       jrows = jrows.filter((r) => t(r) >= jSince);
 
-      const byVid = new Map();
-      for (const r of jrows) {
-        const v = vidOf(r);
-        if (!byVid.has(v)) byVid.set(v, []);
-        byVid.get(v).push(r);
-      }
-
-      const CONV = new Set([
-        "phone_click",
-        "email_click",
-        "whatsapp_click",
-        "form_submit",
-        "visualiser_start",
-        "visualiser_complete",
-        "cta_click",
-      ]);
-      const SESSION_GAP_S = SESSION_GAP / 1000;
-      const MAX_STEPS = 60;
       const CAP = 300;
-
-      // Close out the current step, choosing the most accurate time-on-page:
-      // navigation delta to the next pageview within a session, otherwise the
-      // measured "engaged" duration (last page of a session / end of data).
-      function closeStep(cur, steps, nextTs, endedSession) {
-        let tp;
-        if (!endedSession && nextTs != null) tp = Math.round((nextTs - cur.startTs) / 1000);
-        else tp = Math.round((cur.engagedDur || 0) / 1000);
-        if (!Number.isFinite(tp) || tp < 0) tp = 0;
-        if (tp > SESSION_GAP_S) tp = SESSION_GAP_S; // guard against tab-left-open outliers
-        cur.timeOnPage = tp;
-        delete cur.startTs;
-        delete cur.engagedDur;
-        steps.push(cur);
-      }
-
-      const journeys = [];
-      for (const [vid, evs] of byVid.entries()) {
-        evs.sort((a, b) => t(a) - t(b));
-        const steps = [];
-        let cur = null;
-        let prevPvTs = null;
-        let sessionCount = 0;
-
-        for (const e of evs) {
-          const tt = t(e);
-          if (e.type === "pageview") {
-            const newSession = prevPvTs === null || tt - prevPvTs > SESSION_GAP;
-            if (newSession) sessionCount++;
-            if (cur) closeStep(cur, steps, tt, newSession);
-            cur = {
-              path: e.path || "/",
-              title: (e.props && e.props.title) || "",
-              ts: e.ts,
-              startTs: tt,
-              engagedDur: 0,
-              scroll: 0,
-              newSession,
-              actions: [],
-            };
-            prevPvTs = tt;
-          } else if (e.type === "event" && e.name === "engaged") {
-            if (cur) {
-              const d = durMs(e);
-              if (d > cur.engagedDur) cur.engagedDur = d;
-              const sc = (e.props && e.props.scroll) || 0;
-              if (sc > cur.scroll) cur.scroll = sc;
-            }
-          } else if (e.type === "event") {
-            const act = { name: e.name, ts: e.ts, props: e.props || {} };
-            if (cur) cur.actions.push(act);
-            else {
-              cur = {
-                path: e.path || "/",
-                title: "",
-                ts: e.ts,
-                startTs: tt,
-                engagedDur: 0,
-                scroll: 0,
-                newSession: true,
-                actions: [act],
-              };
-            }
-          }
-        }
-        if (cur) closeStep(cur, steps, null, true);
-
-        const pvCount = evs.filter((r) => r.type === "pageview").length;
-        const pv0 = evs.find((r) => r.type === "pageview") || evs[0] || {};
-        const allActions = steps.reduce((a, s) => a + s.actions.length, 0);
-        const converted = steps.some((s) => s.actions.some((a) => CONV.has(a.name)));
-        const totalTime = steps.reduce((a, s) => a + s.timeOnPage, 0);
-
-        journeys.push({
-          vid,
-          firstTs: evs[0].ts,
-          lastTs: evs[evs.length - 1].ts,
-          date: (evs[0].ts || "").slice(0, 10),
-          durationS: totalTime,
-          pages: pvCount,
-          sessions: sessionCount || (steps.length ? 1 : 0),
-          actionsCount: allActions,
-          converted,
-          entry: steps.length ? steps[0].path : pv0.path || "/",
-          exit: steps.length ? steps[steps.length - 1].path : "",
-          device: pv0.device || "",
-          browser: pv0.browser || "",
-          bv: (pv0.props && pv0.props.bv) || "",
-          os: pv0.os || "",
-          country: pv0.country || "",
-          region: (pv0.props && pv0.props.region) || "",
-          city: (pv0.props && pv0.props.city) || "",
-          channel: (pv0.props && pv0.props.channel) || "direct",
-          referrerHost: pv0.referrer_host || "",
-          utm: (pv0.props && pv0.props.utm) || null,
-          steps: steps.slice(0, MAX_STEPS),
-          stepsTruncated: steps.length > MAX_STEPS,
-        });
-      }
-
-      journeys.sort((a, b) => t({ ts: b.lastTs }) - t({ ts: a.lastTs }));
-
-      const summary = {
-        visitors: journeys.length,
-        converters: journeys.filter((j) => j.converted).length,
-        multiPage: journeys.filter((j) => j.pages >= 2).length,
-        avgPages: journeys.length
-          ? +(journeys.reduce((a, j) => a + j.pages, 0) / journeys.length).toFixed(1)
-          : 0,
-        avgDuration: journeys.length
-          ? Math.round(journeys.reduce((a, j) => a + j.durationS, 0) / journeys.length)
-          : 0,
-        totalActions: journeys.reduce((a, j) => a + j.actionsCount, 0),
-      };
+      const journeys = buildJourneys(jrows);
+      const summary = journeySummary(journeys);
 
       return res.end(
         JSON.stringify({
@@ -685,6 +1320,101 @@ module.exports = async (req, res) => {
       );
     }
 
+    // ---- Delivery check (four records of the same submission) -------------
+    if (report === "delivery") {
+      const dDur = RANGES[url.searchParams.get("range")] || RANGES["30d"];
+      const dSince = now - dDur;
+      const sinceIso = new Date(dSince).toISOString();
+      let drows = await sbSelectEvents(sinceIso, 100000);
+      if (!includeBots) drows = drows.filter((r) => !(r.props && r.props.bot));
+      let enq = await sbSelectEnquiriesSince(sinceIso);
+      if (!includeBots) enq = enq.filter((e) => !(e.meta && e.meta.bot));
+      const rep = deliveryReport(drows, enq, dSince);
+      return res.end(
+        JSON.stringify(
+          Object.assign(
+            {
+              ok: true,
+              report: "delivery",
+              meta: {
+                range: url.searchParams.get("range") || "30d",
+                since: sinceIso,
+                until: new Date(now).toISOString(),
+                botsExcluded: !includeBots,
+                rowsScanned: drows.length,
+                enquiriesScanned: enq.length,
+                generatedAt: new Date(now).toISOString(),
+              },
+            },
+            rep
+          )
+        )
+      );
+    }
+
+    // ---- Journeys from one source ----------------------------------------
+    // Clicking a channel, referrer or campaign on the Sources page asks for every
+    // visit that came that way, in order, with the enquiry or visualiser session it
+    // produced attached in full.
+    if (report === "sourcejourneys") {
+      const raw = String(url.searchParams.get("src") || "all:");
+      const ci = raw.indexOf(":");
+      const kind = ci === -1 ? raw : raw.slice(0, ci);
+      const value = ci === -1 ? "" : raw.slice(ci + 1);
+      if (["all", "channel", "referrer", "campaign", "entry"].indexOf(kind) === -1) {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ ok: false, error: "bad_source" }));
+      }
+
+      const sDur = RANGES[url.searchParams.get("range")] || RANGES["7d"];
+      const sSince = now - sDur;
+      const sinceIso = new Date(sSince).toISOString();
+      let srows = await sbSelectEvents(sinceIso, 100000);
+      if (!includeBots) srows = srows.filter((r) => !(r.props && r.props.bot));
+      srows = srows.filter((r) => t(r) >= sSince);
+
+      const all = buildJourneys(srows).filter((j) => srcMatches(j, kind, value));
+      // Chronological, as asked: oldest first. When capped it is the most RECENT
+      // window that is kept, still in order.
+      all.sort((a, b) => new Date(a.firstTs).getTime() - new Date(b.firstTs).getTime());
+      const CAP = 150;
+      const shown = all.length > CAP ? all.slice(all.length - CAP) : all;
+
+      // Only pay for the enquiry table if something here actually sent a form.
+      let enq = [];
+      if (shown.some((j) => j.formTs && j.formTs.length)) {
+        enq = await sbSelectEnquiriesSince(sinceIso);
+        if (!includeBots) enq = enq.filter((e) => !(e.meta && e.meta.bot));
+      }
+      attachEnquiries(shown, enq);
+      for (const j of shown) j.visualiser = visualiserDetail(j);
+
+      return res.end(
+        JSON.stringify({
+          ok: true,
+          report: "sourcejourneys",
+          meta: {
+            src: { kind, value },
+            range: url.searchParams.get("range") || "7d",
+            since: sinceIso,
+            until: new Date(now).toISOString(),
+            botsExcluded: !includeBots,
+            rowsScanned: srows.length,
+            matched: all.length,
+            returned: shown.length,
+            generatedAt: new Date(now).toISOString(),
+          },
+          summary: Object.assign(journeySummary(all), {
+            withEnquiry: all.filter((j) => j.outcome.enquiry).length,
+            withVisualiser: all.filter((j) => j.outcome.visualiser).length,
+            withIntent: all.filter((j) => j.outcome.intent).length,
+            attempted: all.filter((j) => j.outcome.attempted).length,
+          }),
+          journeys: shown,
+        })
+      );
+    }
+
     // ---- Full bundle -----------------------------------------------------
     const dur = RANGES[url.searchParams.get("range")] || RANGES["7d"];
     const byHour = dur <= RANGES["24h"];
@@ -699,12 +1429,73 @@ module.exports = async (req, res) => {
 
     const curPv = cur.filter((r) => r.type === "pageview");
     const curEv = cur.filter((r) => r.type === "event");
-    const engagedEv = curEv.filter((r) => r.name === "engaged");
-    const realEv = curEv.filter((r) => r.name !== "engaged");
-    const sessions = buildSessions(curPv);
+    // Deduped once, here: every figure derived from engagement — visit duration, the
+    // per-page average time, the time-on-page distribution — has to see the same
+    // readings, or they will quietly disagree with each other.
+    const engagedEv = dedupeEngaged(curEv.filter((r) => r.name === "engaged"));
+    const realEv = curEv.filter((r) => !INTERNAL_EVENTS.has(r.name));
+    const sessions = buildSessions(curPv, engagedEv);
 
-    const metrics = coreMetrics(cur);
+    const metrics = coreMetrics(cur, sessions);
     const prevMetrics = coreMetrics(prev);
+
+    // Who came from where, taken from each visitor's first page view — an event row's
+    // own channel is always "direct" because track() sends no referrer.
+    const attrib = attribution(curPv);
+    const pvByVid = new Map();
+    for (const r of curPv) {
+      const v = vidOf(r);
+      pvByVid.set(v, (pvByVid.get(v) || 0) + 1);
+    }
+    const leadVids = new Set();
+    const intentVids = new Set();
+    const leadPaths = new Map();
+    for (const e of realEv) {
+      if (ENQUIRY_EVENTS.has(e.name)) {
+        leadVids.add(vidOf(e));
+        const p = e.path || "/";
+        leadPaths.set(p, (leadPaths.get(p) || 0) + 1);
+      } else if (INTENT_EVENTS.has(e.name)) intentVids.add(vidOf(e));
+    }
+    const perf = (keyOf, limit) =>
+      sourcePerformance(attrib, pvByVid, leadVids, intentVids, keyOf, limit);
+
+    // Pages people asked for that do not exist. Recorded by the 404 page itself, so
+    // this is "bad links real visitors followed" — a crawler never runs the tracker.
+    const notFoundRows = curEv.filter((r) => r.name === "page_not_found");
+    const notFoundMap = new Map();
+    for (const r of notFoundRows) {
+      const p = r.path || "/";
+      if (!notFoundMap.has(p)) notFoundMap.set(p, { path: p, count: 0, from: new Map() });
+      const n = notFoundMap.get(p);
+      n.count += 1;
+      const f = (r.props && r.props.from) || "";
+      if (f) n.from.set(f, (n.from.get(f) || 0) + 1);
+    }
+    const notFound = [...notFoundMap.values()]
+      .map((n) => ({
+        path: n.path,
+        count: n.count,
+        from: [...n.from.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count).slice(0, 6),
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 30);
+
+    // Was the button even seen? A click count alone cannot tell you whether a CTA is
+    // ignored or simply never reached.
+    const ctaMap = new Map();
+    const C = (p) => {
+      if (!ctaMap.has(p)) ctaMap.set(p, { path: p, views: 0, clicks: 0 });
+      return ctaMap.get(p);
+    };
+    for (const r of curEv) {
+      if (r.name === "cta_view") C(r.path || "/").views += 1;
+      else if (r.name === "cta_click") C(r.path || "/").clicks += 1;
+    }
+    const ctaPerformance = [...ctaMap.values()]
+      .map((c) => Object.assign(c, { rate: c.views ? Math.round((c.clicks / c.views) * 100) : null }))
+      .sort((a, b) => b.views - a.views || b.clicks - a.clicks)
+      .slice(0, 25);
 
     // Campaigns (UTM)
     const campMap = new Map();
@@ -758,6 +1549,13 @@ module.exports = async (req, res) => {
         referrers: countBy(curPv, (r) => r.referrer_host, 30),
         channels: countBy(curPv, (r) => (r.props && r.props.channel) || "direct", 10),
         campaigns,
+        // Same three lists again, but per VISITOR and with what they went on to do —
+        // the page-view counts above answer "how much traffic", these answer "which
+        // traffic was worth having".
+        channelPerf: perf((a) => a.channel || "direct"),
+        referrerPerf: perf((a) => a.referrerHost, 25),
+        campaignPerf: perf((a) => a.campaign, 25),
+        entryPerf: perf((a) => a.entry, 25),
       },
       locations: {
         countries: countBy(curPv, (r) => r.country, 50),
@@ -786,8 +1584,14 @@ module.exports = async (req, res) => {
           ["≤25%", "26–50%", "51–75%", "76–100%"]
         ),
       },
-      events: { byName: eventsByName, byPage: eventByPage },
+      // The props have been recorded since June and were discarded at this step.
+      events: { byName: eventsByName, byPage: eventByPage, props: propBreakdowns(realEv) },
       visualiser,
+      content: contentGroups(curPv, engagedEv, leadPaths),
+      notFound,
+      ctaPerformance,
+      vitals: vitalsSummary(curEv.filter((r) => r.name === "vitals")),
+      quality: trafficQuality(sessions),
     };
 
     return res.end(JSON.stringify(bundle));

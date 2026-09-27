@@ -17,10 +17,12 @@ const {
   applyCors,
   isAllowedOrigin,
   readJsonBody,
+  clientIp,
   getGeo,
   parseUA,
   classifyChannel,
   hostOf,
+  visitorHash,
   sanitizeProps,
   sbInsertEnquiry,
 } = require("../serverlib/common");
@@ -241,6 +243,14 @@ module.exports = async (req, res) => {
       tz: str(F.tz || body.tz, 60) || geo.tz || null,
       userAgent: ua || null,
       bot: isBot,
+      // The same cookieless, daily-rotating visitor hash the analytics uses, so the
+      // admin can show the visit that produced this enquiry — which pages they read,
+      // where they came from, how long they spent — instead of a form in isolation.
+      //
+      // It is a hash, not an identifier: no IP is stored here or in sc_events, the
+      // salt re-rotates every UTC day, and it is therefore useless for following
+      // anyone past midnight. That is the same trade the rest of the stack makes.
+      vid: visitorHash(clientIp(req), ua, "scdesign"),
     },
   };
 
