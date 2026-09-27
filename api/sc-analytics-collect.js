@@ -32,6 +32,28 @@ function int(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Read a client MEASUREMENT that may arrive at the top level or nested in `props`.
+ *
+ * The "engaged" beacon nests dur/scroll inside props (see flushEngaged in
+ * src/components/Analytics.tsx); nothing has ever sent them at the top level. The
+ * server used to read only the top level, wrote null over the real values, and left
+ * every engagement report empty from 22 Jun 2026 until this was fixed.
+ *
+ * `??` and not `||`: a scroll depth of 0 is a real reading (someone didn't scroll),
+ * and `||` would discard it.
+ */
+function measured(top, nested) {
+  return top ?? nested;
+}
+
+/** Scroll depth is a percentage; anything outside 0–100 is not a reading. */
+function pct(v) {
+  const n = int(v);
+  if (n === null) return null;
+  return n < 0 ? 0 : n > 100 ? 100 : n;
+}
+
 module.exports = async (req, res) => {
   if (applyCors(req, res)) return;
 
@@ -88,6 +110,12 @@ module.exports = async (req, res) => {
 
   // Server-derived keys are spread LAST so a client-supplied `props` can't forge
   // or override vid/bot/geo/channel/etc.
+  //
+  // CAREFUL: that ordering is a security property, not a style choice — do NOT
+  // "fix" a missing value by moving `extra` back to the end of this list. The two
+  // genuine client MEASUREMENTS below (dur, scroll) are read out of `extra`
+  // explicitly instead, via measured(). Everything else here is server-derived and
+  // is meant to win.
   const props = Object.assign(
     {},
     extra,
@@ -109,8 +137,9 @@ module.exports = async (req, res) => {
       bv: bv || null,
       osv: osv || null,
       bot: isBot,
-      dur: int(body.dur),
-      scroll: int(body.scroll),
+      // Client measurements, not server-derived — see measured() above.
+      dur: int(measured(body.dur, extra.dur)),
+      scroll: pct(measured(body.scroll, extra.scroll)),
     }
   );
 

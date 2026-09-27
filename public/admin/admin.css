@@ -607,6 +607,43 @@ table.tbl tr:hover td { background: #faf6ef; }
 .callout-warn { background: #fdf3e7; border-color: #e8cfa8; }
 .callout-warn strong { color: #8a4b12; }
 .callout-warn code { background: #f6e6cf; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+/* The caveat under a warning — true and worth saying, but not the headline. */
+.callout-sub { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+/* ---------- Health & setup ---------- */
+.pill.amber { background: #fae8cf; color: #8a4b12; }
+
+.hcard { margin-bottom: 16px; border-left: 3px solid var(--line); }
+.hcard-ok   { border-left-color: var(--success); }
+.hcard-warn { border-left-color: #c98a2e; }
+.hcard-bad  { border-left-color: var(--danger); }
+
+.hhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.hhead .csub { margin-bottom: 0; }
+.hhead h3 { margin-bottom: 3px; }
+.hdetail { margin: 12px 0 0; font-size: 13px; color: var(--ink-soft); line-height: 1.65; }
+.hdetail strong { color: var(--ink); }
+
+.hrows { margin-top: 14px; border-top: 1px solid #f1ebe0; }
+.hrow {
+  display: grid; grid-template-columns: 1fr auto minmax(140px, 1.1fr);
+  gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid #f1ebe0;
+}
+.hrow:last-child { border-bottom: none; }
+.hrow-l { font-size: 13px; color: var(--ink); min-width: 0; }
+.hrow-n { font-size: 11.5px; color: var(--muted); text-align: right; min-width: 0; word-break: break-word; }
+
+.hfix {
+  margin-top: 14px; padding: 12px 14px; background: var(--paper);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  font-size: 12.5px; color: var(--ink-soft); line-height: 1.65;
+}
+.hfix strong { color: var(--ink); }
+.hfix code, .hdetail code { background: #fff; border: 1px solid var(--line); padding: 1px 5px; border-radius: 4px; font-size: 11.5px; }
+
+.hnotes { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-soft); line-height: 1.7; }
+.hnotes li { margin-bottom: 6px; }
+.hnotes li:last-child { margin-bottom: 0; }
 
 /* ---------- Error log: download all ---------- */
 .errexport { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; padding: 14px 18px; }
@@ -675,4 +712,12 @@ table.tbl tr:hover td { background: #faf6ef; }
   /* flex: 1 1 220px is right in the desktop row, but in a column it makes the
      note stretch and leaves a tall empty card under the text. */
   .errexport-note { text-align: left; flex: 0 0 auto; }
+
+  /* ---- Health & setup ---- */
+  /* Three columns can't hold a label, a pill and a note on a phone. Stack the
+     note under the label and keep the pill beside it, where it reads as the
+     answer to the row rather than a third column of its own. */
+  .hrow { grid-template-columns: 1fr auto; gap: 4px 12px; }
+  .hrow-n { grid-column: 1 / -1; text-align: left; }
+  .hhead { flex-direction: column; gap: 8px; }
 }

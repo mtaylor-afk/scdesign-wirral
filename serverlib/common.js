@@ -548,6 +548,18 @@ function errKindFilter(kind) {
   if (kind === "logins_failed") return "&type=eq.login_failed";
   if (kind === "logins_success") return "&type=eq.login_success";
   if (kind === "errors") return "&type=not.in.(login_success,login_failed)";
+  // Enquiries that reached the database but that nobody was emailed about. The
+  // contact form logs exactly one of these whenever it falls back to mailto, so
+  // this is how the admin can say "N leads arrived and nobody was told" from an
+  // exact server-side count.
+  //
+  // It has to be counted here rather than by filtering a page of rows in the
+  // browser: the admin only ever fetches the most recent 200 errors, so once
+  // these age past that the client-side count silently returns to zero while the
+  // underlying problem is untouched — which is the failure mode that let six
+  // real leads sit unanswered for three months.
+  if (kind === "unnotified")
+    return "&type=eq.form_error&props->>backupStored=eq.true&props->>backupEmailed=eq.false";
   return ""; // all
 }
 
@@ -626,6 +638,78 @@ async function sbCountErrors(sinceIso, botMode, kind, party) {
     /* best-effort KPI only */
   }
   return 0;
+}
+
+/**
+ * Does a table exist and answer? A HEAD asking only for an exact count — the
+ * cheapest question PostgREST will take, with no rows returned.
+ *
+ * Never throws. This backs the admin's Health page, where a failure IS the answer
+ * and must be reported rather than swallowed: `sc_projects` not existing is
+ * precisely why the Projects editor silently does nothing today.
+ *
+ * The table name is checked against a strict identifier pattern before it reaches
+ * the URL. Callers only ever pass literals, but this is a path that builds a URL
+ * from a name, and the rule in this file is that such a name is validated first.
+ *
+ * @returns {Promise<{ok:boolean,status:number,count:(number|null),error:(string|null)}>}
+ */
+async function sbProbeTable(table) {
+  if (!/^[a-z_][a-z0-9_]*$/.test(String(table || "")))
+    return { ok: false, status: 0, count: null, error: "bad table name" };
+  if (!process.env.SC_SUPABASE_URL || !process.env.SC_SUPABASE_SERVICE_ROLE_KEY)
+    return { ok: false, status: 0, count: null, error: "not_configured" };
+  try {
+    const res = await fetch(`${sbBase()}/rest/v1/${table}?select=*`, {
+      method: "HEAD",
+      headers: sbHeaders({ Prefer: "count=exact", Range: "0-0" }),
+    });
+    let count = null;
+    const cr = res.headers.get("content-range");
+    if (cr && cr.includes("/")) {
+      const n = parseInt(cr.split("/")[1], 10);
+      if (Number.isFinite(n)) count = n;
+    }
+    // A HEAD carries no body, so PostgREST's message is not available — the status
+    // is the diagnosis. 404 means the table is not there.
+    return {
+      ok: res.ok,
+      status: res.status,
+      count,
+      error: res.ok ? null : res.status === 404 ? "missing" : `http_${res.status}`,
+    };
+  } catch (e) {
+    return { ok: false, status: 0, count: null, error: "unreachable" };
+  }
+}
+
+/**
+ * Does the project-media bucket exist and answer?
+ *
+ * ONE non-recursive list asking for at most one object — deliberately NOT
+ * sbStorageList(), which walks into every sub-folder and would turn a health check
+ * into a full crawl of every photo in the bucket.
+ *
+ * @returns {Promise<{ok:boolean,bucket:(string|null),error:(string|null)}>}
+ */
+async function sbProbeStorage() {
+  if (!process.env.SC_SUPABASE_URL || !process.env.SC_SUPABASE_SERVICE_ROLE_KEY)
+    return { ok: false, bucket: null, error: "not_configured" };
+  const bucket = sbBucket();
+  try {
+    const res = await fetch(`${sbStorageBase()}/object/list/${bucket}`, {
+      method: "POST",
+      headers: sbHeaders(),
+      body: JSON.stringify({ prefix: "", limit: 1, offset: 0 }),
+    });
+    return {
+      ok: res.ok,
+      bucket,
+      error: res.ok ? null : res.status === 404 ? "missing" : `http_${res.status}`,
+    };
+  } catch (e) {
+    return { ok: false, bucket, error: "unreachable" };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1020,6 +1104,8 @@ module.exports = {
   sbInsertError,
   sbSelectErrors,
   sbCountErrors,
+  sbProbeTable,
+  sbProbeStorage,
   // Projects CMS — Postgres
   sbSelectProjects,
   sbGetProject,

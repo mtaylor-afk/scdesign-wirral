@@ -54,20 +54,26 @@ module.exports = async (req, res) => {
   let party = url.searchParams.get("party");
   if (!VALID_PARTY.includes(party)) party = "site";
 
-  // `kind` selects what to return: client errors (default, login rows excluded)
-  // or admin login attempts ("logins" = all, or just failed/successful).
-  const VALID_KINDS = ["errors", "logins", "logins_failed", "logins_success"];
+  // `kind` selects what to return: client errors (default, login rows excluded),
+  // admin login attempts ("logins" = all, or just failed/successful), or
+  // "unnotified" — enquiries saved to the database that nobody was emailed about.
+  const VALID_KINDS = ["errors", "logins", "logins_failed", "logins_success", "unnotified"];
   let kind = url.searchParams.get("kind");
   if (!VALID_KINDS.includes(kind)) kind = "errors";
-  const isLogins = kind !== "errors";
+  // Match on the prefix, not "anything that isn't errors": the login-only extras
+  // below are meaningless for "unnotified" and would cost three wasted queries.
+  const isLogins = kind.indexOf("logins") === 0;
 
   const botsParam = url.searchParams.get("bots");
   // Errors default to hiding bots; login attempts default to showing everything
-  // (bot/script sign-in attempts are exactly what you want to see).
+  // (bot/script sign-in attempts are exactly what you want to see). "unnotified"
+  // counts every saved-but-unemailed enquiry whatever the user-agent looked like —
+  // undercounting a real lead is far worse than listing a spam one.
+  const showAllAgents = isLogins || kind === "unnotified";
   const botMode =
     botsParam === "include" || botsParam === "only" || botsParam === "exclude"
       ? botsParam
-      : isLogins
+      : showAllAgents
       ? "include"
       : "exclude";
 

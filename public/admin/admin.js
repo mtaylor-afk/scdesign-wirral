@@ -45,6 +45,7 @@ const state = {
   errExporting: false,
   errExportNote: "", // one-line feedback under the button
   logins: null,
+  health: null,
   loginPage: 1,
   loginKind: "logins", // logins | logins_failed | logins_success
   loginBots: "include",
@@ -683,7 +684,7 @@ function viewEnquiries() {
     : '<tr><td colspan="5" class="empty">No enquiries saved yet. New website form submissions will appear here automatically.</td></tr>';
   return `
     ${unnotifiedBanner()}
-    <div class="callout"><strong>Backup record of every website enquiry.</strong> The website still emails Sean exactly as before — this is a safety-net copy saved to the database, so a lead is never lost if an email is missed. Newest first; <strong>click a row</strong> to see every field captured.</div>
+    <div class="callout"><strong>Every website enquiry is saved here</strong>, whether or not a notification email got through — so the contact details survive even when nobody was told at the time. Newest first; <strong>click a row</strong> to see every field captured.</div>
     <div class="grid kpis">
       ${kpi("Total enquiries", fmt(d.total), "saved all-time")}
       ${kpi("Showing", fmt(rows.length), `page ${d.page} of ${d.totalPages}`)}
@@ -1548,6 +1549,161 @@ const REF = [
   },
 ];
 
+/* ---------------- Health & setup ---------------- */
+/* What is configured and what silently isn't. Everything here comes from
+   ?report=health, which reports booleans for secrets and never their values. */
+
+const HEALTH_STATE_LABELS = { ok: "Working", warn: "Check", bad: "Not working", off: "Not set" };
+
+function healthPill(s) {
+  const cls = s === "ok" ? "green" : s === "bad" ? "red" : s === "warn" ? "amber" : "grey";
+  return `<span class="pill ${cls}">${esc(HEALTH_STATE_LABELS[s] || s)}</span>`;
+}
+
+function healthRow(label, s, note) {
+  return `<div class="hrow"><div class="hrow-l">${esc(label)}</div><div class="hrow-s">${healthPill(s)}</div><div class="hrow-n">${note || ""}</div></div>`;
+}
+
+function healthCard(g) {
+  return `
+    <div class="card hcard hcard-${g.status}">
+      <div class="hhead">
+        <div><h3>${esc(g.title)}</h3><div class="csub">${esc(g.headline)}</div></div>
+        ${healthPill(g.status)}
+      </div>
+      ${g.detail ? `<p class="hdetail">${g.detail}</p>` : ""}
+      <div class="hrows">${g.rows.join("")}</div>
+      ${g.fix ? `<div class="hfix"><strong>To fix:</strong> ${g.fix}</div>` : ""}
+    </div>`;
+}
+
+/** Row count if the table answered, so "working" is visibly backed by something. */
+function tableNote(t) {
+  if (!t) return "";
+  if (t.ok) return t.count === null || t.count === undefined ? "answering" : `${fmt(t.count)} rows`;
+  if (t.error === "missing") return "this table does not exist yet";
+  if (t.error === "not_configured") return "the database connection is not set up";
+  return "could not be reached";
+}
+
+function tableState(t) {
+  return t && t.ok ? "ok" : "bad";
+}
+
+function viewHealth() {
+  const h = state.health;
+  if (!h) return loader();
+  if (h.failed) {
+    return '<div class="card"><div class="empty">Could not load the health check. Try Refresh.</div></div>';
+  }
+  const e = h.env || {};
+  const tb = h.tables || {};
+  const gh = h.github || {};
+  const st = h.storage || {};
+  const groups = [];
+
+  /* --- Email --- */
+  const smtpOk = !!(e.SMTP_USER && e.SMTP_PASS);
+  groups.push({
+    title: "Email notifications",
+    status: smtpOk ? "ok" : "bad",
+    headline: smtpOk ? "The backup email can send." : "The backup email cannot send.",
+    detail: smtpOk
+      ? "When an enquiry misses the main notification route, this sends it on so somebody is still told."
+      : "Enquiries are still saved here in full and nothing is lost — but if one misses the main notification route, <strong>nobody is emailed about it</strong>. That is what happened between July and September 2026.",
+    rows: [
+      healthRow("Mail username (SMTP_USER)", e.SMTP_USER ? "ok" : "off", ""),
+      healthRow("Mail password (SMTP_PASS)", e.SMTP_PASS ? "ok" : "off", e.SMTP_PASS ? "" : "must be an app-specific password"),
+      healthRow("Sent from (SC_MAIL_FROM)", e.SC_MAIL_FROM ? "ok" : "off", e.SC_MAIL_FROM ? "" : "falls back to a built-in address"),
+      healthRow("Sent to (SC_LEAD_TO)", e.SC_LEAD_TO || e.SC_LEAD_RECIPIENTS ? "ok" : "off", e.SC_LEAD_TO || e.SC_LEAD_RECIPIENTS ? "" : "falls back to the built-in recipients"),
+    ],
+    fix: smtpOk
+      ? ""
+      : "Set <code>SMTP_USER</code> and <code>SMTP_PASS</code> in the <strong>scdesign-wirral</strong> Vercel project and redeploy. <code>SMTP_PASS</code> has to be an app-specific password generated at appleid.apple.com — not the account password.",
+  });
+
+  /* --- Database --- */
+  const tableRows = [
+    ["Website analytics", "sc_events"],
+    ["Error log", "sc_errors"],
+    ["Customer enquiries", "sc_enquiries"],
+    // Not "Projects editor" — that is the name of the card below, and the same
+    // label meaning two different things on one page reads as a fault.
+    ["Case studies", "sc_projects"],
+  ];
+  const dbBad = tableRows.filter(([, k]) => !(tb[k] && tb[k].ok));
+  groups.push({
+    title: "Database",
+    status: dbBad.length === 0 ? "ok" : dbBad.length === tableRows.length ? "bad" : "warn",
+    headline:
+      dbBad.length === 0
+        ? "All four tables are answering."
+        // "1 of 4 tables is…" — the noun agrees with the total, the verb with the count.
+        : `${dbBad.length} of ${tableRows.length} tables ${dbBad.length === 1 ? "is" : "are"} not available.`,
+    detail: "",
+    rows: tableRows.map(([label, key]) => healthRow(label, tableState(tb[key]), tableNote(tb[key]))),
+    fix:
+      tb.sc_projects && tb.sc_projects.error === "missing"
+        ? "The Projects editor needs its table before it can save anything. Run <code>db/sc_projects.sql</code> once in the Supabase SQL editor."
+        : "",
+  });
+
+  /* --- Publishing --- */
+  const canPublish = gh.configured && gh.reachable && st.ok && tb.sc_projects && tb.sc_projects.ok;
+  const publishRows = [
+    healthRow("GitHub token (SC_GITHUB_TOKEN)", gh.configured ? (gh.reachable ? "ok" : "bad") : "off",
+      gh.configured ? (gh.reachable ? "accepted by GitHub" : esc(gh.error || "GitHub refused it")) : "no token set"),
+    healthRow("Repository", gh.repo ? "ok" : "off", gh.repo ? esc(gh.repo + " · " + (gh.branch || "")) : "uses the built-in default"),
+    healthRow("Photo storage", st.ok ? "ok" : "bad", st.ok ? esc(st.bucket || "") : st.error === "missing" ? "the bucket does not exist" : "could not be reached"),
+    healthRow("Projects table", tableState(tb.sc_projects), tableNote(tb.sc_projects)),
+  ];
+  groups.push({
+    title: "Projects editor",
+    status: canPublish ? "ok" : "bad",
+    headline: canPublish ? "Sean can add and publish case studies." : "The Projects editor cannot publish yet.",
+    detail: canPublish
+      ? ""
+      : "The editor will open, but it cannot save a project or put one on the website until everything below is in place.",
+    rows: publishRows,
+    fix: canPublish
+      ? ""
+      : "Create <code>SC_GITHUB_TOKEN</code> in the scdesign-wirral Vercel project (a fine-grained GitHub token with <strong>Contents: Read and write</strong> on this repository), and run <code>db/sc_projects.sql</code> once in Supabase.",
+  });
+
+  /* --- Sign-in --- */
+  const authOk = !!(e.SC_ADMIN_USER && e.SC_ADMIN_PASS && e.SC_ADMIN_SESSION_SECRET);
+  groups.push({
+    title: "Admin sign-in",
+    status: authOk ? "ok" : "warn",
+    headline: authOk ? "Sign-in is configured." : "One of the sign-in settings is missing.",
+    detail: "",
+    rows: [
+      healthRow("Username", e.SC_ADMIN_USER ? "ok" : "off", ""),
+      healthRow("Password", e.SC_ADMIN_PASS ? "ok" : "off", ""),
+      healthRow("Session signing key", e.SC_ADMIN_SESSION_SECRET ? "ok" : "off", e.SC_ADMIN_SESSION_SECRET ? "" : "sessions cannot be verified without this"),
+    ],
+    fix: "",
+  });
+
+  return `
+    <div class="callout">
+      <strong>What this page is.</strong> Every setting the website depends on, and whether it is actually
+      working right now. It exists because a setting that is simply missing produces no error anywhere —
+      which is how six enquiries were saved with nobody told for three months.
+      <div class="callout-sub">Passwords and keys are never shown here — only whether each one is set.</div>
+    </div>
+    ${groups.map(healthCard).join("")}
+    <div class="card">
+      <h3>What this page cannot see</h3>
+      <div class="csub" style="margin-bottom:10px">Worth knowing, so a clean page isn't read as more than it is.</div>
+      <ul class="hnotes">
+        <li>The <strong>main</strong> enquiry notification runs on a separate service, outside this project. Its settings can't be read from here, so "Email notifications" above covers the backup route only.</li>
+        <li>A setting can be present and still be wrong — the wrong password will show as set. Where a live check is possible (the GitHub token, the database, photo storage) one has been made and is shown above.</li>
+        <li>The surest test is still an end-to-end one: send a real enquiry through the contact form and confirm it arrives.</li>
+      </ul>
+    </div>`;
+}
+
 function viewDataAvailable() {
   const groups = REF.map((g) => {
     const rows = g.rows
@@ -1585,14 +1741,16 @@ function viewProjectsSection() {
 const VIEWS = {
   overview: viewOverview, enquiries: viewEnquiries, projects: viewProjectsSection, trends: viewTrends, pages: viewPages, journeys: viewJourneys, flow: viewFlow, sources: viewSources,
   locations: viewLocations, devices: viewDevices, engagement: viewEngagement,
-  realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, errors: viewErrors, logins: viewLogins, data: viewDataAvailable,
+  realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, errors: viewErrors, logins: viewLogins,
+  health: viewHealth, data: viewDataAvailable,
 };
 const TITLES = {
   overview: "Overview", enquiries: "New customer enquiry",
   projects: (window.SCProjects && window.SCProjects.title) || "Projects & portfolio",
   trends: "Traffic trends", pages: "Pages", journeys: "Visitor journeys", flow: "Path flow", sources: "Sources",
   locations: "Locations", devices: "Devices & technology", engagement: "Engagement",
-  realtime: "Real-time", events: "Events & conversions", visualiser: "Visualiser", errors: "Error logs", logins: "Login attempts", data: "Data available",
+  realtime: "Real-time", events: "Events & conversions", visualiser: "Visualiser", errors: "Error logs", logins: "Login attempts",
+  health: "Health & setup", data: "Data available",
 };
 const NAV = [
   { items: [{ id: "overview", label: "Overview" }] },
@@ -1605,7 +1763,11 @@ const NAV = [
     { id: "engagement", label: "Engagement" }, { id: "realtime", label: "Real-time" },
   ]},
   { group: "Conversions", items: [{ id: "events", label: "Events" }, { id: "visualiser", label: "Visualiser" }] },
-  { group: "System", items: [{ id: "errors", label: "Error logs" }, { id: "logins", label: "Login attempts" }] },
+  { group: "System", items: [
+    { id: "health", label: "Health & setup" },
+    { id: "errors", label: "Error logs" },
+    { id: "logins", label: "Login attempts" },
+  ]},
   { group: "Reference", items: [{ id: "data", label: "Data available" }] },
 ];
 
@@ -1639,6 +1801,9 @@ function clearRt() {
 function setPageMeta() {
   let txt = "";
   if (state.view === "data") txt = "Reference";
+  else if (state.view === "health") {
+    txt = state.health && !state.health.failed ? "Checked just now" : "Configuration";
+  }
   else if (state.view === "journeys") {
     txt = state.journeys
       ? `${rangeLabel()} · ${fmt(state.journeys.summary.visitors)} visitors${state.journeys.meta.botsExcluded ? " · bots excluded" : ""}`
@@ -1680,6 +1845,7 @@ function renderView() {
   state.errExportNote = "";
   state.errExporting = false;
   state.logins = null;
+  state.health = null;
   // Clears the fetched project list only — the open editor is deliberately kept,
   // because Refresh and the topbar controls come through here too.
   if (window.SCProjects) window.SCProjects.reset();
@@ -1698,6 +1864,7 @@ function renderView() {
   else if (v === "enquiries") loadEnquiries(state.enqPage);
   else if (v === "errors") loadErrors(state.errPage);
   else if (v === "logins") loadLogins(state.loginPage);
+  else if (v === "health") loadHealth();
   else if (v === "data") {
     /* static reference catalogue — nothing to fetch */
   } else loadStatsView();
@@ -1847,45 +2014,80 @@ async function loadFlow() {
  *
  * Best-effort and non-blocking: if this fails the enquiries list still renders.
  */
-/** The red banner: enquiries that arrived but that nobody was told about. */
+/** The amber banner: enquiries that arrived but that nobody was told about. */
 function unnotifiedBanner() {
   const u = state.enqUnnotified;
-  if (!u || !u.count) return "";
+  if (!u) return "";
+  // A failed check must never look like a clean bill of health. Rendering nothing
+  // on error is indistinguishable from "all fine", which is the whole failure mode
+  // this banner exists to prevent.
+  if (u.failed) {
+    return `
+      <div class="callout callout-warn">
+        <strong>Couldn't check whether these enquiries were emailed.</strong>
+        The enquiries below are safe — it is only the notification check that failed. Try Refresh.
+      </div>`;
+  }
+  if (!u.count) return "";
+  const one = u.count === 1;
   const when = u.oldest ? ` The earliest was ${esc(fmtDateTime(u.oldest))}.` : "";
   const why =
     u.reason === "smtp_not_configured"
-      ? " The cause is that <strong>SMTP_USER and SMTP_PASS are not set</strong> in the scdesign-wirral Vercel project, so the site can save an enquiry but cannot email it."
+      ? " The backup email can't send because <strong>SMTP_USER and SMTP_PASS are not set</strong> in the scdesign-wirral Vercel project."
       : u.reason
       ? ` The mail server reported: <code>${esc(u.reason)}</code>.`
       : "";
   return `
     <div class="callout callout-warn">
-      <strong>${fmt(u.count)} ${u.count === 1 ? "enquiry" : "enquiries"} below ${u.count === 1 ? "was" : "were"} saved here but never emailed to anyone.</strong>
-      ${u.count === 1 ? "It is" : "They are"} in the list — no lead was lost — but nobody was notified at the time, so ${u.count === 1 ? "it" : "they"} may never have been answered.${when}${why}
-      Until that is fixed, any enquiry that misses the primary endpoint will be saved silently again.
+      <strong>At least ${fmt(u.count)} ${one ? "enquiry" : "enquiries"} below ${one ? "was" : "were"} saved here but nobody was emailed about ${one ? "it" : "them"}.</strong>
+      ${one ? "It is" : "They are"} in the list and the contact details are safe — but nobody was told at the time, so ${one ? "it" : "they"} may never have been answered.${when}${why}
+      <div class="callout-sub">This is a minimum, not a total: the website only records the failure when <em>both</em> notification routes failed for the same enquiry, so one that slipped through on only one route is not counted here.</div>
     </div>`;
 }
 
 async function countUnnotifiedEnquiries() {
   try {
-    const r = await apiGet(`${ERROR_LOGS}?kind=errors&bots=include&party=all&pageSize=200`);
-    if (!r.ok) return null;
+    // kind=unnotified filters server-side and returns an EXACT total. It used to
+    // pull one 200-row page of the whole error log and filter it here, which meant
+    // the warning quietly vanished once those rows aged out of the first page.
+    const r = await apiGet(`${ERROR_LOGS}?kind=unnotified&bots=include&party=all&pageSize=200`);
+    if (!r.ok) return { failed: true };
     const j = await r.json();
-    if (!j.ok) return null;
-    const hits = (j.rows || []).filter((e) => {
-      const p = e.props || {};
-      return e.type === "form_error" && p.backupStored === true && p.backupEmailed === false;
-    });
-    if (!hits.length) return { count: 0 };
+    if (!j.ok) return { failed: true };
+    const rows = j.rows || [];
+    const total = Number.isFinite(j.total) ? j.total : rows.length;
+    if (!total) return { count: 0 };
     return {
-      count: hits.length,
-      newest: hits[0].ts,
-      oldest: hits[hits.length - 1].ts,
+      count: total,
+      newest: (rows[0] || {}).ts || null,
+      // Rows arrive newest-first, so the last one is the earliest — but only when
+      // this page holds every match. Beyond that, say nothing rather than name a
+      // date that is really just the oldest of the most recent 200.
+      oldest: total <= rows.length ? (rows[rows.length - 1] || {}).ts || null : null,
       // "smtp_not_configured" is the usual culprit and names its own fix.
-      reason: hits.map((h) => (h.props || {}).emailError).find(Boolean) || null,
+      reason: rows.map((h) => (h.props || {}).emailError).find(Boolean) || null,
     };
   } catch (e) {
-    return null;
+    return { failed: true };
+  }
+}
+
+async function loadHealth() {
+  try {
+    const r = await apiGet(`${STATS}?report=health`);
+    if (r.status === 401) { showLogin(); return; }
+    if (!r.ok) throw new Error("health " + r.status);
+    const j = await r.json();
+    state.health = j && j.ok ? j : { failed: true };
+    markFresh();
+  } catch (e) {
+    // A health check that fails must say so, not render an empty page that reads
+    // as "nothing wrong".
+    state.health = { failed: true };
+  }
+  if (state.view === "health") {
+    document.getElementById("view").innerHTML = viewHealth();
+    setPageMeta();
   }
 }
 

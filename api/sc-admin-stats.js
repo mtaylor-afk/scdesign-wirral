@@ -8,7 +8,14 @@
  * last-30-minutes view.
  */
 
-const { applyCors, requireSession, sbSelectEvents } = require("../serverlib/common");
+const {
+  applyCors,
+  requireSession,
+  sbSelectEvents,
+  sbProbeTable,
+  sbProbeStorage,
+} = require("../serverlib/common");
+const github = require("../serverlib/github");
 
 const RANGES = {
   "24h": 24 * 60 * 60 * 1000,
@@ -50,7 +57,29 @@ function distinct(rows, keyFn) {
   return s.size;
 }
 
-function buildSessions(pageviews) {
+/** A single reading can never be longer than a session — a tab left open all day is
+ *  not six hours of reading. The journeys report already clamps this way (see
+ *  closeStep below); coreMetrics used not to, which is how one abandoned tab could
+ *  move the headline "Avg. visit". */
+function clampMs(ms) {
+  return ms > SESSION_GAP ? SESSION_GAP : ms < 0 ? 0 : ms;
+}
+
+/**
+ * Group pageviews into visits, and — when given the "engaged" beacons — attribute
+ * time to them.
+ *
+ * `engagedRows` is optional and is the ONLY source of time-on-page: a pageview beacon
+ * has never carried a duration, so a session built from pageviews alone can only ever
+ * measure the gap between the first and last page and knows nothing about the time
+ * spent on the final one.
+ *
+ * The engaged rows deliberately do NOT become pages. Every bounced visit emits exactly
+ * one of them, so counting them as pageviews would make `pages === 2` for every bounce
+ * — collapsing bounce rate towards zero and inflating pages-per-visit. They only ever
+ * add to the two duration accumulators.
+ */
+function buildSessions(pageviews, engagedRows) {
   const byVid = new Map();
   for (const r of pageviews) {
     const v = vidOf(r);
@@ -58,36 +87,72 @@ function buildSessions(pageviews) {
     byVid.get(v).push(r);
   }
   const sessions = [];
-  for (const evs of byVid.values()) {
+  const byVidSessions = new Map();
+  for (const [v, evs] of byVid.entries()) {
     evs.sort((a, b) => t(a) - t(b));
+    const mine = [];
     let cur = null;
     for (const e of evs) {
       const tt = t(e);
       if (!cur || tt - cur.lastT > SESSION_GAP) {
-        if (cur) sessions.push(cur);
-        cur = { entry: e.path, exit: e.path, pages: 1, startT: tt, lastT: tt, durSum: durMs(e) };
+        if (cur) { sessions.push(cur); mine.push(cur); }
+        cur = { entry: e.path, exit: e.path, pages: 1, startT: tt, lastT: tt, engagedSum: 0, lastEngaged: 0 };
       } else {
         cur.pages += 1;
         cur.exit = e.path;
         cur.lastT = tt;
-        cur.durSum += durMs(e);
       }
     }
-    if (cur) sessions.push(cur);
+    if (cur) { sessions.push(cur); mine.push(cur); }
+    byVidSessions.set(v, mine);
+  }
+
+  for (const e of engagedRows || []) {
+    const mine = byVidSessions.get(vidOf(e));
+    if (!mine || !mine.length) continue;
+    const tt = t(e);
+    const d = clampMs(durMs(e));
+    if (!d) continue;
+    // Sessions are in ascending order: the beacon belongs to the last one that had
+    // already begun when it fired.
+    let target = null;
+    for (const s of mine) {
+      if (s.startT <= tt + 1000) target = s;
+      else break;
+    }
+    if (!target || tt > target.lastT + SESSION_GAP) continue;
+    target.engagedSum += d;
+    // A beacon at or after the final pageview is that last page being left, which is
+    // the one stretch of time the pageview timestamps cannot see.
+    if (tt >= target.lastT && d > target.lastEngaged) target.lastEngaged = d;
   }
   return sessions;
 }
 
+/**
+ * One visit's length in seconds.
+ *
+ * Multi-page: the gap between the first and last pageview, plus the measured time on
+ * the last page. Single-page: there is no gap to measure, so it is entirely the one
+ * engaged beacon — which is why a bounced visit used to count as zero seconds.
+ *
+ * No clamp on the total: a real visit across six pages can legitimately run past
+ * half an hour. The clamp belongs on each individual reading (clampMs, applied as
+ * the beacons are attributed), not on their sum.
+ */
 function sessionDurationS(s) {
-  const ms = s.pages > 1 ? s.lastT - s.startT : s.durSum;
-  return Math.round(ms / 1000);
+  const ms = s.pages > 1 ? s.lastT - s.startT + (s.lastEngaged || 0) : s.engagedSum || 0;
+  return Math.round(Math.max(0, ms) / 1000);
 }
 
 function coreMetrics(rows) {
   const pv = rows.filter((r) => r.type === "pageview");
-  // "engaged" is an internal time-on-page beacon, not a real user event.
+  // "engaged" is an internal time-on-page beacon, not a real user event — it is kept
+  // out of the event counts, but it IS the only source of visit duration, so it has
+  // to reach buildSessions.
   const ev = rows.filter((r) => r.type === "event" && r.name !== "engaged");
-  const sessions = buildSessions(pv);
+  const engaged = rows.filter((r) => r.type === "event" && r.name === "engaged");
+  const sessions = buildSessions(pv, engaged);
   const bounces = sessions.filter((s) => s.pages === 1).length;
   const totalDur = sessions.reduce((a, s) => a + sessionDurationS(s), 0);
   const convNames = new Set([
@@ -205,6 +270,75 @@ function screenLabel(r) {
   return w && h ? `${w}×${h}` : "";
 }
 
+// ---- health report --------------------------------------------------------
+
+/** Every setting the site reads, grouped by what stops working without it. */
+const HEALTH_ENV_KEYS = [
+  "SMTP_USER", "SMTP_PASS", "SC_MAIL_FROM", "SC_LEAD_TO", "SC_LEAD_CC", "SC_LEAD_RECIPIENTS",
+  "SC_SUPABASE_URL", "SC_SUPABASE_SERVICE_ROLE_KEY",
+  "SC_ADMIN_USER", "SC_ADMIN_PASS", "SC_ADMIN_SESSION_SECRET",
+  "SC_GITHUB_TOKEN", "SC_GITHUB_REPO", "SC_GITHUB_BRANCH", "SC_PROJECT_MEDIA_BUCKET",
+];
+
+const HEALTH_TABLES = ["sc_events", "sc_errors", "sc_enquiries", "sc_projects"];
+
+/**
+ * What is configured, and what silently isn't.
+ *
+ * This exists because between July and September 2026 six real enquiries were
+ * saved and nobody was emailed, and nothing anywhere said so — the setting that
+ * caused it was simply absent, and absence has no error message. Everything here
+ * is a question the server can answer about itself.
+ *
+ * BOOLEANS ONLY for every secret. A value must never enter this payload: it is
+ * rendered in a browser by whoever is signed in to the admin. The two strings that
+ * do appear — the repo slug and the bucket name — are not secrets (the repository
+ * is public), and naming them is the difference between "misconfigured" and
+ * "pointing at the wrong place".
+ */
+async function healthReport(now) {
+  const env = {};
+  for (const k of HEALTH_ENV_KEYS) {
+    const v = process.env[k];
+    env[k] = !!(v && String(v).trim());
+  }
+
+  const tables = {};
+  await Promise.all(
+    HEALTH_TABLES.map(async (name) => {
+      tables[name] = await sbProbeTable(name);
+    })
+  );
+
+  const storage = await sbProbeStorage();
+
+  // Publishing. isConfigured() is local, but a token that is present can still be
+  // expired or revoked — which looks identical from the settings alone — so when
+  // one is set we actually ask GitHub a question.
+  const gh = { configured: github.isConfigured(), repo: null, branch: null, reachable: false, error: null };
+  if (gh.configured) {
+    try {
+      const info = github.repoInfo();
+      gh.repo = `${info.owner}/${info.repo}`;
+      gh.branch = info.branch;
+      await github.readTextFile("package.json");
+      gh.reachable = true;
+    } catch (e) {
+      gh.error = (e && e.code) || (e && e.message) || "unreachable";
+    }
+  }
+
+  return {
+    ok: true,
+    report: "health",
+    generatedAt: new Date(now).toISOString(),
+    env,
+    tables,
+    storage,
+    github: gh,
+  };
+}
+
 // ---- handler --------------------------------------------------------------
 
 module.exports = async (req, res) => {
@@ -216,15 +350,28 @@ module.exports = async (req, res) => {
     return res.end(JSON.stringify({ ok: false, error: "unauthorized" }));
   }
 
-  if (!process.env.SC_SUPABASE_URL || !process.env.SC_SUPABASE_SERVICE_ROLE_KEY) {
-    res.statusCode = 500;
-    return res.end(JSON.stringify({ ok: false, error: "Supabase not configured." }));
-  }
-
   const url = new URL(req.url, "http://x");
   const includeBots = url.searchParams.get("bots") === "include";
   const report = url.searchParams.get("report") || "full";
   const now = Date.now();
+
+  // Deliberately ABOVE the Supabase guard: "the database is not configured" is one
+  // of the things this report exists to tell you, and a 500 here would hide the
+  // exact fault the page was opened to diagnose.
+  if (report === "health") {
+    try {
+      return res.end(JSON.stringify(await healthReport(now)));
+    } catch (err) {
+      console.error("sc-admin-stats health error", err && err.message);
+      res.statusCode = 502;
+      return res.end(JSON.stringify({ ok: false, error: "health_failed" }));
+    }
+  }
+
+  if (!process.env.SC_SUPABASE_URL || !process.env.SC_SUPABASE_SERVICE_ROLE_KEY) {
+    res.statusCode = 500;
+    return res.end(JSON.stringify({ ok: false, error: "Supabase not configured." }));
+  }
 
   try {
     // ---- Real-time view (last 30 minutes) --------------------------------
