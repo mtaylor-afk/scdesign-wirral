@@ -32,6 +32,10 @@ const state = {
   errorLogs: null,
   errPage: 1,
   errBots: "exclude", // exclude | include | only
+  // "Download all error logs": skip anything a previous download already took.
+  errOnlyNew: true,
+  errExporting: false,
+  errExportNote: "", // one-line feedback under the button
   logins: null,
   loginPage: 1,
   loginKind: "logins", // logins | logins_failed | logins_success
@@ -872,6 +876,7 @@ function viewErrors() {
       ${chip("include", "All")}
       ${chip("only", "Bots only")}
     </div>
+    ${errExportRow()}
     <div class="card">
       <table class="tbl errtbl">
         <thead><tr><th>Time</th><th>Type</th><th>Message</th><th>Page</th><th>Where</th></tr></thead>
@@ -879,6 +884,263 @@ function viewErrors() {
       </table>
       ${errPager(d)}
     </div>`;
+}
+
+/* ---- Download every error as one text file ------------------------------ *
+ * The per-row "Copy all error data" button is fine for one error, but handing
+ * a batch back for diagnosis meant expanding and copying each row by hand. This
+ * writes the same report for every logged error into a single .txt, with a
+ * summary on top so a few hundred errors can be triaged rather than read.
+ *
+ * The watermark (the highest error id already downloaded) lives in
+ * localStorage: it is one person's "how far have I got" marker, so it is not
+ * worth a database table. The cost is that it is per-browser -- downloading
+ * from another machine re-sends everything -- so the status line always shows
+ * where the mark is, and Reset clears it.
+ * ------------------------------------------------------------------------- */
+const ERR_EXPORT_KEY = "sc_admin_err_export";
+const ERR_EXPORT_PAGE = 200; // matches the endpoint's raised ceiling
+const ERR_EXPORT_CAP = 5000; // refuse to build an unusable file silently
+
+/** The last download's watermark, or null. Never throws. */
+function errExportMark() {
+  try {
+    const raw = localStorage.getItem(ERR_EXPORT_KEY);
+    if (!raw) return null;
+    const m = JSON.parse(raw);
+    return m && Number.isFinite(m.id) ? m : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function errExportSave(mark) {
+  try {
+    localStorage.setItem(ERR_EXPORT_KEY, JSON.stringify(mark));
+  } catch (e) {
+    /* private window, or storage full -- the download still worked */
+  }
+}
+
+function errExportClear() {
+  try {
+    localStorage.removeItem(ERR_EXPORT_KEY);
+  } catch (e) {
+    /* nothing to do */
+  }
+}
+
+function errExportRow() {
+  const m = errExportMark();
+  // The note and the watermark line are shown TOGETHER, not one instead of the
+  // other: the note appears right after a download, which is precisely when
+  // someone is most likely to want Reset, and an earlier version hid the link
+  // at that moment.
+  const bits = [];
+  if (state.errExportNote) bits.push(esc(state.errExportNote));
+  if (m) {
+    bits.push(
+      `Last download: ${esc(fmtDateTime(m.at))} · ${fmt(m.count)} error${m.count === 1 ? "" : "s"} · <button class="linkbtn" data-errexportreset>Reset</button>`
+    );
+  } else if (!state.errExportNote) {
+    bits.push("Nothing downloaded yet — the first file will contain every error.");
+  }
+  const status = bits.join("<br />");
+  return `
+    <div class="card errexport">
+      <div class="errexport-main">
+        <button class="btn" data-errexport ${state.errExporting ? "disabled" : ""}>${
+          state.errExporting ? "Preparing…" : "⬇ Download all error logs"
+        }</button>
+        <label class="toggle"><input type="checkbox" id="errOnlyNew" ${
+          state.errOnlyNew ? "checked" : ""
+        } /> Only errors I haven’t downloaded before</label>
+      </div>
+      <div class="errexport-note">${status}</div>
+    </div>`;
+}
+
+/** Pull every matching row, paging until the server says there are no more. */
+async function fetchAllErrorRows(sinceId, onProgress) {
+  const rows = [];
+  let page = 1;
+  let total = 0;
+  let truncated = false;
+  for (;;) {
+    let url = `${ERROR_LOGS}?page=${page}&pageSize=${ERR_EXPORT_PAGE}&bots=${state.errBots}&kind=errors`;
+    if (sinceId !== null && sinceId !== undefined) url += `&sinceId=${encodeURIComponent(sinceId)}`;
+    const r = await apiGet(url);
+    if (r.status === 401) {
+      showLogin();
+      return null;
+    }
+    if (!r.ok) throw new Error("errors " + r.status);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || "export failed");
+    total = j.total || 0;
+    const batch = j.rows || [];
+    batch.forEach((x) => rows.push(x));
+    if (onProgress) onProgress(rows.length, total);
+    if (!batch.length || rows.length >= total) break;
+    if (rows.length >= ERR_EXPORT_CAP) {
+      truncated = true;
+      break;
+    }
+    page += 1;
+  }
+  return { rows, total, truncated };
+}
+
+/**
+ * Counts by type, page and message. With a few hundred errors this is what
+ * makes the file triageable instead of a wall of stack traces, and it is free:
+ * every row is already in memory.
+ */
+function errExportSummary(rows) {
+  const byType = {};
+  const byPage = {};
+  const byMsg = {};
+  rows.forEach((e) => {
+    const t = ERR_TYPE_LABELS[e.type] || e.type || "error";
+    byType[t] = (byType[t] || 0) + 1;
+    const p = e.path || String(e.url || "").replace(/^https?:\/\/[^/]+/, "") || "(unknown)";
+    byPage[p] = (byPage[p] || 0) + 1;
+    const m = String(e.message || "(no message)").slice(0, 90);
+    byMsg[m] = (byMsg[m] || 0) + 1;
+  });
+  const top = (o, n) =>
+    Object.keys(o)
+      .sort((a, b) => o[b] - o[a])
+      .slice(0, n)
+      .map((k) => `${k} (${o[k]})`);
+  const L = [];
+  L.push("SUMMARY");
+  L.push("  By type:      " + (top(byType, 10).join("  ·  ") || "none"));
+  L.push("  Top pages:    " + (top(byPage, 8).join("  ·  ") || "none"));
+  L.push("  Top messages:");
+  top(byMsg, 8).forEach((s) => L.push("    - " + s));
+  if (rows.length) {
+    // Rows arrive newest-first (order=ts.desc).
+    L.push("  Newest:       " + fmtDateTime(rows[0].ts));
+    L.push("  Oldest:       " + fmtDateTime(rows[rows.length - 1].ts));
+  }
+  return L.join("\n");
+}
+
+function errExportFilename(d) {
+  const p = (n) => String(n).padStart(2, "0");
+  return (
+    "sc-design-errors-" +
+    d.getFullYear() +
+    "-" +
+    p(d.getMonth() + 1) +
+    "-" +
+    p(d.getDate()) +
+    "-" +
+    p(d.getHours()) +
+    p(d.getMinutes()) +
+    ".txt"
+  );
+}
+
+function downloadTextFile(filename, text) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Revoke late: some browsers cancel an in-flight download if it goes too soon.
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+async function exportErrorLogs() {
+  if (state.errExporting) return;
+  const mark = errExportMark();
+  const sinceId = state.errOnlyNew && mark ? mark.id : null;
+
+  state.errExporting = true;
+  state.errExportNote = "Fetching errors…";
+  document.getElementById("view").innerHTML = viewErrors();
+
+  try {
+    const result = await fetchAllErrorRows(sinceId, (got, total) => {
+      state.errExportNote = `Fetching errors… ${fmt(got)} of ${fmt(total)}`;
+      const el = document.querySelector(".errexport-note");
+      if (el) el.textContent = state.errExportNote;
+    });
+    if (!result) return; // 401 -> login screen, nothing more to do
+
+    const rows = result.rows;
+    if (!rows.length) {
+      state.errExporting = false;
+      state.errExportNote = sinceId
+        ? "No new errors since your last download — nothing to send."
+        : "No errors logged for this filter — nothing to download.";
+      if (state.view === "errors") document.getElementById("view").innerHTML = viewErrors();
+      showToast(sinceId ? "No new errors" : "No errors to download");
+      return;
+    }
+
+    const now = new Date();
+    const filterNote =
+      state.errBots === "only"
+        ? "Bot-generated errors only"
+        : state.errBots === "include"
+        ? "All errors, including bots"
+        : "Real-visitor errors (bots hidden)";
+    const head = [];
+    head.push("SC Design Wirral — website error log export");
+    head.push("===========================================");
+    head.push("Generated:      " + fmtDateTime(now.toISOString()));
+    head.push("Filter:         " + filterNote);
+    head.push(
+      "Range:          " +
+        (sinceId
+          ? `errors after id ${sinceId} (previous download ${fmtDateTime(mark.at)})`
+          : "every error held for this filter")
+    );
+    head.push("Errors in file: " + rows.length);
+    if (result.truncated) {
+      head.push("");
+      head.push(
+        `NOTE: capped at ${ERR_EXPORT_CAP} errors of ${result.total}. Tick "Only errors I ` +
+          "haven’t downloaded before" +
+          " and download again to continue from where this file ends."
+      );
+    }
+    head.push("");
+    head.push(errExportSummary(rows));
+    head.push("");
+
+    const parts = [head.join("\n")];
+    rows.forEach((e, i) => {
+      parts.push(
+        "\n================================================================\n" +
+          `[${i + 1} of ${rows.length}]  id ${e.id}\n` +
+          "================================================================\n"
+      );
+      parts.push(formatErrorForClipboard(e));
+    });
+
+    downloadTextFile(errExportFilename(now), parts.join("\n"));
+
+    // Advance the watermark to the highest id actually in the file.
+    const maxId = rows.reduce((a, e) => (Number.isFinite(e.id) && e.id > a ? e.id : a), 0);
+    if (maxId > 0) errExportSave({ id: maxId, at: now.toISOString(), count: rows.length });
+
+    state.errExporting = false;
+    state.errExportNote = `Downloaded ${fmt(rows.length)} error${rows.length === 1 ? "" : "s"}. The next download will start after this one.`;
+    if (state.view === "errors") document.getElementById("view").innerHTML = viewErrors();
+    showToast("Error log downloaded");
+  } catch (e) {
+    state.errExporting = false;
+    state.errExportNote = "Could not build the file — try Refresh, then download again.";
+    if (state.view === "errors") document.getElementById("view").innerHTML = viewErrors();
+  }
 }
 
 /* ---- Copy-to-clipboard (Claude-Code-ready report) ---- */
@@ -1319,6 +1581,11 @@ function renderView() {
   state.flow = null;
   state.enquiries = null;
   state.errorLogs = null;
+  // The one-line download feedback is about the last action, not the data, so
+  // it goes when you navigate away. The saved watermark is NOT touched here —
+  // that has to survive, or "only new errors" would forget on every click.
+  state.errExportNote = "";
+  state.errExporting = false;
   state.logins = null;
   // Clears the fetched project list only — the open editor is deliberately kept,
   // because Refresh and the topbar controls come through here too.
@@ -1653,6 +1920,16 @@ function wire() {
       copyErrorToClipboard(parseInt(errc.getAttribute("data-errcopy"), 10), errc);
       return;
     }
+    if (e.target.closest("[data-errexport]")) {
+      exportErrorLogs();
+      return;
+    }
+    if (e.target.closest("[data-errexportreset]")) {
+      errExportClear();
+      state.errExportNote = "Cleared — the next download will contain every error again.";
+      document.getElementById("view").innerHTML = viewErrors();
+      return;
+    }
     const errf = e.target.closest("[data-errfilter]");
     if (errf) {
       state.errBots = errf.getAttribute("data-errfilter");
@@ -1698,6 +1975,12 @@ function wire() {
   });
   document.getElementById("view").addEventListener("change", (e) => {
     if (window.SCProjects && window.SCProjects.onChange(e)) return;
+    if (e.target && e.target.id === "errOnlyNew") {
+      // Kept in state, not read off the DOM at download time: the view is
+      // re-rendered wholesale on refresh and the tick would otherwise reset.
+      state.errOnlyNew = !!e.target.checked;
+      return;
+    }
     const fs = e.target.closest("[data-flowsel]");
     if (fs) {
       state.flowPage = fs.value;

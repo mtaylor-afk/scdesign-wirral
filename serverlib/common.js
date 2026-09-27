@@ -535,16 +535,31 @@ function errKindFilter(kind) {
  * by row type ("errors" excludes login rows; "logins"/"logins_failed"/
  * "logins_success" select them). Uses PostgREST's exact count so the admin can
  * paginate. Returns { rows, total }.
+ *
+ * `sinceId` (optional) returns only rows newer than that id, which is what the
+ * admin's "download the error log" export uses to skip everything already
+ * downloaded. It is a caller-supplied number landing in a PostgREST filter, so
+ * it is coerced and range-checked here rather than trusted: anything that is
+ * not a non-negative safe integer is dropped, never interpolated.
  */
-async function sbSelectErrors(limit, offset, botMode, kind) {
+async function sbSelectErrors(limit, offset, botMode, kind, sinceId) {
   limit = limit || 10;
   offset = offset || 0;
   let botFilter = "";
   if (botMode === "only") botFilter = "&is_bot=eq.true";
   else if (botMode !== "include") botFilter = "&is_bot=eq.false"; // default = exclude bots
+  let sinceFilter = "";
+  // Null, undefined and "" all mean "no watermark" and must add no filter at
+  // all. They need naming explicitly, because Number(null) and Number("") are
+  // both 0 — which passes an is-a-safe-integer test and would silently append
+  // `&id=gt.0` on every ordinary page load.
+  if (sinceId !== null && sinceId !== undefined && sinceId !== "") {
+    const sid = Number(sinceId);
+    if (Number.isSafeInteger(sid) && sid >= 0) sinceFilter = `&id=gt.${sid}`;
+  }
   const url =
     `${sbBase()}/rest/v1/sc_errors?select=*` +
-    `${botFilter}${errKindFilter(kind)}&order=ts.desc&limit=${limit}&offset=${offset}`;
+    `${botFilter}${sinceFilter}${errKindFilter(kind)}&order=ts.desc&limit=${limit}&offset=${offset}`;
   const res = await fetch(url, {
     headers: sbHeaders({ Prefer: "count=exact", Range: `${offset}-${offset + limit - 1}` }),
   });

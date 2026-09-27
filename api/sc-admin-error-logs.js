@@ -34,9 +34,18 @@ module.exports = async (req, res) => {
   const url = new URL(req.url, "http://x");
   let pageSize = parseInt(url.searchParams.get("pageSize"), 10);
   if (!Number.isFinite(pageSize) || pageSize < 1) pageSize = 10;
-  if (pageSize > 50) pageSize = 50;
+  // The on-screen table only ever asks for 10. The higher ceiling is for the
+  // admin's "download the error log" export, which has to pull every row and
+  // would otherwise need four times as many round trips.
+  if (pageSize > 200) pageSize = 200;
   let page = parseInt(url.searchParams.get("page"), 10);
   if (!Number.isFinite(page) || page < 1) page = 1;
+
+  // Only return errors newer than this id — how the export skips everything
+  // already downloaded. Clamped like every other input: a non-numeric or
+  // negative value simply means "no watermark", never a malformed filter.
+  let sinceId = parseInt(url.searchParams.get("sinceId"), 10);
+  if (!Number.isSafeInteger(sinceId) || sinceId < 0) sinceId = null;
 
   // `kind` selects what to return: client errors (default, login rows excluded)
   // or admin login attempts ("logins" = all, or just failed/successful).
@@ -57,7 +66,13 @@ module.exports = async (req, res) => {
 
   try {
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { rows, total } = await sbSelectErrors(pageSize, (page - 1) * pageSize, botMode, kind);
+    const { rows, total } = await sbSelectErrors(
+      pageSize,
+      (page - 1) * pageSize,
+      botMode,
+      kind,
+      sinceId
+    );
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const last24h = await sbCountErrors(since24h, botMode, kind);
     const payload = {
@@ -69,6 +84,9 @@ module.exports = async (req, res) => {
       last24h,
       botMode,
       kind,
+      // Echoed back so the export can confirm the watermark it asked for was
+      // the one applied, matching how botMode and kind are already echoed.
+      sinceId,
       rows,
       generatedAt: new Date().toISOString(),
     };
