@@ -156,6 +156,33 @@ function envProps(): Json {
   };
 }
 
+/* ----------------------------- classification ----------------------------- */
+
+/**
+ * Browser-extension code runs in the page and its exceptions arrive here as if
+ * they were ours. Real examples from the live log:
+ *
+ *   Cannot read properties of undefined (reading 'M_ID')
+ *     at Y (chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/executors/200.js:1:761)
+ *
+ * We cannot fix those and they are not faults in the website, but they are
+ * noise, and noise buries the errors that matter. So they get FLAGGED, never
+ * dropped — the same stance the server already takes with bots — and the admin
+ * hides them by default while keeping them one click away.
+ *
+ * The match is deliberately narrow: only an explicit extension URL scheme
+ * counts. A broader heuristic (say, "no stack and the source is the document")
+ * would also catch genuine inline failures, and hiding a real fault is far
+ * worse than leaving some noise in the log. An extension error that reports the
+ * document as its source is therefore NOT detected, and that is the right
+ * trade.
+ */
+const EXTENSION_URL = /\b(?:chrome|chrome-untrusted|moz|safari-web|safari|ms-browser|opera|edge)-extension:\/\//i;
+
+function isThirdParty(report: ErrorReport): boolean {
+  return EXTENSION_URL.test(report.stack || "") || EXTENSION_URL.test(report.source || "");
+}
+
 /* ----------------------------- public API ----------------------------- */
 
 /**
@@ -174,7 +201,12 @@ export function reportError(report: ErrorReport) {
     sentSignatures.add(sig);
     totalSent++;
 
-    const props = Object.assign(envProps(), report.props || {});
+    // thirdParty is set LAST so a caller's props cannot claim (or clear) it —
+    // the same "server-derived keys spread last" discipline the ingest endpoint
+    // uses. It rides in the existing props jsonb, so there is no schema change.
+    const props = Object.assign(envProps(), report.props || {}, {
+      thirdParty: isThirdParty(report) || undefined,
+    });
     const payload: Json = Object.assign(context(), {
       type: report.type,
       severity: report.severity || "error",

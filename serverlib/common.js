@@ -521,6 +521,28 @@ async function sbInsertError(row) {
 // Restrict by row "kind". Admin login attempts share the sc_errors table but use
 // dedicated `type`s; this keeps them out of the error views and powers the
 // separate "Login attempts" view.
+/**
+ * Filter by who the error actually belongs to.
+ *
+ * Browser-extension code throws inside the page and those exceptions reach the
+ * log looking like ours. They are flagged client-side (see src/lib/error-report
+ * .ts) with `props.thirdParty`, never dropped — so this is the same stance as
+ * the bot flag: keep everything, let the admin choose what to look at.
+ *
+ * "site" is the default because an extension fault is not a fault in the
+ * website, and leaving them mixed in means real errors get skimmed past.
+ * Filtering here rather than in the browser keeps the totals, the paging and
+ * the download all agreeing with each other.
+ *
+ * Note `->>` yields text, so a JSON boolean true compares as the string
+ * "true", and a row without the key is null rather than false.
+ */
+function errPartyFilter(party) {
+  if (party === "third") return "&props->>thirdParty=eq.true";
+  if (party === "site") return "&props->>thirdParty=is.null";
+  return ""; // "all"
+}
+
 function errKindFilter(kind) {
   if (kind === "logins") return "&type=in.(login_success,login_failed)";
   if (kind === "logins_failed") return "&type=eq.login_failed";
@@ -542,7 +564,7 @@ function errKindFilter(kind) {
  * it is coerced and range-checked here rather than trusted: anything that is
  * not a non-negative safe integer is dropped, never interpolated.
  */
-async function sbSelectErrors(limit, offset, botMode, kind, sinceId) {
+async function sbSelectErrors(limit, offset, botMode, kind, sinceId, party) {
   limit = limit || 10;
   offset = offset || 0;
   let botFilter = "";
@@ -559,7 +581,8 @@ async function sbSelectErrors(limit, offset, botMode, kind, sinceId) {
   }
   const url =
     `${sbBase()}/rest/v1/sc_errors?select=*` +
-    `${botFilter}${sinceFilter}${errKindFilter(kind)}&order=ts.desc&limit=${limit}&offset=${offset}`;
+    `${botFilter}${sinceFilter}${errPartyFilter(party)}${errKindFilter(kind)}` +
+    `&order=ts.desc&limit=${limit}&offset=${offset}`;
   const res = await fetch(url, {
     headers: sbHeaders({ Prefer: "count=exact", Range: `${offset}-${offset + limit - 1}` }),
   });
@@ -581,12 +604,14 @@ async function sbSelectErrors(limit, offset, botMode, kind, sinceId) {
  * Exact count of error rows since `sinceIso` (HEAD request, no body fetched).
  * Honours the same botMode as sbSelectErrors. Returns a number (0 on failure).
  */
-async function sbCountErrors(sinceIso, botMode, kind) {
+async function sbCountErrors(sinceIso, botMode, kind, party) {
   let botFilter = "";
   if (botMode === "only") botFilter = "&is_bot=eq.true";
   else if (botMode !== "include") botFilter = "&is_bot=eq.false";
   const since = sinceIso ? `&ts=gte.${encodeURIComponent(sinceIso)}` : "";
-  const url = `${sbBase()}/rest/v1/sc_errors?select=id${since}${botFilter}${errKindFilter(kind)}`;
+  const url =
+    `${sbBase()}/rest/v1/sc_errors?select=id${since}${botFilter}` +
+    `${errPartyFilter(party)}${errKindFilter(kind)}`;
   try {
     const res = await fetch(url, {
       method: "HEAD",

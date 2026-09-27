@@ -47,6 +47,13 @@ module.exports = async (req, res) => {
   let sinceId = parseInt(url.searchParams.get("sinceId"), 10);
   if (!Number.isSafeInteger(sinceId) || sinceId < 0) sinceId = null;
 
+  // Whose error is it: the website's own ("site", the default — an extension
+  // fault is not a fault in the site), everything, or only extension noise.
+  // Clamped against a fixed list, like `kind` and `bots`.
+  const VALID_PARTY = ["site", "all", "third"];
+  let party = url.searchParams.get("party");
+  if (!VALID_PARTY.includes(party)) party = "site";
+
   // `kind` selects what to return: client errors (default, login rows excluded)
   // or admin login attempts ("logins" = all, or just failed/successful).
   const VALID_KINDS = ["errors", "logins", "logins_failed", "logins_success"];
@@ -71,10 +78,11 @@ module.exports = async (req, res) => {
       (page - 1) * pageSize,
       botMode,
       kind,
-      sinceId
+      sinceId,
+      party
     );
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    const last24h = await sbCountErrors(since24h, botMode, kind);
+    const last24h = await sbCountErrors(since24h, botMode, kind, party);
     const payload = {
       ok: true,
       page,
@@ -87,6 +95,7 @@ module.exports = async (req, res) => {
       // Echoed back so the export can confirm the watermark it asked for was
       // the one applied, matching how botMode and kind are already echoed.
       sinceId,
+      party,
       rows,
       generatedAt: new Date().toISOString(),
     };

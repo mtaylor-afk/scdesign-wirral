@@ -14,7 +14,14 @@
  * finish even if the page navigates straight after on the happy path.
  */
 
-export type BackupResult = { stored: boolean; emailed: boolean };
+/**
+ * `emailError` is why the notification did not send — `"smtp_not_configured"`
+ * when SMTP_USER/SMTP_PASS are unset in the Vercel project, otherwise the
+ * mailer's own message. The endpoint has always returned it and this client
+ * used to drop it, which is why six months of "enquiry saved but nobody
+ * emailed" showed up in the error log with no stated cause.
+ */
+export type BackupResult = { stored: boolean; emailed: boolean; emailError?: string | null };
 
 const BASE =
   process.env.NEXT_PUBLIC_SC_ANALYTICS_BASE || "https://scdesign-wirral.vercel.app";
@@ -51,11 +58,15 @@ export async function backupEnquiry(
       mode: "cors",
       credentials: "omit",
     });
-    if (!res.ok) return { stored: false, emailed: false };
+    if (!res.ok) return { stored: false, emailed: false, emailError: `http_${res.status}` };
     const json = (await res.json().catch(() => ({}))) as Partial<BackupResult>;
-    return { stored: !!json.stored, emailed: !!json.emailed };
+    return {
+      stored: !!json.stored,
+      emailed: !!json.emailed,
+      emailError: json.emailError ?? null,
+    };
   } catch {
     /* never let the backup interfere with the real submission */
-    return { stored: false, emailed: false };
+    return { stored: false, emailed: false, emailError: "request_failed" };
   }
 }

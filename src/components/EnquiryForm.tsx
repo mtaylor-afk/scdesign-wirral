@@ -277,7 +277,10 @@ export function EnquiryForm({
     }
 
     // Primary failed → rely on the server-side backup email (no local mail app).
-    let backup = { stored: false, emailed: false };
+    let backup: { stored: boolean; emailed: boolean; emailError?: string | null } = {
+      stored: false,
+      emailed: false,
+    };
     try {
       backup = await backupPromise;
     } catch {
@@ -291,18 +294,30 @@ export function EnquiryForm({
       return;
     }
 
-    // Last resort only (both server paths failed): pre-filled email to Sean.
+    // Last resort: pre-filled email to Sean, because he has not been notified.
     // Log it — a contact form falling back to mailto is a real lost-lead risk.
+    //
+    // The message must say which of the two very different things happened.
+    // It used to read "primary endpoint and server backup both failed" in every
+    // case, which was wrong and actively harmful: the backup usually DID store
+    // the enquiry and only the email failed, so six real leads sat safely in the
+    // database for months while the log said they were lost.
     track("contact_form_success", { mode: "mailto_fallback" });
     reportError({
       type: "form_error",
       severity: "error",
-      message: "Contact form: primary endpoint and server backup both failed — fell back to mailto",
+      message: backup.stored
+        ? "Contact form: enquiry SAVED to the database but no email was sent — Sean was NOT notified. The lead is recoverable from Admin → Customer enquiries."
+        : "Contact form: enquiry was NOT saved and no email was sent — fell back to mailto, so the lead exists only if the visitor sent that email.",
       props: {
         form: "contact",
         primaryOk: false,
         backupStored: backup.stored,
         backupEmailed: backup.emailed,
+        // Why the email failed — "smtp_not_configured" means SMTP_USER/SMTP_PASS
+        // are unset in the Vercel project, which is a config fix, not a code one.
+        emailError: backup.emailError || "unknown",
+        recoverable: backup.stored,
         endpoint: ENQUIRY_ENDPOINT,
         projectType: payload.projectType || "",
       },

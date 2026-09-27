@@ -32,6 +32,10 @@ const state = {
   errorLogs: null,
   errPage: 1,
   errBots: "exclude", // exclude | include | only
+  // Whose error: site | all | third. Extension faults are flagged, never
+  // dropped — but they are not faults in the website, so they are out of the
+  // way by default rather than burying the ones that matter.
+  errParty: "site",
   // "Download all error logs": skip anything a previous download already took.
   errOnlyNew: true,
   errExporting: false,
@@ -858,23 +862,36 @@ function viewErrors() {
     : `<tr><td colspan="5" class="empty">No errors logged for this filter — good news, or none captured yet.</td></tr>`;
   const chip = (id, label) =>
     `<button class="jchip ${state.errBots === id ? "active" : ""}" data-errfilter="${id}">${label}</button>`;
+  const pchip = (id, label) =>
+    `<button class="jchip ${state.errParty === id ? "active" : ""}" data-errparty="${id}">${label}</button>`;
   const filterNote =
     d.botMode === "only"
       ? "Bot-generated errors only"
       : d.botMode === "include"
       ? "All errors incl. bots"
       : "Real-visitor errors (bots hidden)";
+  const partyNote =
+    d.party === "third"
+      ? "Browser-extension errors only"
+      : d.party === "all"
+      ? "Including browser extensions"
+      : "The website's own errors";
   return `
-    <div class="callout"><strong>Every error captured on the live website.</strong> Each row is a JavaScript error, a failed page resource, a broken form submit, or a React crash — saved with full context. <strong>Bots are hidden by default.</strong> Click a row to see everything captured, then <strong>Copy all error data</strong> to paste straight into Claude Code to identify and fix it.</div>
+    <div class="callout"><strong>Every error captured on the live website.</strong> Each row is a JavaScript error, a failed page resource, a broken form submit, or a React crash — saved with full context. <strong>Bots and browser-extension errors are hidden by default</strong> — an extension crashing inside someone's browser is not a fault in the website, and mixing the two buries the ones that matter. Click a row to see everything captured, then <strong>Copy all error data</strong> to paste straight into Claude Code to identify and fix it.</div>
     <div class="grid kpis">
       ${kpi("Errors logged", fmt(d.total), filterNote)}
       ${kpi("Last 24 hours", fmt(d.last24h), "same filter")}
-      ${kpi("Showing", fmt(rows.length), `page ${d.page} of ${d.totalPages}`)}
+      ${kpi("Showing", fmt(rows.length), `page ${d.page} of ${d.totalPages} · ${esc(partyNote)}`)}
     </div>
     <div class="jfilters">
       ${chip("exclude", "Humans only")}
       ${chip("include", "All")}
       ${chip("only", "Bots only")}
+    </div>
+    <div class="jfilters">
+      ${pchip("site", "Our website")}
+      ${pchip("all", "Include extensions")}
+      ${pchip("third", "Extensions only")}
     </div>
     ${errExportRow()}
     <div class="card">
@@ -967,7 +984,7 @@ async function fetchAllErrorRows(sinceId, onProgress) {
   let total = 0;
   let truncated = false;
   for (;;) {
-    let url = `${ERROR_LOGS}?page=${page}&pageSize=${ERR_EXPORT_PAGE}&bots=${state.errBots}&kind=errors`;
+    let url = `${ERROR_LOGS}?page=${page}&pageSize=${ERR_EXPORT_PAGE}&bots=${state.errBots}&party=${state.errParty}&kind=errors`;
     if (sinceId !== null && sinceId !== undefined) url += `&sinceId=${encodeURIComponent(sinceId)}`;
     const r = await apiGet(url);
     if (r.status === 401) {
@@ -1097,6 +1114,14 @@ async function exportErrorLogs() {
     head.push("===========================================");
     head.push("Generated:      " + fmtDateTime(now.toISOString()));
     head.push("Filter:         " + filterNote);
+    head.push(
+      "Source:         " +
+        (state.errParty === "third"
+          ? "Browser-extension errors ONLY (not faults in the website)"
+          : state.errParty === "all"
+          ? "The website's own errors AND browser-extension errors"
+          : "The website's own errors (browser-extension errors excluded)")
+    );
     head.push(
       "Range:          " +
         (sinceId
@@ -1767,7 +1792,7 @@ async function loadEnquiries(page) {
 async function loadErrors(page) {
   state.errPage = page || state.errPage || 1;
   try {
-    const url = `${ERROR_LOGS}?page=${state.errPage}&pageSize=10&bots=${state.errBots}`;
+    const url = `${ERROR_LOGS}?page=${state.errPage}&pageSize=10&bots=${state.errBots}&party=${state.errParty}`;
     const r = await apiGet(url);
     if (r.status === 401) { showLogin(); return; }
     if (!r.ok) throw new Error("errors " + r.status);
@@ -1933,6 +1958,14 @@ function wire() {
     const errf = e.target.closest("[data-errfilter]");
     if (errf) {
       state.errBots = errf.getAttribute("data-errfilter");
+      state.errPage = 1;
+      state.errorLogs = null;
+      loadErrors(1);
+      return;
+    }
+    const errpa = e.target.closest("[data-errparty]");
+    if (errpa) {
+      state.errParty = errpa.getAttribute("data-errparty");
       state.errPage = 1;
       state.errorLogs = null;
       loadErrors(1);
