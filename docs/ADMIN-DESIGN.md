@@ -40,21 +40,22 @@ After: **11 destinations in 4 groups**, with tabs inside the three heavy ones.
   Enquiries        ⬤ 6       badge = leads not yet dealt with
   Projects
   ─── AUDIENCE ───
-  Visitors                   Overview · Trends · Pages · Sources ·
+  Visitors                   Overview · Trends · Pages · Content · Sources ·
                              Locations · Devices · Engagement
   Journeys                   Journeys · Path flow
   Live
   ─── RESULTS ───
-  Conversions                Events · Visualiser
+  Conversions                Events · Delivery · Visualiser
   ─── SYSTEM ───
-  Health           ⬤         badge = something is misconfigured
-  Errors           ⬤         badge = errors since you last downloaded
+  Health           ⬤         Health & setup · Speed
+  Errors           ⬤         Error logs · Trend
   Sign-ins
   Reference
 ```
 
 Nothing was removed. Every one of the 17 old views is still reachable; seven of
-them are now tabs.
+them are now tabs. Content, Delivery, Speed and Trend were added on 27 Sep 2026 —
+see §7.
 
 ### Why those groupings
 
@@ -145,9 +146,12 @@ Each destination now declares what it needs:
 ```js
 { id: "visitors", range: true, bots: true }   // controls shown
 { id: "enquiries" }                            // controls hidden
+{ id: "health", range: true, bots: true, only: ["speed"] }  // shown on ONE tab
 ```
 
 If a control cannot change what you are looking at, it is not on the screen.
+`only` exists for a destination whose tabs disagree: Speed reads the date range,
+Health & setup does not.
 
 ---
 
@@ -193,3 +197,57 @@ Hard-won, and each one is load-bearing:
   restores the caret and selection on repaint. The shell drives it only through
   `window.SCProjects` (`title/view/load/onClick/onChange/reset`) and must never
   re-render it from outside.
+- **Only panels that read the shared bundle go in `STATS_VIEWS`.** Content and
+  Speed do. Delivery, Trend and the Sources drill-down each read their own report
+  and have their own loader — put one in `STATS_VIEWS` and it will be "reused" from
+  a bundle that does not contain its data, and paint nothing.
+
+---
+
+## 7. Conversion tracking (added 27 Sep 2026)
+
+### Attribution comes from the first page view — never from the event row
+
+`track()` sends no referrer, so the collector sees none and stamps **every event
+row `channel: "direct"`**. Grouping conversions by their own row would report every
+lead on the site as direct traffic. Every by-source figure (`sources.*Perf`, the
+Sources drill-down) keys off the visitor's first page view instead — see
+`attribution()` in `api/sc-admin-stats.js`.
+
+### What counts as what
+
+| Bucket | Events | Why |
+|---|---|---|
+| **Enquiry** | `contact_form_success`, `visualiser_handoff_submitted` | somebody's details actually reached us |
+| **Intent** | `phone_click`, `email_click`, `whatsapp_click` | reaching for the phone — a signal, not a captured lead |
+| **Engagement** | `cta_click`, `visualiser_start`, … | interest, short of contact |
+| **Attempt** | `form_submit` | fires **before** validation, so it includes failed sends and honeypot bots — never an enquiry |
+| **Internal** | `engaged`, `vitals`, `cta_view` | measurements; excluded from every count and from the events table |
+
+### Engagement beacons can repeat — `pvid` is what makes that safe
+
+The tracker reports engagement at every hide and again, cumulatively, if the
+visitor comes back. Each beacon carries a `pvid` (one page view, regenerated every
+time, stored nowhere) and `dedupeEngaged()` keeps the largest. **Summing them would
+double-count.** Rows with no `pvid` — all history — pass through untouched.
+
+### Reserved prop names
+
+The collector writes these itself and **overwrites** any client value:
+`vid ref channel title sw sh vw vh dpr lang tz region city bv osv bot dur scroll`
+(+ `utm`). A new event must not use them. This is how `dur` was silently nulled for
+three months, and why the 404 beacon's prop is `from`, not `ref`.
+
+### Joining an enquiry to its visit
+
+New enquiries carry `meta.vid` (the same daily-rotating hash) → matched
+**"confirmed"**. Older rows have none, so they are matched on time (the send event
+and the saved row within 5 minutes) → **"likely"**. The label is always shown; the
+two are never merged into one confident-looking figure.
+
+### The Sources drill-down stays out of the hash
+
+The selected source is held in `state.srcSel` only. A referrer or campaign name in
+a route would be written into `sc_errors` by `error-capture.js` on the next
+unrelated fault (§5.3). Refreshing therefore returns you to the source list — that
+is deliberate.

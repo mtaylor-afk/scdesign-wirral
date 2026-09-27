@@ -840,3 +840,106 @@ table.tbl tr:hover td { background: #faf6ef; }
   .hrow-n { grid-column: 1 / -1; text-align: left; }
   .hhead { flex-direction: column; gap: 8px; }
 }
+
+/* ------------------------------------------------------------------ *
+ * Sources: a row you can open
+ * ------------------------------------------------------------------ */
+.pill.blue { background: #dde8f2; color: #1d4e73; }
+
+/* Fixed layout, or the ellipsis never engages: in automatic table layout a cell's
+   max-width is ignored, so one long landing-page URL or campaign name stretches the
+   whole table past its card — and on a phone, past the screen. */
+.srctbl { table-layout: fixed; }
+.srctbl th:first-child { width: 40%; }
+.srctbl tbody tr { cursor: pointer; }
+.srctbl tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.srckey { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The chevron only appears on the row you are pointing at: a column of them on
+   every row is twenty-five arrows competing with the numbers that matter. */
+.srcchev { color: var(--muted-soft); margin-left: 8px; opacity: 0; transition: opacity 0.12s; }
+.srctbl tbody tr:hover .srcchev, .srctbl tbody tr:focus-visible .srcchev { opacity: 1; }
+table.tbl td.num.strong { font-weight: 700; color: var(--ink); }
+
+.srcheadrow { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.srchead { font-family: var(--serif); font-size: var(--t-title); margin: 0; }
+.srcback { flex: 0 0 auto; }
+.srcorder { margin-left: auto; }
+
+/* A visit that produced an enquiry is the one you came here to find, so it gets
+   the accent edge — the plain "converted" marker stays grey-green. */
+.journey.is-lead { border-left: 3px solid var(--accent); }
+.journey.is-lead .javatar { background: var(--accent-soft); color: var(--accent-deep); }
+
+.sjblock { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; }
+.sjblock h4 { font-size: var(--t-head); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sjstages { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+.vsteps { list-style: none; margin: 0; padding: 0; font-size: var(--t-body); }
+.vsteps li { display: grid; grid-template-columns: 52px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f4efe6; }
+.vsteps li:last-child { border-bottom: 0; }
+.vtime { color: var(--muted-soft); font-variant-numeric: tabular-nums; font-size: var(--t-cap); }
+.vname { font-weight: 600; }
+.vprops { display: block; color: var(--muted); font-size: var(--t-cap); }
+
+/* Tables with more columns than a phone can hold scroll INSIDE their card, so the
+   page itself never scrolls sideways and no column of real data has to be dropped.
+   The min-width keeps them readable rather than crushing seven columns into 300px. */
+.tblscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tblscroll > table.tbl { min-width: 560px; }
+
+/* ------------------------------------------------------------------ *
+ * Events: the props each one recorded
+ * ------------------------------------------------------------------ */
+.sechead { font-family: var(--serif); font-size: var(--t-head); margin: 0 0 10px; color: var(--ink-soft); }
+.propblock + .propblock { margin-top: 12px; }
+.propkey { font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+
+/* ------------------------------------------------------------------ *
+ * Delivery check
+ * ------------------------------------------------------------------ */
+.dprobs { list-style: none; margin: 0; padding: 0; }
+.dprob { border-left: 3px solid var(--line); padding: 8px 0 8px 12px; margin-bottom: 8px; font-size: var(--t-body); }
+.dprob.bad { border-left-color: #b3261e; }
+.dprob.warn { border-left-color: #b9740f; }
+.dprob.info { border-left-color: var(--muted-soft); }
+.dprobtext { display: block; }
+.dprob .csub { margin-top: 2px; }
+table.tbl tr.rowbad td { background: #fdf1f1; }
+table.tbl tr.rowwarn td { background: #fdf7ec; }
+
+/* ------------------------------------------------------------------ *
+ * Speed
+ * ------------------------------------------------------------------ */
+/* Colour is the grade, so it has to be legible on its own — the figure is stated
+   either way and the threshold is in the column header. */
+.vitalval.ok { color: var(--success); }
+.vitalval.warn { color: #8a4b12; }
+.vitalval.bad { color: #8a1f1f; }
+table.tbl td.num.ok { color: var(--success); }
+table.tbl td.num.warn { color: #8a4b12; }
+table.tbl td.num.bad { color: #8a1f1f; font-weight: 700; }
+
+/* ------------------------------------------------------------------ *
+ * Phone — must come after the base rules above, or it loses to them
+ * ------------------------------------------------------------------ */
+@media (max-width: 860px) {
+  /* The order toggle drops under the title rather than squeezing it to nothing. */
+  .srcheadrow { flex-wrap: wrap; }
+  .srchead { flex: 1 1 100%; order: 3; font-size: var(--t-head); }
+  .srcorder { margin-left: 0; }
+  /* Six numeric columns do not fit a phone. Visitors and Enquiries are the two that
+     decide whether a source is worth opening; the rest are in the drill-down. */
+  .srctbl th:nth-child(3), .srctbl td:nth-child(3),
+  .srctbl th:nth-child(5), .srctbl td:nth-child(5),
+  .srctbl th:nth-child(6), .srctbl td:nth-child(6) { display: none; }
+  .srctbl th:first-child { width: 56%; }
+  /* No hover on a touch screen, so the affordance has to be permanent. */
+  .srcchev { opacity: 1; }
+  .sjstages { gap: 4px; }
+  .vsteps li { grid-template-columns: 1fr; gap: 2px; }
+  /* Seven columns of delivery figures cannot fit. The three that matter are the
+     day, what was saved, and whether a fallback had to be used. */
+  .dtbl th:nth-child(2), .dtbl td:nth-child(2),
+  .dtbl th:nth-child(4), .dtbl td:nth-child(4),
+  .dtbl th:nth-child(7), .dtbl td:nth-child(7) { display: none; }
+}

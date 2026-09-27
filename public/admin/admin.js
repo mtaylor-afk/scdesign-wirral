@@ -37,6 +37,15 @@ const state = {
   journeyFilter: "all",
   flow: null,
   flowPage: null,
+  // Which source the Sources page has been drilled into, and the journeys that came
+  // from it. Held in memory, NOT in the hash: error-capture.js sends the full URL with
+  // every client error, and a referrer or campaign name in a route would be written
+  // into sc_errors on the next unrelated fault.
+  srcSel: null,
+  srcJourneys: null,
+  srcOrder: "asc", // chronological by default, as asked for
+  delivery: null,
+  errTrend: null,
   enquiries: null,
   enqPage: 1,
   // Enquiries that were SAVED but whose notification email never sent. A silent
@@ -128,6 +137,18 @@ const EVENT_LABELS = {
   visualiser_start: "Visualiser start", visualiser_complete: "Visualiser complete",
   visualiser_refine: "Visualiser refine", visualiser_error: "Visualiser error",
   visualiser_download: "Visualiser download",
+  // The contact-form funnel. These have been recorded since June and had no names
+  // here, so they appeared under their raw event ids.
+  contact_form_submitted: "Enquiry sent", contact_form_success: "Enquiry delivered",
+  contact_form_validation_error: "Enquiry form error",
+  visualiser_handoff_submitted: "Concept sent to Sean",
+  visualiser_estimate_shown: "Price estimate shown",
+  visualiser_refine_submit: "Visualiser changes asked for",
+  visualiser_refine_accept: "Visualiser changes accepted",
+  cost_estimate_handoff_clicked: "Cost estimator → enquiry",
+  reviews_carousel: "Reviews carousel",
+  form_start: "Form started", form_abandon: "Form abandoned",
+  page_not_found: "Page not found (404)", cta_view: "CTA seen",
 };
 const eventLabel = (n) => EVENT_LABELS[n] || cap((n || "").replace(/_/g, " "));
 
@@ -198,9 +219,18 @@ function kpi(label, val, sub, deltaHtml) {
   return `<div class="card kpi"><div class="label">${label}</div><div class="val">${val}</div><div class="sub">${deltaHtml || ""} ${sub || ""}</div></div>`;
 }
 
+/* What actually counts as getting in touch. `form_submit` is deliberately absent:
+   it fires before the form validates, so it also counts submissions that never
+   sent and spam bots tripping the honeypot. */
 function convItems(d) {
-  const names = ["phone_click", "email_click", "whatsapp_click", "form_submit", "cta_click", "visualiser_start"];
-  return d.events.byName.filter((i) => names.includes(i.key));
+  const names = [
+    "contact_form_success", "visualiser_handoff_submitted",
+    "phone_click", "email_click", "whatsapp_click",
+    "cta_click", "visualiser_start",
+  ];
+  return d.events.byName
+    .filter((i) => names.includes(i.key))
+    .sort((a, b) => names.indexOf(a.key) - names.indexOf(b.key));
 }
 
 /* ---------------- views ---------------- */
@@ -208,14 +238,20 @@ function viewOverview() {
   const d = state.data;
   if (!d) return loader();
   const m = d.metrics, p = d.prevMetrics;
+  const hasLeads = m.enquiries !== undefined;
   const kpis = [
+    // Leads first. The panel used to open with six figures about traffic and nothing
+    // about whether any of it turned into work.
+    hasLeads ? kpi("Enquiries", fmt(m.enquiries), "details reached us", delta(m.enquiries, p.enquiries)) : "",
+    hasLeads ? kpi("Enquiry rate", m.enquiryRate + "%", "of visitors", delta(m.enquiryRate, p.enquiryRate)) : "",
+    hasLeads ? kpi("Calls &amp; emails", fmt(m.intents), "phone, email, WhatsApp", delta(m.intents, p.intents)) : "",
     kpi("Unique visitors", fmt(m.visitors), "", delta(m.visitors, p.visitors)),
     kpi("Visits", fmt(m.sessions), "", delta(m.sessions, p.sessions)),
     kpi("Page views", fmt(m.pageviews), "", delta(m.pageviews, p.pageviews)),
     kpi("Bounce rate", pct(m.bounceRate), "", delta(m.bounceRate, p.bounceRate, true)),
     kpi("Avg. visit", dur(m.avgDuration), "", delta(m.avgDuration, p.avgDuration)),
     kpi("Pages / visit", m.pagesPerVisit, "", delta(m.pagesPerVisit, p.pagesPerVisit)),
-  ].join("");
+  ].filter(Boolean).join("");
   return `
     <div class="grid kpis">${kpis}</div>
     <div class="card" style="margin-bottom:16px"><h3>Visitors &amp; page views</h3><div class="csub">${rangeLabel()} · by ${d.meta.range === "24h" ? "hour" : "day"}</div>${lineChart(d.timeseries, "pageviews")}</div>
@@ -265,21 +301,232 @@ function viewPages() {
     </div>`;
 }
 
+/* ---------------- Sources (and the drill-down into one source) ----------------
+ *
+ * Every row here is a way in. Clicking one asks the server for every visit that
+ * arrived that way and shows them in order, with the enquiry or the visualiser
+ * session it produced attached in full.
+ *
+ * The counts come from `*Perf`, not from the page-view lists beside them: those
+ * answer "how much traffic", these answer "which traffic was worth having". They
+ * are counted per VISITOR, and a visitor's channel comes from their first page
+ * view — an event row's own channel is always "direct" because track() sends no
+ * referrer, so counting conversions by their own row would report every lead on
+ * the site as direct traffic.
+ */
+function perfTable(items, opt) {
+  opt = opt || {};
+  const label = opt.label || "Source";
+  if (!items || !items.length)
+    return `<div class="empty">${opt.empty || "Nothing recorded yet."}</div>`;
+  const rows = items
+    .slice(0, opt.limit || 25)
+    .map((i) => {
+      const shown = opt.fmt ? opt.fmt(i.key) : esc(i.key);
+      // A <tr> given role="button" gets no name from its cells, so without this a
+      // screen reader announces every row as just "button".
+      const name = `${opt.kind === "channel" ? cap(i.key) : i.key}: ${i.visitors} ${i.visitors === 1 ? "visitor" : "visitors"}, ${i.enquiries} ${i.enquiries === 1 ? "enquiry" : "enquiries"}. Show visits`;
+      return `<tr class="srcrow" data-srcgo="${esc(opt.kind + ":" + i.key)}" tabindex="0" role="button" aria-label="${esc(name)}">
+        <td class="srckey" title="${esc(i.key)}">${shown}<span class="srcchev" aria-hidden="true">›</span></td>
+        <td class="num">${fmt(i.visitors)}</td>
+        <td class="num">${fmt(i.pageviews)}</td>
+        <td class="num${i.enquiries ? " strong" : ""}">${fmt(i.enquiries)}</td>
+        <td class="num">${fmt(i.intents)}</td>
+        <td class="num">${i.visitors ? i.rate + "%" : "–"}</td>
+      </tr>`;
+    })
+    .join("");
+  return `<table class="tbl srctbl">
+    <thead><tr><th>${esc(label)}</th><th class="num">Visitors</th><th class="num">Views</th><th class="num">Enquiries</th><th class="num">Calls / emails</th><th class="num">Rate</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
 function viewSources() {
+  if (state.srcSel) return viewSourceDetail();
   const d = state.data;
   if (!d) return loader();
-  const camp = d.sources.campaigns;
-  const campRows = camp.length
-    ? camp.map((c) => `<tr><td>${esc(c.key)}</td><td class="num">${fmt(c.count)}</td></tr>`).join("")
-    : '<tr><td colspan="2" class="empty">No UTM-tagged campaigns yet. Add ?utm_source=…&utm_medium=… to links you share.</td></tr>';
+  const s = d.sources;
+  // Older bundles (a cached response mid-deploy) have no *Perf — fall back rather
+  // than throwing and showing "Could not load" on a page that has data.
+  if (!s.channelPerf) {
+    return `
+      <div class="grid cols-2">
+        <div class="card"><h3>Channels</h3><div class="csub">Traffic by type</div>${barList(s.channels, { limit: 8, fmt: cap })}</div>
+        <div class="card"><h3>Referrers</h3><div class="csub">Sites linking to you</div>${barList(s.referrers, { limit: 12, empty: "No referrers yet (traffic is direct)." })}</div>
+      </div>`;
+  }
   return `
-    <div class="grid cols-2">
-      <div class="card"><h3>Channels</h3><div class="csub">Traffic by type</div>${barList(d.sources.channels, { limit: 8, fmt: cap })}</div>
-      <div class="card"><h3>Referrers</h3><div class="csub">Sites linking to you</div>${barList(d.sources.referrers, { limit: 12, empty: "No referrers yet (traffic is direct)." })}</div>
+    <div class="callout">
+      <strong>Click any row</strong> to see every visit that came in that way, in order — what they read,
+      how long they stayed, and the enquiry or visualiser concept it turned into.
+      <div class="callout-sub">Enquiries and calls are counted against the visitor's <em>first</em> page view, which is the only record of where they actually came from.</div>
     </div>
-    <div class="card" style="margin-top:16px"><h3>Campaigns (UTM)</h3><div class="csub">source / medium / campaign</div>
-      <table class="tbl"><thead><tr><th>Campaign</th><th class="num">Views</th></tr></thead><tbody>${campRows}</tbody></table>
+    <div class="card" style="margin-bottom:16px"><h3>Channels</h3><div class="csub">How visitors found you · ${rangeLabel()}</div>
+      ${perfTable(s.channelPerf, { kind: "channel", label: "Channel", fmt: (k) => esc(cap(k)), empty: "No traffic in this period." })}
+    </div>
+    <div class="card" style="margin-bottom:16px"><h3>Referrers</h3><div class="csub">Sites sending you visitors</div>
+      ${perfTable(s.referrerPerf, { kind: "referrer", label: "Site", empty: "No referrers yet — all traffic arrived direct or from search without a referrer." })}
+    </div>
+    <div class="card" style="margin-bottom:16px"><h3>Landing pages</h3><div class="csub">The first page each visitor saw</div>
+      ${perfTable(s.entryPerf, { kind: "entry", label: "Page", empty: "No page views yet." })}
+    </div>
+    <div class="card"><h3>Campaigns (UTM)</h3><div class="csub">source / medium / campaign</div>
+      ${perfTable(s.campaignPerf, { kind: "campaign", label: "Campaign", empty: "No UTM-tagged campaigns yet. Add <code>?utm_source=…&amp;utm_medium=…</code> to links you share so they can be told apart." })}
     </div>`;
+}
+
+const SRC_KIND_LABELS = { channel: "Channel", referrer: "Referrer", campaign: "Campaign", entry: "Landing page", all: "All traffic" };
+
+function srcTitle(sel) {
+  const kind = SRC_KIND_LABELS[sel.kind] || cap(sel.kind);
+  const value = sel.kind === "channel" ? cap(sel.value) : sel.value;
+  return `${kind}: ${value || "(none)"}`;
+}
+
+/* Props the collector stamps on every row itself. They describe the RECORD, not what
+   the visitor did, so they are noise in a timeline ("Bot: false" on every step).
+   Mirrors SERVER_PROPS in api/sc-admin-stats.js. */
+const SERVER_PROP_KEYS = new Set([
+  "vid", "ref", "channel", "title", "sw", "sh", "vw", "vh", "dpr", "lang", "tz",
+  "region", "city", "bv", "osv", "bot", "dur", "scroll", "utm", "pvid",
+]);
+
+/** Everything the visualiser recorded during one visit. */
+function visualiserBlock(v) {
+  if (!v) return "";
+  const stage = (on, label) => `<span class="pill ${on ? "green" : "grey"}">${on ? "✓" : "–"} ${label}</span>`;
+  const steps = v.steps
+    .map((a) => {
+      const p = a.props || {};
+      const bits = Object.keys(p)
+        .filter((k) => !SERVER_PROP_KEYS.has(k) && p[k] !== null && p[k] !== "" && typeof p[k] !== "object")
+        .map((k) => `${esc(cap(k.replace(/_/g, " ")))}: <strong>${esc(String(p[k]))}</strong>`);
+      return `<li><span class="vtime">${clockTime(a.ts)}</span> <span class="vname">${esc(eventLabel(a.name))}</span>${bits.length ? `<span class="vprops">${bits.join(" · ")}</span>` : ""}</li>`;
+    })
+    .join("");
+  return `<div class="sjblock">
+    <h4>Visualiser session</h4>
+    <div class="sjstages">
+      ${stage(v.started, "Started")}${stage(v.refined, "Asked for changes")}${stage(v.completed, "Concept produced")}
+      ${stage(v.downloaded, "Downloaded")}${stage(v.handedOff, "Sent to Sean")}
+      ${v.errored ? '<span class="pill amber">Hit an error</span>' : ""}
+    </div>
+    <ol class="vsteps">${steps}</ol>
+  </div>`;
+}
+
+function sourceJourneyCard(j, i) {
+  const steps = (j.steps || [])
+    .map((s) => {
+      const acts = (s.actions || [])
+        .map((a) => `<span class="actpill ${isConvName(a.name) || ENQ_ACT.has(a.name) ? "conv" : ""}" title="${esc(a.name)}">${esc(eventLabel(a.name))}${actDetail(a)}</span>`)
+        .join("");
+      const meta = [];
+      if (s.timeOnPage) meta.push(dur(s.timeOnPage));
+      if (s.scroll) meta.push("scrolled " + s.scroll + "%");
+      meta.push(clockTime(s.ts));
+      return `<li class="jstep${s.newSession ? " jstep-new" : ""}">
+        <div class="jstep-top">
+          <span class="jstep-path" title="${esc(s.path)}">${s.title ? esc(s.title) : esc(s.path)}</span>
+          <span class="jstep-time">${s.timeOnPage ? dur(s.timeOnPage) : "&ndash;"}</span>
+        </div>
+        <div class="jstep-sub">${esc(s.path)} <span class="dot">·</span> ${meta.join(' <span class="dot">·</span> ')}</div>
+        ${acts ? `<div class="jstep-acts">${acts}</div>` : ""}
+      </li>`;
+    })
+    .join("");
+
+  const o = j.outcome || {};
+  const enq = j.enquiries || [];
+  const badges = [
+    o.enquiry ? '<span class="pill green">Enquiry</span>' : "",
+    o.visualiser ? '<span class="pill blue">Visualiser</span>' : "",
+    o.intent ? '<span class="pill amber">Called / emailed</span>' : "",
+    // A send that produced no delivered enquiry is the single most useful thing on
+    // this page, so it is said plainly rather than left as an absence.
+    !o.enquiry && o.attempted ? '<span class="pill red">Tried to send</span>' : "",
+    `<span class="pill grey">${j.pages} ${j.pages === 1 ? "page" : "pages"}</span>`,
+    `<span class="pill grey">${dur(j.durationS)}</span>`,
+  ].filter(Boolean).join("");
+
+  const enqBlocks = enq
+    .map(
+      (m) => `<div class="sjblock">
+        <h4>Enquiry received ${m.confidence === "confirmed"
+          ? '<span class="pill green">matched to this visit</span>'
+          : '<span class="pill amber" title="This enquiry was saved before visits were stamped, so it is matched on time alone">probably this visit</span>'}</h4>
+        ${enquiryDetail(m.row)}
+      </div>`
+    )
+    .join("");
+
+  const techBits = [cap(j.device), j.browser, j.os].filter(Boolean).join(" · ");
+  const src = j.referrerHost ? cap(j.channel) + " · " + esc(j.referrerHost) : cap(j.channel);
+  const utm = j.utm && (j.utm.source || j.utm.campaign)
+    ? ` <span class="dot">·</span> ${esc([j.utm.source, j.utm.campaign].filter(Boolean).join("/"))}`
+    : "";
+
+  return `<div class="journey${o.enquiry ? " is-lead" : j.converted ? " is-conv" : ""}" data-sjx="${i}">
+    <button class="jhead" data-sjtoggle="${i}" type="button">
+      <span class="javatar">${o.enquiry ? "✉" : o.visualiser ? "◈" : visitorShort(j.vid).slice(0, 1).toUpperCase()}</span>
+      <span class="jident">
+        <span class="jvisitor">${enq.length && enq[0].row.name ? esc(enq[0].row.name) : "Visitor " + esc(visitorShort(j.vid))}</span>
+        <span class="jsub">${placeLabel(j)} <span class="dot">·</span> ${esc(techBits)}</span>
+      </span>
+      <span class="jbadges">${badges}</span>
+      <span class="jwhen">${whenLabel(j.firstTs)}</span>
+      <span class="jchev" aria-hidden="true">▾</span>
+    </button>
+    <div class="jbody">
+      <div class="jsource">Arrived: ${src}${utm} <span class="dot">·</span> Landed on <code>${esc(j.entry)}</code> <span class="dot">·</span> ${j.sessions} ${j.sessions === 1 ? "session" : "sessions"}</div>
+      <ol class="jsteps">${steps || '<li class="empty">No pages recorded.</li>'}</ol>
+      ${j.stepsTruncated ? '<div class="csub" style="margin-top:8px">Timeline truncated to the first 60 steps.</div>' : ""}
+      ${enqBlocks}
+      ${visualiserBlock(j.visualiser)}
+    </div>
+  </div>`;
+}
+
+const ENQ_ACT = new Set(["contact_form_success", "contact_form_submitted", "visualiser_handoff_submitted"]);
+
+function viewSourceDetail() {
+  const sel = state.srcSel;
+  const back = `<button class="btn btn-ghost srcback" data-srcback="1" type="button">← All sources</button>`;
+  const d = state.srcJourneys;
+  if (!d) return `<div class="srcheadrow">${back}<h3 class="srchead">${esc(srcTitle(sel))}</h3></div>${loader()}`;
+  if (d.failed)
+    return `<div class="srcheadrow">${back}<h3 class="srchead">${esc(srcTitle(sel))}</h3></div>
+      <div class="card"><div class="empty">Could not load these visits. Try Refresh.</div></div>`;
+
+  const s = d.summary;
+  const list = state.srcOrder === "desc" ? (d.journeys || []).slice().reverse() : d.journeys || [];
+  const cards = list.length
+    ? list.map((j, i) => sourceJourneyCard(j, i)).join("")
+    : '<div class="card"><div class="empty">No visits from this source in the selected period.</div></div>';
+
+  return `
+    <div class="srcheadrow">
+      ${back}
+      <h3 class="srchead">${esc(srcTitle(sel))}</h3>
+      <div class="seg srcorder">
+        <button data-srcorder="asc" class="${state.srcOrder === "asc" ? "active" : ""}">Oldest first</button>
+        <button data-srcorder="desc" class="${state.srcOrder === "desc" ? "active" : ""}">Newest first</button>
+      </div>
+    </div>
+    <div class="grid kpis">
+      ${kpi("Visits", fmt(s.visitors), rangeLabel())}
+      ${kpi("Enquiries", fmt(s.withEnquiry), s.visitors ? Math.round((s.withEnquiry / s.visitors) * 100) + "% of visits" : "")}
+      ${kpi("Used the visualiser", fmt(s.withVisualiser), "")}
+      ${kpi("Called or emailed", fmt(s.withIntent), "")}
+      ${kpi("Avg. time", dur(s.avgDuration), "per visit")}
+    </div>
+    ${s.attempted > s.withEnquiry
+      ? `<div class="callout callout-warn"><strong>${fmt(s.attempted - s.withEnquiry)} ${s.attempted - s.withEnquiry === 1 ? "visit" : "visits"} pressed send without an enquiry being delivered.</strong> Those are marked <em>Tried to send</em> below — check the Delivery tab under Conversions.</div>`
+      : ""}
+    <div class="journeys">${cards}</div>
+    ${d.meta.matched > d.meta.returned
+      ? `<div class="csub" style="margin-top:12px">Showing the ${fmt(d.meta.returned)} most recent of ${fmt(d.meta.matched)} visits from this source.</div>`
+      : ""}`;
 }
 
 function viewLocations() {
@@ -363,11 +610,52 @@ function viewEvents() {
       return `<div class="card"><h3>${eventLabel(n)}</h3><div class="csub">Top pages</div>${barList(arr, { limit: 6 })}</div>`;
     })
     .join("");
+  // The detail each event carries. Recorded since June and thrown away at the
+  // aggregation step until now, which is why nobody could see that the contact form
+  // had been falling back to a second-choice email route for three months.
+  const props = d.events.props || {};
+  const PROP_LABELS = {
+    mode: "Mode", reason: "Why", dest: "Where to", project_type: "Project type",
+    form_location: "Form location", work_type: "Work type", project: "Project", action: "Action",
+    form: "Form", last_field: "Stopped at", filled: "Fields filled", from: "Came from",
+  };
+  // The same prop name means different things on different events: `mode` is the
+  // delivery route on a sent enquiry but how the image was made on a concept.
+  const PROP_LABELS_BY_EVENT = {
+    contact_form_success: { mode: "How it was delivered" },
+    visualiser_handoff_submitted: { mode: "How it was delivered" },
+    visualiser_complete: { mode: "How the concept was made" },
+  };
+  const propLabel = (name, k) =>
+    (PROP_LABELS_BY_EVENT[name] && PROP_LABELS_BY_EVENT[name][k]) || PROP_LABELS[k] || cap(k.replace(/_/g, " "));
+  const detail = Object.keys(props)
+    .sort((a, b) => {
+      const ai = a.indexOf("contact_form") === 0 ? 0 : a.indexOf("visualiser") === 0 ? 1 : 2;
+      const bi = b.indexOf("contact_form") === 0 ? 0 : b.indexOf("visualiser") === 0 ? 1 : 2;
+      return ai - bi || (a < b ? -1 : 1);
+    })
+    .map((name) => {
+      const keys = props[name];
+      const blocks = Object.keys(keys)
+        .map((k) => {
+          const e = keys[k];
+          const more = e.distinct > e.items.length ? `<div class="csub">and ${fmt(e.distinct - e.items.length)} more ${e.distinct - e.items.length === 1 ? "value" : "values"}</div>` : "";
+          return `<div class="propblock">
+            <div class="propkey">${esc(propLabel(name, k))}</div>
+            ${barList(e.items.map((x) => ({ key: x.key, count: x.count })), { limit: 8 })}${more}
+          </div>`;
+        })
+        .join("");
+      return `<div class="card"><h3>${esc(eventLabel(name))}</h3><div class="csub"><code style="font-size:11px">${esc(name)}</code></div>${blocks}</div>`;
+    })
+    .join("");
+
   return `
     <div class="card" style="margin-bottom:16px"><h3>All events</h3><div class="csub">${rangeLabel()}</div>
       <table class="tbl"><thead><tr><th>Action</th><th>Event name</th><th class="num">Count</th></tr></thead><tbody>${rows}</tbody></table>
     </div>
-    ${perPage ? `<div class="grid cols-3">${perPage}</div>` : ""}`;
+    ${detail ? `<h3 class="sechead">What each one recorded</h3><div class="grid cols-2" style="margin-bottom:16px">${detail}</div>` : ""}
+    ${perPage ? `<h3 class="sechead">Where they happened</h3><div class="grid cols-3">${perPage}</div>` : ""}`;
 }
 
 function viewVisualiser() {
@@ -395,6 +683,227 @@ function viewVisualiser() {
       ${kpi("Downloads", fmt(dl), "")}
     </div>
     <div class="card"><h3>Visualiser funnel</h3><div class="csub">Concept generation flow · ${rangeLabel()}</div>${barList(funnel, { empty: "No visualiser activity yet." })}</div>`;
+}
+
+/* ---------------- Content (does each part of the site earn its keep?) ---------------- */
+function viewContent() {
+  const d = state.data;
+  if (!d) return loader();
+  const groups = d.content || [];
+  const rows = groups.length
+    ? groups
+        .map(
+          (g) => `<tr>
+            <td>${esc(g.label)}<div class="csub">${fmt(g.pageCount)} ${g.pageCount === 1 ? "page" : "pages"}</div></td>
+            <td class="num">${fmt(g.views)}</td>
+            <td class="num">${fmt(g.visitors)}</td>
+            <td class="num">${g.avgTime ? dur(g.avgTime) : "–"}</td>
+            <td class="num">${g.avgScroll ? g.avgScroll + "%" : "–"}</td>
+            <td class="num${g.leads ? " strong" : ""}">${fmt(g.leads)}</td>
+            <td class="num">${g.leads ? g.leadRate + "%" : "–"}</td>
+          </tr>`
+        )
+        .join("")
+    : '<tr><td colspan="7" class="empty">No page views yet.</td></tr>';
+
+  const nf = d.notFound || [];
+  const nfRows = nf.length
+    ? nf
+        .map(
+          (n) => `<tr>
+            <td class="pathcell" title="${esc(n.path)}">${esc(n.path)}</td>
+            <td class="num">${fmt(n.count)}</td>
+            <td class="srckey">${n.from.length ? n.from.map((f) => esc(f.key === "(none)" ? "typed or bookmarked" : f.key)).join(", ") : "–"}</td>
+          </tr>`
+        )
+        .join("")
+    : '<tr><td colspan="3" class="empty">No missing pages have been asked for. Recording starts from 27 September 2026 — earlier 404s were never captured.</td></tr>';
+
+  const cta = d.ctaPerformance || [];
+  const ctaRows = cta.filter((c) => c.views || c.clicks).length
+    ? cta
+        .filter((c) => c.views || c.clicks)
+        .map(
+          (c) => `<tr>
+            <td class="pathcell" title="${esc(c.path)}">${esc(c.path)}</td>
+            <td class="num">${c.views ? fmt(c.views) : "–"}</td>
+            <td class="num">${fmt(c.clicks)}</td>
+            <td class="num">${c.rate === null || c.rate === undefined ? "–" : c.rate + "%"}</td>
+          </tr>`
+        )
+        .join("")
+    : '<tr><td colspan="4" class="empty">No CTA impressions recorded yet. Recording starts from 27 September 2026.</td></tr>';
+
+  return `
+    <div class="callout">
+      <strong>Which parts of the site do the work.</strong> Grouped over every page view, not just the top 50 —
+      the long tail of 42 case studies and 20 area pages is exactly the part worth judging.
+      <div class="callout-sub">“Led to enquiry” counts visitors who read that section and then sent an enquiry. One enquiry is credited to every section that person read, so the column is “part of how they decided” and won't add up to the total — crediting only the page the form was sent from would give Contact every lead and the case studies none.</div>
+    </div>
+    <div class="card" style="margin-bottom:16px"><h3>By section</h3><div class="csub">${rangeLabel()}</div>
+      <div class="tblscroll"><table class="tbl"><thead><tr><th>Section</th><th class="num">Views</th><th class="num">Visitors</th><th class="num">Avg. time</th><th class="num">Avg. scroll</th><th class="num">Led to enquiry</th><th class="num">Rate</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    </div>
+    <div class="card" style="margin-bottom:16px"><h3>Pages that don't exist</h3>
+      <div class="csub">URLs real visitors asked for and didn't get · a crawler's 404s are never recorded here, because the tracker is JavaScript</div>
+      <div class="tblscroll"><table class="tbl"><thead><tr><th>Asked for</th><th class="num">Times</th><th>Came from</th></tr></thead><tbody>${nfRows}</tbody></table></div>
+    </div>
+    <div class="card"><h3>Was the button even seen?</h3>
+      <div class="csub">The first “get in touch” link on each page — impressions against clicks</div>
+      <div class="tblscroll"><table class="tbl"><thead><tr><th>Page</th><th class="num">Seen</th><th class="num">Clicked</th><th class="num">Rate</th></tr></thead><tbody>${ctaRows}</tbody></table></div>
+    </div>`;
+}
+
+/* ---------------- Speed (Core Web Vitals, measured on real visits) ---------------- */
+const VITAL_META = {
+  lcp: { label: "Largest content paint", sub: "how soon the main thing appears", good: 2500, poor: 4000, unit: "ms" },
+  cls: { label: "Layout shift", sub: "how much the page jumps about", good: 0.1, poor: 0.25, unit: "" },
+  inp: { label: "Interaction delay", sub: "worst response to a tap or click", good: 200, poor: 500, unit: "ms" },
+  ttfb: { label: "Server response", sub: "time to the first byte", good: 800, poor: 1800, unit: "ms" },
+};
+function vitalVal(k, v) {
+  if (v === null || v === undefined) return "–";
+  if (k === "cls") return String(Math.round(v * 1000) / 1000);
+  return v >= 1000 ? (v / 1000).toFixed(2) + "s" : Math.round(v) + "ms";
+}
+function vitalState(k, v) {
+  if (v === null || v === undefined) return "";
+  const m = VITAL_META[k];
+  return v <= m.good ? "ok" : v <= m.poor ? "warn" : "bad";
+}
+function viewSpeed() {
+  const d = state.data;
+  if (!d) return loader();
+  const v = d.vitals;
+  if (!v || !v.samples) {
+    return `<div class="callout">
+        <strong>How fast the site actually is for real visitors</strong> — not a lab score. The four measurements
+        Google grades sites on, taken in the visitor's own browser.
+      </div>
+      <div class="card"><div class="empty">No speed measurements yet. Recording started on 27 September 2026 and the first readings arrive as people visit — a few hours on a quiet site.</div></div>`;
+  }
+  const keys = ["lcp", "cls", "inp", "ttfb"];
+  const kpis = keys
+    .map((k) => {
+      const o = v.overall[k] || {};
+      const st = vitalState(k, o.p75);
+      return kpi(
+        VITAL_META[k].label,
+        `<span class="vitalval ${st}">${vitalVal(k, o.p75)}</span>`,
+        VITAL_META[k].sub + (o.samples ? ` · ${fmt(o.samples)} samples` : "")
+      );
+    })
+    .join("");
+  const devRows = (v.byDevice || [])
+    .map(
+      (r) => `<tr><td>${esc(cap(r.device))}</td>${keys.map((k) => `<td class="num ${vitalState(k, r[k])}">${vitalVal(k, r[k])}</td>`).join("")}<td class="num">${fmt(r.samples)}</td></tr>`
+    )
+    .join("");
+  const pageRows = (v.pages || [])
+    .map(
+      (r) => `<tr><td class="pathcell" title="${esc(r.path)}">${esc(r.path)}</td>${keys.map((k) => `<td class="num ${vitalState(k, r[k])}">${vitalVal(k, r[k])}</td>`).join("")}<td class="num">${fmt(r.samples)}</td></tr>`
+    )
+    .join("");
+  const head = `<th>Page</th>${keys.map((k) => `<th class="num">${esc(VITAL_META[k].label.split(" ")[0])}</th>`).join("")}<th class="num">Samples</th>`;
+  return `
+    <div class="callout">
+      <strong>How fast the site is for real visitors</strong> — measured in their own browser, not a lab test.
+      Each figure is the 75th percentile, which is how Google grades a site: three visitors in four did at least this well.
+      <div class="callout-sub">Attributed to the page the visit <em>started</em> on. Layout shift and interaction delay build up over a whole visit and only settle when it ends, so pinning them to whichever page happened to be open at that moment would blame the wrong one.</div>
+    </div>
+    <div class="grid kpis">${kpis}</div>
+    <div class="card" style="margin-bottom:16px"><h3>By device</h3><div class="csub">${rangeLabel()}</div>
+      <div class="tblscroll"><table class="tbl"><thead><tr><th>Device</th>${keys.map((k) => `<th class="num">${esc(VITAL_META[k].label.split(" ")[0])}</th>`).join("")}<th class="num">Samples</th></tr></thead>
+      <tbody>${devRows || '<tr><td colspan="6" class="empty">No samples yet.</td></tr>'}</tbody></table></div>
+    </div>
+    <div class="card"><h3>By landing page</h3><div class="csub">Busiest first</div>
+      <div class="tblscroll"><table class="tbl"><thead><tr>${head}</tr></thead><tbody>${pageRows || '<tr><td colspan="6" class="empty">No samples yet.</td></tr>'}</tbody></table></div>
+    </div>`;
+}
+
+/* ---------------- Delivery check (did the enquiry actually get through?) ---------------- */
+function viewDelivery() {
+  const d = state.delivery;
+  if (!d) return loader();
+  if (d.failed)
+    return '<div class="card"><div class="empty">Could not run the delivery check. Try Refresh.</div></div>';
+  const t = d.totals || {};
+  const probs = (d.problems || [])
+    .map(
+      (p) => `<li class="dprob ${esc(p.severity)}"><span class="dprobtext">${p.text}</span>
+        <span class="csub">${p.days.length === 1 ? "on " : "on "}${p.days.slice(0, 6).map((x) => esc(fmtT(x))).join(", ")}${p.days.length > 6 ? ` and ${p.days.length - 6} more days` : ""}</span></li>`
+    )
+    .join("");
+  const rows = (d.days || [])
+    .filter((x) => x.submitted || x.savedContact || x.savedOther || x.online || x.backup || x.mailto || x.thankYou)
+    .reverse()
+    .map(
+      (x) => `<tr class="${x.mailto || x.submitted > x.savedContact ? "rowbad" : x.backup ? "rowwarn" : ""}">
+        <td>${esc(fmtT(x.day))}</td>
+        <td class="num">${fmt(x.submitted)}</td>
+        <td class="num">${fmt(x.savedContact + x.savedOther)}</td>
+        <td class="num">${fmt(x.online)}</td>
+        <td class="num">${x.backup ? fmt(x.backup) : "–"}</td>
+        <td class="num">${x.mailto ? fmt(x.mailto) : "–"}</td>
+        <td class="num">${fmt(x.thankYou)}</td>
+      </tr>`
+    )
+    .join("");
+
+  return `
+    <div class="callout">
+      <strong>Four separate records of the same submission, side by side.</strong> Every enquiry leaves a trace in
+      four places, and until now nothing compared them — which is how the main email route could fail for three
+      months with only a line in a log nobody reads.
+      <div class="callout-sub">Anything in the <strong>Backup</strong> or <strong>Own mail app</strong> columns means the main route did not work that day.</div>
+    </div>
+    <div class="grid kpis">
+      ${kpi("Enquiries delivered", fmt(t.sent), `${fmt(t.online)} by the main route`)}
+      ${kpi("Main route working", t.mainRouteRate === null ? "–" : t.mainRouteRate + "%", "of delivered enquiries")}
+      ${kpi("Saved to the database", fmt(t.saved), "every one recoverable")}
+      ${kpi("Send button pressed", fmt(t.attempts), `${fmt(t.validationErrors)} had a form error`)}
+    </div>
+    ${probs
+      ? `<div class="card" style="margin-bottom:16px"><h3>What went wrong</h3><ul class="dprobs">${probs}</ul></div>`
+      : `<div class="card" style="margin-bottom:16px"><h3>Nothing to report</h3><div class="csub">Every submission in this period was saved and delivered by the main route.</div></div>`}
+    <div class="card">
+      <h3>Day by day</h3>
+      <div class="csub">${rangeLabel()} · days with no form activity are omitted${d.lastMainRouteSuccess ? ` · main route last worked ${esc(fmtT(d.lastMainRouteSuccess))}` : ""}</div>
+      <table class="tbl dtbl"><thead><tr>
+        <th>Day</th><th class="num">Sent</th><th class="num">Saved</th>
+        <th class="num">Main route</th><th class="num">Backup</th><th class="num">Own mail app</th><th class="num">Thank-you page</th>
+      </tr></thead><tbody>${rows || '<tr><td colspan="7" class="empty">No form activity in this period.</td></tr>'}</tbody></table>
+    </div>`;
+}
+
+/* ---------------- Error trend ---------------- */
+function viewErrTrend() {
+  const d = state.errTrend;
+  if (!d) return loader();
+  if (d.failed)
+    return '<div class="card"><div class="empty">Could not load the error trend. Try Refresh.</div></div>';
+  const days = d.days || [];
+  const values = days.map((x) => x.total);
+  const labels = days.map((x, i) => (i % 5 === 0 ? x.day.slice(8) : ""));
+  const worst = days.reduce((a, b) => (b.total > (a ? a.total : -1) ? b : a), null);
+  return `
+    <div class="callout">
+      <strong>Is it getting worse?</strong> The list beside this says what broke; this says whether it is new.
+      A fault that has always been there is a different problem from one that started on Tuesday.
+    </div>
+    <div class="grid kpis">
+      ${kpi("Errors", fmt(d.total), `last ${d.days.length} days`)}
+      ${kpi("Busiest day", worst ? fmt(worst.total) : "–", worst ? esc(fmtT(worst.day)) : "")}
+      ${kpi("Kinds of fault", fmt((d.byType || []).length), "")}
+      ${kpi("New this week", fmt((d.newTypes || []).length), (d.newTypes || []).length ? "not seen before" : "nothing new")}
+    </div>
+    ${(d.newTypes || []).length
+      ? `<div class="callout callout-warn"><strong>New kinds of fault this week:</strong> ${d.newTypes.map((x) => esc(ERR_TYPE_LABELS[x] || x)).join(", ")}. These were not happening before, so something changed.</div>`
+      : ""}
+    <div class="card" style="margin-bottom:16px"><h3>Errors per day</h3><div class="csub">Same filters as the Errors list</div>${vbars(values, labels)}</div>
+    <div class="card"><h3>By kind</h3><div class="csub">Across the whole period</div>
+      ${barList((d.byType || []).map((x) => ({ key: ERR_TYPE_LABELS[x.key] || x.key, count: x.count })), { limit: 12, empty: "No errors recorded." })}
+    </div>`;
 }
 
 /* ---------------- Journeys (per-visitor timelines) ---------------- */
@@ -1754,6 +2263,39 @@ function healthProblemList(h) {
   return out;
 }
 
+/**
+ * When each thing last happened.
+ *
+ * "Is it configured" is only half the question. Nothing here could answer "did it
+ * STOP" — and a site that quietly recorded nothing for a fortnight looks exactly like
+ * a quiet fortnight. A threshold is given for each so silence can be judged rather
+ * than just reported.
+ */
+function activityCard(a) {
+  if (!a) return "";
+  const rows = [
+    ["Last visitor recorded", a.lastEvent, 6 * 3600e3, "analytics has stopped reaching the database"],
+    ["Last enquiry saved", a.lastEnquiry, 21 * 86400e3, "three weeks without one is unusual — worth a test submission"],
+    ["Last email by the main route", a.lastMainRouteEmail, 21 * 86400e3, "enquiries may be arriving without anyone being told"],
+    ["Last error logged", a.lastError, null, "quiet is good here"],
+  ];
+  const html = rows.map(([label, ts, limit, note]) => {
+    if (!ts) return healthRow(label, "off", "never");
+    const age = Date.now() - new Date(ts).getTime();
+    const stale = limit !== null && age > limit;
+    return healthRow(label, stale ? "warn" : "ok", `${esc(whenLabel(ts))}${stale ? " — " + note : ""}`);
+  });
+  const anyStale = rows.some(([, ts, limit]) => limit !== null && (!ts || Date.now() - new Date(ts).getTime() > limit));
+  return healthCard({
+    title: "Still running?",
+    status: anyStale ? "warn" : "ok",
+    headline: anyStale ? "Something has gone quiet." : "Everything has reported recently.",
+    detail: "",
+    rows: html,
+    fix: "",
+  });
+}
+
 function viewHealth() {
   const h = state.health;
   if (!h) return loader();
@@ -1857,6 +2399,7 @@ function viewHealth() {
       <div class="callout-sub">Passwords and keys are never shown here — only whether each one is set.</div>
     </div>
     ${groups.map(healthCard).join("")}
+    ${activityCard(h.activity)}
     <div class="card">
       <h3>What this page cannot see</h3>
       <div class="csub" style="margin-bottom:10px">Worth knowing, so a clean page isn't read as more than it is.</div>
@@ -1908,6 +2451,7 @@ const VIEWS = {
   locations: viewLocations, devices: viewDevices, engagement: viewEngagement,
   realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, errors: viewErrors, logins: viewLogins,
   health: viewHealth, data: viewDataAvailable,
+  content: viewContent, speed: viewSpeed, delivery: viewDelivery, errtrend: viewErrTrend,
 };
 /* The label for each panel. Used on tabs, and as the page title where a
    destination holds only one panel. */
@@ -1922,6 +2466,7 @@ const TITLES = {
   // so a title that disagrees with the nav item would only be a second name for
   // the same thing.
   health: "Health & setup", data: "Reference",
+  content: "Content", speed: "Speed", delivery: "Delivery", errtrend: "Trend",
 };
 
 /* ------------------------------------------------------------------ *
@@ -1951,16 +2496,19 @@ const DEST = [
 
   { group: "Audience" },
   { id: "visitors", label: "Visitors", icon: "chart", range: true, bots: true,
-    panels: ["overview", "trends", "pages", "sources", "locations", "devices", "engagement"] },
+    panels: ["overview", "trends", "pages", "content", "sources", "locations", "devices", "engagement"] },
   { id: "journeys", label: "Journeys", icon: "route", range: true, bots: true, panels: ["journeys", "flow"] },
   { id: "live", label: "Live", icon: "live", bots: true, panels: ["realtime"] },
 
   { group: "Results" },
-  { id: "results", label: "Conversions", icon: "target", range: true, bots: true, panels: ["events", "visualiser"] },
+  // "delivery" reads its own report rather than the shared bundle, so it is NOT in
+  // STATS_VIEWS and gets its own loader — the tab still switches instantly, it just
+  // fetches what it needs instead of silently painting nothing.
+  { id: "results", label: "Conversions", icon: "target", range: true, bots: true, panels: ["events", "delivery", "visualiser"] },
 
   { group: "System" },
-  { id: "health", label: "Health", icon: "pulse", panels: ["health"], badge: "health" },
-  { id: "errors", label: "Errors", icon: "warning", panels: ["errors"], badge: "errors" },
+  { id: "health", label: "Health", icon: "pulse", range: true, bots: true, only: ["speed"], panels: ["health", "speed"], badge: "health" },
+  { id: "errors", label: "Errors", icon: "warning", panels: ["errors", "errtrend"], badge: "errors" },
   { id: "logins", label: "Sign-ins", icon: "key", panels: ["logins"] },
   { id: "reference", label: "Reference", icon: "book", panels: ["data"] },
 ];
@@ -2066,10 +2614,14 @@ function renderTabs() {
  */
 function renderToolbar() {
   const d = destOf(state.view);
+  // A destination can hold one panel that reads a date range and another that does
+  // not — Health & Speed is exactly that. `only` names the panels that use the
+  // controls, so the other tab doesn't grow a picker that changes nothing.
+  const applies = !d.only || d.only.indexOf(state.view) !== -1;
   const seg = document.getElementById("rangeSeg");
   const bots = document.getElementById("botsWrap");
-  if (seg) seg.hidden = !d.range;
-  if (bots) bots.hidden = !d.bots;
+  if (seg) seg.hidden = !(d.range && applies);
+  if (bots) bots.hidden = !(d.bots && applies);
 }
 
 function renderRangeSeg() {
@@ -2138,6 +2690,12 @@ function renderView(opts) {
   state.realtime = null;
   state.journeys = null;
   state.flow = null;
+  // Like `flow` and `journeys`, these read their own reports and are refetched on
+  // arrival. `srcSel` (WHICH source you drilled into) is deliberately not cleared —
+  // it is a filter, and it belongs with trendMetric and flowPage below.
+  state.srcJourneys = null;
+  state.delivery = null;
+  state.errTrend = null;
   state.enquiries = null;
   state.enqUnnotified = null;
   state.errorLogs = null;
@@ -2164,6 +2722,12 @@ function renderView(opts) {
   const el = document.getElementById("view");
   el.innerHTML = (VIEWS[state.view] || viewToday)(); // shows a loader (state is null)
   const v = state.view;
+  // Drilled into one source: that panel reads its own report and does not need the
+  // shared bundle at all, so it loads one thing instead of two.
+  if (v === "sources" && state.srcSel) {
+    loadSourceJourneys();
+    return;
+  }
   // Already holding the bundle this panel reads: paint it and ask for nothing.
   if (reuse && STATS_VIEWS.indexOf(v) !== -1) {
     setPageMeta();
@@ -2181,6 +2745,8 @@ function renderView(opts) {
   else if (v === "errors") loadErrors(state.errPage);
   else if (v === "logins") loadLogins(state.loginPage);
   else if (v === "health") loadHealth();
+  else if (v === "delivery") loadDelivery();
+  else if (v === "errtrend") loadErrTrend();
   else if (v === "data") {
     /* static reference catalogue — nothing to fetch */
   } else loadStatsView();
@@ -2304,7 +2870,7 @@ function markFresh() {
 }
 
 // Views that all read from the shared stats bundle (state.data).
-const STATS_VIEWS = ["overview", "trends", "pages", "sources", "locations", "devices", "engagement", "events", "visualiser"];
+const STATS_VIEWS = ["overview", "trends", "pages", "content", "sources", "locations", "devices", "engagement", "events", "visualiser", "speed"];
 
 async function loadStats() {
   const url = `${STATS}?range=${state.range}&bots=${state.bots ? "include" : "exclude"}`;
@@ -2378,6 +2944,75 @@ async function loadFlow() {
     if (state.view === "flow") {
       document.getElementById("view").innerHTML = '<div class="card"><div class="empty">Could not load path flow. Try Refresh.</div></div>';
     }
+  }
+}
+
+/**
+ * Every visit that arrived from one source, with what it turned into.
+ *
+ * Its own report rather than a filter over the journeys bundle, because it also has
+ * to join the saved enquiry rows — and those live in a different table.
+ */
+async function loadSourceJourneys() {
+  const sel = state.srcSel;
+  if (!sel) return;
+  const src = `${sel.kind}:${sel.value}`;
+  try {
+    const url = `${STATS}?report=sourcejourneys&src=${encodeURIComponent(src)}&range=${state.range}&bots=${state.bots ? "include" : "exclude"}`;
+    const r = await apiGet(url);
+    if (r.status === 401) { showLogin(); return; }
+    if (!r.ok) throw new Error("sourcejourneys " + r.status);
+    const data = await r.json();
+    // A slow answer for a source you have since navigated away from must not paint
+    // over the one you are looking at now.
+    if (!state.srcSel || `${state.srcSel.kind}:${state.srcSel.value}` !== src) return;
+    state.srcJourneys = data;
+    markFresh();
+    if (state.view === "sources") {
+      document.getElementById("view").innerHTML = viewSources();
+      setPageMeta();
+    }
+  } catch (e) {
+    state.srcJourneys = { failed: true, meta: {}, summary: {}, journeys: [] };
+    if (state.view === "sources") document.getElementById("view").innerHTML = viewSources();
+  }
+}
+
+async function loadDelivery() {
+  try {
+    const url = `${STATS}?report=delivery&range=${state.range}&bots=${state.bots ? "include" : "exclude"}`;
+    const r = await apiGet(url);
+    if (r.status === 401) { showLogin(); return; }
+    if (!r.ok) throw new Error("delivery " + r.status);
+    state.delivery = await r.json();
+    markFresh();
+    if (state.view === "delivery") {
+      document.getElementById("view").innerHTML = viewDelivery();
+      setPageMeta();
+    }
+  } catch (e) {
+    state.delivery = { failed: true };
+    if (state.view === "delivery") document.getElementById("view").innerHTML = viewDelivery();
+  }
+}
+
+async function loadErrTrend() {
+  try {
+    // Same filters as the Errors list, so the two can never disagree about what
+    // they are counting.
+    const url = `${ERROR_LOGS}?report=trend&days=30&kind=errors&bots=${state.errBots}&party=${state.errParty}`;
+    const r = await apiGet(url);
+    if (r.status === 401) { showLogin(); return; }
+    if (!r.ok) throw new Error("errtrend " + r.status);
+    state.errTrend = await r.json();
+    markFresh();
+    if (state.view === "errtrend") {
+      document.getElementById("view").innerHTML = viewErrTrend();
+      setPageMeta();
+    }
+  } catch (e) {
+    state.errTrend = { failed: true };
+    if (state.view === "errtrend") document.getElementById("view").innerHTML = viewErrTrend();
   }
 }
 
@@ -2651,6 +3286,36 @@ function wire() {
       document.getElementById("view").innerHTML = viewJourneys();
       return;
     }
+    // Sources: drill into one source, come back out, or flip the order.
+    const sg = e.target.closest("[data-srcgo]");
+    if (sg) {
+      const raw = sg.getAttribute("data-srcgo") || "";
+      const ci = raw.indexOf(":");
+      state.srcSel = { kind: ci === -1 ? raw : raw.slice(0, ci), value: ci === -1 ? "" : raw.slice(ci + 1) };
+      state.srcJourneys = null;
+      document.getElementById("view").innerHTML = viewSources();
+      loadSourceJourneys();
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (e.target.closest("[data-srcback]")) {
+      state.srcSel = null;
+      state.srcJourneys = null;
+      // The bundle was never fetched while drilled in, so ask for it now rather
+      // than painting an empty page.
+      if (state.data) document.getElementById("view").innerHTML = viewSources();
+      else { document.getElementById("view").innerHTML = loader(); loadStatsView(); }
+      window.scrollTo(0, 0);
+      return;
+    }
+    const so = e.target.closest("[data-srcorder]");
+    if (so) {
+      state.srcOrder = so.getAttribute("data-srcorder");
+      document.getElementById("view").innerHTML = viewSources();
+      return;
+    }
+    const sjt = e.target.closest("[data-sjtoggle]");
+    if (sjt) { sjt.closest(".journey").classList.toggle("open"); return; }
     const fg = e.target.closest("[data-flowgo]");
     if (fg) {
       state.flowPage = fg.getAttribute("data-flowgo");
@@ -2736,6 +3401,15 @@ function wire() {
       lt.classList.toggle("open");
       return;
     }
+  });
+  // The source rows are table rows acting as buttons, and a <tr> does not fire a
+  // click from the keyboard the way a real button does.
+  document.getElementById("view").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const sg = e.target.closest && e.target.closest("[data-srcgo]");
+    if (!sg) return;
+    e.preventDefault();
+    sg.click();
   });
   document.getElementById("view").addEventListener("change", (e) => {
     if (window.SCProjects && window.SCProjects.onChange(e)) return;

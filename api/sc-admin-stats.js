@@ -495,7 +495,7 @@ function groupOf(path) {
  * bundle already carries — the site has 78 URLs, so a client-side grouping of that
  * list would quietly omit the long tail, which is exactly the part being judged.
  */
-function contentGroups(pageviews, engaged, leadPaths) {
+function contentGroups(pageviews, engaged, leadVids) {
   const durByPath = new Map();
   const scrollByPath = new Map();
   for (const e of engaged) {
@@ -518,7 +518,7 @@ function contentGroups(pageviews, engaged, leadPaths) {
     if (!groups.has(g.key))
       groups.set(g.key, {
         key: g.key, label: g.label, views: 0, vids: new Set(),
-        pageMap: new Map(), durs: [], scrolls: [], leads: 0,
+        pageMap: new Map(), durs: [], scrolls: [],
       });
     return groups.get(g.key);
   };
@@ -533,9 +533,19 @@ function contentGroups(pageviews, engaged, leadPaths) {
     const ss = scrollByPath.get(path);
     if (ss) g.scrolls.push(mean(ss));
   }
-  for (const [path, n] of leadPaths.entries()) {
-    G(groupOf(path)).leads += n;
-  }
+
+  // "Leads" = visitors who READ this section and then enquired, counted once each.
+  //
+  // Not the page the form was sent from: that is always the contact page, so it
+  // would credit Contact with every lead on the site and Case studies with none —
+  // which answers nothing about whether the case studies earn their keep. One
+  // enquiry is credited to every section that visitor read, so the column is "part
+  // of how N leads decided", and it deliberately does not sum to the lead total.
+  const leadsOf = (g) => {
+    let n = 0;
+    for (const v of g.vids) if (leadVids.has(v)) n += 1;
+    return n;
+  };
 
   return [...groups.values()]
     .map((g) => ({
@@ -550,7 +560,8 @@ function contentGroups(pageviews, engaged, leadPaths) {
       pageCount: g.pageMap.size,
       avgTime: Math.round(mean(g.durs) / 1000),
       avgScroll: Math.round(mean(g.scrolls)),
-      leads: g.leads,
+      leads: leadsOf(g),
+      leadRate: g.vids.size ? +((leadsOf(g) / g.vids.size) * 100).toFixed(1) : 0,
     }))
     .sort((a, b) => b.views - a.views);
 }
@@ -1449,13 +1460,9 @@ module.exports = async (req, res) => {
     }
     const leadVids = new Set();
     const intentVids = new Set();
-    const leadPaths = new Map();
     for (const e of realEv) {
-      if (ENQUIRY_EVENTS.has(e.name)) {
-        leadVids.add(vidOf(e));
-        const p = e.path || "/";
-        leadPaths.set(p, (leadPaths.get(p) || 0) + 1);
-      } else if (INTENT_EVENTS.has(e.name)) intentVids.add(vidOf(e));
+      if (ENQUIRY_EVENTS.has(e.name)) leadVids.add(vidOf(e));
+      else if (INTENT_EVENTS.has(e.name)) intentVids.add(vidOf(e));
     }
     const perf = (keyOf, limit) =>
       sourcePerformance(attrib, pvByVid, leadVids, intentVids, keyOf, limit);
@@ -1587,7 +1594,7 @@ module.exports = async (req, res) => {
       // The props have been recorded since June and were discarded at this step.
       events: { byName: eventsByName, byPage: eventByPage, props: propBreakdowns(realEv) },
       visualiser,
-      content: contentGroups(curPv, engagedEv, leadPaths),
+      content: contentGroups(curPv, engagedEv, leadVids),
       notFound,
       ctaPerformance,
       vitals: vitalsSummary(curEv.filter((r) => r.name === "vitals")),
