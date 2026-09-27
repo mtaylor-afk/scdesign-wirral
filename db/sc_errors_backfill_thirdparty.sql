@@ -1,6 +1,15 @@
 -- ============================================================
 -- SC Design Wirral — one-off backfill: flag existing browser-extension errors
 -- ============================================================
+-- OPTIONAL. Nothing is broken if this is never run.
+--
+-- The admin now also applies the same extension test in the browser, to
+-- whatever the server returns — so the four untagged historical rows are
+-- already hidden from the default view and excluded from the download, and the
+-- export states how many it left out. Running this simply moves that work back
+-- to the database, which makes the on-screen COUNTS exact as well (the server
+-- can only filter on the flag, so today the total still includes them).
+--
 -- Run ONCE in the `sc-analytics` Supabase project's SQL editor
 -- (project ref: yxapzkiodjecladjziom), alongside db/sc_errors.sql.
 --

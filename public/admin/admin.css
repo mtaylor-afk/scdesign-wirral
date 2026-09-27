@@ -601,6 +601,13 @@ table.tbl tr:hover td { background: #faf6ef; }
 .prj-imgfoot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; padding-top: 10px; border-top: 1px solid #f1ebe0; }
 .prj-imgacts { display: inline-flex; align-items: center; gap: 6px; }
 
+/* A callout that needs to be read, not skimmed past — used when enquiries were
+   saved but nobody was notified. Deliberately louder than the usual accent-soft
+   callout, because that one is explanatory furniture and this one is a fault. */
+.callout-warn { background: #fdf3e7; border-color: #e8cfa8; }
+.callout-warn strong { color: #8a4b12; }
+.callout-warn code { background: #f6e6cf; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
 /* ---------- Error log: download all ---------- */
 .errexport { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; padding: 14px 18px; }
 .errexport-main { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }

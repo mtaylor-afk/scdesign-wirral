@@ -29,6 +29,10 @@ const state = {
   flowPage: null,
   enquiries: null,
   enqPage: 1,
+  // Enquiries that were SAVED but whose notification email never sent. A silent
+  // failure here means a real lead sits in the table with nobody told, which is
+  // exactly what happened between Jul and Sep 2026 — so it gets said out loud.
+  enqUnnotified: null,
   errorLogs: null,
   errPage: 1,
   errBots: "exclude", // exclude | include | only
@@ -678,6 +682,7 @@ function viewEnquiries() {
     ? rows.map((r, i) => enquiryRow(r, i)).join("")
     : '<tr><td colspan="5" class="empty">No enquiries saved yet. New website form submissions will appear here automatically.</td></tr>';
   return `
+    ${unnotifiedBanner()}
     <div class="callout"><strong>Backup record of every website enquiry.</strong> The website still emails Sean exactly as before — this is a safety-net copy saved to the database, so a lead is never lost if an email is missed. Newest first; <strong>click a row</strong> to see every field captured.</div>
     <div class="grid kpis">
       ${kpi("Total enquiries", fmt(d.total), "saved all-time")}
@@ -853,10 +858,47 @@ function errPager(d) {
   </div>`;
 }
 
+/**
+ * Does this row look like a browser-extension fault?
+ *
+ * The server filters on props.thirdParty, which the reporter sets at capture
+ * time — so it only exists on rows logged after that shipped. Everything older
+ * still counts as the website's own, which is exactly wrong for the four
+ * extension errors already in the table.
+ *
+ * Rather than require a database backfill before the filter is any use, the
+ * same test is applied here to whatever the server returned. Belt and braces:
+ * new rows are caught server-side (so the counts and paging are right), old
+ * ones are caught here.
+ */
+const EXT_URL_RE = /\b(?:chrome|chrome-untrusted|moz|safari-web|safari|ms-browser|opera|edge)-extension:\/\//i;
+function looksThirdParty(e) {
+  if (!e) return false;
+  if (e.props && e.props.thirdParty === true) return true;
+  return EXT_URL_RE.test(e.stack || "") || EXT_URL_RE.test(e.source || "");
+}
+
+/** Apply the on-screen party choice to rows the server has already returned. */
+function applyPartyFilter(rows) {
+  if (state.errParty === "all") return { rows: rows, hidden: 0 };
+  const want = state.errParty === "third";
+  const kept = rows.filter((e) => looksThirdParty(e) === want);
+  return { rows: kept, hidden: rows.length - kept.length };
+}
+
 function viewErrors() {
   const d = state.errorLogs;
   if (!d) return loader();
-  const rows = d.rows || [];
+  // errorRow / the Copy button index into d.rows, so the filtered set replaces
+  // it wholesale rather than being filtered at render time — otherwise the
+  // indexes and the rows would disagree and Copy would return the wrong error.
+  const filtered = applyPartyFilter(d.rows || []);
+  d.rows = filtered.rows;
+  const rows = d.rows;
+  const hiddenNote =
+    filtered.hidden > 0
+      ? ` · ${filtered.hidden} older browser-extension ${filtered.hidden === 1 ? "error" : "errors"} hidden on this page`
+      : "";
   const body = rows.length
     ? rows.map((e, i) => errorRow(e, i)).join("")
     : `<tr><td colspan="5" class="empty">No errors logged for this filter — good news, or none captured yet.</td></tr>`;
@@ -881,7 +923,7 @@ function viewErrors() {
     <div class="grid kpis">
       ${kpi("Errors logged", fmt(d.total), filterNote)}
       ${kpi("Last 24 hours", fmt(d.last24h), "same filter")}
-      ${kpi("Showing", fmt(rows.length), `page ${d.page} of ${d.totalPages} · ${esc(partyNote)}`)}
+      ${kpi("Showing", fmt(rows.length), `page ${d.page} of ${d.totalPages} · ${esc(partyNote)}${esc(hiddenNote)}`)}
     </div>
     <div class="jfilters">
       ${chip("exclude", "Humans only")}
@@ -982,6 +1024,8 @@ async function fetchAllErrorRows(sinceId, onProgress) {
   const rows = [];
   let page = 1;
   let total = 0;
+  let fetched = 0; // raw rows seen, before the party filter
+  let maxSeenId = 0;
   let truncated = false;
   for (;;) {
     let url = `${ERROR_LOGS}?page=${page}&pageSize=${ERR_EXPORT_PAGE}&bots=${state.errBots}&party=${state.errParty}&kind=errors`;
@@ -996,16 +1040,26 @@ async function fetchAllErrorRows(sinceId, onProgress) {
     if (!j.ok) throw new Error(j.error || "export failed");
     total = j.total || 0;
     const batch = j.rows || [];
-    batch.forEach((x) => rows.push(x));
-    if (onProgress) onProgress(rows.length, total);
-    if (!batch.length || rows.length >= total) break;
-    if (rows.length >= ERR_EXPORT_CAP) {
+    // The paging loop must count what the SERVER returned, not what survives
+    // the filter — otherwise hiding older extension rows makes rows.length lag
+    // total forever and the loop never terminates.
+    fetched += batch.length;
+    // The watermark advances past everything SEEN, including rows the filter
+    // drops. Taking it from the kept rows instead would leave the hidden ones
+    // below the mark, so every future download would fetch them again.
+    batch.forEach((x) => {
+      if (Number.isFinite(x.id) && x.id > maxSeenId) maxSeenId = x.id;
+    });
+    applyPartyFilter(batch).rows.forEach((x) => rows.push(x));
+    if (onProgress) onProgress(fetched, total);
+    if (!batch.length || fetched >= total) break;
+    if (fetched >= ERR_EXPORT_CAP) {
       truncated = true;
       break;
     }
     page += 1;
   }
-  return { rows, total, truncated };
+  return { rows, total, fetched, maxSeenId, truncated };
 }
 
 /**
@@ -1094,9 +1148,15 @@ async function exportErrorLogs() {
     const rows = result.rows;
     if (!rows.length) {
       state.errExporting = false;
-      state.errExportNote = sinceId
-        ? "No new errors since your last download — nothing to send."
-        : "No errors logged for this filter — nothing to download.";
+      // Everything fetched could have been filtered out as extension noise —
+      // that is a different answer from "nothing new happened", and saying the
+      // wrong one would have Sean thinking the site was quiet when it was not.
+      state.errExportNote =
+        result.fetched > 0
+          ? `Nothing to send — the ${fmt(result.fetched)} error${result.fetched === 1 ? " was a browser-extension fault" : "s were all browser-extension faults"}, not the website.`
+          : sinceId
+          ? "No new errors since your last download — nothing to send."
+          : "No errors logged for this filter — nothing to download.";
       if (state.view === "errors") document.getElementById("view").innerHTML = viewErrors();
       showToast(sinceId ? "No new errors" : "No errors to download");
       return;
@@ -1129,6 +1189,13 @@ async function exportErrorLogs() {
           : "every error held for this filter")
     );
     head.push("Errors in file: " + rows.length);
+    if (result.fetched > rows.length) {
+      head.push(
+        "Excluded:       " +
+          (result.fetched - rows.length) +
+          " browser-extension error(s) — faults inside a visitor's browser, not the website"
+      );
+    }
     if (result.truncated) {
       head.push("");
       head.push(
@@ -1154,7 +1221,7 @@ async function exportErrorLogs() {
     downloadTextFile(errExportFilename(now), parts.join("\n"));
 
     // Advance the watermark to the highest id actually in the file.
-    const maxId = rows.reduce((a, e) => (Number.isFinite(e.id) && e.id > a ? e.id : a), 0);
+    const maxId = result.maxSeenId || rows.reduce((a, e) => (Number.isFinite(e.id) && e.id > a ? e.id : a), 0);
     if (maxId > 0) errExportSave({ id: maxId, at: now.toISOString(), count: rows.length });
 
     state.errExporting = false;
@@ -1605,6 +1672,7 @@ function renderView() {
   state.journeys = null;
   state.flow = null;
   state.enquiries = null;
+  state.enqUnnotified = null;
   state.errorLogs = null;
   // The one-line download feedback is about the last action, not the data, so
   // it goes when you navigate away. The saved watermark is NOT touched here —
@@ -1768,6 +1836,59 @@ async function loadFlow() {
   }
 }
 
+/**
+ * How many enquiries reached the database but never reached an inbox.
+ *
+ * The form logs a form_error whenever it has to fall back to mailto, and those
+ * rows carry backupStored / backupEmailed. Between July and September 2026 six
+ * of them were stored with nobody emailed, and the only way anyone found out
+ * was by reading the raw error log months later. Counting them here puts it on
+ * the screen Sean actually looks at.
+ *
+ * Best-effort and non-blocking: if this fails the enquiries list still renders.
+ */
+/** The red banner: enquiries that arrived but that nobody was told about. */
+function unnotifiedBanner() {
+  const u = state.enqUnnotified;
+  if (!u || !u.count) return "";
+  const when = u.oldest ? ` The earliest was ${esc(fmtDateTime(u.oldest))}.` : "";
+  const why =
+    u.reason === "smtp_not_configured"
+      ? " The cause is that <strong>SMTP_USER and SMTP_PASS are not set</strong> in the scdesign-wirral Vercel project, so the site can save an enquiry but cannot email it."
+      : u.reason
+      ? ` The mail server reported: <code>${esc(u.reason)}</code>.`
+      : "";
+  return `
+    <div class="callout callout-warn">
+      <strong>${fmt(u.count)} ${u.count === 1 ? "enquiry" : "enquiries"} below ${u.count === 1 ? "was" : "were"} saved here but never emailed to anyone.</strong>
+      ${u.count === 1 ? "It is" : "They are"} in the list — no lead was lost — but nobody was notified at the time, so ${u.count === 1 ? "it" : "they"} may never have been answered.${when}${why}
+      Until that is fixed, any enquiry that misses the primary endpoint will be saved silently again.
+    </div>`;
+}
+
+async function countUnnotifiedEnquiries() {
+  try {
+    const r = await apiGet(`${ERROR_LOGS}?kind=errors&bots=include&party=all&pageSize=200`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!j.ok) return null;
+    const hits = (j.rows || []).filter((e) => {
+      const p = e.props || {};
+      return e.type === "form_error" && p.backupStored === true && p.backupEmailed === false;
+    });
+    if (!hits.length) return { count: 0 };
+    return {
+      count: hits.length,
+      newest: hits[0].ts,
+      oldest: hits[hits.length - 1].ts,
+      // "smtp_not_configured" is the usual culprit and names its own fix.
+      reason: hits.map((h) => (h.props || {}).emailError).find(Boolean) || null,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
 async function loadEnquiries(page) {
   state.enqPage = page || state.enqPage || 1;
   try {
@@ -1777,6 +1898,7 @@ async function loadEnquiries(page) {
     if (!r.ok) throw new Error("enquiries " + r.status);
     state.enquiries = await r.json();
     state.enqPage = state.enquiries.page;
+    state.enqUnnotified = await countUnnotifiedEnquiries();
     markFresh();
     if (state.view === "enquiries") {
       document.getElementById("view").innerHTML = viewEnquiries();
