@@ -1,0 +1,160 @@
+// WV Roofing — local development server (no dependencies).
+//
+//   node scripts/wvroofing/dev-server.mjs [--port 8772] [--simulate 429|503] [--proxy-live]
+//
+// - Serves public/ exactly as Cloudflare Pages would at /WVROOFING/ (directory
+//   -> index.html, trailing-slash redirect), with caching disabled.
+// - Mounts the Vercel functions in api/wvroofing/*.js at /api/wvroofing/* (re-
+//   required on every request, so edits apply without a restart).
+// - --simulate 429|503 makes every other render request fail that way, to test
+//   the client's queue/back-off and banners.
+// - --proxy-live forwards /api/wvroofing/* to the deployed API instead (used to
+//   pre-render the sample houses once photo-real rendering is live).
+// - POST /__dev/save writes a pre-rendered sample image under
+//   public/WVROOFING/samples/renders/ (localhost only).
+import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repo = path.resolve(here, "../..");
+const publicDir = path.join(repo, "public");
+const require = createRequire(import.meta.url);
+
+const args = process.argv.slice(2);
+const arg = (name, dflt) => {
+  const i = args.indexOf("--" + name);
+  if (i === -1) return dflt;
+  const v = args[i + 1];
+  return v && !v.startsWith("--") ? v : true;
+};
+const PORT = Number(arg("port", process.env.PORT || 8772));
+const SIMULATE = arg("simulate", "");
+const PROXY_LIVE = !!arg("proxy-live", false);
+const LIVE_API = "https://scdesign-wirral.vercel.app";
+
+const MIME = {
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon",
+  ".txt": "text/plain; charset=utf-8",
+  ".woff2": "font/woff2",
+};
+
+let simCounter = 0;
+
+function send(res, status, body, headers) {
+  res.writeHead(status, Object.assign({ "Cache-Control": "no-store" }, headers || {}));
+  res.end(body);
+}
+
+async function readBody(req, limit) {
+  const chunks = [];
+  let size = 0;
+  for await (const c of req) {
+    size += c.length;
+    if (size > limit) throw new Error("too_large");
+    chunks.push(c);
+  }
+  return Buffer.concat(chunks);
+}
+
+async function handleApi(req, res, name) {
+  if (PROXY_LIVE) {
+    const body = req.method === "POST" ? await readBody(req, 6 * 1024 * 1024) : undefined;
+    const r = await fetch(LIVE_API + req.url, {
+      method: req.method,
+      headers: { "Content-Type": req.headers["content-type"] || "application/json", Origin: "https://scdesignwirral.co.uk" },
+      body,
+    });
+    const buf = Buffer.from(await r.arrayBuffer());
+    const h = { "Content-Type": r.headers.get("content-type") || "application/json" };
+    const ra = r.headers.get("retry-after");
+    if (ra) h["Retry-After"] = ra;
+    return send(res, r.status, buf, h);
+  }
+  if (SIMULATE && name === "render" && req.method === "POST") {
+    simCounter++;
+    if (simCounter % 2 === 1) {
+      await readBody(req, 8 * 1024 * 1024).catch(() => null);
+      if (SIMULATE === "429") {
+        return send(res, 429, JSON.stringify({ ok: false, error: "rate_limited", scope: "upstream", message: "Simulated rate limit" }), {
+          "Content-Type": "application/json",
+          "Retry-After": "3",
+        });
+      }
+      return send(res, 503, JSON.stringify({ ok: false, error: "budget", message: "Simulated budget stop" }), {
+        "Content-Type": "application/json",
+      });
+    }
+  }
+  const file = path.join(repo, "api", "wvroofing", name + ".js");
+  if (!fs.existsSync(file)) return send(res, 404, JSON.stringify({ ok: false, error: "no_such_function" }), { "Content-Type": "application/json" });
+  // Fresh copy on every request (hot reload for the function and serverlib).
+  for (const k of Object.keys(require.cache)) {
+    if (k.includes(path.sep + "api" + path.sep + "wvroofing") || k.includes(path.sep + "serverlib" + path.sep + "wvroofing")) delete require.cache[k];
+  }
+  const handler = require(file);
+  await handler(req, res);
+}
+
+async function handleSave(req, res) {
+  const body = JSON.parse((await readBody(req, 12 * 1024 * 1024)).toString("utf8"));
+  const rel = String(body.path || "");
+  if (!/^samples\/renders\/[a-z0-9-]+\/[a-z0-9-]+\.(jpg|png|json)$/.test(rel)) {
+    return send(res, 400, "bad path");
+  }
+  const out = path.join(publicDir, "WVROOFING", rel);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  if (rel.endsWith(".json")) {
+    fs.writeFileSync(out, JSON.stringify(body.data, null, 2) + "\n");
+  } else {
+    const m = /^data:image\/(?:jpeg|png);base64,(.+)$/.exec(String(body.dataUrl || ""));
+    if (!m) return send(res, 400, "bad data url");
+    fs.writeFileSync(out, Buffer.from(m[1], "base64"));
+  }
+  return send(res, 200, JSON.stringify({ ok: true, path: rel }), { "Content-Type": "application/json" });
+}
+
+function serveStatic(req, res, urlPath) {
+  let rel = decodeURIComponent(urlPath);
+  if (rel.includes("\0")) return send(res, 400, "bad path");
+  let file = path.join(publicDir, rel);
+  if (!file.startsWith(publicDir)) return send(res, 403, "forbidden");
+  if (fs.existsSync(file) && fs.statSync(file).isDirectory()) {
+    if (!rel.endsWith("/")) return send(res, 301, "", { Location: rel + "/" });
+    file = path.join(file, "index.html");
+  }
+  if (!fs.existsSync(file)) return send(res, 404, "Not found: " + rel, { "Content-Type": "text/plain; charset=utf-8" });
+  const ext = path.extname(file).toLowerCase();
+  res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream", "Cache-Control": "no-store" });
+  fs.createReadStream(file).pipe(res);
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    const url = new URL(req.url, "http://localhost");
+    const m = /^\/api\/wvroofing\/([a-z-]+)\/?$/.exec(url.pathname);
+    if (m) return await handleApi(req, res, m[1]);
+    if (url.pathname === "/__dev/save" && req.method === "POST") return await handleSave(req, res);
+    if (url.pathname === "/") return send(res, 302, "", { Location: "/WVROOFING/" });
+    return serveStatic(req, res, url.pathname);
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) send(res, 500, JSON.stringify({ ok: false, error: "dev_server_error", message: String(err && err.message) }), { "Content-Type": "application/json" });
+  }
+});
+
+server.listen(PORT, () => {
+  console.log(`WV Roofing dev server: http://localhost:${PORT}/WVROOFING/` + (SIMULATE ? ` (simulating ${SIMULATE})` : "") + (PROXY_LIVE ? " (API proxied to live)" : ""));
+});

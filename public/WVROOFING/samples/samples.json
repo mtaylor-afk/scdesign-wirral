@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "note": "Demo houses for the Roof Visualiser. Photos are stock images (licences below) prepared by scripts/wvroofing/prepare-samples.mjs (cropped, number plates / house numbers blurred, metadata stripped). Roof outlines are in the photo's own pixel coordinates; mode 'sub' cuts out chimneys, roof windows, trees and ivy. 'renders' maps product id -> pre-rendered raw AI output (filled in once photo-real rendering is live).",
+  "samples": [
+    {
+      "id": "semi-1930s",
+      "title": "1930s hipped semi",
+      "src": "semi-1930s.jpg",
+      "w": 1600,
+      "h": 1145,
+      "credit": "Photo (stock): Unsplash",
+      "creditUrl": "https://unsplash.com/photos/yXBeuNhmbNY",
+      "licence": "Unsplash Licence",
+      "prerendered": false,
+      "shapes": [
+        { "mode": "add", "pts": [[266, 437], [896, 110], [946, 95], [959, 101], [1280, 362], [970, 327], [822, 322], [268, 444]] },
+        { "mode": "sub", "pts": [[553, 166], [661, 166], [682, 230], [696, 323], [650, 380], [557, 380], [546, 294]] },
+        { "mode": "sub", "pts": [[679, 319], [821, 316], [821, 351], [679, 359]] },
+        { "mode": "sub", "pts": [[389, 398], [486, 387], [486, 423], [389, 437]] },
+        { "mode": "sub", "pts": [[721, 223], [843, 157], [857, 167], [739, 236]] }
+      ],
+      "renders": {}
+    },
+    {
+      "id": "detached-modern",
+      "title": "Modern detached",
+      "src": "detached-modern.jpg",
+      "w": 1280,
+      "h": 1600,
+      "credit": "Photo (stock): Pexels",
+      "creditUrl": "https://www.pexels.com/photo/37943926/",
+      "licence": "Pexels Licence",
+      "prerendered": false,
+      "shapes": [
+        { "mode": "add", "pts": [[59, 504], [600, 281], [800, 311], [1009, 222], [1209, 340], [1280, 335], [1280, 499], [1073, 465], [1032, 461], [677, 406], [59, 508]] },
+        { "mode": "sub", "pts": [[318, 381], [340, 381], [340, 434], [318, 434]] },
+        { "mode": "add", "pts": [[0, 688], [100, 651], [641, 596], [700, 595], [1000, 631], [1280, 675], [1280, 720], [700, 696], [0, 735]] },
+        { "mode": "sub", "pts": [[975, 560], [993, 560], [993, 760], [975, 760]] }
+      ],
+      "renders": {}
+    },
+    {
+      "id": "detached-clay",
+      "title": "1920s-30s detached",
+      "src": "detached-clay.jpg",
+      "w": 1600,
+      "h": 1200,
+      "credit": "Photo (stock): Unsplash",
+      "creditUrl": "https://unsplash.com/photos/WUEGFIcfwK4",
+      "licence": "Unsplash Licence",
+      "prerendered": false,
+      "shapes": [
+        { "mode": "add", "pts": [[405, 217], [1065, 217], [988, 558], [894, 440], [845, 403], [525, 400], [542, 410], [542, 620], [540, 628], [395, 625], [220, 615], [205, 505], [235, 390], [330, 272], [402, 268]] },
+        { "mode": "sub", "pts": [[302, 393], [505, 393], [505, 518], [302, 518]] },
+        { "mode": "sub", "pts": [[820, 530], [860, 480], [895, 448], [940, 470], [980, 520], [1010, 580], [1010, 700], [820, 700]] }
+      ],
+      "renders": {}
+    }
+  ]
+}

@@ -42,3 +42,13 @@
 /samantha/*
   X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
   Cache-Control: no-store, max-age=0
+
+# /WVROOFING — a separate concept project (WV Roofing) parked on this host for
+# testing. Must never be indexed and is deliberately NOT listed anywhere public
+# (no robots.txt entry, sitemap, llms.txt or links) — this header plus each
+# page's own <meta name="robots"> keep it out of search. Security headers come
+# from /* above; only X-Robots-Tag is added here (Cloudflare appends rules).
+/WVROOFING
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
+/WVROOFING/*
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex

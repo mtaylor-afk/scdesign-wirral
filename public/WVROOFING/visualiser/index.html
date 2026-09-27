@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Roof Visualiser | See your house with a new roof | WV Roofing (concept)</title>
+  <meta name="description" content="Upload a photo of your house, mark the roof and compare eight tile and slate finishes on your own home, with quick previews and optional photo-real AI renders.">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="theme-color" content="#1b2a4a">
+  <script>document.documentElement.classList.add("js");</script>
+  <link rel="icon" href="/WVROOFING/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&amp;family=Barlow:wght@400;500;600;700&amp;family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&amp;display=swap">
+  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20260927">
+  <link rel="stylesheet" href="/WVROOFING/assets/css/visualiser.css?v=20260927">
+  <script type="module" src="/WVROOFING/assets/js/site.js?v=20260927"></script>
+  <script type="module" src="/WVROOFING/assets/js/vis/app.js?v=20260927"></script>
+</head>
+<body class="page-visualiser">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="concept-ribbon"><strong>Concept preview</strong> &middot; WV Roofing isn't trading yet. Contact details are placeholders and nothing here is a real offer.</div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/WVROOFING/" aria-label="WV Roofing home">
+        <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="13" fill="#1b2a4a"/><polyline points="11,29 32,11 53,29" fill="none" stroke="#c9a84c" stroke-width="4.5" stroke-linecap="square"/><text x="32" y="53" text-anchor="middle" font-family="'Cormorant Garamond', Georgia, serif" font-weight="700" font-size="25" fill="#c9a84c">WV</text></svg>
+        <span><span class="brand-name">WV Roofing</span><span class="brand-sub">Wirral &amp; Liverpool</span></span>
+      </a>
+      <button class="nav-toggle" type="button" aria-controls="site-nav" aria-expanded="false" aria-label="Open menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <nav id="site-nav" class="site-nav" aria-label="Main">
+        <ul>
+          <li><a href="/WVROOFING/">Home</a></li>
+          <li><a href="/WVROOFING/roof-replacement/">Roof replacement</a></li>
+          <li><a href="/WVROOFING/roof-replacement/#contact">Contact</a></li>
+          <li><a class="btn btn-gold btn-sm" href="/WVROOFING/visualiser/" aria-current="page">Roof Visualiser</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="page-head page-head--vis">
+      <div class="container">
+        <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/WVROOFING/">Home</a> / <span aria-current="page">Roof Visualiser</span></nav>
+        <h1>Roof Visualiser</h1>
+        <p>See your own house with eight different roofs. Add a photo, mark the roof, then compare every finish side by side.</p>
+      </div>
+    </section>
+
+    <section class="section vis-section">
+      <div class="container">
+        <ol class="vis-steps" aria-label="Visualiser steps">
+          <li data-step="photo" aria-current="step"><span class="vis-step-no">1</span><span>Your photo</span></li>
+          <li data-step="mark"><span class="vis-step-no">2</span><span>Mark the roof</span></li>
+          <li data-step="compare"><span class="vis-step-no">3</span><span>Compare roofs</span></li>
+        </ol>
+        <p class="sr-only" id="vis-live" role="status" aria-live="polite"></p>
+        <noscript><p class="notice">The Roof Visualiser needs JavaScript. You can still <a href="/WVROOFING/roof-replacement/#contact">request a free survey</a>.</p></noscript>
+
+        <!-- Step 1: photo -->
+        <section class="vis-panel" data-panel="photo" aria-labelledby="h-photo">
+          <h2 id="h-photo" class="vis-h">Add a photo of your house</h2>
+          <div class="upload-grid">
+            <div class="dropzone" id="dropzone">
+              <svg class="dropzone-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 24 24 9l18 15"/><path d="M11 21v18h26V21"/><path d="M24 36V24M19 29l5-5 5 5"/></svg>
+              <p class="dropzone-title">Drop a photo here</p>
+              <p class="muted">or</p>
+              <div class="dropzone-actions">
+                <label class="btn btn-gold file-btn">
+                  <input type="file" accept="image/*" capture="environment" id="file-camera" class="sr-only">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                  Take a photo
+                </label>
+                <label class="btn btn-outline file-btn">
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" id="file-library" class="sr-only">
+                  Choose a photo
+                </label>
+              </div>
+              <p class="muted dropzone-hint">JPG, PNG or WebP. Your photo stays on this device while you mark the roof.</p>
+            </div>
+            <aside class="photo-tips" aria-labelledby="tips-title">
+              <h3 id="tips-title">For the best result</h3>
+              <ul class="checklist">
+                <li><span>Stand across the road so the whole roof is in view.</span></li>
+                <li><span>Daylight and a clear view: no car or tree right in front.</span></li>
+                <li><span>Hold the phone level, in landscape if you can.</span></li>
+                <li><span>Try to avoid people and readable number plates.</span></li>
+              </ul>
+            </aside>
+          </div>
+
+          <div class="consent-box">
+            <label class="check" for="consent-ai">
+              <input type="checkbox" id="consent-ai">
+              <span><strong>Also create photo-real AI renders.</strong> I'm happy for my photo and roof outline to be sent securely to OpenAI to create them. They aren't stored by us. See the <a href="/WVROOFING/privacy/">privacy notice</a>.</span>
+            </label>
+            <p class="muted consent-note" id="ai-availability">Checking whether photo-real rendering is available…</p>
+          </div>
+
+          <p class="field-error" id="photo-error" role="alert" hidden></p>
+
+          <div class="samples">
+            <h3 class="vis-h3">No photo to hand? Try a sample house</h3>
+            <div class="sample-grid" id="sample-grid"><p class="muted">Loading samples…</p></div>
+          </div>
+        </section>
+
+        <!-- Step 2: mark the roof -->
+        <section class="vis-panel" data-panel="mark" aria-labelledby="h-mark" hidden>
+          <div class="mark-layout">
+            <div class="mark-main">
+              <h2 id="h-mark" class="vis-h">Mark your roof</h2>
+              <p class="mark-lede" id="mark-lede">Tap round the edge of each roof slope, then tap the first point again to close the shape. Cut out chimneys and roof windows so they stay as they are.</p>
+              <div class="editor-stage" id="editor-stage"></div>
+            </div>
+            <div class="mark-side">
+              <div class="toolbar" role="toolbar" aria-label="Roof marking tools">
+                <button type="button" class="tool" data-tool="outline" aria-pressed="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 15 12 5l9 10-9 4z"/></svg>
+                  <span>Outline roof</span>
+                </button>
+                <button type="button" class="tool" data-tool="cutout" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="4" width="8" height="14"/><path d="M4 20h16"/></svg>
+                  <span>Cut out</span>
+                </button>
+                <button type="button" class="tool" data-tool="brush" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20c3 0 4-2 4-4l9-9 2 2-9 9c-2 0-4 1-4 4"/></svg>
+                  <span>Brush</span>
+                </button>
+                <button type="button" class="tool" data-tool="erase" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m7 21-4-4L14 6l6 6-9 9zM14 21h7"/></svg>
+                  <span>Erase</span>
+                </button>
+              </div>
+              <div class="toolbar-row">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-finish">Finish shape</button>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-undo" aria-keyshortcuts="Control+Z">Undo</button>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-redo" aria-keyshortcuts="Control+Y">Redo</button>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-clear">Clear</button>
+              </div>
+              <div class="toolbar-options">
+                <label class="range-label" for="brush-size">Brush size <input type="range" id="brush-size" min="6" max="60" value="18"></label>
+                <label class="check" for="snap-edges"><input type="checkbox" id="snap-edges" checked><span>Snap points to edges</span></label>
+              </div>
+              <div class="mark-meter" id="mark-meter">
+                <div class="mark-meter-row"><span>Roof marked</span><strong id="mark-pct">0%</strong></div>
+                <p class="mark-warn" id="mark-warn" hidden></p>
+              </div>
+              <details class="mark-help">
+                <summary>Tips for marking</summary>
+                <ul>
+                  <li>Each roof slope can be one shape. Semis and terraces: mark only your own half.</li>
+                  <li>On a phone, press and slide to fine-tune a point with the magnifier, then lift your finger.</li>
+                  <li>Double-click, press Enter, or use "Finish shape" to close a shape.</li>
+                  <li>Cut out chimneys, roof windows and solar panels. The renders keep them as they are.</li>
+                </ul>
+              </details>
+              <div class="mark-actions">
+                <button type="button" class="btn btn-outline" id="btn-change-photo">Change photo</button>
+                <button type="button" class="btn btn-gold" id="btn-compare" disabled>Show my 8 roofs</button>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm dev-only" id="btn-copy-shapes" hidden>Copy outline JSON (dev)</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Step 3: compare -->
+        <section class="vis-panel" data-panel="compare" aria-labelledby="h-compare" hidden>
+          <div class="compare-head">
+            <div>
+              <h2 id="h-compare" class="vis-h">Your house, eight ways</h2>
+              <p class="muted" id="compare-sub">Tap any roof to compare before and after.</p>
+            </div>
+            <div class="render-bar" id="render-bar">
+              <p class="render-status" id="render-status"></p>
+              <div class="render-progress" id="render-progress" hidden><span></span></div>
+              <div class="render-actions">
+                <button type="button" class="btn btn-navy btn-sm" id="btn-start-ai" hidden>Create photo-real renders</button>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-stop-ai" hidden>Stop renders</button>
+              </div>
+            </div>
+          </div>
+          <div class="banner" id="render-banner" role="status" hidden></div>
+          <div class="results-grid" id="results-grid"></div>
+          <div class="compare-actions">
+            <button type="button" class="btn btn-outline" id="btn-edit-mark">Edit roof outline</button>
+            <button type="button" class="btn btn-outline" id="btn-restart">Start again</button>
+            <button type="button" class="btn btn-gold" id="btn-quote">Get a quote for my roof</button>
+          </div>
+          <p class="muted vis-small">Quick previews are drawn in your browser and are approximate. Photo-real renders are AI concept illustrations, not photographs of finished work. Colours vary on screen, so we bring real samples to every survey.</p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="lightbox" id="lightbox" aria-labelledby="lb-title">
+    <div class="lightbox-inner">
+      <header class="lightbox-head">
+        <div>
+          <p class="eyebrow" id="lb-kind">Quick preview</p>
+          <h2 id="lb-title" class="lightbox-title">Roof</h2>
+        </div>
+        <button type="button" class="icon-btn" id="lb-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <div class="lightbox-body">
+        <div class="lightbox-media">
+          <div class="ba" id="lb-ba" style="--pos: 50%">
+            <img id="lb-before" alt="Your house before">
+            <div class="ba-after"><img id="lb-after" alt=""></div>
+            <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="Drag to compare before and after">
+            <div class="ba-handle"><span class="ba-knob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6"/></svg></span></div>
+            <span class="ba-tag ba-tag--before">Before</span>
+            <span class="ba-tag ba-tag--after" id="lb-after-tag">After</span>
+          </div>
+          <div class="lightbox-switch" id="lb-switch" hidden>
+            <button type="button" class="chip" data-view="ai" aria-pressed="true">AI render</button>
+            <button type="button" class="chip" data-view="preview" aria-pressed="false">Quick preview</button>
+          </div>
+          <p class="lb-qa muted" id="lb-qa" hidden></p>
+        </div>
+        <div class="lightbox-info">
+          <div class="lb-swatch-row"><canvas class="lb-swatch" id="lb-swatch" width="120" height="90" aria-hidden="true"></canvas><div><p class="lb-colour" id="lb-colour"></p><p id="lb-price"></p></div></div>
+          <p id="lb-summary"></p>
+          <dl class="spec" id="lb-spec"></dl>
+          <div class="lightbox-actions">
+            <button type="button" class="btn btn-gold btn-block" id="lb-quote">Get a quote for this roof</button>
+            <button type="button" class="btn btn-outline btn-block" id="lb-download">Download image</button>
+            <div class="lb-nav">
+              <button type="button" class="btn btn-outline btn-sm" id="lb-prev">&larr; Previous</button>
+              <button type="button" class="btn btn-outline btn-sm" id="lb-next">Next &rarr;</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="quote-dialog" id="quote-dialog" aria-labelledby="qd-title">
+    <div class="quote-inner">
+      <header class="lightbox-head">
+        <div>
+          <p class="eyebrow">Free survey &amp; quote</p>
+          <h2 id="qd-title" class="lightbox-title">Get a quote for your roof</h2>
+        </div>
+        <button type="button" class="icon-btn" id="qd-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <form class="form" id="quote-form" data-source="visualiser" novalidate>
+        <div class="form-row form-row--2">
+          <div class="field">
+            <label for="v-name">Your name</label>
+            <input class="input" id="v-name" name="name" type="text" autocomplete="name" aria-describedby="v-name-err">
+            <p class="field-error" id="v-name-err" data-error-for="name" hidden></p>
+          </div>
+          <div class="field">
+            <label for="v-postcode">Postcode <span class="muted">(optional)</span></label>
+            <input class="input" id="v-postcode" name="postcode" type="text" autocomplete="postal-code" aria-describedby="v-postcode-err">
+            <p class="field-error" id="v-postcode-err" data-error-for="postcode" hidden></p>
+          </div>
+        </div>
+        <div class="form-row form-row--2">
+          <div class="field">
+            <label for="v-phone">Phone</label>
+            <input class="input" id="v-phone" name="phone" type="tel" autocomplete="tel" aria-describedby="v-phone-hint v-phone-err">
+            <p class="hint" id="v-phone-hint">A phone number or an email address is fine.</p>
+            <p class="field-error" id="v-phone-err" data-error-for="phone" hidden></p>
+          </div>
+          <div class="field">
+            <label for="v-email">Email</label>
+            <input class="input" id="v-email" name="email" type="email" autocomplete="email" aria-describedby="v-email-err">
+            <p class="field-error" id="v-email-err" data-error-for="email" hidden></p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="v-product">Your favourite roof</label>
+          <select class="select input" id="v-product" name="product">
+            <option value="">Choose one (optional)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="v-message">Anything else? <span class="muted">(optional)</span></label>
+          <textarea class="textarea" id="v-message" name="message" rows="3"></textarea>
+        </div>
+        <label class="check" for="v-images" id="v-images-row" hidden>
+          <input id="v-images" name="includeImages" type="checkbox" checked>
+          <span>Attach my before and after images to the request</span>
+        </label>
+        <div class="hp-field" aria-hidden="true">
+          <label for="v-company">Company</label>
+          <input id="v-company" name="company" type="text" tabindex="-1" autocomplete="off">
+        </div>
+        <label class="check" for="v-consent">
+          <input id="v-consent" name="consent" type="checkbox" aria-describedby="v-consent-err">
+          <span>I'm happy for WV Roofing to contact me about this enquiry. See the <a href="/WVROOFING/privacy/">privacy notice</a>.</span>
+        </label>
+        <p class="field-error" id="v-consent-err" data-error-for="consent" hidden></p>
+        <button class="btn btn-navy btn-block" type="submit">Send my request</button>
+        <p class="form-status" role="status" aria-live="polite" hidden></p>
+      </form>
+    </div>
+  </dialog>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <a class="brand" href="/WVROOFING/" aria-label="WV Roofing home">
+            <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="13" fill="#0f192e" stroke="#c9a84c" stroke-width="1.5"/><polyline points="11,29 32,11 53,29" fill="none" stroke="#c9a84c" stroke-width="4.5" stroke-linecap="square"/><text x="32" y="53" text-anchor="middle" font-family="'Cormorant Garamond', Georgia, serif" font-weight="700" font-size="25" fill="#c9a84c">WV</text></svg>
+            <span><span class="brand-name">WV Roofing</span><span class="brand-sub">Wirral &amp; Liverpool</span></span>
+          </a>
+          <p>Roof replacement and roofing services across the Wirral and Liverpool. A concept site: business details will be added before launch.</p>
+        </div>
+        <div>
+          <h2>Explore</h2>
+          <ul>
+            <li><a href="/WVROOFING/">Home</a></li>
+            <li><a href="/WVROOFING/roof-replacement/">Roof replacement</a></li>
+            <li><a href="/WVROOFING/visualiser/" aria-current="page">Roof Visualiser</a></li>
+            <li><a href="/WVROOFING/privacy/">Privacy</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Services</h2>
+          <ul>
+            <li><a href="/WVROOFING/roof-replacement/">Roof replacement</a></li>
+            <li><a href="/WVROOFING/roof-replacement/#other-work">Flat roofs</a></li>
+            <li><a href="/WVROOFING/roof-replacement/#other-work">Chimneys &amp; leadwork</a></li>
+            <li><a href="/WVROOFING/roof-replacement/#other-work">Fascias &amp; gutters</a></li>
+            <li><a href="/WVROOFING/roof-replacement/#other-work">Repairs</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Contact</h2>
+          <ul>
+            <li><a href="tel:+441514960321">0151 496 0321</a> <span class="muted">(placeholder)</span></li>
+            <li><a href="mailto:hello@wvroofing.co.uk">hello@wvroofing.co.uk</a> <span class="muted">(placeholder)</span></li>
+            <li><a href="/WVROOFING/roof-replacement/#contact">Request a quote</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-base">
+        <span>&copy; <span data-year>2026</span> WV Roofing. Concept site, not yet trading.</span>
+        <span>Roof visualisations are AI or computer-generated concepts for illustration only.</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,239 @@
+// WV Roofing â€” end-to-end browser QA (headless Chromium via Playwright).
+//
+//   node scripts/wvroofing/qa.mjs [--base http://localhost:8772] [--out <dir>] [--live]
+//
+// Needs the dev server running (scripts/wvroofing/dev-server.mjs) unless --base
+// points at a deployed copy. Checks every page at phone and desktop widths
+// (console errors, failed requests, horizontal overflow), then drives the Roof
+// Visualiser: sample house -> quick previews -> mock AI renders -> lightbox ->
+// quote dialog, and an upload + hand-drawn outline on a phone viewport.
+import { chromium } from "@playwright/test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const args = process.argv.slice(2);
+const opt = (n, d) => {
+  const i = args.indexOf("--" + n);
+  return i === -1 ? d : args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : true;
+};
+const BASE = String(opt("base", "http://localhost:8772")).replace(/\/$/, "");
+const OUT = path.resolve(String(opt("out", path.join(os.tmpdir(), "wvroofing-qa"))));
+const LIVE = !!opt("live", false);
+fs.mkdirSync(OUT, { recursive: true });
+
+const results = [];
+const ok = (name, pass, detail) => {
+  results.push({ name, pass: !!pass, detail: detail || "" });
+  console.log((pass ? "PASS " : "FAIL ") + name + (detail ? " - " + detail : ""));
+};
+
+const PAGES = ["/WVROOFING/", "/WVROOFING/roof-replacement/", "/WVROOFING/privacy/", "/WVROOFING/visualiser/"];
+const VIEWPORTS = [
+  { name: "phone", width: 375, height: 812, isMobile: true, hasTouch: true },
+  { name: "desktop", width: 1280, height: 860 },
+];
+
+async function shot(page, opts) {
+  try {
+    await page.screenshot(opts);
+  } catch (err) {
+    try {
+      await page.screenshot(Object.assign({}, opts, { fullPage: false }));
+    } catch (err2) {
+      console.log("(screenshot skipped: " + err2.message.split("\n")[0] + ")");
+    }
+  }
+}
+
+function watch(page) {
+  const errors = [];
+  page.on("console", (m) => {
+    if (m.type() === "error") errors.push("console: " + m.text());
+  });
+  page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
+  page.on("requestfailed", (r) => {
+    const u = r.url();
+    if (/fonts\.(googleapis|gstatic)\.com/.test(u)) return; // offline-tolerant
+    errors.push("requestfailed: " + u + " " + (r.failure() && r.failure().errorText));
+  });
+  page.on("response", (r) => {
+    if (r.status() >= 400 && !r.url().includes("/api/wvroofing/")) errors.push("http " + r.status() + ": " + r.url());
+  });
+  return errors;
+}
+
+const browser = await chromium.launch();
+try {
+  // ---- every page, both widths ----------------------------------------------
+  for (const vp of VIEWPORTS) {
+    const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: vp.isMobile, hasTouch: vp.hasTouch });
+    for (const p of PAGES) {
+      const page = await ctx.newPage();
+      const errors = watch(page);
+      await page.goto(BASE + p, { waitUntil: "load", timeout: 45000 });
+      await page.waitForTimeout(600);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      const h1 = await page.locator("h1").count();
+      ok(`${vp.name} ${p} loads cleanly`, errors.length === 0, errors.join(" | "));
+      ok(`${vp.name} ${p} no horizontal overflow`, overflow <= 0, "overflow " + overflow + "px");
+      ok(`${vp.name} ${p} exactly one h1`, h1 === 1, "h1 count " + h1);
+      const robots = await page.locator('meta[name="robots"]').getAttribute("content");
+      ok(`${vp.name} ${p} noindex meta`, /noindex/.test(robots || ""), robots || "missing");
+      const sc = await page.evaluate(() => /SC Design|scdesign/i.test(document.body.innerText));
+      ok(`${vp.name} ${p} no SC Design mention in visible text`, !sc);
+      await shot(page, { path: path.join(OUT, `${vp.name}-${p.replace(/\//g, "_") || "home"}.png`), fullPage: true });
+      await page.close();
+    }
+    await ctx.close();
+  }
+
+  // ---- hero renders its "after" ------------------------------------------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+    const page = await ctx.newPage();
+    await page.goto(BASE + "/WVROOFING/", { waitUntil: "load", timeout: 45000 });
+    const ready = await page.waitForSelector(".hero-visual.is-ready", { timeout: 20000 }).then(() => true).catch(() => false);
+    ok("home hero builds its before/after", ready);
+    await ctx.close();
+  }
+
+  // ---- visualiser: sample -> previews -> mock AI -> lightbox -> quote ---------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+    const page = await ctx.newPage();
+    const errors = watch(page);
+    await page.goto(BASE + "/WVROOFING/visualiser/?sample=semi-1930s", { waitUntil: "load", timeout: 45000 });
+    await page.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 15000 });
+    const pct = await page.textContent("#mark-pct");
+    ok("sample house arrives pre-marked", pct && pct !== "0%", pct);
+    await shot(page, { path: path.join(OUT, "vis-mark-desktop.png") });
+    const t0 = Date.now();
+    await page.click("#btn-compare");
+    await page.waitForFunction(() => Array.from(document.querySelectorAll(".result-card .badge")).filter((b) => /Quick preview|AI concept/.test(b.textContent)).length === 8, null, { timeout: 60000 });
+    ok("8 quick previews", true, Date.now() - t0 + " ms");
+    await shot(page, { path: path.join(OUT, "vis-previews-desktop.png"), fullPage: true });
+
+    if (!LIVE) {
+      const startVisible = await page.isVisible("#btn-start-ai");
+      ok("AI render button offered (consent not yet given)", startVisible);
+      if (startVisible) {
+        const t1 = Date.now();
+        await page.click("#btn-start-ai");
+        await page.waitForFunction(() => Array.from(document.querySelectorAll(".result-card .badge")).filter((b) => b.textContent === "AI concept").length === 8, null, { timeout: 120000 });
+        ok("8 mock AI renders composited", true, Date.now() - t1 + " ms");
+        // Pixels outside the (grown) roof must match the original exactly, 8x8 JPEG block-wise.
+        const exact = await page.evaluate(async () => {
+          const S = window.__wvr;
+          const id = S.cat.products[0].id;
+          const load = async (u) => {
+            const im = new Image();
+            im.src = u;
+            await im.decode();
+            const c = document.createElement("canvas");
+            c.width = im.naturalWidth;
+            c.height = im.naturalHeight;
+            const x = c.getContext("2d");
+            x.drawImage(im, 0, 0);
+            return x.getImageData(0, 0, c.width, c.height);
+          };
+          const a = await load(S.beforeUrl);
+          const b = await load(S.ai.get(id).url);
+          const w = a.width;
+          const h = a.height;
+          const alpha = S.analysis.alpha;
+          let blocks = 0;
+          let bad = 0;
+          for (let by = 0; by + 8 <= h; by += 8) {
+            for (let bx = 0; bx + 8 <= w; bx += 8) {
+              let touched = false;
+              for (let y = by - 32; y < by + 40 && !touched; y++) for (let x = bx - 32; x < bx + 40; x++) if (y >= 0 && x >= 0 && y < h && x < w && alpha[y * w + x] > 0.001) { touched = true; break; }
+              if (touched) continue;
+              blocks++;
+              let diff = 0;
+              for (let y = by; y < by + 8; y++) for (let x = bx; x < bx + 8; x++) { const i = (y * w + x) * 4; diff += Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]); }
+              if (diff > 0) bad++;
+            }
+          }
+          return { blocks, bad };
+        });
+        ok("outside-roof pixels unchanged after compositing", exact.bad === 0, JSON.stringify(exact));
+        await shot(page, { path: path.join(OUT, "vis-ai-mock-desktop.png"), fullPage: true });
+      }
+    }
+
+    await page.click(".result-card .result-open");
+    await page.waitForSelector("#lightbox[open]");
+    const title = await page.textContent("#lb-title");
+    ok("lightbox opens", !!title, title);
+    await page.keyboard.press("ArrowRight");
+    const title2 = await page.textContent("#lb-title");
+    ok("lightbox next works", title2 !== title, title2);
+    await shot(page, { path: path.join(OUT, "vis-lightbox-desktop.png") });
+    const [download] = await Promise.all([page.waitForEvent("download", { timeout: 10000 }).catch(() => null), page.click("#lb-download")]);
+    ok("download produces a file", !!download, download ? download.suggestedFilename() : "none");
+    await page.click("#lb-quote");
+    await page.waitForSelector("#quote-dialog[open]");
+    const sel = await page.inputValue("#v-product");
+    ok("quote dialog preselects the roof", !!sel, sel);
+    await page.fill("#v-name", "QA Tester");
+    await page.fill("#v-email", "qa@example.com");
+    await page.check("#v-consent");
+    await page.waitForTimeout(2700);
+    await page.click('#quote-form button[type="submit"]');
+    await page.waitForFunction(() => {
+      const s = document.querySelector("#quote-form .form-status");
+      return s && !s.hidden && !/Sending/.test(s.textContent);
+    }, null, { timeout: 20000 });
+    const status = await page.textContent("#quote-form .form-status");
+    ok("quote form reports a clear outcome", /concept site|sent/i.test(status), status);
+    await shot(page, { path: path.join(OUT, "vis-quote-desktop.png") });
+    ok("visualiser flow has no console errors", errors.length === 0, errors.join(" | "));
+    await ctx.close();
+  }
+
+  // ---- phone: upload + hand-drawn outline ---------------------------------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    const errors = watch(page);
+    await page.goto(BASE + "/WVROOFING/visualiser/", { waitUntil: "load", timeout: 45000 });
+    const photo = path.resolve(here, "../../public/WVROOFING/samples/detached-modern.jpg");
+    await page.setInputFiles("#file-library", photo);
+    await page.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 15000 });
+    const box = await page.locator(".editor-canvas").boundingBox();
+    const pts = [
+      [0.1, 0.33],
+      [0.47, 0.18],
+      [0.9, 0.24],
+      [0.95, 0.31],
+      [0.53, 0.26],
+      [0.05, 0.34],
+    ];
+    for (const [fx, fy] of pts) await page.touchscreen.tap(box.x + fx * box.width, box.y + fy * box.height);
+    await page.touchscreen.tap(box.x + pts[0][0] * box.width, box.y + pts[0][1] * box.height);
+    await page.waitForTimeout(300);
+    const pct = await page.textContent("#mark-pct");
+    ok("phone: tapping an outline marks the roof", pct && pct !== "0%", pct);
+    await shot(page, { path: path.join(OUT, "vis-mark-phone.png") });
+    const enabled = await page.isEnabled("#btn-compare");
+    ok("phone: compare enabled after outlining", enabled);
+    if (enabled) {
+      await page.click("#btn-compare");
+      await page.waitForFunction(() => Array.from(document.querySelectorAll(".result-card .badge")).filter((b) => /Quick preview|AI concept/.test(b.textContent)).length === 8, null, { timeout: 60000 });
+      ok("phone: 8 previews from an uploaded photo", true);
+      await shot(page, { path: path.join(OUT, "vis-previews-phone.png"), fullPage: true });
+    }
+    ok("phone visualiser has no console errors", errors.length === 0, errors.join(" | "));
+    await ctx.close();
+  }
+} finally {
+  await browser.close();
+}
+
+const failed = results.filter((r) => !r.pass);
+console.log(`\n${results.length - failed.length}/${results.length} checks passed. Screenshots: ${OUT}`);
+fs.writeFileSync(path.join(OUT, "results.json"), JSON.stringify(results, null, 2));
+process.exit(failed.length ? 1 : 0);
