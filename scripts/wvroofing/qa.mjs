@@ -100,6 +100,91 @@ try {
     await ctx.close();
   }
 
+  // ---- home: "eight roofs, one house" colour picker ----------------------------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+    const page = await ctx.newPage();
+    const errors = watch(page);
+    await page.goto(BASE + "/WVROOFING/", { waitUntil: "load", timeout: 45000 });
+    await page.locator("[data-picker]").scrollIntoViewIfNeeded();
+    const dots = page.locator('[data-picker-dots] [role="radio"]');
+    ok("picker offers 8 roof colours", (await dots.count()) === 8, (await dots.count()) + " dots");
+    const first = await page
+      .waitForFunction(() => document.querySelector("[data-picker]").dataset.showing || null, null, { timeout: 30000 })
+      .then((h) => h.jsonValue())
+      .catch(() => "");
+    ok("picker draws its first roof", !!first, first);
+    await dots.nth(0).click();
+    const next = await page
+      .waitForFunction((prev) => {
+        const d = document.querySelector("[data-picker]").dataset.showing;
+        return d && d !== prev ? d : null;
+      }, first, { timeout: 30000 })
+      .then((h) => h.jsonValue())
+      .catch(() => "");
+    ok("tapping a colour re-roofs the house", !!next && next !== first, first + " -> " + next);
+    ok("exactly one colour is marked as chosen", (await page.locator('[data-picker-dots] [aria-checked="true"]').count()) === 1);
+    await shot(page, { path: path.join(OUT, "home-picker-desktop.png") });
+    ok("home picker has no console errors", errors.length === 0, errors.join(" | "));
+    await ctx.close();
+  }
+
+  // ---- roof replacement: compare grid, gallery paddles, local nav --------------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+    const page = await ctx.newPage();
+    await page.goto(BASE + "/WVROOFING/roof-replacement/", { waitUntil: "load", timeout: 45000 });
+    await page.waitForSelector("[data-compare] .cmp-name", { timeout: 15000 });
+    await page.waitForTimeout(1600);
+    const cols = await page.locator("[data-compare] .cmp-col").count();
+    ok("compare grid lists all 8 roofs", cols === 8, cols + " columns");
+    const track = page.locator("[data-compare]");
+    const x0 = await track.evaluate((t) => t.scrollLeft);
+    await page.locator('.gallery:has([data-compare]) .paddle[data-dir="1"]').click();
+    await page.waitForTimeout(1000);
+    const x1 = await track.evaluate((t) => t.scrollLeft);
+    ok("gallery paddle scrolls the roofs", x1 > x0, x0 + " -> " + x1);
+    await page.locator("[data-compare] .cmp-col").nth(1).locator("a.more").click();
+    await page.waitForTimeout(300);
+    const sel = await page.inputValue("#q-product");
+    ok("'Ask about this roof' pre-selects it in the quote form", sel === "welsh-slate", sel);
+    await page.evaluate(() => window.scrollTo(0, 3000));
+    await page.waitForTimeout(400);
+    const top = await page.locator(".lnav").evaluate((n) => n.getBoundingClientRect().top);
+    ok("local nav stays pinned while scrolling", Math.abs(top) < 1, "top " + top);
+    await ctx.close();
+  }
+
+  // ---- phone: global menu --------------------------------------------------------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    await page.goto(BASE + "/WVROOFING/", { waitUntil: "load", timeout: 45000 });
+    await page.click(".nav-toggle");
+    const opened = await page.waitForSelector("#site-nav.is-open", { timeout: 3000 }).then(() => true).catch(() => false);
+    ok("phone: menu opens with its links", opened && (await page.isVisible('#site-nav a[href="/WVROOFING/visualiser/"]')));
+    await page.waitForTimeout(600);
+    const menuH = await page.$eval("#site-nav", (n) => Math.round(n.getBoundingClientRect().height));
+    const lastLink = await page.$eval("#site-nav .gnav-cta", (a) => Math.round(a.getBoundingClientRect().bottom));
+    ok("phone: menu fills the screen below the bar", menuH > 600 && lastLink < 844, "menu height " + menuH + "px, last item ends at " + lastLink + "px");
+    await shot(page, { path: path.join(OUT, "menu-phone.png") });
+    await page.keyboard.press("Escape");
+    ok("phone: Escape closes the menu", await page.$eval("#site-nav", (n) => !n.classList.contains("is-open")));
+    await ctx.close();
+  }
+
+  // ---- visualiser: the local nav's "Get a quote" opens the quote form -----------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+    const page = await ctx.newPage();
+    await page.goto(BASE + "/WVROOFING/visualiser/", { waitUntil: "load", timeout: 45000 });
+    await page.waitForTimeout(800);
+    await page.click("[data-open-quote]");
+    const open = await page.waitForSelector("#quote-dialog[open]", { timeout: 5000 }).then(() => true).catch(() => false);
+    ok("visualiser: local nav 'Get a quote' opens the quote form", open);
+    await ctx.close();
+  }
+
   // ---- visualiser: sample -> previews -> mock AI -> lightbox -> quote ---------------
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });

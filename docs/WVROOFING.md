@@ -18,10 +18,20 @@ analytics or error beacons, and its emails are sent as "WV Roofing".
 
 | Path | What |
 |---|---|
-| `/WVROOFING/` | Home: hero before/after, the visualiser, the 8 roofs, services, process, areas, FAQ |
-| `/WVROOFING/roof-replacement/` | Roof replacement detail + quote form |
+| `/WVROOFING/` | Home: hero before/after, "eight roofs, one house" colour picker, how it works, services, process gallery, areas, FAQ |
+| `/WVROOFING/roof-replacement/` | Product-page layout with a sticky local nav: signs, what's included, "which roof is right for you" compare gallery, other work, regulations, quote form |
 | `/WVROOFING/visualiser/` | The Roof Visualiser app |
 | `/WVROOFING/privacy/` | Privacy notice (concept draft) |
+
+## Design
+
+Apple's design language (September 2026 redesign): San Francisco via the system font stack on
+Apple devices and Inter (optical sizing, Google Fonts) elsewhere; white / `#f5f5f7` / black bands;
+pill buttons in one action blue; 28px tiles separated by tone; translucent global nav plus a
+sticky local nav on product pages; a grey concept ribbon and Apple-style footnotes. WV identity
+stays in the navy squircle monogram and the gold eyebrow text. All colours are tokens at the top
+of `assets/css/site.css` (dark mode included); swap `--blue` for navy there to go more on-brand.
+The home picker and heroes are drawn live by `assets/js/vis/hero.js` from the sample houses.
 
 ## How the roof images are made
 

@@ -676,6 +676,13 @@ function wireCompare() {
     showStep("photo");
   });
   $("#btn-quote").addEventListener("click", () => openQuote(firstChoice()));
+  // The local nav's "Get a quote" opens the quote form here, pre-filled with the favourite so far.
+  $$("[data-open-quote]").forEach((a) =>
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      openQuote(S.cat ? firstChoice() : "");
+    })
+  );
 }
 
 function firstChoice() {
