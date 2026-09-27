@@ -18,7 +18,17 @@ const PUBLISH = API_BASE + "/api/sc-admin-publish";
 const state = {
   range: "7d",
   bots: false,
-  view: "overview",
+  // The PANEL currently shown. Panels are grouped into sidebar destinations by
+  // DEST below, but every guard in this file still tests a panel id, so this
+  // value means exactly what it always did.
+  view: "today",
+  // Last panel used within each multi-panel destination, so coming back to
+  // Visitors returns you to the report you were reading, not to Overview.
+  tabOf: {},
+  // Counts shown beside a sidebar item. Loaded separately and best-effort: a
+  // missing badge shows nothing rather than blocking the page.
+  badges: {},
+  today: null,
   trendMetric: "pageviews",
   data: null,
   realtime: null,
@@ -1549,6 +1559,141 @@ const REF = [
   },
 ];
 
+/* ---------------- Today ---------------- */
+/* The landing page. Ordered by what needs a person, not by what is easiest to
+   measure — the traffic summary is real but it is not a task, so it sits last. */
+
+function todoRow(tone, title, body, dest) {
+  const go = dest ? `<button class="linkbtn tgo" data-dest="${esc(dest)}">Open →</button>` : "";
+  return `<li class="todo todo-${tone}">
+    <span class="todo-dot" aria-hidden="true"></span>
+    <div class="todo-body"><div class="todo-title">${title}</div><div class="todo-sub">${body}</div></div>
+    ${go}
+  </li>`;
+}
+
+/** Problems worth a person's time, newest concern first. Empty is a real answer. */
+function todayTasks(t) {
+  const out = [];
+
+  if (t.unnotified && t.unnotified.count) {
+    const n = t.unnotified.count;
+    out.push(todoRow("bad",
+      `At least ${fmt(n)} ${n === 1 ? "enquiry was" : "enquiries were"} never emailed to anyone`,
+      `${n === 1 ? "It is" : "They are"} saved and the contact details are safe, but nobody was told at the time${t.unnotified.oldest ? `. The earliest was ${esc(fmtDateTime(t.unnotified.oldest))}` : ""}.`,
+      "enquiries"));
+  }
+
+  if (t.healthProblems && t.healthProblems.length) {
+    out.push(todoRow("warn",
+      t.healthProblems.length === 1 ? "One thing is not set up" : `${t.healthProblems.length} things are not set up`,
+      esc(t.healthProblems.join(" · ")) + ".",
+      "health"));
+  }
+
+  if (t.newErrors > 0) {
+    out.push(todoRow("warn",
+      `${fmt(t.newErrors)} new ${t.newErrors === 1 ? "error" : "errors"} since your last download`,
+      "From the website itself — browser-extension faults are already filtered out.",
+      "errors"));
+  }
+
+  if (!out.length) {
+    out.push(todoRow("ok", "Nothing needs you right now",
+      "No unsent enquiries, nothing misconfigured, and no new errors since you last looked.", null));
+  }
+  return out.join("");
+}
+
+function viewToday() {
+  const t = state.today;
+  if (!t) return loader();
+
+  const m = t.stats && t.stats.metrics;
+  const p = t.stats && t.stats.prevMetrics;
+  const kpis = m
+    ? `<div class="grid kpis">
+        ${kpi("Unique visitors", fmt(m.visitors), "", delta(m.visitors, p && p.visitors))}
+        ${kpi("Visits", fmt(m.sessions), "", delta(m.sessions, p && p.sessions))}
+        ${kpi("Page views", fmt(m.pageviews), "", delta(m.pageviews, p && p.pageviews))}
+        ${kpi("Conversions", fmt(m.conversions), "calls, emails, forms", delta(m.conversions, p && p.conversions))}
+      </div>`
+    : '<div class="card"><div class="empty">Traffic figures could not be loaded. Try Refresh.</div></div>';
+
+  const latest = t.latestEnquiry;
+  const latestCard = latest
+    ? `<div class="card">
+        <div class="cardhead"><div><h3>Latest enquiry</h3><div class="csub">${esc(fmtDateTime(latest.created_at))}</div></div>
+          <button class="btn btn-ghost prj-sm" data-dest="enquiries">See all ${t.enquiryTotal ? fmt(t.enquiryTotal) : ""}</button></div>
+        <div class="tlatest">
+          <div class="tlatest-name">${esc(latest.name || "(no name given)")}</div>
+          <div class="tlatest-meta">${esc([latest.project_type, latest.area || latest.postcode].filter(Boolean).join(" · ") || "No project details given")}</div>
+          <div class="tlatest-acts">
+            ${latest.phone ? `<a class="btn btn-ghost prj-sm" href="tel:${esc(latest.phone)}">Call ${esc(latest.phone)}</a>` : ""}
+            ${latest.email ? `<a class="btn btn-ghost prj-sm" href="mailto:${esc(latest.email)}">Email</a>` : ""}
+          </div>
+        </div>
+      </div>`
+    : `<div class="card"><h3>Latest enquiry</h3><div class="csub">Form submissions</div><div class="empty">No enquiries saved yet.</div></div>`;
+
+  return `
+    <div class="card tcard">
+      <div class="cardhead"><div><h3>Needs you</h3><div class="csub">Checked live, every time this page opens</div></div></div>
+      <ul class="todos">${todayTasks(t)}</ul>
+    </div>
+    <div class="secthead">Last 7 days</div>
+    ${kpis}
+    <div class="grid cols-2">
+      ${latestCard}
+      <div class="card">
+        <div class="cardhead"><div><h3>Busiest pages</h3><div class="csub">Last 7 days</div></div>
+          <button class="btn btn-ghost prj-sm" data-dest="visitors">All reports</button></div>
+        ${t.stats ? barList((t.stats.pages || []).map((x) => ({ key: x.path, count: x.views })), { limit: 6, empty: "No page views yet." }) : '<div class="empty">Could not load.</div>'}
+      </div>
+    </div>`;
+}
+
+/**
+ * Today pulls from four places. Each is independent and best-effort: one failing
+ * greys out its own card instead of emptying the page, because the whole point of
+ * this screen is that it is the one you can trust to be honest about problems.
+ */
+async function loadToday() {
+  const get = (url) => apiGet(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const [stats, enq, unnotified, health] = await Promise.all([
+    get(`${STATS}?range=7d&bots=exclude`),
+    get(`${ENQUIRIES}?page=1&pageSize=1`),
+    countUnnotifiedEnquiries(),
+    get(`${STATS}?report=health`),
+  ]);
+
+  // Errors logged since the last time the log was downloaded — the same
+  // watermark the export uses, so "new" means new to you, not new to the table.
+  let newErrors = 0;
+  try {
+    const mark = errExportMark();
+    const q = `${ERROR_LOGS}?kind=errors&bots=exclude&party=site&pageSize=1${mark ? `&sinceId=${mark}` : ""}`;
+    const j = await get(q);
+    if (j && j.ok && Number.isFinite(j.total)) newErrors = j.total;
+  } catch (e) { /* best effort */ }
+
+  state.today = {
+    stats: stats && stats.ok ? stats : null,
+    enquiryTotal: enq && enq.ok ? enq.total : null,
+    latestEnquiry: enq && enq.ok && enq.rows && enq.rows[0] ? enq.rows[0] : null,
+    unnotified: unnotified && !unnotified.failed ? unnotified : null,
+    healthProblems: health && health.ok ? healthProblemList(health) : [],
+    newErrors: newErrors,
+  };
+  // The stats bundle Today just fetched is the same one the Visitors reports use.
+  if (stats && stats.ok) state.data = stats;
+  markFresh();
+  if (state.view === "today") {
+    document.getElementById("view").innerHTML = viewToday();
+    setPageMeta();
+  }
+}
+
 /* ---------------- Health & setup ---------------- */
 /* What is configured and what silently isn't. Everything here comes from
    ?report=health, which reports booleans for secrets and never their values. */
@@ -1588,6 +1733,25 @@ function tableNote(t) {
 
 function tableState(t) {
   return t && t.ok ? "ok" : "bad";
+}
+
+/**
+ * Short plain-English names for whatever is wrong, from a health payload.
+ *
+ * Shared by the Health page's badge and by Today, so the sidebar count and the
+ * list of problems can never disagree with each other.
+ */
+function healthProblemList(h) {
+  if (!h || h.failed || !h.env) return [];
+  const e = h.env, tb = h.tables || {}, gh = h.github || {}, st = h.storage || {};
+  const out = [];
+  if (!(e.SMTP_USER && e.SMTP_PASS)) out.push("the backup email cannot send");
+  const missing = ["sc_events", "sc_errors", "sc_enquiries", "sc_projects"].filter((k) => !(tb[k] && tb[k].ok));
+  if (missing.length) out.push(missing.length === 1 ? "a database table is missing" : `${missing.length} database tables are missing`);
+  if (!(gh.configured && gh.reachable)) out.push("the Projects editor cannot publish");
+  else if (!st.ok) out.push("photo storage is unavailable");
+  if (!(e.SC_ADMIN_USER && e.SC_ADMIN_PASS && e.SC_ADMIN_SESSION_SECRET)) out.push("a sign-in setting is missing");
+  return out;
 }
 
 function viewHealth() {
@@ -1739,52 +1903,173 @@ function viewProjectsSection() {
 }
 
 const VIEWS = {
+  today: viewToday,
   overview: viewOverview, enquiries: viewEnquiries, projects: viewProjectsSection, trends: viewTrends, pages: viewPages, journeys: viewJourneys, flow: viewFlow, sources: viewSources,
   locations: viewLocations, devices: viewDevices, engagement: viewEngagement,
   realtime: viewRealtime, events: viewEvents, visualiser: viewVisualiser, errors: viewErrors, logins: viewLogins,
   health: viewHealth, data: viewDataAvailable,
 };
+/* The label for each panel. Used on tabs, and as the page title where a
+   destination holds only one panel. */
 const TITLES = {
-  overview: "Overview", enquiries: "New customer enquiry",
+  today: "Today",
+  overview: "Overview", enquiries: "Customer enquiries",
   projects: (window.SCProjects && window.SCProjects.title) || "Projects & portfolio",
-  trends: "Traffic trends", pages: "Pages", journeys: "Visitor journeys", flow: "Path flow", sources: "Sources",
-  locations: "Locations", devices: "Devices & technology", engagement: "Engagement",
-  realtime: "Real-time", events: "Events & conversions", visualiser: "Visualiser", errors: "Error logs", logins: "Login attempts",
-  health: "Health & setup", data: "Data available",
+  trends: "Trends", pages: "Pages", journeys: "Journeys", flow: "Path flow", sources: "Sources",
+  locations: "Locations", devices: "Devices", engagement: "Engagement",
+  realtime: "Live", events: "Events", visualiser: "Visualiser", errors: "Error logs", logins: "Sign-ins",
+  // Matches its sidebar label. The page's own callout explains what it catalogues,
+  // so a title that disagrees with the nav item would only be a second name for
+  // the same thing.
+  health: "Health & setup", data: "Reference",
 };
-const NAV = [
-  { items: [{ id: "overview", label: "Overview" }] },
-  { group: "Leads", items: [{ id: "enquiries", label: "Customer enquiries" }] },
-  { group: "Content", items: [{ id: "projects", label: "Projects & portfolio" }] },
-  { group: "Traffic", items: [
-    { id: "trends", label: "Trends" }, { id: "pages", label: "Pages" }, { id: "journeys", label: "Journeys" },
-    { id: "flow", label: "Path flow" }, { id: "sources", label: "Sources" },
-    { id: "locations", label: "Locations" }, { id: "devices", label: "Devices & Tech" },
-    { id: "engagement", label: "Engagement" }, { id: "realtime", label: "Real-time" },
-  ]},
-  { group: "Conversions", items: [{ id: "events", label: "Events" }, { id: "visualiser", label: "Visualiser" }] },
-  { group: "System", items: [
-    { id: "health", label: "Health & setup" },
-    { id: "errors", label: "Error logs" },
-    { id: "logins", label: "Login attempts" },
-  ]},
-  { group: "Reference", items: [{ id: "data", label: "Data available" }] },
+
+/* ------------------------------------------------------------------ *
+ * Navigation
+ * ------------------------------------------------------------------ *
+ * DESTINATIONS are what the sidebar lists. PANELS are the individual
+ * reports, and a panel id is still what `state.view` holds — unchanged from
+ * before this was grouped.
+ *
+ * That separation is deliberate. Every guard in this file and in projects.js
+ * tests a panel id (STATS_VIEWS, the "am I still on this view?" checks in each
+ * load function, `state.view === "projects"`), so grouping them under
+ * destinations adds a layer ABOVE those without touching any of them. Renaming
+ * the panel ids instead would have meant a fetch that succeeds while the paint
+ * is silently skipped — a permanent "Loading…" with nothing in the console.
+ *
+ * `range`/`bots` declare which toolbar controls a destination actually uses.
+ * They used to render on all seventeen views, including the ten where they
+ * changed nothing but still forced a full reload.
+ */
+const DEST = [
+  { id: "today", label: "Today", icon: "today", panels: ["today"] },
+
+  { group: "Work" },
+  { id: "enquiries", label: "Enquiries", icon: "inbox", panels: ["enquiries"], badge: "enquiries" },
+  { id: "projects", label: "Projects", icon: "layers", panels: ["projects"] },
+
+  { group: "Audience" },
+  { id: "visitors", label: "Visitors", icon: "chart", range: true, bots: true,
+    panels: ["overview", "trends", "pages", "sources", "locations", "devices", "engagement"] },
+  { id: "journeys", label: "Journeys", icon: "route", range: true, bots: true, panels: ["journeys", "flow"] },
+  { id: "live", label: "Live", icon: "live", bots: true, panels: ["realtime"] },
+
+  { group: "Results" },
+  { id: "results", label: "Conversions", icon: "target", range: true, bots: true, panels: ["events", "visualiser"] },
+
+  { group: "System" },
+  { id: "health", label: "Health", icon: "pulse", panels: ["health"], badge: "health" },
+  { id: "errors", label: "Errors", icon: "warning", panels: ["errors"], badge: "errors" },
+  { id: "logins", label: "Sign-ins", icon: "key", panels: ["logins"] },
+  { id: "reference", label: "Reference", icon: "book", panels: ["data"] },
 ];
+
+const DESTS = DEST.filter((d) => d.id);
+
+/** The destination that owns a panel. */
+function destOf(panel) {
+  for (const d of DESTS) if (d.panels.indexOf(panel) !== -1) return d;
+  return DESTS[0];
+}
+function destById(id) {
+  for (const d of DESTS) if (d.id === id) return d;
+  return null;
+}
+/** Which panel to open when a destination is clicked — the last one you used. */
+function panelFor(dest) {
+  const remembered = state.tabOf[dest.id];
+  return remembered && dest.panels.indexOf(remembered) !== -1 ? remembered : dest.panels[0];
+}
+
+/* 16x16 line icons, stroke: currentColor so they take the row's colour and the
+   sidebar stays monochrome. SF Symbols is not licensed for the web, and a
+   bitmap could not invert against the selected row. */
+const ICONS = {
+  today: '<path d="M3 5.5h10M3 8.5h10M3 11.5h6"/><circle cx="12.5" cy="11.5" r="2.2"/><path d="M11.6 11.5l.7.7 1.3-1.4"/>',
+  inbox: '<path d="M2 9.5V4.2A1.2 1.2 0 0 1 3.2 3h9.6A1.2 1.2 0 0 1 14 4.2v5.3"/><path d="M2 9.5h3.2l1 1.8h3.6l1-1.8H14v2.3A1.2 1.2 0 0 1 12.8 13H3.2A1.2 1.2 0 0 1 2 11.8z"/>',
+  layers: '<path d="M8 2.2 2.2 5.3 8 8.4l5.8-3.1z"/><path d="m2.2 8.6 5.8 3.1 5.8-3.1"/><path d="m2.2 11.6 5.8 3.1 5.8-3.1"/>',
+  chart: '<path d="M2.4 13.6h11.2"/><path d="M4.4 13.6V8.4M7.5 13.6V4.6M10.6 13.6v-3.4M13.6 13.6V6.8" stroke-width="1.8"/>',
+  route: '<circle cx="4" cy="4" r="1.8"/><circle cx="12" cy="12" r="1.8"/><path d="M4 5.8v2.4A2.4 2.4 0 0 0 6.4 10.6h3.2A2.4 2.4 0 0 1 12 13v-2.8"/>',
+  live: '<circle cx="8" cy="8" r="1.8"/><path d="M4.6 4.6a4.8 4.8 0 0 0 0 6.8M11.4 11.4a4.8 4.8 0 0 0 0-6.8"/>',
+  target: '<circle cx="8" cy="8" r="5.6"/><circle cx="8" cy="8" r="2.4"/>',
+  pulse: '<path d="M2 8h2.6l1.6-3.6L9 12l1.7-4h3.3"/>',
+  warning: '<path d="M8 2.8 1.9 13.2h12.2z"/><path d="M8 6.4v3.1"/><circle cx="8" cy="11.3" r=".5" fill="currentColor" stroke="none"/>',
+  key: '<circle cx="5.4" cy="5.4" r="2.9"/><path d="m7.6 7.6 5.3 5.3M10.6 10.6l1.3-1.3M12.3 12.3l1.2-1.2"/>',
+  book: '<path d="M3 3.4h4.2A1.8 1.8 0 0 1 9 5.2v8a1.4 1.4 0 0 0-1.4-1.4H3z"/><path d="M13 3.4H8.8A1.8 1.8 0 0 0 7 5.2v8a1.4 1.4 0 0 1 1.4-1.4H13z"/>',
+  // Log out gets its own mark rather than reusing the key: two rows with the same
+  // icon read as two versions of the same thing.
+  exit: '<path d="M9.6 3.4H4.2A1.2 1.2 0 0 0 3 4.6v6.8a1.2 1.2 0 0 0 1.2 1.2h5.4"/><path d="M11 5.6 13.6 8 11 10.4M13.6 8H6.4"/>',
+};
+
+function icon(name) {
+  const d = ICONS[name];
+  if (!d) return "";
+  return `<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+}
+
+/**
+ * The count beside a destination, or "" for none.
+ *
+ * A badge is the ONLY colour in the sidebar, so it only ever appears when
+ * something genuinely wants a person — never as decoration, and never as a
+ * running total of things that are fine.
+ */
+function badgeFor(dest) {
+  if (!dest.badge) return "";
+  const n = state.badges[dest.badge];
+  if (!n) return "";
+  const label = n === 1 ? "1 item needs attention" : `${n} items need attention`;
+  return `<span class="navbadge" title="${esc(label)}">${fmt(n)}</span>`;
+}
 
 /* ---------------- shell + nav ---------------- */
 function renderSidebar() {
-  const groups = NAV.map((g) => {
-    const links = g.items
-      .map((it) => `<button class="navlink ${state.view === it.id ? "active" : ""}" data-view="${it.id}">${esc(it.label)}</button>`)
-      .join("");
-    return `<div class="navgroup">${g.group ? `<div class="glabel">${esc(g.group)}</div>` : ""}${links}</div>`;
+  const active = destOf(state.view).id;
+  const items = DEST.map((d) => {
+    if (d.group) return `<div class="glabel">${esc(d.group)}</div>`;
+    return `<button class="navlink${d.id === active ? " active" : ""}" data-dest="${d.id}"${d.id === active ? ' aria-current="page"' : ""}>
+      ${icon(d.icon)}<span class="navtext">${esc(d.label)}</span>${badgeFor(d)}
+    </button>`;
   }).join("");
   document.getElementById("sidebar").innerHTML = `
     <div class="brand">SC Design <span>Wirral</span></div>
     <div class="tag">Admin &amp; analytics</div>
-    ${groups}
+    <nav class="navlist">${items}</nav>
     <div class="spacer"></div>
-    <button class="navlink logout" id="logoutBtn">↩ Log out</button>`;
+    <button class="navlink navlink-quiet" id="logoutBtn">${icon("exit")}<span class="navtext">Log out</span></button>`;
+}
+
+/** The tab strip for a destination with more than one panel. */
+function renderTabs() {
+  const el = document.getElementById("tabbar");
+  if (!el) return;
+  const d = destOf(state.view);
+  if (!d.panels || d.panels.length < 2) {
+    el.innerHTML = "";
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  el.innerHTML = d.panels
+    .map((p) => `<button class="tab${p === state.view ? " active" : ""}" data-panel="${p}"${p === state.view ? ' aria-current="true"' : ""}>${esc(TITLES[p] || p)}</button>`)
+    .join("");
+}
+
+/**
+ * Show only the toolbar controls this destination actually uses.
+ *
+ * The range picker and the bots toggle used to render on every view, including
+ * the ten where they changed nothing — and touching one there still triggered a
+ * full reload. A control that cannot affect what you are looking at should not
+ * be on the screen.
+ */
+function renderToolbar() {
+  const d = destOf(state.view);
+  const seg = document.getElementById("rangeSeg");
+  const bots = document.getElementById("botsWrap");
+  if (seg) seg.hidden = !d.range;
+  if (bots) bots.hidden = !d.bots;
 }
 
 function renderRangeSeg() {
@@ -1800,7 +2085,11 @@ function clearRt() {
 
 function setPageMeta() {
   let txt = "";
-  if (state.view === "data") txt = "Reference";
+  if (state.view === "today") {
+    try { txt = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }); }
+    catch (e) { txt = ""; }
+  }
+  else if (state.view === "data") txt = "Reference";
   else if (state.view === "health") {
     txt = state.health && !state.health.failed ? "Checked just now" : "Configuration";
   }
@@ -1828,11 +2117,24 @@ function setPageMeta() {
   document.getElementById("pageMeta").textContent = txt;
 }
 
-function renderView() {
+/**
+ * Render the current panel.
+ *
+ * `opts.reuse` keeps the stats bundle when moving between two reports that read
+ * it — the seven Visitors tabs all come from one fetch, so switching between
+ * them is instant instead of re-downloading the whole event history.
+ *
+ * This is a deliberate, narrow relaxation of the rule that the admin never shows
+ * a cached response. Refresh, the date range and the bots toggle all still force
+ * a full refetch, and the toolbar stamp shows the real age of what is on screen.
+ * Reuse is only ever granted between two STATS_VIEWS panels.
+ */
+function renderView(opts) {
   clearRt();
+  const reuse = !!(opts && opts.reuse) && !!state.data;
   // Always start from a clean slate — never display cached/in-memory results.
   // Each view re-fetches its data live below.
-  state.data = null;
+  if (!reuse) state.data = null;
   state.realtime = null;
   state.journeys = null;
   state.flow = null;
@@ -1846,15 +2148,29 @@ function renderView() {
   state.errExporting = false;
   state.logins = null;
   state.health = null;
+  if (!reuse) state.today = null;
   // Clears the fetched project list only — the open editor is deliberately kept,
   // because Refresh and the topbar controls come through here too.
   if (window.SCProjects) window.SCProjects.reset();
-  document.getElementById("pageTitle").textContent = TITLES[state.view];
+
+  // The title is the DESTINATION, because the panel's own name is already on its
+  // tab. A single-panel destination falls back to the panel label.
+  const d = destOf(state.view);
+  document.getElementById("pageTitle").textContent =
+    d.panels.length > 1 ? d.label : TITLES[state.view] || d.label;
+  renderTabs();
+  renderToolbar();
   setPageMeta();
   const el = document.getElementById("view");
-  el.innerHTML = (VIEWS[state.view] || viewOverview)(); // shows a loader (state is null)
+  el.innerHTML = (VIEWS[state.view] || viewToday)(); // shows a loader (state is null)
   const v = state.view;
-  if (v === "realtime") {
+  // Already holding the bundle this panel reads: paint it and ask for nothing.
+  if (reuse && STATS_VIEWS.indexOf(v) !== -1) {
+    setPageMeta();
+    return;
+  }
+  if (v === "today") loadToday();
+  else if (v === "realtime") {
     loadRealtime();
     state.rtTimer = setInterval(loadRealtime, 15000);
   } else if (v === "projects") {
@@ -1893,12 +2209,74 @@ mqMobile.addEventListener("change", () => {
   setNavOpen(!!(app && app.classList.contains("nav-open")));
 });
 
-function setView(id) {
+/* ---------------- routing ---------------- *
+ * Every panel has an address: #/visitors, #/visitors/pages, #/enquiries. Refresh
+ * keeps your place, Back steps between views, and a link can be shared.
+ *
+ * Identifiers stay OUT of the hash on purpose: error-capture.js sends the full
+ * window.location.href with every client error, so anything in a route is
+ * written to sc_errors. A view name is fine; a customer reference would not be.
+ */
+
+/** "#/visitors/pages" -> "pages". Unknown routes fall back to Today. */
+function panelFromHash() {
+  const raw = String(location.hash || "").replace(/^#\/?/, "");
+  if (!raw) return null;
+  const parts = raw.split("/").filter(Boolean).map((s) => s.toLowerCase());
+  const d = destById(parts[0]);
+  if (!d) return null;
+  if (parts[1] && d.panels.indexOf(parts[1]) !== -1) return parts[1];
+  return panelFor(d);
+}
+
+function hashForPanel(panel) {
+  const d = destOf(panel);
+  // The first panel is the destination's default, so it needs no second segment —
+  // that keeps #/journeys rather than the repetitive #/journeys/journeys.
+  if (d.panels.length < 2 || d.panels[0] === panel) return `#/${d.id}`;
+  return `#/${d.id}/${panel}`;
+}
+
+function syncHash(panel) {
+  const want = hashForPanel(panel);
+  // Only write when it differs. setView writes the hash and the hashchange
+  // listener calls setView, so without this guard every click would render — and
+  // fetch — twice.
+  if (location.hash !== want) {
+    try { location.hash = want; } catch (e) { /* non-fatal */ }
+  }
+}
+
+function setView(id, opts) {
+  if (!VIEWS[id]) id = "today";
+  const prev = state.view;
+  // Moving between two reports that read the same bundle: keep it.
+  const sameBundle =
+    prev !== id && STATS_VIEWS.indexOf(prev) !== -1 && STATS_VIEWS.indexOf(id) !== -1 && !!state.data;
   state.view = id;
+  // Remember the tab within its destination, so returning to Visitors brings you
+  // back to the report you were reading.
+  const d = destOf(id);
+  if (d.panels.length > 1) state.tabOf[d.id] = id;
+  if (!(opts && opts.fromHash)) syncHash(id);
   setNavOpen(false);
   renderSidebar();
-  renderView();
+  renderView({ reuse: sameBundle });
   window.scrollTo(0, 0);
+}
+
+function onHashChange() {
+  const panel = panelFromHash();
+  if (!panel) {
+    // An unrecognised route. Stay where we are, but correct the address so it
+    // stops claiming to point at a page that does not exist. (syncHash writes
+    // only when it differs, so this settles after one pass.)
+    syncHash(state.view);
+    return;
+  }
+  // Already there — the hash we just wrote ourselves. Stop, or this renders twice.
+  if (panel === state.view) return;
+  setView(panel, { fromHash: true });
 }
 
 /* ---------------- API ---------------- */
@@ -2158,6 +2536,10 @@ async function loadLogins(page) {
 // Refresh = re-render the current view, which always re-fetches live data.
 function refresh() {
   renderView();
+  // The badges are counts of things that need doing, so they have to move when
+  // the underlying thing does — downloading the error log should drop the Errors
+  // badge without needing a page reload.
+  loadBadges();
 }
 
 /* ---------------- auth / boot ---------------- */
@@ -2189,7 +2571,11 @@ async function doLogin(username, password) {
       showApp();
       renderSidebar();
       renderRangeSeg();
+      // refresh() goes through renderView(), which DOES dispatch the per-view
+      // loaders — so a deep link that hit the login screen lands on the right
+      // page with its data, not on an empty one.
       await refresh();
+      loadBadges();
     } else {
       errEl.textContent = j.error || "Sign in failed.";
     }
@@ -2209,12 +2595,27 @@ function wire() {
 
   // delegated nav + logout + in-view controls
   document.getElementById("sidebar").addEventListener("click", (e) => {
-    const link = e.target.closest("[data-view]");
-    if (link) return setView(link.getAttribute("data-view"));
+    // Logout first: it is a .navlink too, and only its id distinguishes it.
     if (e.target.closest("#logoutBtn")) {
       fetch(LOGOUT, { method: "POST", credentials: "include" }).finally(showLogin);
+      return;
     }
+    const link = e.target.closest("[data-dest]");
+    if (!link) return;
+    const d = destById(link.getAttribute("data-dest"));
+    if (d) setView(panelFor(d));
   });
+
+  // Tabs within a destination.
+  const tabbar = document.getElementById("tabbar");
+  if (tabbar) {
+    tabbar.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-panel]");
+      if (b) setView(b.getAttribute("data-panel"));
+    });
+  }
+
+  window.addEventListener("hashchange", onHashChange);
   document.getElementById("rangeSeg").addEventListener("click", (e) => {
     const b = e.target.closest("[data-range]");
     if (!b) return;
@@ -2234,6 +2635,12 @@ function wire() {
   document.getElementById("view").addEventListener("click", (e) => {
     // The Projects section handles its own clicks and says so by returning true.
     if (window.SCProjects && window.SCProjects.onClick(e)) return;
+    // "Open →" / "See all" links on Today, which jump to a destination.
+    const jump = e.target.closest("[data-dest]");
+    if (jump) {
+      const d = destById(jump.getAttribute("data-dest"));
+      if (d) { setView(panelFor(d)); return; }
+    }
     const m = e.target.closest("[data-m]");
     if (m) { state.trendMetric = m.getAttribute("data-m"); document.getElementById("view").innerHTML = viewTrends(); return; }
     const jt = e.target.closest("[data-jtoggle]");
@@ -2346,22 +2753,53 @@ function wire() {
   });
 }
 
+/**
+ * Counts for the sidebar badges. Best-effort and never blocking: if one fails
+ * its badge simply does not appear.
+ */
+async function loadBadges() {
+  const get = (url) => apiGet(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const mark = errExportMark();
+  const [unnotified, health, errs] = await Promise.all([
+    countUnnotifiedEnquiries(),
+    get(`${STATS}?report=health`),
+    get(`${ERROR_LOGS}?kind=errors&bots=exclude&party=site&pageSize=1${mark ? `&sinceId=${mark}` : ""}`),
+  ]);
+  const badges = {};
+  if (unnotified && !unnotified.failed && unnotified.count) badges.enquiries = unnotified.count;
+  if (health && health.ok) {
+    const probs = healthProblemList(health).length;
+    if (probs) badges.health = probs;
+  }
+  if (errs && errs.ok && errs.total) badges.errors = errs.total;
+  state.badges = badges;
+  // Repaint only the sidebar — the content area may be mid-edit in Projects.
+  if (!document.getElementById("app").classList.contains("hidden")) renderSidebar();
+}
+
 async function boot() {
   wire();
   renderRangeSeg();
-  // Try existing session; if valid, go straight to the dashboard.
+  // Parse the route BEFORE anything else, so a deep link survives the session
+  // check and the sign-in round trip below.
+  const routed = panelFromHash();
+  if (routed) state.view = routed;
+  // Try existing session; if valid, go straight to the dashboard. loadStats also
+  // serves as the auth probe — its 401 is how an expired session reaches the
+  // login screen.
   try {
     const ok = await loadStats();
     if (ok) {
       showApp();
       renderSidebar();
-      // Render the default view from the bundle loadStats() just fetched, instead
-      // of renderView() which would null state.data and re-fetch it (double load).
-      clearRt();
-      document.getElementById("pageTitle").textContent = TITLES[state.view];
-      document.getElementById("view").innerHTML = (VIEWS[state.view] || viewOverview)();
-      setPageMeta();
       setNavOpen(false);
+      // boot() used to hand-render the default view to avoid a second stats
+      // fetch. That skipped every per-view loader, so a deep link to anything
+      // other than a stats report sat on "Loading…" for ever. It now goes
+      // through renderView() and simply reuses the bundle it already has.
+      renderView({ reuse: STATS_VIEWS.indexOf(state.view) !== -1 });
+      syncHash(state.view);
+      loadBadges();
     }
   } catch (e) {
     showLogin();

@@ -37,22 +37,27 @@
   <div id="app" class="hidden">
     <aside class="sidebar" id="sidebar" aria-label="Admin sections"></aside>
     <div class="main">
-      <div class="topbar">
-        <button class="menu-toggle" id="menuToggle" aria-label="Menu" aria-controls="sidebar" aria-expanded="false">☰</button>
-        <div>
-          <h1 id="pageTitle">Overview</h1>
-          <div class="meta" id="pageMeta"></div>
+      <header class="topbar">
+        <div class="topbar-row">
+          <button class="menu-toggle" id="menuToggle" aria-label="Menu" aria-controls="sidebar" aria-expanded="false">☰</button>
+          <div class="topbar-title">
+            <h1 id="pageTitle">Today</h1>
+            <div class="meta" id="pageMeta"></div>
+          </div>
+          <div class="controls">
+            <!-- Range and bots are shown only on the views that use them; see
+                 renderToolbar() in admin.js. -->
+            <div class="seg" id="rangeSeg" hidden></div>
+            <label class="toggle" id="botsWrap" hidden><input type="checkbox" id="botsToggle" /> Show bots</label>
+            <span class="lastupd" id="lastUpdated" title="How recently this page fetched its data">Live</span>
+            <button class="btn-ghost btn btn-sm" id="refreshBtn">Refresh</button>
+          </div>
         </div>
-        <div class="controls">
-          <div class="seg" id="rangeSeg"></div>
-          <label class="toggle"><input type="checkbox" id="botsToggle" /> Show bots</label>
-          <span class="lastupd" id="lastUpdated" title="Data is fetched live on every view, with no caching">Live</span>
-          <button class="btn-ghost btn" id="refreshBtn" style="padding:6px 12px;">Refresh</button>
-        </div>
-      </div>
-      <div class="content" id="view">
+        <nav class="tabbar" id="tabbar" aria-label="Sections" hidden></nav>
+      </header>
+      <main class="content" id="view">
         <div class="loader">Loading…</div>
-      </div>
+      </main>
     </div>
   </div>
 

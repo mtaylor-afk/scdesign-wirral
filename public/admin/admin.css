@@ -21,9 +21,28 @@
   --radius-lg: 20px;
   --shadow-card: 0 1px 2px rgba(33, 30, 27, 0.03), 0 6px 16px rgba(33, 30, 27, 0.045);
   --shadow-hover: 0 2px 4px rgba(33, 30, 27, 0.05), 0 10px 24px rgba(33, 30, 27, 0.07);
-  --sidebar: 246px;
+  --sidebar: 236px;
   --font-display: "Playfair Display", Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* One 4px spacing scale. Anything off-scale needs a reason at the line. */
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+  --s5: 24px; --s6: 32px; --s7: 48px;
+
+  /* Four type roles. Hierarchy comes from weight and colour as much as size, so
+     the sizes stay close together and the interface keeps its density.
+     Floor is 11px — macOS guidance puts the minimum at 10pt. */
+  --t-title: 22px;
+  --t-head: 15px;
+  --t-body: 13px;
+  --t-cap: 11.5px;
+  --t-label: 11px;
+
+  /* Sidebar surface. Named rather than inlined, because these exact values
+     recur across the nav, its labels and its selected row. */
+  --nav-ink: #ece5db;
+  --nav-dim: #9a9187;
+  --nav-hover: rgba(255, 255, 255, 0.07);
 }
 
 * { box-sizing: border-box; }
@@ -40,6 +59,10 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 600; letter-spac
 a { color: var(--accent-strong); text-decoration: none; }
 button { font-family: inherit; cursor: pointer; }
 .hidden { display: none !important; }
+/* The `hidden` attribute must beat the explicit `display` on .seg/.toggle/.tabbar,
+   or a control the toolbar has hidden still shows. The UA rule for [hidden] loses
+   to any author `display`, so it has to be restated here. */
+[hidden] { display: none !important; }
 .mono { font-variant-numeric: tabular-nums; }
 
 /* ---------- Login ---------- */
@@ -83,6 +106,11 @@ button { font-family: inherit; cursor: pointer; }
 .btn-block { width: 100%; }
 .btn-ghost { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); }
 .btn-ghost:hover { background: var(--paper); }
+.btn-sm { padding: 6px 12px; font-size: 12.5px; }
+/* Every control needs a visible keyboard focus, and the accent reads against
+   both the paper and the white card. */
+.btn:focus-visible, .seg button:focus-visible, .linkbtn:focus-visible,
+.toggle:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .login-err { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 18px; }
 .login-foot { margin-top: 20px; font-size: 11px; color: var(--muted-soft); text-align: center; }
 
@@ -98,33 +126,82 @@ button { font-family: inherit; cursor: pointer; }
   overflow-y: auto;
   display: flex; flex-direction: column;
 }
-.sidebar .brand { font-family: var(--font-display); font-size: 18px; font-weight: 700; padding: 0 8px 4px; }
+.sidebar .brand { font-family: var(--font-display); font-size: 17px; font-weight: 700; padding: 0 var(--s2) var(--s1); }
 .sidebar .brand span { color: #e3a0a0; }
-.sidebar .tag { font-size: 11px; color: #b9b1a6; padding: 0 8px 18px; }
-.navgroup { margin-bottom: 14px; }
-.navgroup .glabel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #8f877c; padding: 8px 10px 4px; }
+.sidebar .tag { font-size: var(--t-label); color: var(--nav-dim); padding: 0 var(--s2) var(--s5); }
+.navlist { display: flex; flex-direction: column; gap: 1px; }
+
+/* Group label. Two levels of hierarchy is the limit for a sidebar, and this is
+   the second — so the labels stay short and nothing nests below an item. */
+.glabel {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em;
+  color: #857d73; font-weight: 600;
+  padding: var(--s5) var(--s3) var(--s2);
+}
+.navlist .glabel:first-child { padding-top: var(--s2); }
+
 .navlink {
   display: flex; align-items: center; gap: 10px;
-  padding: 9px 11px; border-radius: 8px; color: #ece5db;
-  font-size: 13.5px; font-weight: 500; cursor: pointer; border: none; background: none; width: 100%; text-align: left;
+  padding: 8px var(--s3); border-radius: 7px; color: var(--nav-ink);
+  font-size: var(--t-body); font-weight: 500; cursor: pointer;
+  border: none; background: none; width: 100%; text-align: left;
+  transition: background-color 0.12s ease;
 }
-.navlink:hover { background: rgba(255,255,255,0.06); }
-.navlink.active { background: var(--accent-strong); color: #fff; }
-.navlink .ico { width: 16px; height: 16px; flex: 0 0 16px; opacity: 0.9; }
-.sidebar .spacer { flex: 1; }
-.logout { margin-top: 10px; }
+.navlink:hover { background: var(--nav-hover); }
+.navlink.active { background: var(--accent-strong); color: #fff; font-weight: 600; }
+.navlink:focus-visible { outline: 2px solid #e3a0a0; outline-offset: -2px; }
+.navlink .ico { width: 16px; height: 16px; flex: 0 0 16px; opacity: 0.75; }
+.navlink.active .ico { opacity: 1; }
+.navtext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The ONLY colour in the sidebar, and only when something wants a person.
+   Never a running total of things that are fine. */
+.navbadge {
+  flex: 0 0 auto; min-width: 18px; padding: 1px 6px; border-radius: 999px;
+  background: var(--accent); color: #fff;
+  font-size: 10.5px; font-weight: 700; text-align: center;
+  font-variant-numeric: tabular-nums; line-height: 16px;
+}
+.navlink.active .navbadge { background: rgba(255, 255, 255, 0.24); }
+
+.sidebar .spacer { flex: 1; min-height: var(--s5); }
+/* Log out is the only thing at the bottom edge on purpose: a window can be
+   dragged so its bottom is off-screen, so nothing you need to NOTICE lives here.
+   The badges are on the items themselves, up where they can be seen. */
+.navlink-quiet { color: var(--nav-dim); font-weight: 400; }
+.navlink-quiet:hover { color: var(--nav-ink); }
 
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* Controls live on their own surface, pinned, with a hairline against the
+   content that scrolls beneath it. Content never sits in here. */
 .topbar {
   position: sticky; top: 0; z-index: 10;
-  background: rgba(245,239,229,0.92); backdrop-filter: blur(6px);
+  background: rgba(245, 239, 229, 0.88); backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
-  padding: 14px 26px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
 }
-.topbar h1 { font-size: 20px; }
-.topbar .meta { font-size: 11px; color: var(--muted); }
-.topbar .controls { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.topbar-row {
+  padding: var(--s3) var(--s5) var(--s3);
+  display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap;
+}
+.topbar-title { min-width: 0; }
+.topbar h1 { font-size: var(--t-title); line-height: 1.15; }
+.topbar .meta { font-size: var(--t-label); color: var(--muted); margin-top: 2px; }
+.topbar .controls { margin-left: auto; display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 .menu-toggle { display: none; }
+
+/* Tabs — the third level of navigation, which is why it is NOT in the sidebar. */
+.tabbar { display: flex; gap: var(--s1); padding: 0 var(--s5); overflow-x: auto; scrollbar-width: none; }
+.tabbar::-webkit-scrollbar { display: none; }
+.tab {
+  position: relative; background: none; border: none;
+  padding: var(--s2) var(--s3) 10px; white-space: nowrap;
+  font-size: 12.5px; font-weight: 600; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--accent-deep); border-bottom-color: var(--accent-strong); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; border-radius: 4px; }
 
 .seg { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .seg button { background: none; border: none; padding: 7px 12px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
@@ -134,7 +211,37 @@ button { font-family: inherit; cursor: pointer; }
 .lastupd { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lastupd::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--success); display: inline-block; animation: pulse 1.6s infinite; }
 
-.content { padding: 24px 26px 60px; }
+.content { padding: var(--s5) var(--s5) 60px; }
+
+/* ---------- Today ---------- */
+/* Ordered by what needs a person. The traffic figures are real, but they are not
+   a task, so they come after the ones that are. */
+.secthead {
+  font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 600; color: var(--muted); margin: var(--s6) 0 var(--s3);
+}
+.cardhead { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); }
+.cardhead .csub { margin-bottom: 0; }
+.tcard { margin-bottom: var(--s2); }
+
+.todos { list-style: none; margin: var(--s4) 0 0; padding: 0; }
+.todo {
+  display: flex; align-items: flex-start; gap: var(--s3);
+  padding: var(--s3) 0; border-top: 1px solid #f1ebe0;
+}
+.todo:first-child { border-top: none; padding-top: var(--s1); }
+.todo-dot { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; background: var(--muted-soft); }
+.todo-bad .todo-dot { background: var(--danger); }
+.todo-warn .todo-dot { background: #c98a2e; }
+.todo-ok .todo-dot { background: var(--success); }
+.todo-body { flex: 1; min-width: 0; }
+.todo-title { font-size: var(--t-body); font-weight: 600; color: var(--ink); line-height: 1.45; }
+.todo-sub { font-size: var(--t-cap); color: var(--muted); margin-top: 3px; line-height: 1.6; }
+.tgo { flex: 0 0 auto; font-size: 12px; font-weight: 600; white-space: nowrap; margin-top: 1px; }
+
+.tlatest-name { font-size: var(--t-head); font-weight: 700; margin-top: var(--s3); }
+.tlatest-meta { font-size: var(--t-cap); color: var(--muted); margin-top: 3px; }
+.tlatest-acts { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); }
 
 /* ---------- Cards ---------- */
 .grid { display: grid; gap: 16px; }
@@ -184,7 +291,8 @@ table.tbl tr:hover td { background: #faf6ef; }
 .vbar:hover { background: var(--accent); }
 .vbarwrap { text-align: center; flex: 1; }
 .vbarlabels { display: flex; gap: 4px; margin-top: 5px; }
-.vbarlabels span { flex: 1; text-align: center; font-size: 9.5px; color: var(--muted); }
+/* 10px is the platform floor for legible text; this was below it. */
+.vbarlabels span { flex: 1; text-align: center; font-size: 10px; color: var(--muted); }
 
 /* ---------- Badges / pills ---------- */
 .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--accent-soft); color: var(--accent-deep); }
@@ -660,8 +768,19 @@ table.tbl tr:hover td { background: #faf6ef; }
   .sidebar { position: fixed; left: 0; top: 0; transform: translateX(-100%); transition: transform 0.2s; z-index: 50; box-shadow: var(--shadow-hover); }
   #app.nav-open .sidebar { transform: translateX(0); }
   .menu-toggle { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
-  .content { padding: 18px 14px 50px; }
-  .topbar { padding: 12px 14px; }
+  .content { padding: var(--s4) var(--s3) 50px; }
+
+  /* The toolbar used to spend ~320px of a phone screen before any content. The
+     title row keeps the title and Refresh on one line; the rest wraps below,
+     and most views now show no range/bots controls at all. */
+  .topbar-row { padding: 10px var(--s3); gap: var(--s2) var(--s3); }
+  .topbar h1 { font-size: 19px; }
+  .topbar .controls { width: 100%; margin-left: 0; justify-content: flex-start; }
+  .tabbar { padding: 0 var(--s3); }
+  /* Horizontally adjacent views stack when there is not room for them. */
+  .cardhead { flex-direction: column; gap: var(--s2); }
+  .todo { gap: 10px; }
+  .tgo { align-self: flex-start; }
   .jhead { flex-wrap: wrap; gap: 8px 12px; }
   .jbadges { width: 100%; justify-content: flex-start; margin-left: 46px; }
   .jwhen { position: absolute; top: 14px; right: 18px; min-width: 0; }
