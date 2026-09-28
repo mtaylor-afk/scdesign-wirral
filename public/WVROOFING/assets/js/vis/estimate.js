@@ -4,7 +4,7 @@
 // and quantities only from products the roofer has verified; otherwise the step
 // says why there are none and offers a survey. Whole m² and whole degrees only,
 // always with the brief's disclaimer and what isn't included.
-import { getEstimate } from "./client.js";
+import { getEstimate, uploadEvidence, listEvidence, deleteEvidence, sniffFile, ClientError } from "./client.js";
 
 const $ = (s) => document.querySelector(s);
 const NUM = new Intl.NumberFormat("en-GB");
@@ -78,26 +78,122 @@ function render(e, visualName) {
   const area = m.area_m2 === null ? "Roof area to be confirmed" : "About " + NUM.format(m.area_m2) + " m² of roof";
   $("#estimate-area").textContent = area + " (" + m.faces + (m.faces === 1 ? " roof face" : " roof faces") + (m.pitch ? ", pitch " + m.pitch : "") + ").";
   $("#estimate-source").textContent = m.label + ".";
-  const items = e.products.length ? e.products.map((p) => li(productLine(p))) : [li("The roofer hasn't confirmed the materials for " + visualName + " yet, so there are no quantities for it.")];
+  const none =
+    e.reason === "no_look_chosen"
+      ? "Choose a roof in the comparison to see the materials it would need."
+      : "The roofer hasn't confirmed the materials for " + visualName + " yet, so there are no quantities for it.";
+  const items = e.products.length ? e.products.map((p) => li(productLine(p))) : [li(none)];
   $("#estimate-products").replaceChildren(...items);
+  // Only worth asking when the measurement comes from an earlier year.
+  const older = m.changes_since_year && m.changes_since_year < new Date().getFullYear();
   const changes = $("#estimate-changes");
-  changes.hidden = !m.changes_since_year;
-  changes.textContent = m.changes_since_year ? "Any extensions or roof changes since " + m.changes_since_year + "? Please mention them in your enquiry." : "";
+  changes.hidden = !older;
+  changes.textContent = older ? "Any extensions or roof changes since " + m.changes_since_year + "? Please mention them in your enquiry." : "";
   notIncluded(e.not_included);
+}
+
+// ---------------------------------------------------------------------------
+// plans, drawings and extra photos for the roofer to measure from (B3)
+
+const FILE_TYPES = { jpeg: "image/jpeg", png: "image/png", pdf: "application/pdf" };
+const MAX_FILE = 20 * 1024 * 1024;
+let evidenceWired = false;
+
+async function fileKind(file) {
+  const b = new Uint8Array(await file.slice(0, 5).arrayBuffer());
+  if (String.fromCharCode(...b) === "%PDF-") return "pdf";
+  return sniffFile(file);
+}
+
+async function renderFiles() {
+  let files = [];
+  try {
+    files = await listEvidence();
+  } catch (err) {
+    files = [];
+  }
+  $("#evidence-list").replaceChildren(
+    ...files.map((f) => {
+      const item = li((f.kind === "pdf" ? "PDF" : "Photo") + ", " + NUM.format(Math.max(1, Math.round(f.bytes / 1024))) + " KB ");
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "link-btn";
+      remove.textContent = "Remove";
+      remove.addEventListener("click", async () => {
+        remove.disabled = true;
+        try {
+          await deleteEvidence(f.id);
+          await renderFiles();
+        } catch (err) {
+          remove.disabled = false;
+        }
+      });
+      item.append(remove);
+      return item;
+    })
+  );
+}
+
+async function onFile(e) {
+  const input = e.currentTarget;
+  const file = input.files && input.files[0];
+  input.value = "";
+  if (!file) return;
+  const status = $("#evidence-status");
+  const kind = await fileKind(file);
+  if (kind === "heic") {
+    status.textContent = "That's a HEIC photo, which can't be read here. On an iPhone, set the camera to Most Compatible, or send a JPG.";
+    return;
+  }
+  if (!FILE_TYPES[kind]) {
+    status.textContent = "Please choose a JPG, PNG or PDF file.";
+    return;
+  }
+  if (file.size > MAX_FILE) {
+    status.textContent = "That file is over 20 MB. Please choose a smaller copy.";
+    return;
+  }
+  const btn = $("#btn-evidence");
+  btn.disabled = true;
+  status.textContent = "Uploading…";
+  try {
+    await uploadEvidence(file, FILE_TYPES[kind], (f) => {
+      status.textContent = "Uploading… " + Math.round(f * 100) + "%";
+    });
+    status.textContent = "Added. Send your enquiry and the roofer will see it with your photo.";
+    await renderFiles();
+  } catch (err) {
+    status.textContent = err instanceof ClientError && err.message ? err.message : "That file couldn't be added. Please try again.";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showFiles(canAdd) {
+  $("#estimate-evidence").hidden = !canAdd;
+  if (!canAdd) return;
+  if (!evidenceWired) {
+    evidenceWired = true;
+    $("#btn-evidence").addEventListener("click", () => $("#evidence-file").click());
+    $("#evidence-file").addEventListener("change", onFile);
+  }
+  renderFiles();
 }
 
 let seq = 0;
 
 /**
  * The step is on screen: show the estimate for the chosen look (a sample house
- * or a photo without a project keeps the plain message).
- * @param {{ visualId: string | null, visualName: string }} o
+ * or a photo without a project keeps the plain message), and, for the
+ * customer's own project, a place to add plans and drawings.
+ * @param {{ visualId: string | null, visualName: string, canAddFiles?: boolean }} o
  */
 export async function showEstimate(o) {
+  showFiles(!!o.canAddFiles);
   const mine = ++seq;
   let e = null;
   try {
-    e = o.visualId ? await getEstimate(o.visualId) : null;
+    e = await getEstimate(o.visualId);
   } catch (err) {
     e = null;
   }

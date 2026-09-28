@@ -122,6 +122,11 @@
 .estimate-products { margin: 0; padding-left: 1.15em; display: grid; gap: 8px; }
 .estimate-products li { line-height: 1.45; }
 .estimate-disclaimer { border-top: 1px solid var(--hairline); padding-top: 12px; }
+.estimate-evidence { border-top: 1px solid var(--hairline); padding-top: 14px; display: grid; gap: 10px; }
+.estimate-evidence-h { font-size: 17px; line-height: 1.3; }
+.estimate-evidence-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.evidence-list { margin: 0; padding-left: 1.15em; display: grid; gap: 6px; font-size: 14px; }
+.evidence-list:empty { display: none; }
 #enquiry-lede { max-width: 720px; margin-bottom: 18px; }
 .enquiry-done { max-width: 720px; margin-bottom: 18px; }
 

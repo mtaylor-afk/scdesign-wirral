@@ -183,6 +183,26 @@ body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
 .op-linklike { border: 0; background: none; padding: 0; color: var(--link); cursor: pointer; font: inherit; }
 .op-linklike:hover { text-decoration: underline; }
 
+/* Roof measurement */
+.op-measure-current, .op-measure-quantities, .op-measure-evidence { display: grid; gap: 10px; }
+.op-measure-entry { border-top: 1px solid var(--hairline-2); padding-top: 12px; }
+.op-measure-entry summary { cursor: pointer; font-weight: 600; color: var(--link); min-height: 32px; display: flex; align-items: center; }
+.op-measure-form { border-top: 0; padding-top: 8px; }
+.op-input {
+  width: 100%; min-width: 64px; min-height: 38px; padding: 6px 10px; border-radius: 8px;
+  border: 1px solid var(--field-line); background: var(--field-bg); color: var(--text); font-size: 16px;
+}
+.op-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--focus-ring); }
+.op-table.op-entry td { padding-right: 6px; vertical-align: middle; }
+.op-table.op-entry input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--blue); }
+.op-hover-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.op-hover-field { display: grid; gap: 4px; font-size: 13px; color: var(--text-2); }
+.op-hover-field .select { height: 38px; padding: 6px 36px 6px 10px; font-size: 16px; }
+.op-m-evidence { border: 1px solid var(--hairline-2); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; font-size: 14px; }
+.op-m-evidence legend { font-size: 13px; font-weight: 600; color: var(--text-2); padding: 0 4px; }
+.op-check { display: flex; gap: 8px; align-items: center; }
+.op-evidence { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 14px; }
+
 /* Costs */
 .op-costs-view { display: grid; gap: 14px; }
 #op-costs { display: grid; gap: 14px; }

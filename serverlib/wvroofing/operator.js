@@ -26,6 +26,10 @@ const openai = require("./openai.js");
 const compose = require("./compose.js");
 const property = require("./property.js");
 const projects = require("./projects.js");
+const measurements = require("./measurements.js");
+const geometry = require("./measure/geometry.js");
+const quantities = require("./quantities.js");
+const { PROVIDERS } = require("./permissions.js");
 const { storage } = require("./storage.js");
 const { isEnabled, isTest } = require("./capabilities.js");
 
@@ -168,8 +172,16 @@ async function listEnquiries(ctx) {
   return json(ctx.res, 200, { ok: true, enquiries: list });
 }
 
-/** Everything the operator needs about one project. @param {Row} p */
-async function projectDetail(p) {
+/**
+ * Everything the operator needs about one project.
+ * @param {Row} p
+ * @param {string | null} visualId  the look the enquiry is about (for the quantities)
+ */
+async function projectDetail(p, visualId) {
+  const ms = await db.query("SELECT * FROM wvr_measurements WHERE project_id = $1 ORDER BY created_at DESC", [p.id]);
+  const measured = ms.rows.map((r) => measurements.fromRow(r));
+  const current = measured.find((m) => !m.superseded_at && !m.rejected_at) || null;
+  const ev = await db.query("SELECT * FROM wvr_evidence WHERE project_id = $1 ORDER BY created_at", [p.id]);
   const addresses = await db.query("SELECT * FROM wvr_addresses WHERE project_id = $1 ORDER BY created_at", [p.id]);
   const confirmations = await db.query("SELECT * FROM wvr_property_confirmations WHERE project_id = $1 ORDER BY confirmed_at", [p.id]);
   const photo = p.photo_id ? (await db.query("SELECT id, orig_w, orig_h, work_w, work_h, original_mime, original_bytes, quality, created_at FROM wvr_photos WHERE id = $1", [p.photo_id])).rows[0] : null;
@@ -236,6 +248,10 @@ async function projectDetail(p) {
       finishedAt: iso(j.finished_at),
     })),
     costs: costs.rows,
+    measurements: measured.map(operatorView),
+    evidence: ev.rows.map((r) => ({ id: r.id, kind: r.kind, mime: r.mime, bytes: r.bytes, addedAt: iso(r.created_at) })),
+    // What the current measurement gives for the enquiry's look, drafts included (labelled).
+    quantities: current && visualId && VISUALS.has(visualId) ? quantities.estimateForVisual(measurements.forQuantities(current), visualId, { drafts: true }) : [],
   };
 }
 
@@ -243,10 +259,13 @@ async function projectDetail(p) {
 async function enquiryDetail(ctx) {
   const e = await enquiryRow(ctx);
   const p = e.project_id ? (await db.query("SELECT * FROM wvr_projects WHERE id = $1", [e.project_id])).rows[0] : null;
-  const project = p ? await projectDetail(p) : null;
+  const project = p ? await projectDetail(p, e.visual_id) : null;
   const trail = await db.query(
     "SELECT action, target_type, before, after, created_at FROM wvr_operator_actions " +
-      "WHERE (target_type = 'enquiry' AND target_id = $1) OR (target_type = 'project' AND target_id = $2) OR (target_type = 'job' AND target_id IN (SELECT id::text FROM wvr_jobs WHERE project_id::text = $2)) " +
+      "WHERE (target_type = 'enquiry' AND target_id = $1) OR (target_type = 'project' AND target_id = $2) " +
+      "OR (target_type = 'job' AND target_id IN (SELECT id::text FROM wvr_jobs WHERE project_id::text = $2)) " +
+      "OR (target_type = 'measurement' AND target_id IN (SELECT id::text FROM wvr_measurements WHERE project_id::text = $2)) " +
+      "OR (target_type = 'evidence' AND target_id IN (SELECT id::text FROM wvr_evidence WHERE project_id::text = $2)) " +
       "ORDER BY created_at, id",
     [e.id, e.project_id || ""]
   );
@@ -520,7 +539,208 @@ async function costs(ctx) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// roof measurements (B3): entered by the roofer, approved, shown or not
+
+const SOURCE_FOR_METHOD = /** @type {Record<string, string>} */ ({
+  site_survey: "operator_manual",
+  drawings: "operator_manual",
+  customer_evidence: "customer_evidence",
+  hover_report: "hover",
+  desk_estimate: "desk_measure",
+});
+// Whose terms decide whether a measurement's figures may be shown to the customer
+// (permissions.js). The roofer's own measurements and the customer's own plans need none.
+const RIGHTS_FOR_METHOD = /** @type {Record<string, string[]>} */ ({
+  site_survey: [],
+  drawings: [],
+  customer_evidence: [],
+  hover_report: ["hover"],
+  desk_estimate: ["os_ngd", "ea_lidar"],
+});
+
+/** @param {string} method */
+function displayRights(method) {
+  const providers = RIGHTS_FOR_METHOD[method];
+  if (!providers) return { ok: false, ref: null, missing: ["unknown method"] };
+  const missing = providers.filter((k) => !PROVIDERS[k] || PROVIDERS[k].display !== "yes").map((k) => (PROVIDERS[k] ? PROVIDERS[k].name : k));
+  return { ok: missing.length === 0, ref: providers.length ? providers.join("+") : "own_data", missing };
+}
+
+/** A measurement for the operator: full precision, what the customer would see, and whether it may be shown. @param {any} m */
+function operatorView(m) {
+  const rights = displayRights(m.method);
+  return {
+    id: m.id,
+    method: m.method,
+    source: m.source,
+    status: m.status,
+    reasons: m.reasons,
+    faces: m.faces,
+    edges: m.edges,
+    grossSurfaceM2: m.gross_surface_m2 === null ? null : Number(m.gross_surface_m2),
+    sourceDate: m.source_date,
+    notes: m.notes,
+    evidence: parsed(m.evidence) || [],
+    createdAt: iso(m.created_at),
+    createdBy: m.created_by,
+    approvedAt: iso(m.approved_at),
+    rejectedAt: iso(m.rejected_at),
+    customerVisible: m.customer_visible,
+    displayRightsRef: m.display_rights_ref,
+    supersededAt: iso(m.superseded_at),
+    supersededBy: m.superseded_by,
+    shown: geometry.customerView(m),
+    canShow: rights.ok,
+    showBlockedBy: rights.missing,
+  };
+}
+
+/** @param {OperatorCtx} ctx */
+async function measurementRow(ctx) {
+  const { rows } = await db.query("SELECT * FROM wvr_measurements WHERE id = $1", [idParam(ctx, "id")]);
+  if (!rows[0]) throw new HttpError(404, "not_found", "That measurement doesn't exist.");
+  return measurements.fromRow(rows[0]);
+}
+
+/**
+ * A new measurement of the enquiry's roof (a correction is simply a new one: the
+ * old is kept, pointing at it). Faces and edges as entered, or from a Hover report.
+ * @param {OperatorCtx} ctx
+ */
+async function addMeasurement(ctx) {
+  const e = await enquiryRow(ctx);
+  if (!e.project_id) throw new HttpError(409, "conflict", "This enquiry has no project to measure.");
+  const body = await readJson(ctx.req, 64 * 1024);
+  const method = String(body.method || "");
+  let faces = body.faces;
+  let edges = body.edges;
+  if (body.hover !== undefined) {
+    if (method !== "hover_report") throw new HttpError(400, "invalid_fields", "A Hover report goes with the method 'Hover report'.", { fields: ["method"] });
+    const h = require("./measure/hover.js").fromHoverSummary(body.hover || {});
+    if (!h.ok) throw new HttpError(400, "invalid_faces", "Please check the Hover report's figures.", { problems: h.problems });
+    faces = h.faces;
+    edges = h.edges;
+  }
+  const ids = Array.isArray(body.evidence) ? body.evidence.map(String).filter((/** @type {string} */ x) => UUID_RE.test(x)) : [];
+  const known = ids.length ? (await db.query("SELECT id FROM wvr_evidence WHERE project_id = $1 AND id = ANY($2::uuid[])", [e.project_id, ids])).rows.map((r) => r.id) : [];
+  if (known.length !== ids.length) throw new HttpError(400, "invalid_fields", "A file listed as evidence isn't one of this customer's.", { fields: ["evidence"] });
+  const made = await db.tx(async (t) => {
+    const p = (await t.query("SELECT * FROM wvr_projects WHERE id = $1 FOR UPDATE", [e.project_id])).rows[0];
+    if (!p) throw new HttpError(409, "conflict", "This enquiry's project has gone.");
+    const out = await measurements.create(t, p, {
+      source: SOURCE_FOR_METHOD[method] || "operator_manual",
+      method,
+      faces,
+      edges,
+      source_date: body.sourceDate ? String(body.sourceDate) : null,
+      notes: clean(body.notes, 1000) || null,
+      evidence: known,
+      created_by: "operator",
+    });
+    const m = out.measurement;
+    await audit(t, ctx, "measurement", m.id, "measurement_added", out.superseded.length ? { superseded: out.superseded } : null, {
+      method,
+      status: m.status,
+      reasons: m.reasons,
+      faces: m.faces.length,
+      grossSurfaceM2: m.gross_surface_m2 === null ? null : Math.round(Number(m.gross_surface_m2) * 100) / 100,
+    });
+    return m;
+  });
+  return json(ctx.res, 201, { ok: true, measurement: operatorView(made) });
+}
+
+/** @param {any} m */
+function assertCurrent(m) {
+  if (m.superseded_at) throw new HttpError(409, "superseded", "A newer measurement has replaced this one.");
+  if (m.rejected_at) throw new HttpError(409, "conflict", "This measurement was rejected. Add a new one instead.");
+}
+
+/**
+ * Approve: the roofer has checked it. One from the roofer's own survey or the
+ * customer's plans is shown to the customer straight away; one whose source's
+ * terms don't allow that stays hidden ("figures will be in your quotation").
+ * @param {OperatorCtx} ctx
+ */
+async function approveMeasurement(ctx) {
+  const m = await measurementRow(ctx);
+  const body = await readJson(ctx.req, 4 * 1024);
+  assertCurrent(m);
+  const reasons = m.reasons || [];
+  if (reasons.length && body.confirm !== true) {
+    throw new HttpError(400, "confirm_required", "Confirm you've checked what this measurement was flagged for.", { reasons });
+  }
+  const rights = displayRights(m.method);
+  await db.tx(async (t) => {
+    await t.query("UPDATE wvr_measurements SET status = 'indicative_available', approved_by = 'operator', approved_at = now(), customer_visible = $2, display_rights_ref = $3 WHERE id = $1", [
+      m.id,
+      rights.ok,
+      rights.ok ? rights.ref : null,
+    ]);
+    await audit(t, ctx, "measurement", m.id, "measurement_approved", { status: m.status, reasons }, { status: "indicative_available", customerVisible: rights.ok });
+  });
+  return json(ctx.res, 200, { ok: true, measurement: operatorView(measurements.fromRow((await db.query("SELECT * FROM wvr_measurements WHERE id = $1", [m.id])).rows[0])) });
+}
+
+/** @param {OperatorCtx} ctx */
+async function rejectMeasurement(ctx) {
+  const m = await measurementRow(ctx);
+  const body = await readJson(ctx.req, 4 * 1024);
+  assertCurrent(m);
+  const note = clean(body.notes, 500) || null;
+  await db.tx(async (t) => {
+    await t.query(
+      "UPDATE wvr_measurements SET rejected_at = now(), status = 'unavailable', customer_visible = false, " +
+        "reasons = (SELECT jsonb_agg(DISTINCT x) FROM jsonb_array_elements(reasons || '[\"operator_rejected\"]'::jsonb) AS x) WHERE id = $1",
+      [m.id]
+    );
+    await audit(t, ctx, "measurement", m.id, "measurement_rejected", { status: m.status }, { status: "unavailable", notes: note });
+  });
+  return json(ctx.res, 200, { ok: true, rejected: true });
+}
+
+/**
+ * Show the figures to the customer, or hide them. Showing needs an approved
+ * measurement whose source allows it (permissions.js).
+ * @param {OperatorCtx} ctx
+ */
+async function measurementVisibility(ctx) {
+  const m = await measurementRow(ctx);
+  const body = await readJson(ctx.req, 4 * 1024);
+  if (typeof body.visible !== "boolean") throw new HttpError(400, "invalid_fields", "Say whether the figures should be shown.", { fields: ["visible"] });
+  assertCurrent(m);
+  const rights = displayRights(m.method);
+  if (body.visible) {
+    if (!m.approved_at || m.status !== "indicative_available") throw new HttpError(409, "conflict", "Approve the measurement first.");
+    if (!rights.ok) {
+      throw new HttpError(409, "rights_unresolved", "The terms of " + rights.missing.join(" and ") + " don't allow showing these figures to the customer; they'll see that the figures come with the quotation.", {
+        missing: rights.missing,
+      });
+    }
+  }
+  await db.tx(async (t) => {
+    await t.query("UPDATE wvr_measurements SET customer_visible = $2, display_rights_ref = $3 WHERE id = $1", [m.id, body.visible, body.visible ? rights.ref : null]);
+    await audit(t, ctx, "measurement", m.id, "measurement_visibility", { customerVisible: m.customer_visible }, { customerVisible: body.visible });
+  });
+  return json(ctx.res, 200, { ok: true, customerVisible: body.visible });
+}
+
+/** A five-minute link to one of the customer's plans, drawings or photos. @param {OperatorCtx} ctx */
+async function evidenceLink(ctx) {
+  const { rows } = await db.query("SELECT * FROM wvr_evidence WHERE id = $1", [idParam(ctx, "id")]);
+  if (!rows[0]) throw new HttpError(404, "not_found", "That file doesn't exist.");
+  const url = await storage().presignGet(rows[0].pathname, 300);
+  await audit(db, ctx, "evidence", rows[0].id, "evidence_downloaded", null, null);
+  return json(ctx.res, 200, { ok: true, url, expiresIn: 300, mime: rows[0].mime });
+}
+
 module.exports = {
+  addMeasurement,
+  approveMeasurement,
+  rejectMeasurement,
+  measurementVisibility,
+  evidenceLink,
   costs,
   login,
   logout,

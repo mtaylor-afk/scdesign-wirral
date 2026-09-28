@@ -6,6 +6,7 @@
 // failed or never came back, which can be tried again only when confirmed.
 import { api, apiImage, getToken, setToken, whenSignedOut } from "./api.js";
 import { loadCatalogue } from "../catalogue.js";
+import { measurementCard, METHOD_WORDS } from "./measure.js";
 import {
   h,
   kv,
@@ -342,6 +343,19 @@ function renderDetail(d) {
       h("button", { class: "btn btn-neutral btn-sm op-back", type: "button", text: "All enquiries", on: { click: backToList } }),
       headCard(e),
       h("div", { class: "op-grid-2" }, customerCard(e), propertyCard(e, p)),
+      p
+        ? measurementCard(e, p, {
+            act: async (fn, done, refresh) => {
+              const r = await act(fn, done);
+              if (r && refresh) await refreshAfterChange(e.id);
+              return r;
+            },
+            confirmBox,
+            refresh: () => refreshAfterChange(e.id),
+            productName,
+            status,
+          })
+        : null,
       photoCard(p),
       p ? costsCard(p) : null,
       historyCard(d.audit),
@@ -642,6 +656,10 @@ function describe(a) {
   if (a.action === "email_resent") return ": " + (f.outcome === "sent" ? "sent" : f.outcome === "uncertain" ? "may not have gone" : "failed");
   if (a.action === "retried") return " as a new render";
   if (a.action === "deleted" && a.target === "project") return ": the photo and project";
+  if (a.action === "measurement_added") return ": " + (METHOD_WORDS[f.method] || f.method) + (f.grossSurfaceM2 ? ", " + f.grossSurfaceM2 + " m²" : "") + (b.superseded ? " (replacing the one before)" : "");
+  if (a.action === "measurement_approved") return f.customerVisible ? " and shown to the customer" : " (kept from the customer)";
+  if (a.action === "measurement_visibility") return f.customerVisible ? " shown to the customer" : " hidden from the customer";
+  if (a.action === "measurement_rejected" && f.notes) return ": " + f.notes;
   return "";
 }
 

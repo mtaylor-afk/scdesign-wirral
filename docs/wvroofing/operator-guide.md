@@ -87,6 +87,59 @@ of each call; the providers' own bills are the final word.
 
 **What's been done** records every change made here, with what it was before.
 
+## Measuring the roof
+
+Each enquiry has a **Roof measurement** card. Customers see a roof's size only once you've measured it,
+approved it and allowed it to be shown.
+
+**Adding a measurement.** Open **Add a measurement** and fill in:
+
+- **How it was measured:** a site survey, the property's drawings, plans or photos from the customer, a
+  Hover report, or a desk estimate.
+- **The date measured.**
+- **Each roof face:** its plan area and pitch, or the area on the slope if your source gives it. An area on
+  the slope is never adjusted again. Leave a value empty if you don't know it.
+- **Faces not being re-roofed** (a garage, say): untick **In scope**.
+- **Edge lengths** (ridge, hips, valleys, eaves, verges, abutments): only ones you've measured. They're
+  never worked out from the areas.
+- **For a Hover report:** choose **Hover report** and type in its summary, in metres or feet. Its total area
+  (on the slope), its pitch (in degrees, or as "8/12") and its lengths are turned into the measurement.
+
+**Checking it.** The card shows:
+
+- the full-precision area, and the rounded figure the customer would see;
+- anything flagged, for example a shared roof when you measured from drawings, a face with no pitch, or a
+  source over 5 years old.
+
+**Approving.** **Approve** once you've checked it. If it was flagged, you're asked to confirm.
+
+**What the customer sees.**
+
+- **Site surveys, drawings and customer plans** are shown to the customer as soon as you approve them.
+  They see "About 98 m² of roof", who measured it from what and when, and the disclaimer.
+- **Hover reports and desk estimates** stay hidden, because those sources' terms don't allow showing their
+  figures to customers. The customer sees that the roof has been measured and the figures will come with
+  the quotation.
+- **Hide from the customer / Show to the customer** changes this later.
+
+**Correcting it.** Add a new measurement. The old one is kept in **Earlier measurements**, and the new one
+waits for your approval. If you correct the property's scope, the current measurement goes back for review
+and is hidden until you approve it again.
+
+**Rejecting it.** **Reject** removes it from the customer's view. It stays in the history.
+
+**Quantities.** The card lists what each product for the customer's chosen roof would need.
+
+- The figures come from the manufacturers' datasheets and are marked **Draft**.
+- Customers never see draft figures. They see quantities only for products you've verified: check the
+  datasheet, then set the product's specification to verified with your name and the date.
+
+**Plans and drawings.** Files the customer added (plans, drawings, extra photos) are listed under **The
+customer's plans and drawings**.
+
+- **Open** gives a link that works for 5 minutes. Opening a file is recorded.
+- When you measure from one, tick it in the form.
+
 ## Renders to check
 
 This tab lists photo-real renders from the last 30 days that **failed**, or that are **uncertain**.
@@ -129,7 +182,8 @@ This tab lists photo-real renders from the last 30 days that **failed**, or that
 
 ## Not here yet
 
-- **Roof measurements and material estimates** come in Release B.
+- **Verifying a product's specification** isn't on this screen yet. It's a change to
+  `serverlib/wvroofing/products.json`.
 - **Replying to customers** isn't on this screen; use their phone number or email.
 - **Correcting contact details** isn't possible yet. Note the correction in your reply, or delete the
   enquiry and ask the customer to send it again.

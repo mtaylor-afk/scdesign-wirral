@@ -17,7 +17,7 @@ Vercel once a day).
 
 | What | Where | Kept for | Setting | How it goes |
 |---|---|---|---|---|
-| A visualiser project with no enquiry: the photo (original and working copy), roof outline, photo-real renders, address and property answers | Neon rows, Vercel Blob files | 30 days from when it was started | `projectDays` | Daily tidy-up: files first, then the rows, which cascade |
+| A visualiser project with no enquiry: the photo (original and working copy), roof outline, photo-real renders, address, property answers, plans and drawings the customer added, and the roofer's measurements | Neon rows, Vercel Blob files | 30 days from when it was started | `projectDays` | Daily tidy-up: files first, then the rows, which cascade |
 | An enquiry, and the project it's about | Neon, Vercel Blob | 12 months | `enquiryMonths` | Daily tidy-up. Sending an enquiry pushes the project's expiry out to match |
 | Files of renders that were never shown (failed, cancelled, set aside) | Vercel Blob | 7 days after the render ended | `unusedRenderFileDays` | Daily tidy-up |
 | Uploads started but never finished, with their file; records of finished uploads | Neon, Vercel Blob | 24 hours | `uploadHours` | Daily tidy-up |

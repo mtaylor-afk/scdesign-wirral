@@ -173,7 +173,7 @@ test("no edges entered: nothing linear, and every edge kind is listed as not inc
   assert.deepEqual(e.linear, [], "never worked out from areas or perimeters");
   const missing = e.not_included.filter((n) => n.reason === "no length has been entered").map((n) => n.item);
   assert.deepEqual(missing, ["ridge", "hip", "valley", "eaves", "verge", "abutment"]);
-  for (const always of ["flashings", "gutters", "fixings", "underlay and battens"]) assert.ok(e.not_included.some((n) => n.item === always), always);
+  for (const always of ["flashings", "gutters", "fixings", "underlay", "battens"]) assert.ok(e.not_included.some((n) => n.item === always), always);
 });
 
 test("an entered length with a per-metre figure is estimated; without the figure it still isn't", () => {

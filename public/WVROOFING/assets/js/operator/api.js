@@ -6,10 +6,12 @@ import { API_BASE } from "../config.js";
 const KEY = "wvr.operator.session";
 
 export class ApiError extends Error {
-  constructor(status, code, message) {
+  constructor(status, code, message, detail) {
     super(message);
     this.status = status;
     this.code = code;
+    // what the server listed as wrong, e.g. which roof face
+    this.problems = (detail && Array.isArray(detail.problems) && detail.problems) || [];
   }
 }
 
@@ -67,7 +69,7 @@ function failed(r, j, path) {
     setToken("");
     onSignedOut((j && j.message) || "Your session has ended. Please log in again.");
   }
-  return new ApiError(r.status, (j && j.error) || "server_error", (j && j.message) || "Something went wrong (" + r.status + "). Please try again.");
+  return new ApiError(r.status, (j && j.error) || "server_error", (j && j.message) || "Something went wrong (" + r.status + "). Please try again.", j);
 }
 
 /** A JSON call. Resolves to the reply, or throws an ApiError with a plain message. */

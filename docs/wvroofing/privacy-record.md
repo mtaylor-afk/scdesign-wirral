@@ -14,6 +14,8 @@ reviewed, with a legal and privacy review, before launch.
 | **Photo-real renders** | OpenAI, from the photo and outline, only with consent | To show the finish | Private Vercel Blob |
 | **Address** | The customer chooses one (Ideal Postcodes) or types it | So the roofer can prepare a quote or survey | Only the chosen address is kept: lines, UPRN, coordinates and where they came from. Neon |
 | **Property answers** | The customer; the operator may add a correction | Scope of the roof | Neon. Corrections are added as new records, never overwrites |
+| **Plans, drawings, extra photos** (optional) | The customer, uploaded from the estimate step | So the roofer can measure the roof from them | Private Vercel Blob. Photos have their metadata removed; PDFs are kept as uploaded. The file name isn't kept. They go with the project |
+| **Roof measurements** | The roofer: a survey, drawings, the customer's plans, a Hover report or a desk estimate | The roof's size and material quantities | Neon. Never edited: a correction is a new record. Shown to the customer only once approved, and only when the source allows it |
 | **Contact details** (name, phone and/or email, message) | Enquiry forms | To reply and prepare a quote | Neon, and the roofer's email |
 | **Technical data** | The browser | Security and abuse limits | Rate-limit counters keyed by a daily HMAC of the IP address; the IP itself is never stored. Browser family |
 | **Operator records** | The operator | Security, and an audit trail of changes | Neon: sessions, login attempts, history |

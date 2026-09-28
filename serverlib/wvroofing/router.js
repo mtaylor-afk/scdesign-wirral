@@ -54,6 +54,11 @@ const ROUTES = [
   { path: "projects/:id/property/confirm", methods: ["POST"], auth: "project", handler: (ctx) => require("./property.js").confirm(/** @type {any} */ (ctx)) },
   // The estimate step (B2): the roof's size and materials, only from a measurement the roofer approved and made visible.
   { path: "projects/:id/estimate", methods: ["GET"], auth: "project", handler: (ctx) => require("./measurements.js").estimate(/** @type {any} */ (ctx)) },
+  // Plans, drawings and extra photos the customer adds for the roofer to measure from (B3).
+  { path: "projects/:id/evidence/presign", methods: ["POST"], auth: "project", handler: (ctx) => require("./evidence.js").presign(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/evidence/commit", methods: ["POST"], auth: "project", handler: (ctx) => require("./evidence.js").commit(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/evidence", methods: ["GET"], auth: "project", handler: (ctx) => require("./evidence.js").list(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/evidence/:evidenceId/delete", methods: ["POST"], auth: "project", handler: (ctx) => require("./evidence.js").remove(/** @type {any} */ (ctx)) },
   // Enquiries (A4): saved first, then the roofer is notified. "enquiry" is the pre-v02
   // path, kept permanently so older pages keep working.
   { path: "enquiries", methods: ["POST"], auth: "none", handler: (ctx) => require("./enquiries.js").createFree(ctx) },
@@ -79,6 +84,12 @@ const ROUTES = [
   { path: "operator/jobs/:id/image", methods: ["GET"], auth: "operator", handler: (ctx) => op().jobImage(/** @type {any} */ (ctx)) },
   { path: "operator/jobs/:id/retry", methods: ["POST"], auth: "operator", handler: (ctx) => op().retryJob(/** @type {any} */ (ctx)) },
   { path: "operator/costs", methods: ["GET"], auth: "operator", handler: (ctx) => op().costs(/** @type {any} */ (ctx)) },
+  // Roof measurements (B3): entered by the roofer, approved, shown to the customer or not.
+  { path: "operator/enquiries/:id/measurement", methods: ["POST"], auth: "operator", handler: (ctx) => op().addMeasurement(/** @type {any} */ (ctx)) },
+  { path: "operator/measurements/:id/approve", methods: ["POST"], auth: "operator", handler: (ctx) => op().approveMeasurement(/** @type {any} */ (ctx)) },
+  { path: "operator/measurements/:id/reject", methods: ["POST"], auth: "operator", handler: (ctx) => op().rejectMeasurement(/** @type {any} */ (ctx)) },
+  { path: "operator/measurements/:id/visibility", methods: ["POST"], auth: "operator", handler: (ctx) => op().measurementVisibility(/** @type {any} */ (ctx)) },
+  { path: "operator/evidence/:id", methods: ["GET"], auth: "operator", handler: (ctx) => op().evidenceLink(/** @type {any} */ (ctx)) },
 ];
 
 function op() {

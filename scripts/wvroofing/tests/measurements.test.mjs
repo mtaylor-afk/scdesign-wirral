@@ -193,6 +193,10 @@ test("the customer sees a measurement only once it's approved and made visible",
   assert.equal(e.reason, "no_verified_product", "no product for this look is verified: no quantities");
   assert.deepEqual(e.products, []);
   assert.ok(!JSON.stringify(e).includes("97.6"), "no unrounded figures reach the customer");
+  const noLook = (await api("GET", "projects/" + j.p.id + "/estimate", { token: j.p.token })).json.estimate;
+  assert.equal(noLook.status, "indicative_available", "the roof's size doesn't depend on the look");
+  assert.equal(noLook.measurement.area_m2, 98);
+  assert.equal(noLook.reason, "no_look_chosen");
 });
 
 test("with a verified product: quantities, the allowance, a ridge from its entered length, and what isn't included", async () => {
@@ -210,7 +214,7 @@ test("with a verified product: quantities, the allowance, a ridge from its enter
     assert.equal(p.total.units, Math.ceil(surface * 10 * 1.05 - 1e-9));
     assert.deepEqual(p.linear, [{ kind: "ridge", length_m: 9.5, units: 21, product: "Test ridge" }]);
     assert.ok(!e.not_included.includes("ridges"), "the ridge was estimated");
-    for (const w of ["hips", "valleys", "verges", "flashings", "gutters", "fixings", "underlay and battens"]) assert.ok(e.not_included.includes(w), w);
+    for (const w of ["hips", "valleys", "verges", "flashings", "gutters", "fixings", "underlay", "battens"]) assert.ok(e.not_included.includes(w), w);
     const other = await estimate(j.p, "welsh-slate");
     assert.deepEqual(other.products, [], "a look without a verified product has no quantities");
     const draft = Object.assign({}, TEST_PRODUCT, { id: "test-draft", spec: Object.assign({}, TEST_PRODUCT.spec, { status: "draft", verified_by: null, verified_at: null }) });

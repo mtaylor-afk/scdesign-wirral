@@ -19,7 +19,7 @@
 const { EDGE_KINDS } = require("./catalogue.js");
 
 // Never estimated here: listed on every estimate as not included.
-const ALWAYS_NOT_INCLUDED = ["flashings", "gutters", "fixings", "underlay and battens"];
+const ALWAYS_NOT_INCLUDED = ["flashings", "gutters", "fixings", "underlay", "battens"];
 
 /**
  * @typedef {import("./catalogue.js").Product} Product

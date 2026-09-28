@@ -256,13 +256,38 @@ export async function cancelRender(jobId) {
 }
 
 /**
+ * Add a plan, drawing or extra photo for the roofer (B3): straight to private
+ * storage, then checked by the server. Resolves with { id, kind, bytes, addedAt }.
+ */
+export async function uploadEvidence(file, contentType, onProgress) {
+  const p = requireProject();
+  const pre = await call("POST", "projects/" + p.id + "/evidence/presign", { body: { contentType, bytes: file.size }, project: p });
+  const url = /^https?:/i.test(pre.url) ? pre.url : API_BASE + pre.url;
+  await putWithProgress(url, file, pre.headers, onProgress);
+  const c = await call("POST", "projects/" + p.id + "/evidence/commit", { body: { uploadId: pre.uploadId }, project: p });
+  return c.evidence;
+}
+
+export async function listEvidence() {
+  const p = currentProject();
+  if (!p) return [];
+  const j = await call("GET", "projects/" + p.id + "/evidence", { project: p });
+  return j.evidence;
+}
+
+export async function deleteEvidence(id) {
+  const p = requireProject();
+  await call("POST", "projects/" + p.id + "/evidence/" + id + "/delete", { body: {}, project: p });
+}
+
+/**
  * The estimate step for a look (B2): { status, reason, measurement, products, not_included }.
  * Null when there's no project (a sample house, or photo only).
  */
 export async function getEstimate(visualId) {
   const p = currentProject();
   if (!p) return null;
-  const j = await call("GET", "projects/" + p.id + "/estimate?visual=" + encodeURIComponent(visualId), { project: p });
+  const j = await call("GET", "projects/" + p.id + "/estimate" + (visualId ? "?visual=" + encodeURIComponent(visualId) : ""), { project: p });
   return j.estimate;
 }
 

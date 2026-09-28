@@ -123,7 +123,7 @@ async function customerEnquiry() {
     token: p.token,
     body: { name: "QA Operator Check", phone: "0151 496 0000", consent: true, elapsedMs: 9000, idempotencyKey: run + "-e", product: "welsh-slate", includeImages: true },
   });
-  return { ref: e.json && e.json.reference, status: e.status };
+  return { ref: e.json && e.json.reference, status: e.status, project: p };
 }
 
 function watch(page) {
@@ -607,6 +607,54 @@ try {
         .then(() => true)
         .catch(() => false);
       ok("operator: the status changes", contacted);
+      // A roof measurement from a site survey: entered, approved, and then seen by the customer.
+      await page.click("#op-measure summary");
+      const faceRows = page.locator("#op-measure .op-face-row");
+      for (const i of [0, 1]) {
+        await faceRows.nth(i).locator('input[name="plan"]').fill("40");
+        await faceRows.nth(i).locator('input[name="pitch"]').fill("35");
+      }
+      await page.click("#op-measure button:has-text('Add an edge')");
+      await page.locator('#op-measure .op-edge-row input[name="length"]').first().fill("9.5");
+      await page.click('#op-measure .op-measure-form button[type="submit"]');
+      const measured = await page.waitForSelector("#op-measure button:has-text('Approve')", { timeout: 10000 }).then(() => true).catch(() => false);
+      ok("operator: a site-survey measurement is saved, waiting for approval", measured);
+      if (measured) {
+        await page.click("#op-measure button:has-text('Approve')");
+        const shown = await page
+          .waitForFunction(() => /Shown to the customer/.test((document.querySelector("#op-measure") || {}).textContent || ""), null, { timeout: 10000 })
+          .then(() => true)
+          .catch(() => false);
+        ok("operator: approved, and shown to the customer", shown);
+        await shot(page, { path: path.join(OUT, "operator-measurement-desktop.png"), fullPage: true });
+        const cctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+        await cctx.addInitScript((proj) => sessionStorage.setItem("wvr.project.v1", JSON.stringify(proj)), made.project);
+        const cpage = await cctx.newPage();
+        const cerrors = watch(cpage);
+        await cpage.goto(BASE + "/WVROOFING/visualiser/?project=" + made.project.id + "&step=estimate", { waitUntil: "load", timeout: 45000 });
+        const figures = await cpage
+          .waitForFunction(() => {
+            const a = document.querySelector("#estimate-area");
+            return !!a && !a.closest("[hidden]") && /About 98 m²/.test(a.textContent);
+          }, null, { timeout: 30000 })
+          .then(() => true)
+          .catch(() => false);
+        const estText = (await cpage.textContent('[data-panel="estimate"]')) || "";
+        ok(
+          "customer: the estimate shows the roofer's measurement (about 98 m², who and when, the disclaimer)",
+          figures && /Indicative estimate/.test(estText) && /Measured by the roofer from a site survey/.test(estText) && /subject to a roof survey/.test(estText),
+          estText.replace(/\s+/g, " ").slice(0, 160)
+        );
+        await cpage.setInputFiles("#evidence-file", { name: "plan.pdf", mimeType: "application/pdf", buffer: Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.alloc(400, 32)]) });
+        const added = await cpage
+          .waitForFunction(() => /PDF/.test((document.querySelector("#evidence-list") || {}).textContent || ""), null, { timeout: 15000 })
+          .then(() => true)
+          .catch(() => false);
+        ok("customer: a plan (PDF) can be added for the roofer", added);
+        await shot(cpage, { path: path.join(OUT, "vis-estimate-measured-phone.png"), fullPage: true });
+        ok("customer estimate page has no console errors", cerrors.length === 0, cerrors.join(" | "));
+        await cctx.close();
+      }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       ok("operator: no horizontal overflow (desktop)", overflow <= 0, overflow + "px");
       await shot(page, { path: path.join(OUT, "operator-desktop.png"), fullPage: true });

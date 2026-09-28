@@ -366,3 +366,42 @@ Vercel hands over a rewritten request.
   see it.
 - **No `measurement/request` route.** The estimate step's "Request a survey" is the enquiry itself.
   Contact details are needed to arrange a visit, and the enquiry already records the request.
+
+## Decisions made while building B3 (2026-09-28)
+
+- **The roofer enters measurements** on the operator screen (`POST operator/enquiries/:id/measurement`).
+  - **What goes in.** The method, the date measured, faces (plan area and pitch, or the area on the slope
+    as given), optional measured edge lengths, notes, and the customer's files the roofer used.
+  - **Corrections.** A correction is a new measurement: the old one is kept and points at it.
+  - **The source.** It follows from the method: site survey and drawings are `operator_manual`; then
+    `customer_evidence`, `hover` and `desk_measure`.
+  - **Audit.** Adding, approving, rejecting, showing, hiding and opening a customer's file are all
+    recorded.
+- **Approval.**
+  - A flagged measurement needs `{confirm: true}`.
+  - Approving shows the figures to the customer when the source's terms allow it. For the roofer's own
+    survey, drawings or the customer's plans, `display_rights_ref` is `own_data`.
+  - Otherwise the figures stay hidden: Hover (`display: no`), and desk estimates from OS and EA data
+    (display unresolved). Those customers see "measured, the figures come with the quotation".
+  - Showing is refused (`rights_unresolved`) while the permissions record says no.
+  - A rejected or replaced measurement can't be approved later.
+- **The Hover template** (`measure/hover.js`) turns a report's summary into faces and edges:
+  - the total area becomes one face, on the slope;
+  - the pitch can be in degrees or "x/12";
+  - ridges, hips, valleys, rakes (verges), eaves and flashing (abutments) become edges;
+  - imperial figures are converted to metric.
+- **Customer files.**
+  - **Formats.** Plans, drawings and extra photos as JPEG, PNG or PDF, up to 20 MB and 10 per project.
+  - **Uploads.** Presigned private uploads of a stated type, checked by their first bytes.
+  - **Storage.** Photos have their metadata removed; PDFs are kept as they are and never opened by the
+    server. File names aren't kept. They're stored under the project, so they go with it (migration 0008,
+    `wvr_evidence`).
+  - **Where.** Added from the estimate step, and opened by the operator with a 5-minute link.
+- **The estimate without a chosen look.** The roof's size doesn't depend on the look, so the estimate route
+  takes the look as optional. With no look chosen, the customer sees the area and "choose a roof to see
+  the materials". QA found this: a resumed page with no look chosen showed "no data".
+- **"Any changes since `<year>`?"** is asked only when the measurement comes from an earlier year.
+- **Not included** now lists underlay and battens separately.
+- **Not built:**
+  - **B3b.** The optional OS reference panel needs its own approval and an OS key.
+  - **Verifying a product's specification** is a change to `products.json`, not a screen.

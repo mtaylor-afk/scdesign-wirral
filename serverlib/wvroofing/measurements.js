@@ -102,6 +102,15 @@ async function context(q, project) {
   return { coordSource: a ? a.coord_source : null, confirmationReasons: c ? parsed(c.ambiguity_reasons) || [] : [] };
 }
 
+/**
+ * A measurement in the shape quantities.js takes (surface areas as worked out, never again).
+ * @param {any} m
+ * @returns {import("./quantities.js").Measured}
+ */
+function forQuantities(m) {
+  return { faces: m.faces.map((/** @type {any} */ f) => ({ id: f.id, surface_m2: f.surface_area_m2, pitch_deg: f.pitch_deg, included: f.included })), edges: m.edges };
+}
+
 /** The project's current measurement (any state), or null. @param {string} projectId */
 async function current(projectId) {
   const { rows } = await db.query("SELECT * FROM wvr_measurements WHERE project_id = $1 AND superseded_at IS NULL ORDER BY created_at DESC LIMIT 1", [projectId]);
@@ -153,7 +162,8 @@ const NOT_INCLUDED_WORDS = /** @type {Record<string, string>} */ ({
   flashings: "flashings",
   gutters: "gutters",
   fixings: "fixings",
-  "underlay and battens": "underlay and battens",
+  underlay: "underlay",
+  battens: "battens",
 });
 
 /**
@@ -162,8 +172,10 @@ const NOT_INCLUDED_WORDS = /** @type {Record<string, string>} */ ({
  *   processing            measured, and the roofer is checking it
  *   measured_not_shown    approved, but its figures can't be shown online: they come with the quotation
  *   indicative_available  the roof's size, and quantities from verified products
+ * The roof's size doesn't depend on the look; the materials do (no look chosen
+ * yet: the size alone, reason "no_look_chosen").
  * @param {string} projectId
- * @param {string} visualId
+ * @param {string | null} visualId
  */
 async function estimateFor(projectId, visualId) {
   const m = await visible(projectId);
@@ -174,17 +186,13 @@ async function estimateFor(projectId, visualId) {
     if (cur.approved_at && cur.status === "indicative_available") return Object.assign({ status: "measured_not_shown", reason: "figures_in_quotation" }, none);
     return Object.assign({ status: "processing", reason: "being_checked" }, none);
   }
-  const measured = {
-    faces: m.faces.map((/** @type {any} */ f) => ({ id: f.id, surface_m2: f.surface_area_m2, pitch_deg: f.pitch_deg, included: f.included })),
-    edges: m.edges,
-  };
-  const ests = quantities.estimateForVisual(measured, visualId);
+  const ests = visualId ? quantities.estimateForVisual(forQuantities(m), visualId) : [];
   const notIncluded = new Set();
   for (const e of ests) for (const n of e.not_included) notIncluded.add(NOT_INCLUDED_WORDS[n.item] || n.item);
   if (!ests.length) for (const w of Object.values(NOT_INCLUDED_WORDS)) notIncluded.add(w);
   return {
     status: "indicative_available",
-    reason: ests.length ? null : "no_verified_product",
+    reason: !visualId ? "no_look_chosen" : ests.length ? null : "no_verified_product",
     measurement: geometry.customerView(m),
     products: ests.map((e) => ({
       name: e.product_name,
@@ -204,8 +212,8 @@ async function estimateFor(projectId, visualId) {
 /** @param {ProjectCtx} ctx */
 async function estimateRoute(ctx) {
   const visualId = String(ctx.url.searchParams.get("visual") || "");
-  if (!VISUALS.has(visualId)) throw new HttpError(400, "invalid_fields", "Choose a roof from the range.", { fields: ["visual"] });
-  return json(ctx.res, 200, { ok: true, estimate: await estimateFor(ctx.project.id, visualId) });
+  if (visualId && !VISUALS.has(visualId)) throw new HttpError(400, "invalid_fields", "Choose a roof from the range.", { fields: ["visual"] });
+  return json(ctx.res, 200, { ok: true, estimate: await estimateFor(ctx.project.id, visualId || null) });
 }
 
-module.exports = { create, current, visible, supersedeAll, sendBackForReview, estimateFor, estimate: estimateRoute, fromRow };
+module.exports = { create, current, visible, supersedeAll, sendBackForReview, estimateFor, estimate: estimateRoute, fromRow, forQuantities };

@@ -115,6 +115,11 @@ export const ACTION_WORDS = {
   deleted: "Deleted",
   original_downloaded: "Original photo downloaded",
   retried: "Render tried again",
+  measurement_added: "Measurement added",
+  measurement_approved: "Measurement approved",
+  measurement_rejected: "Measurement rejected",
+  measurement_visibility: "Measurement",
+  evidence_downloaded: "Customer's file opened",
 };
 
 export const PROVIDER_WORDS = {

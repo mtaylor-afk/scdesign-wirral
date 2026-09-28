@@ -13,10 +13,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap">
-  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20260928b">
-  <link rel="stylesheet" href="/WVROOFING/assets/css/visualiser.css?v=20260928b">
-  <script type="module" src="/WVROOFING/assets/js/site.js?v=20260928b"></script>
-  <script type="module" src="/WVROOFING/assets/js/vis/app.js?v=20260928b"></script>
+  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20260928c">
+  <link rel="stylesheet" href="/WVROOFING/assets/css/visualiser.css?v=20260928c">
+  <script type="module" src="/WVROOFING/assets/js/site.js?v=20260928c"></script>
+  <script type="module" src="/WVROOFING/assets/js/vis/app.js?v=20260928c"></script>
 </head>
 <body class="has-lnav page-visualiser">
   <a class="skip-link" href="#main">Skip to content</a>
@@ -327,6 +327,16 @@
             </div>
             <p class="small muted estimate-disclaimer">Indicative roof-area and material estimate based on available data. Final quantities, specification and price are subject to a roof survey.</p>
             <p class="small muted" id="estimate-not-included">Not included in this estimate: ridges, hips, valleys, verges, flashings, gutters and fixings.</p>
+            <div class="estimate-evidence" id="estimate-evidence" hidden>
+              <h3 class="estimate-evidence-h">Have plans, drawings or more photos of the roof?</h3>
+              <p class="small muted">Add them for the roofer to measure your roof from: JPG, PNG or PDF, up to 20 MB each. They're kept with your photo and deleted with it.</p>
+              <div class="estimate-evidence-actions">
+                <button type="button" class="btn btn-neutral btn-sm" id="btn-evidence">Add a file</button>
+                <input type="file" id="evidence-file" accept="image/jpeg,image/png,application/pdf" hidden>
+              </div>
+              <p class="small" id="evidence-status" role="status" aria-live="polite"></p>
+              <ul class="evidence-list" id="evidence-list"></ul>
+            </div>
           </div>
           <div class="compare-actions">
             <button type="button" class="btn btn-neutral" id="btn-estimate-back">Back to the roofs</button>
