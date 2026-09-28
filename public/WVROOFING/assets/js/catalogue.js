@@ -23,23 +23,5 @@ export function loadCatalogue() {
   return pending;
 }
 
-/** £ / ££ / £££ as a DOM fragment (unused pounds dimmed, with a text alternative). */
-export function priceBandNode(level) {
-  const span = document.createElement("span");
-  span.className = "price-band";
-  const n = Math.max(1, Math.min(3, Number(level) || 1));
-  span.setAttribute("aria-label", ["Budget", "Mid-range", "Premium"][n - 1] + " price band");
-  span.setAttribute("title", ["Budget", "Mid-range", "Premium"][n - 1]);
-  for (let i = 1; i <= 3; i++) {
-    const s = document.createElement("span");
-    s.textContent = "£";
-    s.setAttribute("aria-hidden", "true");
-    if (i > n) s.className = "dim";
-    span.appendChild(s);
-  }
-  return span;
-}
-
-export function priceWord(level) {
-  return ["Budget", "Mid-range", "Premium"][Math.max(1, Math.min(3, Number(level) || 1)) - 1];
-}
+// No prices or price bands are shown anywhere (brief §5 and §13): prices come
+// only from the roofer, after a survey.

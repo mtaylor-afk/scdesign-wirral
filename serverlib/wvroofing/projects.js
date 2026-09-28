@@ -82,9 +82,13 @@ async function get(ctx) {
     const { rows } = await db.query("SELECT id, w, h, coverage, editor_meta FROM wvr_masks WHERE id = $1 AND project_id = $2", [p.mask_id, p.id]);
     if (rows[0]) mask = { id: rows[0].id, w: rows[0].w, h: rows[0].h, coverage: rows[0].coverage, shapes: rows[0].editor_meta.shapes };
   }
+  // Everything a reloaded page needs to carry on where the customer left off (never contact details).
+  const { address, property } = await require("./property.js").summary(p);
+  const eq = await db.query("SELECT reference, created_at, delivery_status, status FROM wvr_enquiries WHERE project_id = $1", [p.id]);
+  const enquiry = eq.rows[0] ? { reference: eq.rows[0].reference, savedAt: new Date(eq.rows[0].created_at).toISOString() } : null;
   return json(ctx.res, 200, {
     ok: true,
-    project: { id: p.id, createdAt: p.created_at, expiresAt: p.expires_at, consentAi: !!p.consent_ai_at, photo, mask },
+    project: { id: p.id, createdAt: p.created_at, expiresAt: p.expires_at, consentAi: !!p.consent_ai_at, address, property, photo, mask, enquiry },
   });
 }
 

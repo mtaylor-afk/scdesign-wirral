@@ -13,10 +13,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap">
-  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20260927b">
-  <link rel="stylesheet" href="/WVROOFING/assets/css/visualiser.css?v=20260927b">
-  <script type="module" src="/WVROOFING/assets/js/site.js?v=20260927b"></script>
-  <script type="module" src="/WVROOFING/assets/js/vis/app.js?v=20260927b"></script>
+  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20260928a">
+  <link rel="stylesheet" href="/WVROOFING/assets/css/visualiser.css?v=20260928a">
+  <script type="module" src="/WVROOFING/assets/js/site.js?v=20260928a"></script>
+  <script type="module" src="/WVROOFING/assets/js/vis/app.js?v=20260928a"></script>
 </head>
 <body class="has-lnav page-visualiser">
   <a class="skip-link" href="#main">Skip to content</a>
@@ -63,15 +63,109 @@
     <section class="vis-section">
       <div class="wrap-wide">
         <ol class="vis-steps" aria-label="Visualiser steps">
-          <li data-step="photo" aria-current="step"><span class="vis-step-no">1</span><span>Photo</span></li>
-          <li data-step="mark"><span class="vis-step-no">2</span><span>Mark roof</span></li>
-          <li data-step="compare"><span class="vis-step-no">3</span><span>Compare</span></li>
+          <li data-step="property" aria-current="step"><span class="vis-step-no">1</span><span>Your home</span></li>
+          <li data-step="photo"><span class="vis-step-no">2</span><span>Photo</span></li>
+          <li data-step="mark"><span class="vis-step-no">3</span><span>Mark roof</span></li>
+          <li data-step="compare"><span class="vis-step-no">4</span><span>Compare</span></li>
+          <li data-step="estimate"><span class="vis-step-no">5</span><span>Estimate</span></li>
+          <li data-step="enquiry"><span class="vis-step-no">6</span><span>Send</span></li>
         </ol>
+        <p class="vis-step-count" id="vis-step-count" aria-hidden="true">Step 1 of 6: Your home</p>
         <p class="sr-only" id="vis-live" role="status" aria-live="polite"></p>
         <noscript><p class="notice notice--warn">The Roof Visualiser needs JavaScript. You can still <a href="/WVROOFING/roof-replacement/#contact">request a free survey</a>.</p></noscript>
 
-        <!-- Step 1: photo -->
-        <section class="vis-panel" data-panel="photo" aria-labelledby="h-photo">
+        <aside class="summary-sheet" id="summary-sheet" aria-label="Your choices so far" hidden>
+          <dl class="summary-list">
+            <div><dt>Home</dt><dd id="sum-home">Not added</dd><dd class="summary-edit"><button type="button" class="link-btn" data-goto="property">Change</button></dd></div>
+            <div><dt>Photo</dt><dd id="sum-photo">Not added</dd><dd class="summary-edit"><button type="button" class="link-btn" data-goto="photo">Change</button></dd></div>
+            <div><dt>Roof</dt><dd id="sum-roof">Not chosen yet</dd><dd class="summary-edit"><button type="button" class="link-btn" data-goto="compare">Change</button></dd></div>
+          </dl>
+          <button type="button" class="link-btn delete-photo" id="btn-delete-project" hidden>Delete my photo and project</button>
+        </aside>
+
+        <!-- Step 1: your home -->
+        <section class="vis-panel" data-panel="property" aria-labelledby="h-property">
+          <h2 id="h-property" class="vis-h center">Start with your address.</h2>
+          <p class="cap-line center" id="cap-line">Roof measurement isn't available online yet. Your address lets the roofer prepare a quote or a survey.</p>
+          <div class="property-card">
+            <form class="form postcode-form" id="postcode-form" novalidate>
+              <div class="field">
+                <input class="input" id="pc-input" name="postcode" type="text" autocomplete="postal-code" autocapitalize="characters" spellcheck="false" placeholder=" " aria-describedby="pc-err">
+                <label class="fl-label" for="pc-input">Your postcode</label>
+                <p class="field-error" id="pc-err" role="alert" hidden></p>
+              </div>
+              <button class="btn btn-primary" type="submit" id="pc-find">Find my address</button>
+            </form>
+            <div class="address-pick" id="address-pick" hidden>
+              <p class="small muted" id="address-count" role="status"></p>
+              <ul class="address-list" id="address-list"></ul>
+              <button type="button" class="link-btn" id="addr-not-listed">My address isn't listed</button>
+            </div>
+            <form class="form manual-form" id="manual-form" novalidate hidden>
+              <p class="small muted" id="manual-note">Type your address.</p>
+              <div class="field">
+                <input class="input" id="ma-line1" name="line1" type="text" autocomplete="address-line1" placeholder=" " aria-describedby="ma-line1-err">
+                <label class="fl-label" for="ma-line1">House number and street</label>
+                <p class="field-error" id="ma-line1-err" data-error-for="line1" hidden></p>
+              </div>
+              <div class="field">
+                <input class="input" id="ma-line2" name="line2" type="text" autocomplete="address-line2" placeholder=" ">
+                <label class="fl-label" for="ma-line2">Flat, building or area <span class="opt">(optional)</span></label>
+              </div>
+              <div class="form-row form-row--2">
+                <div class="field">
+                  <input class="input" id="ma-town" name="town" type="text" autocomplete="address-level2" placeholder=" " aria-describedby="ma-town-err">
+                  <label class="fl-label" for="ma-town">Town</label>
+                  <p class="field-error" id="ma-town-err" data-error-for="town" hidden></p>
+                </div>
+                <div class="field">
+                  <input class="input" id="ma-postcode" name="postcode" type="text" autocomplete="postal-code" placeholder=" " aria-describedby="ma-postcode-err">
+                  <label class="fl-label" for="ma-postcode">Postcode <span class="opt">(optional)</span></label>
+                  <p class="field-error" id="ma-postcode-err" data-error-for="postcode" hidden></p>
+                </div>
+              </div>
+              <button class="btn btn-primary" type="submit">Use this address</button>
+            </form>
+            <div class="address-chosen" id="address-chosen" hidden>
+              <p class="address-line"><strong id="address-label"></strong> <span class="badge" id="address-newbuild" hidden>New build</span> <button type="button" class="link-btn" id="addr-change">Change</button></p>
+              <figure class="aerial" id="aerial" hidden>
+                <img id="aerial-img" alt="Satellite view around your address" width="640" height="400">
+                <figcaption class="caption" id="aerial-caption"></figcaption>
+              </figure>
+              <p class="caption" id="aerial-note" hidden></p>
+              <fieldset class="choice-group" id="pin-q" hidden>
+                <legend>Is the blue pin on your house?</legend>
+                <label class="choice"><input type="radio" name="pin" value="yes"><span>Yes</span></label>
+                <label class="choice"><input type="radio" name="pin" value="no"><span>No, or I'm not sure</span></label>
+              </fieldset>
+              <fieldset class="choice-group" id="ptype">
+                <legend>What kind of property is it?</legend>
+                <label class="choice"><input type="radio" name="ptype" value="detached"><span>Detached</span></label>
+                <label class="choice"><input type="radio" name="ptype" value="semi"><span>Semi-detached</span></label>
+                <label class="choice"><input type="radio" name="ptype" value="end_terrace"><span>End of terrace</span></label>
+                <label class="choice"><input type="radio" name="ptype" value="mid_terrace"><span>Mid terrace</span></label>
+                <label class="choice"><input type="radio" name="ptype" value="bungalow"><span>Bungalow</span></label>
+                <label class="choice"><input type="radio" name="ptype" value="flat"><span>Flat or maisonette</span></label>
+                <label class="choice"><input type="radio" name="ptype" value="other"><span>Something else</span></label>
+                <label class="choice"><input type="radio" name="ptype" value="not_sure"><span>Not sure</span></label>
+              </fieldset>
+              <p class="field-error" id="ptype-err" role="alert" hidden></p>
+            </div>
+          </div>
+          <div class="property-actions">
+            <button type="button" class="btn btn-primary" id="btn-property-next" hidden>Continue to your photo</button>
+            <button type="button" class="btn btn-primary" id="btn-photo-only">Photo only, skip this</button>
+          </div>
+          <p class="notice photo-notice" id="address-notice">
+            <strong>What happens to your address.</strong>
+            It's saved with your visualiser session so the roofer can prepare your quote, and kept for 30 days unless you send us an enquiry.
+            You can delete it at any time. To show the satellite view, your browser fetches it from Google, which sees the location and your IP address.
+            <a href="/WVROOFING/privacy/">Privacy notice</a>
+          </p>
+        </section>
+
+        <!-- Step 2: photo -->
+        <section class="vis-panel" data-panel="photo" aria-labelledby="h-photo" hidden>
           <h2 id="h-photo" class="vis-h center">Add a photo of your house.</h2>
           <div class="upload-grid">
             <div class="dropzone" id="dropzone">
@@ -213,9 +307,89 @@
           <div class="compare-actions">
             <button type="button" class="btn btn-neutral" id="btn-edit-mark">Edit roof outline</button>
             <button type="button" class="btn btn-neutral" id="btn-restart">Start again</button>
+            <button type="button" class="btn btn-neutral" id="btn-to-estimate">Roof size and materials</button>
             <button type="button" class="btn btn-primary" id="btn-quote">Get a quote for my roof</button>
           </div>
           <p class="caption vis-small">Quick previews are drawn in your browser and are approximate. Photo-real renders are AI concept illustrations, not photographs of finished work. Colours vary on screen, so we bring real samples to every survey.</p>
+        </section>
+
+        <!-- Step 5: estimate -->
+        <section class="vis-panel" data-panel="estimate" aria-labelledby="h-estimate" hidden>
+          <h2 id="h-estimate" class="vis-h">Roof size and materials.</h2>
+          <div class="estimate-card">
+            <p class="estimate-status"><span class="badge" id="estimate-badge">Suitable data unavailable</span></p>
+            <p id="estimate-reason">We can't work out your roof's size or the materials it needs online yet: no licensed roof-measurement data is available for your area. The roofer measures the roof at a survey instead.</p>
+            <p class="small muted estimate-disclaimer">Indicative roof-area and material estimate based on available data. Final quantities, specification and price are subject to a roof survey.</p>
+            <p class="small muted">Not included in any online estimate: ridges, hips, valleys, verges, flashings, gutters and fixings.</p>
+          </div>
+          <div class="compare-actions">
+            <button type="button" class="btn btn-neutral" id="btn-estimate-back">Back to the roofs</button>
+            <button type="button" class="btn btn-primary" id="btn-request-survey">Request a survey</button>
+          </div>
+        </section>
+
+        <!-- Step 6: send the enquiry -->
+        <section class="vis-panel" data-panel="enquiry" aria-labelledby="h-enquiry" hidden>
+          <h2 id="h-enquiry" class="vis-h">Send us your enquiry.</h2>
+          <p class="muted" id="enquiry-lede">We only ask for your contact details here. Your enquiry is saved as soon as you send it, and you'll get a reference.</p>
+          <div class="notice enquiry-done" id="enquiry-done" role="status" hidden></div>
+          <div class="enquiry-card" id="enquiry-card">
+            <form class="form" id="quote-form" data-source="visualiser" novalidate>
+              <div class="form-row form-row--2">
+                <div class="field">
+                  <input class="input" id="v-name" name="name" type="text" autocomplete="name" placeholder=" " aria-describedby="v-name-err">
+                  <label class="fl-label" for="v-name">Your name</label>
+                  <p class="field-error" id="v-name-err" data-error-for="name" hidden></p>
+                </div>
+                <div class="field">
+                  <input class="input" id="v-postcode" name="postcode" type="text" autocomplete="postal-code" placeholder=" " aria-describedby="v-postcode-err">
+                  <label class="fl-label" for="v-postcode">Postcode <span class="opt">(optional)</span></label>
+                  <p class="field-error" id="v-postcode-err" data-error-for="postcode" hidden></p>
+                </div>
+              </div>
+              <div class="form-row form-row--2">
+                <div class="field">
+                  <input class="input" id="v-phone" name="phone" type="tel" autocomplete="tel" placeholder=" " aria-describedby="v-phone-hint v-phone-err">
+                  <label class="fl-label" for="v-phone">Phone</label>
+                  <p class="hint" id="v-phone-hint">A phone number or an email address is fine.</p>
+                  <p class="field-error" id="v-phone-err" data-error-for="phone" hidden></p>
+                </div>
+                <div class="field">
+                  <input class="input" id="v-email" name="email" type="email" autocomplete="email" placeholder=" " aria-describedby="v-email-err">
+                  <label class="fl-label" for="v-email">Email</label>
+                  <p class="field-error" id="v-email-err" data-error-for="email" hidden></p>
+                </div>
+              </div>
+              <div class="field">
+                <select class="select" id="v-product" name="product">
+                  <option value="">Choose one (optional)</option>
+                </select>
+                <label class="fl-label" for="v-product">Your favourite roof</label>
+              </div>
+              <div class="field">
+                <textarea class="textarea" id="v-message" name="message" rows="3" placeholder=" "></textarea>
+                <label class="fl-label" for="v-message">Anything else? <span class="opt">(optional)</span></label>
+              </div>
+              <label class="check" for="v-images" id="v-images-row" hidden>
+                <input id="v-images" name="includeImages" type="checkbox" checked>
+                <span>Attach my before photo and my chosen photo-real render to the request</span>
+              </label>
+              <div class="hp-field" aria-hidden="true">
+                <label for="v-company">Company</label>
+                <input id="v-company" name="company" type="text" tabindex="-1" autocomplete="off">
+              </div>
+              <label class="check" for="v-consent">
+                <input id="v-consent" name="consent" type="checkbox" aria-describedby="v-consent-err">
+                <span>I'm happy for WV Roofing to contact me about this enquiry. See the <a href="/WVROOFING/privacy/">privacy notice</a>.</span>
+              </label>
+              <p class="field-error" id="v-consent-err" data-error-for="consent" hidden></p>
+              <button class="btn btn-primary btn-block" type="submit">Send my enquiry</button>
+              <p class="form-status" role="status" aria-live="polite" hidden></p>
+            </form>
+          </div>
+          <div class="compare-actions">
+            <button type="button" class="btn btn-neutral" id="btn-enquiry-back">Back</button>
+          </div>
         </section>
       </div>
     </section>
@@ -242,6 +416,11 @@
             <span class="ba-tag ba-tag--before">Before</span>
             <span class="ba-tag ba-tag--after" id="lb-after-tag">After</span>
           </div>
+          <div class="lightbox-switch ba-toggle" id="lb-ba-toggle" role="group" aria-label="Show the photo before, after, or both">
+            <button type="button" class="chip" data-ba="100" aria-pressed="false">Before</button>
+            <button type="button" class="chip" data-ba="50" aria-pressed="true">Side by side</button>
+            <button type="button" class="chip" data-ba="0" aria-pressed="false">After</button>
+          </div>
           <div class="lightbox-switch" id="lb-switch" hidden>
             <button type="button" class="chip" data-view="ai" aria-pressed="true">AI render</button>
             <button type="button" class="chip" data-view="preview" aria-pressed="false">Quick preview</button>
@@ -249,7 +428,7 @@
           <p class="lb-qa" id="lb-qa" hidden></p>
         </div>
         <div class="lightbox-info">
-          <div class="lb-swatch-row"><canvas class="lb-swatch" id="lb-swatch" width="120" height="90" aria-hidden="true"></canvas><div><p class="lb-colour" id="lb-colour"></p><p class="lb-price" id="lb-price"></p></div></div>
+          <div class="lb-swatch-row"><canvas class="lb-swatch" id="lb-swatch" width="120" height="90" aria-hidden="true"></canvas><div><p class="lb-colour" id="lb-colour"></p></div></div>
           <p class="lb-summary" id="lb-summary"></p>
           <dl class="spec" id="lb-spec"></dl>
           <div class="lightbox-actions">
@@ -262,72 +441,6 @@
           </div>
         </div>
       </div>
-    </div>
-  </dialog>
-
-  <dialog class="quote-dialog" id="quote-dialog" aria-labelledby="qd-title">
-    <div class="quote-inner">
-      <header class="lightbox-head">
-        <div>
-          <p class="eyebrow">Free survey &amp; quote</p>
-          <h2 id="qd-title" class="lightbox-title">Get a quote for your roof.</h2>
-        </div>
-        <button type="button" class="icon-btn" id="qd-close" aria-label="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-        </button>
-      </header>
-      <form class="form" id="quote-form" data-source="visualiser" novalidate>
-        <div class="form-row form-row--2">
-          <div class="field">
-            <input class="input" id="v-name" name="name" type="text" autocomplete="name" placeholder=" " aria-describedby="v-name-err">
-            <label class="fl-label" for="v-name">Your name</label>
-            <p class="field-error" id="v-name-err" data-error-for="name" hidden></p>
-          </div>
-          <div class="field">
-            <input class="input" id="v-postcode" name="postcode" type="text" autocomplete="postal-code" placeholder=" " aria-describedby="v-postcode-err">
-            <label class="fl-label" for="v-postcode">Postcode <span class="opt">(optional)</span></label>
-            <p class="field-error" id="v-postcode-err" data-error-for="postcode" hidden></p>
-          </div>
-        </div>
-        <div class="form-row form-row--2">
-          <div class="field">
-            <input class="input" id="v-phone" name="phone" type="tel" autocomplete="tel" placeholder=" " aria-describedby="v-phone-hint v-phone-err">
-            <label class="fl-label" for="v-phone">Phone</label>
-            <p class="hint" id="v-phone-hint">A phone number or an email address is fine.</p>
-            <p class="field-error" id="v-phone-err" data-error-for="phone" hidden></p>
-          </div>
-          <div class="field">
-            <input class="input" id="v-email" name="email" type="email" autocomplete="email" placeholder=" " aria-describedby="v-email-err">
-            <label class="fl-label" for="v-email">Email</label>
-            <p class="field-error" id="v-email-err" data-error-for="email" hidden></p>
-          </div>
-        </div>
-        <div class="field">
-          <select class="select" id="v-product" name="product">
-            <option value="">Choose one (optional)</option>
-          </select>
-          <label class="fl-label" for="v-product">Your favourite roof</label>
-        </div>
-        <div class="field">
-          <textarea class="textarea" id="v-message" name="message" rows="3" placeholder=" "></textarea>
-          <label class="fl-label" for="v-message">Anything else? <span class="opt">(optional)</span></label>
-        </div>
-        <label class="check" for="v-images" id="v-images-row" hidden>
-          <input id="v-images" name="includeImages" type="checkbox" checked>
-          <span>Attach my before and after images to the request</span>
-        </label>
-        <div class="hp-field" aria-hidden="true">
-          <label for="v-company">Company</label>
-          <input id="v-company" name="company" type="text" tabindex="-1" autocomplete="off">
-        </div>
-        <label class="check" for="v-consent">
-          <input id="v-consent" name="consent" type="checkbox" aria-describedby="v-consent-err">
-          <span>I'm happy for WV Roofing to contact me about this enquiry. See the <a href="/WVROOFING/privacy/">privacy notice</a>.</span>
-        </label>
-        <p class="field-error" id="v-consent-err" data-error-for="consent" hidden></p>
-        <button class="btn btn-primary btn-block" type="submit">Send my request</button>
-        <p class="form-status" role="status" aria-live="polite" hidden></p>
-      </form>
     </div>
   </dialog>
 

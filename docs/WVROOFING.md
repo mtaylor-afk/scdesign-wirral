@@ -41,6 +41,17 @@ stays in the navy squircle monogram and the gold eyebrow text. All colours are t
 of `assets/css/site.css` (dark mode included); swap `--blue` for navy there to go more on-brand.
 The home picker and heroes are drawn live by `assets/js/vis/hero.js` from the sample houses.
 
+## The visualiser's six steps
+
+1. **Your home** (optional; "Photo only" skips it): postcode, address (or typed in), a satellite view with a
+   pin where the location is rooftop-accurate, "is the pin on your house?", and the kind of property.
+2. **Photo**, 3. **mark the roof**, 4. **compare** (below).
+5. **Estimate**: says honestly that no licensed roof-measurement data is available online yet, with the
+   survey disclaimer, and offers "Request a survey".
+6. **Send**: the enquiry, saved with a reference (below).
+
+Each step is a browser history entry, and a refresh carries on where the customer was.
+
 ## How the roof images are made
 
 1. **Mark the roof** in the browser (outline / cut-out / brush tools; sample houses come pre-marked).
@@ -92,6 +103,8 @@ state and the reason.
 |---|---|---|
 | `WVR_OPENAI_API_KEY` | photo-real renders (use a dedicated OpenAI project with a hard budget); also needs `WVR_CAP_IMAGE_GENERATION=on` and project storage | unset = previews only |
 | `WVR_LEAD_TO` | where enquiry notifications are emailed (comma-separated); also needs `WVR_CAP_ENQUIRY_DELIVERY=on` | unset = saved, not emailed |
+| `WVR_IDEAL_POSTCODES_KEY` | address lookup; also needs `WVR_CAP_ADDRESS_LOOKUP=on` | unset = type the address |
+| `WVR_GOOGLE_MAPS_STATIC_KEY` + `WVR_GOOGLE_MAPS_SIGNING_SECRET` | the satellite view; also needs `WVR_CAP_AERIAL_DISPLAY=on` | unset = no satellite view |
 | `WVR_IMAGE_MODEL` | image model; unknown models are refused, not guessed at | `gpt-image-2.5-sunburst` |
 | `WVR_IMAGE_QUALITY` | a quality the model accepts (always sent explicitly) | `high` |
 | `WVR_ENABLED` | `0` switches every paid call off | on |

@@ -73,7 +73,8 @@ async function createProject(o) {
 async function requireProject(req, id) {
   const token = bearer(req);
   if (!token) throw new HttpError(401, "unauthorised", "This request needs the project's token.");
-  const notFound = () => new HttpError(404, "not_found", "That project doesn't exist or has expired.");
+  // Its own code, so the browser knows to drop its stored key and start a new project.
+  const notFound = () => new HttpError(404, "project_not_found", "That project doesn't exist or has expired.");
   if (!UUID_RE.test(id)) throw notFound();
   const { rows } = await db.query("SELECT * FROM wvr_projects WHERE id = $1", [id]);
   const p = rows[0];

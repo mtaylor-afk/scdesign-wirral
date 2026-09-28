@@ -1,7 +1,7 @@
 // WV Roofing — shared page behaviour: global and local navigation, reveal on
 // scroll, scrolling galleries, the "which roof is right for you" compare grid,
 // swatches, before/after sliders, the home-page roof picker and quote forms.
-import { loadCatalogue, priceBandNode, priceWord } from "./catalogue.js";
+import { loadCatalogue } from "./catalogue.js";
 import { paintSwatchElement } from "./tiles.js";
 import { ROOT } from "./config.js";
 import { initBeforeAfter } from "./ba.js";
@@ -185,8 +185,6 @@ function compareCard(p) {
     d.style.background = hex;
     dots.appendChild(d);
   }
-  const price = make("p", "cmp-price");
-  price.append(priceBandNode(p.price), document.createTextNode(priceWord(p.price)));
   const actions = make("div", "cmp-actions");
   const tryIt = make("a", "btn btn-primary btn-sm", "Try it on your house");
   tryIt.href = ROOT + "visualiser/?tile=" + encodeURIComponent(p.id);
@@ -211,7 +209,7 @@ function compareCard(p) {
     row.append(make("dt", "", k), make("dd", "", v));
     spec.appendChild(row);
   }
-  col.append(canvas, dots, make("h3", "cmp-name", p.name), make("p", "cmp-colour", p.colourName), price, actions, spec);
+  col.append(canvas, dots, make("h3", "cmp-name", p.name), make("p", "cmp-colour", p.colourName), actions, spec);
   return { col, canvas };
 }
 

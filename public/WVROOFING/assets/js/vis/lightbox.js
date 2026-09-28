@@ -1,5 +1,5 @@
-// WV Roofing Roof Visualiser — full-size before/after comparison dialog.
-import { priceBandNode, priceWord } from "../catalogue.js";
+// WV Roofing Roof Visualiser — full-size before/after comparison dialog. The
+// Before / Side by side / After buttons give the same comparison without a drag.
 import { paintSwatchElement } from "../tiles.js";
 import { initBeforeAfter } from "../ba.js";
 
@@ -26,11 +26,16 @@ export class Lightbox {
       qa: $("#lb-qa"),
       swatch: $("#lb-swatch"),
       colour: $("#lb-colour"),
-      price: $("#lb-price"),
       summary: $("#lb-summary"),
       spec: $("#lb-spec"),
+      toggle: $("#lb-ba-toggle"),
     };
     initBeforeAfter(this.d);
+    this.el.toggle.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-ba]");
+      if (b) this.setSplit(Number(b.dataset.ba));
+    });
+    this.el.range.addEventListener("input", () => this.markSplit());
     $("#lb-close").addEventListener("click", () => this.d.close());
     $("#lb-prev").addEventListener("click", () => this.step(-1));
     $("#lb-next").addEventListener("click", () => this.step(1));
@@ -59,10 +64,20 @@ export class Lightbox {
   open(id) {
     this.id = id;
     this.view = "ai";
-    this.el.range.value = "50";
-    this.el.ba.style.setProperty("--pos", "50%");
+    this.setSplit(50);
     this.render();
     if (!this.d.open) this.d.showModal();
+  }
+
+  /** 100 = all before, 0 = all after (the slider's own scale). */
+  setSplit(pos) {
+    this.el.range.value = String(pos);
+    this.el.range.dispatchEvent(new Event("input"));
+  }
+
+  markSplit() {
+    const v = this.el.range.value;
+    this.el.toggle.querySelectorAll("[data-ba]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.ba === v ? "true" : "false"));
   }
 
   isOpen() {
@@ -107,7 +122,6 @@ export class Lightbox {
       this.el.qa.hidden = true;
     }
     this.el.colour.textContent = p.colourName + " · " + p.family;
-    this.el.price.replaceChildren(priceBandNode(p.price), document.createTextNode(" " + priceWord(p.price)));
     this.el.summary.textContent = p.summary;
     const rows = [
       ["Format", p.format],

@@ -50,10 +50,11 @@
 # from /* above (Cloudflare appends rules), plus a content CSP for WV Roofing's
 # pages only: they hold a customer project token in sessionStorage. The script
 # hash is the pages' one inline line (document.documentElement.classList.add("js"););
-# scripts/wvroofing/tests/csp.test.mjs keeps it, and vercel.json, in sync.
+# scripts/wvroofing/tests/csp.test.mjs keeps it, and vercel.json, in sync. Images
+# may come from maps.googleapis.com: the signed satellite view of the customer's house.
 /WVROOFING
   X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-WZRJfWvsnNCPcxzZwvyhovnZGqhZaC+8gPGPRbx6wTk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://scdesign-wirral.vercel.app https://vercel.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-WZRJfWvsnNCPcxzZwvyhovnZGqhZaC+8gPGPRbx6wTk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://maps.googleapis.com; connect-src 'self' https://scdesign-wirral.vercel.app https://vercel.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
 /WVROOFING/*
   X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-WZRJfWvsnNCPcxzZwvyhovnZGqhZaC+8gPGPRbx6wTk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://scdesign-wirral.vercel.app https://vercel.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-WZRJfWvsnNCPcxzZwvyhovnZGqhZaC+8gPGPRbx6wTk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://maps.googleapis.com; connect-src 'self' https://scdesign-wirral.vercel.app https://vercel.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'

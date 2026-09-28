@@ -5,6 +5,7 @@
 // tab being restored, and disappears when the tab is closed. It is never put
 // in localStorage (this origin is shared with another site) and never in a URL.
 import { API_BASE } from "../config.js";
+import { sendEnquiry } from "../enquiry.js";
 
 const KEY = "wvr.project.v1";
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -75,7 +76,8 @@ async function call(method, path, opts) {
   }
   if (!r.ok || !json || json.ok === false) {
     const code = (json && json.error) || "http_" + r.status;
-    if (o.project && (r.status === 401 || (r.status === 404 && code === "not_found" && o.projectRoute))) forgetProject();
+    // The project is gone (deleted, expired, or from an older session): forget its key.
+    if (o.project && (r.status === 401 || code === "project_not_found")) forgetProject();
     throw new ClientError(r.status, code, (json && json.message) || "Something went wrong. Please try again.", Number(r.headers.get("Retry-After")) || 0);
   }
   return json;
@@ -111,7 +113,7 @@ export async function ensureProject(opts) {
 export async function getProject() {
   const p = currentProject();
   if (!p) return null;
-  const j = await call("GET", "projects/" + p.id, { project: p, projectRoute: true });
+  const j = await call("GET", "projects/" + p.id, { project: p });
   return j.project;
 }
 
@@ -174,6 +176,39 @@ export async function deleteProject() {
   forgetProject();
 }
 
+/** Addresses at a postcode: [{ label, newBuild, pinnable, token }]. */
+export async function lookupAddress(postcode) {
+  const p = requireProject();
+  return call("POST", "projects/" + p.id + "/address/lookup", { body: { postcode }, project: p });
+}
+
+/** Choose a looked-up address ({ token }) or a typed one ({ manual: { line1, line2, town, postcode } }). */
+export async function chooseAddress(choice) {
+  const p = requireProject();
+  const j = await call("POST", "projects/" + p.id + "/address", { body: choice, project: p });
+  return j.address;
+}
+
+export async function clearAddress() {
+  const p = currentProject();
+  if (!p) return;
+  await call("DELETE", "projects/" + p.id + "/address", { project: p });
+}
+
+/** The aerial view of the chosen address: { available, url, pin, attribution } or { available: false, reason }. */
+export async function propertyView() {
+  const p = requireProject();
+  const j = await call("GET", "projects/" + p.id + "/property/view", { project: p });
+  return j.view;
+}
+
+/** Record what the customer confirmed: { pinConfirmed, propertyType }. */
+export async function confirmProperty(o) {
+  const p = requireProject();
+  const j = await call("POST", "projects/" + p.id + "/property/confirm", { body: o, project: p });
+  return j.property;
+}
+
 /** A random request key, so a repeated tap or a reload never makes a second render. */
 export function newKey() {
   const b = new Uint8Array(12);
@@ -202,7 +237,7 @@ export async function submitRenders(visualIds, idempotencyKey) {
 export async function listRenders() {
   const p = currentProject();
   if (!p) return [];
-  const j = await call("GET", "projects/" + p.id + "/renders", { project: p, projectRoute: true });
+  const j = await call("GET", "projects/" + p.id + "/renders", { project: p });
   return j.renders;
 }
 
@@ -232,5 +267,11 @@ export async function sendProjectEnquiry(payload) {
     body: JSON.stringify(payload),
     cache: "no-store",
   });
-  return { status: res.status, json: await res.json().catch(() => ({})) };
+  const json = await res.json().catch(() => ({}));
+  if (json.error === "project_not_found") {
+    // The project has gone: still send the enquiry, just without the photo.
+    forgetProject();
+    return sendEnquiry(Object.assign({}, payload, { source: "visualiser", includeImages: undefined }));
+  }
+  return { status: res.status, json };
 }

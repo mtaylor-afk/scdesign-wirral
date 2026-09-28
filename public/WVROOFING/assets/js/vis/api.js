@@ -16,7 +16,8 @@ const OFFLINE = { reachable: false, caps: {}, renders: { live: false, test: fals
 export function getHealth() {
   if (healthPromise) return healthPromise;
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 7000);
+  // Generous: the first request to a cold function also wakes the database.
+  const timer = setTimeout(() => ctl.abort(), 15000);
   healthPromise = fetch(API_BASE + "/api/wvroofing/health", { cache: "no-store", signal: ctl.signal })
     .then((r) => (r.ok ? r.json() : null))
     .then((j) => {

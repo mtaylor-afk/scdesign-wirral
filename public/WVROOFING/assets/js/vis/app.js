@@ -1,8 +1,14 @@
 // WV Roofing Roof Visualiser — page controller.
 //
-// Flow: 1 photo (upload / camera / sample)  ->  2 mark the roof (MaskEditor)
-//       ->  3 compare: eight instant quick previews, then photo-real AI renders
-//          (optional, with consent) composited so only the roof changes.
+// Six steps (journey.js; each is a History API entry, so Back walks through them):
+//   1 your home (property.js: postcode, address, satellite view; or "photo only")
+//   2 photo (upload / camera / sample)  ->  3 mark the roof (MaskEditor)
+//   4 compare: eight instant quick previews, then photo-real AI renders
+//     (optional, with consent) composited so only the roof changes
+//   5 estimate (honest: no licensed measurement data yet)  ->  6 send the enquiry
+// The project id rides in the URL (?project=) and its key in sessionStorage, so
+// a refresh resumes where the customer was: address, photo, outline, previews,
+// renders and any enquiry are rebuilt from the server.
 // An uploaded photo goes to the customer's project on the server (client.js):
 // it is checked, stripped of metadata and prepared there, and the editor works
 // on the server's prepared copy so the saved roof outline lines up exactly.
@@ -11,8 +17,10 @@
 // polls until they're done. The server composites them, so what comes back is
 // the customer's own photo with only the roof changed. Sample houses show
 // pre-rendered results only; they never call the AI service.
-import { loadCatalogue, priceBandNode } from "../catalogue.js";
+import { loadCatalogue } from "../catalogue.js";
 import { ROOT, IS_LOCAL } from "../config.js";
+import { initJourney, show, stepFromUrl, setParam, currentStep } from "./journey.js";
+import { initProperty, restoreProperty, propertyShown, propertyState, resetProperty } from "./property.js";
 import { loadSample, photoWarnings, blobToCanvas } from "./photo.js";
 import { MaskEditor } from "./mask-editor.js";
 import { analyseRoof, renderPreview } from "./preview.js";
@@ -26,6 +34,8 @@ import {
   deleteProject,
   setConsent,
   currentProject,
+  forgetProject,
+  getProject,
   sniffFile,
   submitRenders,
   listRenders,
@@ -38,7 +48,7 @@ import {
 } from "./client.js";
 import { Lightbox } from "./lightbox.js";
 import { watermarked, downloadCanvas } from "./watermark.js";
-import { wireEnquiryForm, fillProductSelect, sendEnquiry } from "../enquiry.js";
+import { wireEnquiryForm, fillProductSelect, sendEnquiry, savedMessage } from "../enquiry.js";
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
@@ -68,6 +78,8 @@ const S = {
   renderKey: "",
   pollTimer: 0,
   priority: null,
+  chosen: null, // the finish the customer picked last (lightbox, "Get a quote for this roof")
+  enquiry: null, // { reference } once an enquiry about this project is saved
   aiRequested: false,
   timer: 0,
   urls: [],
@@ -147,29 +159,37 @@ function storageReady() {
 }
 
 function showStep(step, focus) {
-  $$("[data-panel]").forEach((p) => {
-    p.hidden = p.dataset.panel !== step;
-  });
-  const order = ["photo", "mark", "compare"];
-  $$(".vis-steps li").forEach((li) => {
-    const i = order.indexOf(li.dataset.step);
-    const cur = order.indexOf(step);
-    if (i === cur) li.setAttribute("aria-current", "step");
-    else li.removeAttribute("aria-current");
-    li.classList.toggle("is-done", i < cur);
-  });
-  const steps = $(".vis-steps");
-  if (steps) {
-    const top = steps.getBoundingClientRect().top + window.scrollY - 90;
-    if (window.scrollY > top + 40 || window.scrollY < top - 400) window.scrollTo({ top, behavior: "smooth" });
-  }
-  if (focus !== false) {
-    const h = $('[data-panel="' + step + '"] .vis-h');
-    if (h) {
-      h.tabIndex = -1;
-      h.focus({ preventScroll: true });
-    }
-  }
+  show(step, { focus });
+}
+
+/** Which steps make sense right now (Back, deep links and the summary's "Change" use this). */
+function canShow(step) {
+  if (step === "mark") return !!(S.photo && S.editor);
+  if (step === "compare") return S.cards.size > 0;
+  return true;
+}
+
+/** The customer's project, created on first use; its id goes in the URL so a refresh resumes it. */
+async function projectReady(opts) {
+  const p = await ensureProject(opts);
+  setParam("project", p.id);
+  return p;
+}
+
+// ---------------------------------------------------------------------------
+// the summary of choices so far
+
+function updateSummary() {
+  const sheet = $("#summary-sheet");
+  const { address } = propertyState();
+  $("#sum-home").textContent = address ? address.label : currentProject() || S.photo ? "Photo only" : "Not added";
+  $("#sum-photo").textContent = S.photo ? (S.sample ? "Sample: " + S.sample.title : "Your photo") : "Not added";
+  const chosen = S.cat && (S.chosen || firstChoice());
+  const p = chosen && S.cat.byId.get(chosen);
+  $("#sum-roof").textContent = p ? p.name + ", " + p.colourName : "Not chosen yet";
+  $("#btn-delete-project").hidden = !currentProject();
+  const step = currentStep();
+  sheet.hidden = !(["compare", "estimate", "enquiry"].includes(step) && (address || S.photo));
 }
 
 // ---------------------------------------------------------------------------
@@ -242,8 +262,19 @@ async function handleFile(file) {
   try {
     showStatus("Uploading your photo…");
     announce("Uploading your photo.");
-    await ensureProject({ consentAi: $("#consent-ai").checked });
-    const photo = await uploadPhoto(file, kind, (f) => showStatus("Uploading your photo… " + Math.round(f * 100) + "%"));
+    const opts = { consentAi: $("#consent-ai").checked };
+    const progress = (f) => showStatus("Uploading your photo… " + Math.round(f * 100) + "%");
+    await projectReady(opts);
+    let photo;
+    try {
+      photo = await uploadPhoto(file, kind, progress);
+    } catch (err) {
+      // The project this tab remembered has gone: start a new one and try once more.
+      if (!(err instanceof ClientError) || err.code !== "project_not_found") throw err;
+      resetProperty();
+      await projectReady(opts);
+      photo = await uploadPhoto(file, kind, progress);
+    }
     showStatus("Preparing your photo…");
     const canvas = await blobToCanvas(await fetchDisplay());
     if (canvas.width !== photo.w || canvas.height !== photo.h) throw new ClientError(0, "size_mismatch", "Your photo couldn't be prepared. Please try again.");
@@ -322,7 +353,13 @@ function resetResults() {
   $("#render-banner").hidden = true;
 }
 
-function startMarking(photo, sample) {
+/**
+ * @param {object} photo
+ * @param {object | null} sample
+ * @param {{ quiet?: boolean }} [opts]  quiet: set up without moving to the step (resuming)
+ */
+function startMarking(photo, sample, opts) {
+  const quiet = !!(opts && opts.quiet);
   resetResults();
   if (S.editor) S.editor.destroy();
   S.photo = photo;
@@ -351,6 +388,8 @@ function startMarking(photo, sample) {
   w.hidden = !S.photoWarns.length;
   w.textContent = S.photoWarns.join(" ");
   $("#btn-delete-photo").hidden = !photo.uploaded;
+  updateSummary();
+  if (quiet) return;
   showStep("mark");
   S.editor.fit();
   announce("Photo ready. Now mark your roof.");
@@ -437,17 +476,23 @@ function saveOutlineIfChanged() {
   return S.outlineChain;
 }
 
+/** Delete the whole project: photo, outline, renders and address. (An enquiry already sent is kept.) */
 async function deleteMyPhoto() {
   if (!currentProject()) return;
-  if (!window.confirm("Delete your photo and roof outline from WV Roofing? This can't be undone.")) return;
+  if (!window.confirm("Delete your photo, roof outline, renders and address from WV Roofing? This can't be undone.")) return;
   try {
     await deleteProject();
     resetResults();
     if (S.editor) S.editor.destroy();
     S.editor = null;
     S.photo = null;
+    S.sample = null;
+    S.enquiry = null;
+    resetProperty();
+    setParam("project", null);
+    showEnquiryDone(null);
     showStep("photo");
-    showStatus("Your photo and roof outline have been deleted.");
+    showStatus("Your photo, roof outline, renders and address have been deleted.");
     announce("Your photo has been deleted.");
   } catch (err) {
     window.alert(err instanceof ClientError ? err.message : "Your photo couldn't be deleted just now. Please try again.");
@@ -484,7 +529,11 @@ function buildGrid() {
     aiImg.className = "result-ai";
     aiImg.alt = "";
     open.append(base, aiImg);
-    open.addEventListener("click", () => S.lightbox.open(id));
+    open.addEventListener("click", () => {
+      S.chosen = id; // the roof looked at last is the one the summary and the enquiry start from
+      updateSummary();
+      S.lightbox.open(id);
+    });
     const body = document.createElement("div");
     body.className = "result-body";
     const h = document.createElement("h3");
@@ -494,7 +543,7 @@ function buildGrid() {
     meta.className = "result-meta";
     const colour = document.createElement("span");
     colour.textContent = p.colourName;
-    meta.append(colour, priceBandNode(p.price));
+    meta.append(colour);
     const foot = document.createElement("div");
     foot.className = "result-foot";
     const badge = document.createElement("span");
@@ -520,7 +569,12 @@ function setBadge(id, kind, text) {
   c.badge.textContent = text;
 }
 
-async function goCompare() {
+/**
+ * Build the eight previews for the current outline and move to the compare step.
+ * @param {{ show?: boolean }} [opts]  show: false rebuilds without changing step (resuming)
+ */
+async function goCompare(opts) {
+  const o = opts && opts.type ? {} : opts || {};
   const ed = S.editor;
   if (!ed) return;
   if (ed.draft && ed.draft.pts.length >= 3) ed.finishDraft();
@@ -531,7 +585,7 @@ async function goCompare() {
   }
   const key = JSON.stringify(ed.getShapes());
   if (key === S.shapesKey && S.cards.size) {
-    showStep("compare");
+    if (o.show !== false) showStep("compare");
     return;
   }
   resetResults();
@@ -544,7 +598,10 @@ async function goCompare() {
   saveOutlineIfChanged(); // not awaited: the previews don't depend on it
   S.beforeUrl = await canvasToUrl(S.photo.canvas);
   buildGrid();
-  showStep("compare");
+  $("#compare-sub").textContent = S.sample
+    ? "Quick previews of a sample house. Tap any roof to compare before and after."
+    : "Tap any roof to compare before and after. Photo-real renders appear as they're ready.";
+  if (o.show !== false) showStep("compare");
   setRenderStatus("Drawing quick previews…");
   await nextFrame();
   S.analysis = analyseRoof(S.orig, S.mask);
@@ -852,24 +909,42 @@ async function stopRenders() {
 function wireCompare() {
   $("#btn-start-ai").addEventListener("click", () => startAi(S.gen));
   $("#btn-stop-ai").addEventListener("click", stopRenders);
-  $("#btn-edit-mark").addEventListener("click", () => showStep("mark"));
+  $("#btn-edit-mark").addEventListener("click", () => {
+    // Renders belong to an outline: a changed outline means making them again.
+    if (S.ai.size && S.photo && S.photo.uploaded && !window.confirm("If you change the outline, your photo-real renders will need making again. Carry on?")) return;
+    showStep("mark");
+  });
   $("#btn-restart").addEventListener("click", () => {
     resetResults();
     showStep("photo");
   });
   $("#btn-quote").addEventListener("click", () => openQuote(firstChoice()));
-  // The local nav's "Get a quote" opens the quote form here, pre-filled with the favourite so far.
+  $("#btn-to-estimate").addEventListener("click", () => showStep("estimate"));
+  $("#btn-estimate-back").addEventListener("click", () => showStep(canShow("compare") ? "compare" : "photo"));
+  $("#btn-request-survey").addEventListener("click", () => openQuote(firstChoice(), "Please arrange a roof survey."));
+  $("#btn-enquiry-back").addEventListener("click", () => showStep(canShow("compare") ? "compare" : "photo"));
+  // The local nav's "Get a quote" opens the enquiry step, pre-filled with the favourite so far.
   $$("[data-open-quote]").forEach((a) =>
     a.addEventListener("click", (e) => {
       e.preventDefault();
       openQuote(S.cat ? firstChoice() : "");
     })
   );
+  // The summary's "Change" links.
+  $$("[data-goto]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const step = b.dataset.goto;
+      if (canShow(step)) showStep(step);
+      else showStep(S.photo ? "mark" : "photo");
+    })
+  );
+  $("#btn-delete-project").addEventListener("click", deleteMyPhoto);
 }
 
 function firstChoice() {
+  if (S.chosen) return S.chosen;
   if (S.priority) return S.priority;
-  const withAi = productOrder().find((id) => S.ai.has(id));
+  const withAi = S.cat ? productOrder().find((id) => S.ai.has(id)) : "";
   return withAi || "";
 }
 
@@ -905,21 +980,45 @@ function aboutMyPhoto() {
   return !!(S.photo && S.photo.uploaded && currentProject());
 }
 
-let quoteWired = false;
-function openQuote(productId) {
-  const dlg = $("#quote-dialog");
-  const form = $("#quote-form");
-  const select = $("#v-product");
-  fillProductSelect(select, productId || "");
+/** Go to the enquiry step with a roof (and, from "Request a survey", a message) filled in. */
+function openQuote(productId, message) {
+  if (productId) S.chosen = productId;
+  fillProductSelect($("#v-product"), productId || "");
+  if (message && !$("#v-message").value) $("#v-message").value = message;
   $("#v-images-row").hidden = !aboutMyPhoto();
-  if (!quoteWired) {
-    quoteWired = true;
-    wireEnquiryForm(form, {
-      getContext: () => (aboutMyPhoto() ? { includeImages: $("#v-images").checked } : { source: S.sample ? "visualiser-sample" : "visualiser" }),
-      send: (payload) => (aboutMyPhoto() ? sendProjectEnquiry(payload) : sendEnquiry(payload)),
-    });
+  updateSummary();
+  showStep("enquiry");
+}
+
+function wireEnquiry() {
+  const form = $("#quote-form");
+  wireEnquiryForm(form, {
+    getContext: () => (aboutMyPhoto() ? { includeImages: $("#v-images").checked } : { source: S.sample ? "visualiser-sample" : "visualiser" }),
+    send: (payload) => (aboutMyPhoto() ? sendProjectEnquiry(payload) : sendEnquiry(payload)),
+    onSent: (json) => {
+      if (aboutMyPhoto() && json.reference) S.enquiry = { reference: json.reference };
+      showEnquiryDone({ text: form.querySelector(".form-status").textContent });
+    },
+  });
+  $("#v-product").addEventListener("change", (e) => {
+    if (S.cat && S.cat.byId.has(e.target.value)) {
+      S.chosen = e.target.value;
+      updateSummary();
+    }
+  });
+}
+
+/** Once the enquiry is saved, the step shows its reference instead of the form (never the form again). */
+function showEnquiryDone(done) {
+  const box = $("#enquiry-done");
+  if (!done) {
+    box.hidden = true;
+    $("#enquiry-card").hidden = false;
+    return;
   }
-  dlg.showModal();
+  box.textContent = done.text;
+  box.hidden = false;
+  $("#enquiry-card").hidden = true;
 }
 
 function wireDialogs() {
@@ -930,11 +1029,38 @@ function wireDialogs() {
     onQuote: openQuote,
     onDownload: download,
   });
-  const qd = $("#quote-dialog");
-  $("#qd-close").addEventListener("click", () => qd.close());
-  qd.addEventListener("click", (e) => {
-    if (e.target === qd) qd.close();
-  });
+}
+
+// ---------------------------------------------------------------------------
+// resume after a refresh (the project named in the URL, if this tab holds its key)
+
+/** Rebuild everything the project holds; resolves with the furthest step reached. */
+async function resume() {
+  const proj = await getProject();
+  if (!proj) return null;
+  $("#consent-ai").checked = !!proj.consentAi;
+  restoreProperty(proj.address, proj.property);
+  if (proj.enquiry) {
+    S.enquiry = proj.enquiry;
+    showEnquiryDone({ text: "You've already sent us an enquiry about this photo. Your reference is " + proj.enquiry.reference + "." });
+  }
+  if (proj.photo) {
+    const canvas = await blobToCanvas(await fetchDisplay());
+    const p = proj.photo;
+    startMarking({ canvas, w: p.w, h: p.h, name: "photo", originalW: p.origW, originalH: p.origH, warnings: p.warnings, uploaded: true }, null, { quiet: true });
+    if (proj.mask && proj.mask.shapes && proj.mask.shapes.length) {
+      S.editor.setShapes(proj.mask.shapes);
+      // This outline is already saved: saving it again would make a new outline and set its renders aside.
+      S.outlineKey = JSON.stringify(S.editor.getShapes());
+      await goCompare({ show: false });
+      schedulePoll(S.gen, 0); // renders made (or still being made) before the refresh
+    }
+  }
+  updateSummary();
+  if (proj.enquiry) return "enquiry";
+  if (S.cards.size) return "compare";
+  if (proj.photo) return "mark";
+  return proj.address ? "photo" : "property";
 }
 
 // ---------------------------------------------------------------------------
@@ -944,10 +1070,19 @@ async function boot() {
   if (IS_LOCAL) window.__wvr = S; // test hook (local dev only)
   const params = new URLSearchParams(window.location.search);
   S.priority = params.get("tile");
+  initJourney({
+    canShow,
+    onShow: (step) => {
+      if (step === "property") propertyShown();
+      if (step === "mark" && S.editor) requestAnimationFrame(() => S.editor && S.editor.fit());
+      updateSummary();
+    },
+  });
   wireUpload();
   wireMarkTools();
   wireCompare();
   wireDialogs();
+  wireEnquiry();
   const [cat, samples, health] = await Promise.all([loadCatalogue(), loadSamples(), getHealth()]);
   S.cat = cat;
   S.samples = samples;
@@ -963,9 +1098,37 @@ async function boot() {
   if (health.renders.live && health.renders.test) note.textContent = "Test environment: photo-real renders use a stand-in image instead of the AI service.";
   else if (health.renders.live) note.textContent = "Photo-real rendering is available for your own photo. Each render takes about 20 to 60 seconds.";
   else note.textContent = "Photo-real rendering isn't switched on yet, so you'll see quick previews.";
+  initProperty({
+    caps: health.caps,
+    ensureProject: () => projectReady({ consentAi: $("#consent-ai").checked }),
+    next: () => showStep("photo"),
+    announce,
+    onChange: updateSummary,
+  });
+
+  // A refresh (or a restored tab) carries on with the project named in the URL.
+  const pid = params.get("project");
+  const saved = currentProject();
+  let resumed = null;
+  if (pid && saved && saved.id === pid) {
+    resumed = await resume().catch((err) => {
+      console.warn("resume failed", err);
+      forgetProject();
+      return null;
+    });
+  }
+  if (!resumed && pid) setParam("project", null); // another tab's, deleted or expired: start afresh
+
   const wanted = params.get("sample");
   const s = wanted && samples.find((x) => x.id === wanted);
-  if (s) selectSample(s);
+  if (s && !resumed) {
+    show("photo", { history: "replace", focus: false });
+    selectSample(s);
+    return;
+  }
+  const fromUrl = stepFromUrl();
+  const start = resumed ? (params.get("step") && canShow(fromUrl) ? fromUrl : resumed) : canShow(fromUrl) && fromUrl !== "mark" && fromUrl !== "compare" ? fromUrl : "property";
+  show(start, { history: "replace", focus: false });
 }
 
 boot().catch((err) => {

@@ -523,10 +523,6 @@ html.nav-open .gnav::before { background: var(--nav-solid); }
 .picker-info .more { margin-top: 10px; }
 .picker + .caption { margin-top: 28px; }
 
-/* ---------- Price band ---------- */
-.price-band { font-weight: 600; letter-spacing: 0.04em; color: var(--text); white-space: nowrap; }
-.price-band .dim { opacity: 0.28; }
-
 /* ---------- Tiles & bento ---------- */
 .bento { display: grid; gap: 16px; }
 @media (min-width: 734px) { .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; } }
@@ -638,8 +634,6 @@ html.nav-open .gnav::before { background: var(--nav-solid); }
 .band--alt .cmp-col { background: var(--bg-elev); }
 .cmp-name { font-size: 24px; line-height: 1.1667; letter-spacing: -0.012em; min-height: 2.34em; display: grid; align-content: end; }
 .cmp-colour { color: var(--text-2); margin-top: 4px; }
-.cmp-price { margin-top: 12px; font-size: 14px; color: var(--text-2); }
-.cmp-price .price-band { margin-right: 6px; }
 .cmp-actions { display: grid; gap: 14px; justify-items: center; margin-top: 22px; }
 .cmp-actions .more { font-size: 14px; }
 .cmp-spec {

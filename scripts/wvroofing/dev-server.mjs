@@ -11,8 +11,11 @@
 // - Runs as the labelled TEST ENVIRONMENT (WVR_ENV=test): PGlite instead of
 //   Neon, a local folder instead of Vercel Blob, a stand-in for OpenAI that
 //   paints the product's colour into the marked roof (switched on here, ~1.5 s
-//   a render), and an in-memory outbox instead of email (enquiry emails are
-//   logged to this console, never sent). Production never uses any of these.
+//   a render), an in-memory outbox instead of email (enquiry emails are logged
+//   to this console, never sent), a street of test addresses at any postcode
+//   (Ideal Postcodes' own test postcodes behave as they do there: ID1 KFA not
+//   found, ID1 CLIP / ID1 CHOP unavailable) and a drawn stand-in for the
+//   satellite view. Production never uses any of these.
 // - --fixture <mode> makes the stand-in answer another way, to try the render
 //   states in the browser: timeout | network | 5xx | 5xx_once | 429_once |
 //   refused | budget | misaligned.
@@ -45,6 +48,8 @@ if (process.env.WVR_ENV === "test") {
   // like the owner switches in production.
   if (!process.env.WVR_CAP_IMAGE_GENERATION) process.env.WVR_CAP_IMAGE_GENERATION = "on";
   if (!process.env.WVR_CAP_ENQUIRY_DELIVERY) process.env.WVR_CAP_ENQUIRY_DELIVERY = "on";
+  if (!process.env.WVR_CAP_ADDRESS_LOOKUP) process.env.WVR_CAP_ADDRESS_LOOKUP = "on";
+  if (!process.env.WVR_CAP_AERIAL_DISPLAY) process.env.WVR_CAP_AERIAL_DISPLAY = "on";
   // Repeated QA runs send several enquiries an hour from one address (the limits have their own tests).
   if (!process.env.WVR_ENQUIRIES_PER_IP_HOURLY) process.env.WVR_ENQUIRIES_PER_IP_HOURLY = "200";
   if (!process.env.WVR_FIXTURE_LATENCY_MS) process.env.WVR_FIXTURE_LATENCY_MS = "1500";
@@ -187,7 +192,11 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`WV Roofing dev server: http://localhost:${PORT}/WVROOFING/` + (PROXY_LIVE ? " (API proxied to live)" : ""));
   if (process.env.WVR_ENV === "test") {
-    console.log("TEST ENVIRONMENT: PGlite database, local-folder storage, a stand-in renderer and an email outbox (never used in production).");
+    // Start the test database now, so the first page load doesn't wait for it.
+    require(path.join(repo, "serverlib", "wvroofing", "db.js"))
+      .ensureSchema()
+      .catch((err) => console.error("test database failed to start:", err.message));
+    console.log("TEST ENVIRONMENT: PGlite database, local-folder storage and stand-ins for OpenAI, email, address lookup and the satellite view (never used in production).");
     if (process.env.WVR_FIXTURE_OPENAI) console.log("Render stand-in mode: " + process.env.WVR_FIXTURE_OPENAI);
   }
 });

@@ -61,6 +61,7 @@ test("the policy allows the API, Blob uploads and fonts, and blocks plugins and 
   const policy = cloudflarePolicies()["/WVROOFING/*"];
   assert.match(policy, /connect-src 'self' https:\/\/scdesign-wirral\.vercel\.app https:\/\/vercel\.com/);
   assert.match(policy, /font-src 'self' https:\/\/fonts\.gstatic\.com/);
+  assert.match(policy, /img-src 'self' data: blob: https:\/\/maps\.googleapis\.com;/, "the aerial view is loaded straight from Google");
   assert.match(policy, /object-src 'none'/);
   assert.match(policy, /frame-ancestors 'none'/);
   assert.doesNotMatch(policy, /script-src[^;]*'unsafe-inline'/);

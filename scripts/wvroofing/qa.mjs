@@ -4,15 +4,18 @@
 //
 // Needs the dev server running (scripts/wvroofing/dev-server.mjs) unless --base
 // points at a deployed copy. Checks every page at phone and desktop widths
-// (console errors, failed requests, horizontal overflow), then drives the Roof
-// Visualiser: sample house -> quick previews (samples never call the AI
-// service) -> lightbox -> quote dialog; and on a phone viewport: the photo
-// notice, a HEIC refusal, an upload to the customer's project, a hand-drawn
-// outline saved to the project, photo-real renders (none before the customer
-// agrees; then the chosen roof automatically and the others on tap, rendered
-// by the test environment's stand-in; the served composite is compared with
-// the photo outside the roof), and "Delete my photo". Pages are served with
-// their real headers (incl. CSP), so a CSP violation shows up as a console error.
+// (console errors, failed requests, horizontal overflow, no prices), then
+// drives the Roof Visualiser: the first step, "photo only" and Back; sample
+// house -> quick previews (samples never call the AI service) -> the honest
+// estimate step -> lightbox (Before / After buttons) -> enquiry step; and on a
+// phone viewport: postcode -> address -> satellite view -> property type (test
+// stand-ins), the photo notice, a HEIC refusal, an upload to the customer's
+// project, a hand-drawn outline saved to the project, photo-real renders (none
+// before the customer agrees; then the chosen roof automatically and the
+// others on tap; the served composite is compared with the photo outside the
+// roof), a refresh that brings everything back without rendering twice, an
+// enquiry with a reference, and "Delete my photo". Pages are served with their
+// real headers (incl. CSP), so a CSP violation shows up as a console error.
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
 import os from "node:os";
@@ -91,6 +94,9 @@ try {
       ok(`${vp.name} ${p} noindex meta`, /noindex/.test(robots || ""), robots || "missing");
       const sc = await page.evaluate(() => /SC Design|scdesign/i.test(document.body.innerText));
       ok(`${vp.name} ${p} no SC Design mention in visible text`, !sc);
+      // No prices anywhere (brief §5, §13): prices come from the roofer after a survey.
+      const pounds = await page.evaluate(() => (document.body.innerText.match(/.{0,30}£.{0,30}/) || [""])[0]);
+      ok(`${vp.name} ${p} shows no prices (no "£")`, !pounds, pounds);
       await shot(page, { path: path.join(OUT, `${vp.name}-${p.replace(/\//g, "_") || "home"}.png`), fullPage: true });
       await page.close();
     }
@@ -192,15 +198,24 @@ try {
     await ctx.close();
   }
 
-  // ---- visualiser: the local nav's "Get a quote" opens the quote form -----------------
+  // ---- visualiser: first step, "photo only", and the local nav's "Get a quote" ---------
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
     const page = await ctx.newPage();
     await page.goto(BASE + "/WVROOFING/visualiser/", { waitUntil: "load", timeout: 45000 });
     await page.waitForTimeout(800);
+    const first = await page.isVisible('[data-panel="property"]');
+    const capLine = (await page.textContent("#cap-line")) || "";
+    ok("visualiser: it starts with your address, and says measurement isn't available online", first && /measurement isn't available/i.test(capLine), capLine);
+    await page.click("#btn-photo-only");
+    const photoStep = await page.waitForSelector('[data-panel="photo"]:not([hidden])', { timeout: 5000 }).then(() => true).catch(() => false);
+    ok("visualiser: 'Photo only' skips straight to the photo", photoStep && /step=photo/.test(page.url()), page.url());
+    await page.goBack();
+    const back = await page.waitForSelector('[data-panel="property"]:not([hidden])', { timeout: 5000 }).then(() => true).catch(() => false);
+    ok("visualiser: the browser's Back button goes back a step", back);
     await page.click("[data-open-quote]");
-    const open = await page.waitForSelector("#quote-dialog[open]", { timeout: 5000 }).then(() => true).catch(() => false);
-    ok("visualiser: local nav 'Get a quote' opens the quote form", open);
+    const open = await page.waitForSelector('[data-panel="enquiry"]:not([hidden])', { timeout: 5000 }).then(() => true).catch(() => false);
+    ok("visualiser: local nav 'Get a quote' opens the enquiry step", open);
     await ctx.close();
   }
 
@@ -225,6 +240,17 @@ try {
     const renderNote = (await page.textContent("#render-status")) || "";
     ok("sample houses never call the AI service", startHidden && /own photo|pre-rendered/.test(renderNote), renderNote);
 
+    // The estimate step says honestly that there's no measurement data, and offers a survey.
+    await page.click("#btn-to-estimate");
+    await page.waitForSelector('[data-panel="estimate"]:not([hidden])', { timeout: 5000 });
+    const est = (await page.textContent('[data-panel="estimate"]')) || "";
+    ok(
+      "estimate: 'suitable data unavailable', the survey disclaimer and what's not included",
+      /Suitable data unavailable/.test(est) && /Final quantities, specification and price are subject to a roof survey/.test(est) && /ridges, hips, valleys/.test(est)
+    );
+    await page.click("#btn-estimate-back");
+    await page.waitForSelector('[data-panel="compare"]:not([hidden])', { timeout: 5000 });
+
     await page.click(".result-card .result-open");
     await page.waitForSelector("#lightbox[open]");
     const title = await page.textContent("#lb-title");
@@ -232,13 +258,18 @@ try {
     await page.keyboard.press("ArrowRight");
     const title2 = await page.textContent("#lb-title");
     ok("lightbox next works", title2 !== title, title2);
+    await page.click('#lb-ba-toggle [data-ba="0"]');
+    const after = await page.evaluate(() => ({ v: document.querySelector("#lb-ba .ba-range").value, pos: document.querySelector("#lb-ba").style.getPropertyValue("--pos") }));
+    await page.click('#lb-ba-toggle [data-ba="100"]');
+    const before = await page.evaluate(() => document.querySelector("#lb-ba").style.getPropertyValue("--pos"));
+    ok("lightbox: Before / After buttons compare without dragging", after.v === "0" && after.pos === "0%" && before === "100%", JSON.stringify({ after, before }));
     await shot(page, { path: path.join(OUT, "vis-lightbox-desktop.png") });
     const [download] = await Promise.all([page.waitForEvent("download", { timeout: 10000 }).catch(() => null), page.click("#lb-download")]);
     ok("download produces a file", !!download, download ? download.suggestedFilename() : "none");
     await page.click("#lb-quote");
-    await page.waitForSelector("#quote-dialog[open]");
+    await page.waitForSelector('[data-panel="enquiry"]:not([hidden])', { timeout: 5000 });
     const sel = await page.inputValue("#v-product");
-    ok("quote dialog preselects the roof", !!sel, sel);
+    ok("'Get a quote for this roof' opens the enquiry step with that roof chosen", !!sel && sel === (await page.evaluate(() => window.__wvr.chosen)), sel);
     await page.fill("#v-name", "QA Tester");
     await page.fill("#v-email", "qa@example.com");
     await page.check("#v-consent");
@@ -248,7 +279,7 @@ try {
       const s = document.querySelector("#quote-form .form-status");
       return s && !s.hidden && !/Saving|Sending/.test(s.textContent);
     }, null, { timeout: 20000 });
-    const status = await page.textContent("#quote-form .form-status");
+    const status = (await page.isVisible("#enquiry-done")) ? await page.textContent("#enquiry-done") : await page.textContent("#quote-form .form-status");
     // Saved first, with a reference; a deployed copy without storage says it isn't collecting yet.
     ok("quote form: the enquiry is saved with a reference", (/saved/i.test(status) && REF.test(status)) || (LIVE && /concept site/i.test(status)), status);
     await shot(page, { path: path.join(OUT, "vis-quote-desktop.png") });
@@ -269,6 +300,30 @@ try {
     });
     await page.goto(BASE + "/WVROOFING/visualiser/", { waitUntil: "load", timeout: 45000 });
     await page.waitForTimeout(500);
+    // Step 1: postcode -> address -> satellite view -> "is the pin on your house?" -> kind of property.
+    if (!LIVE) {
+      await page.fill("#pc-input", "ch45 1ab");
+      await page.click("#pc-find");
+      await page.waitForSelector("#address-list button", { timeout: 15000 });
+      const listed = await page.locator("#address-list button").count();
+      const newBuild = await page.locator("#address-list .badge", { hasText: "New build" }).count();
+      ok("phone: a postcode lists its addresses (a new build labelled)", listed === 4 && newBuild === 1, listed + " addresses");
+      await page.locator("#address-list button").first().click();
+      await page.waitForSelector("#aerial:not([hidden])", { timeout: 10000 });
+      const pinAsked = await page.isVisible("#pin-q");
+      ok("phone: the satellite view shows, with the pin question for a rooftop location", pinAsked && (await page.isVisible("#aerial-img")));
+      await page.click('label.choice:has(input[name="pin"][value="yes"])');
+      await page.click('label.choice:has(input[name="ptype"][value="semi"])');
+      await shot(page, { path: path.join(OUT, "vis-property-phone.png"), fullPage: true });
+      const confirmed = page.waitForResponse((r) => isPath(r, /\/property\/confirm$/), { timeout: 15000 }).catch(() => null);
+      await page.click("#btn-property-next");
+      const cRes = await confirmed;
+      await page.waitForSelector('[data-panel="photo"]:not([hidden])', { timeout: 10000 });
+      ok("phone: the property is confirmed and the photo step follows", !!cRes && cRes.status() === 200 && /project=/.test(page.url()), cRes ? String(cRes.status()) : "no request");
+    } else {
+      await page.click("#btn-photo-only");
+      await page.waitForSelector('[data-panel="photo"]:not([hidden])', { timeout: 10000 });
+    }
     const notice = (await page.isVisible("#storage-notice")) ? await page.textContent("#storage-notice") : "";
     ok("phone: the photo notice explains upload, 30-day keeping and deletion", /uploaded/.test(notice) && /30 days/.test(notice) && /delete/.test(notice));
     // A HEIC file is caught in the browser with a clear message; nothing is uploaded.
@@ -367,11 +422,37 @@ try {
         });
         ok("phone: the served composite matches the photo outside the roof", exact.sameSize && exact.blocks > 100 && exact.bad === 0, JSON.stringify(exact));
         await shot(page, { path: path.join(OUT, "vis-ai-phone.png"), fullPage: true });
+
+        // A refresh carries on where the customer was: address, photo, outline, previews and renders.
+        const posts = renderPosts;
+        await page.reload({ waitUntil: "load" });
+        const back = await page
+          .waitForFunction(() => {
+            const cmp = document.querySelector('[data-panel="compare"]');
+            return cmp && !cmp.hidden && document.querySelectorAll(".result-card").length === 8 && document.querySelectorAll(".result-card .badge--ai").length >= 2;
+          }, null, { timeout: 60000 })
+          .then(() => true)
+          .catch(() => false);
+        const home = (await page.textContent("#sum-home")) || "";
+        ok("phone: after a refresh the address, previews and photo-real renders are all back", back && /Test Road/.test(home), home);
+        await page.click("#btn-edit-mark");
+        await page.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 10000 });
+        const pctAfter = await page.textContent("#mark-pct");
+        ok("phone: after a refresh the outline is still there to edit", pctAfter && pctAfter !== "0%", pctAfter);
+        await page.click("#btn-compare");
+        await page.waitForSelector('[data-panel="compare"]:not([hidden])', { timeout: 10000 });
+        await page.waitForTimeout(1500);
+        const jobs = await page.evaluate(async () => {
+          const p = JSON.parse(sessionStorage.getItem("wvr.project.v1"));
+          const r = await fetch("/api/wvroofing/projects/" + p.id + "/renders", { headers: { Authorization: "Bearer " + p.token } });
+          return (await r.json()).renders.length;
+        });
+        ok("phone: nothing was rendered twice because of the refresh", jobs === 2, jobs + " render jobs on the server (" + (renderPosts - posts) + " repeat requests answered from the existing job)");
       }
       // An enquiry about this photo: sent with the project (the server attaches the images).
       if (!LIVE) {
         await page.click("#btn-quote");
-        await page.waitForSelector("#quote-dialog[open]");
+        await page.waitForSelector('[data-panel="enquiry"]:not([hidden])', { timeout: 5000 });
         const imagesOffered = await page.isVisible("#v-images-row");
         await page.fill("#v-name", "QA Phone");
         await page.fill("#v-phone", "0151 496 0000");
@@ -380,23 +461,20 @@ try {
         const sent = page.waitForResponse((r) => isPath(r, /\/projects\/[^/]+\/enquiry$/) && r.request().method() === "POST", { timeout: 30000 }).catch(() => null);
         await page.click('#quote-form button[type="submit"]');
         const sentRes = await sent;
-        await page.waitForFunction(() => {
-          const s = document.querySelector("#quote-form .form-status");
-          return s && !s.hidden && !/Saving/.test(s.textContent);
-        }, null, { timeout: 20000 });
-        const st = (await page.textContent("#quote-form .form-status")) || "";
+        await page.waitForSelector("#enquiry-done:not([hidden])", { timeout: 20000 }).catch(() => null);
+        const st = (await page.textContent("#enquiry-done")) || "";
         ok("phone: an enquiry about my photo is saved with a reference and the images offered", imagesOffered && !!sentRes && sentRes.status() === 201 && REF.test(st) && /notified/.test(st), (sentRes ? sentRes.status() : "no request") + " " + st);
-        await page.click("#qd-close");
+        await shot(page, { path: path.join(OUT, "vis-enquiry-phone.png"), fullPage: true });
       }
-      // Delete it all again (this also tidies up the project the check created).
-      await page.click("#btn-edit-mark");
-      await page.waitForSelector("#btn-delete-photo:not([hidden])", { timeout: 5000 }).catch(() => null);
+      // Delete it all again from the summary (this also tidies up the project the check created).
+      await page.waitForSelector("#btn-delete-project:not([hidden])", { timeout: 5000 }).catch(() => null);
       const del = page.waitForResponse((r) => isPath(r, /\/delete$/), { timeout: 30000 }).catch(() => null);
-      await page.click("#btn-delete-photo");
+      await page.click("#btn-delete-project");
       const delRes = await del;
       await page.waitForSelector('[data-panel="photo"]:not([hidden])', { timeout: 10000 }).catch(() => null);
       const kept = await page.evaluate(() => sessionStorage.getItem("wvr.project.v1"));
-      ok("phone: 'Delete my photo' deletes the project", !!delRes && delRes.status() === 200 && kept === null, delRes ? String(delRes.status()) : "no delete");
+      const gone = !/project=/.test(page.url());
+      ok("phone: 'Delete my photo and project' deletes it all and forgets it", !!delRes && delRes.status() === 200 && kept === null && gone, delRes ? String(delRes.status()) : "no delete");
     }
     ok("phone visualiser has no console errors", errors.length === 0, errors.join(" | "));
     await ctx.close();

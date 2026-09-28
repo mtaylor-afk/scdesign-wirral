@@ -433,7 +433,7 @@ async function logCall(job, status, httpStatus, t0, cost, requestId) {
   try {
     // project_id only while the project exists (it may have been deleted mid-render); the cost is kept either way
     await db.query(
-      "INSERT INTO wvr_provider_calls (provider, endpoint, project_id, job_id, model, status, http_status, duration_ms, cost_usd, request_id) " +
+      "INSERT INTO wvr_provider_calls (provider, endpoint, project_id, job_id, model, status, http_status, duration_ms, cost, request_id) " +
         "VALUES ('openai', 'images/edits', (SELECT id FROM wvr_projects WHERE id = $1::uuid), $2, $3, $4, $5, $6, $7::numeric, $8)",
       [job.project_id, job.id, job.model, status, httpStatus, Date.now() - t0, cost == null ? null : cost.toFixed(4), requestId]
     );

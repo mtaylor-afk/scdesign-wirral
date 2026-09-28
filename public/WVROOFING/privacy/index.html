@@ -13,8 +13,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap">
-  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20260927b">
-  <script type="module" src="/WVROOFING/assets/js/site.js?v=20260927b"></script>
+  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20260928a">
+  <script type="module" src="/WVROOFING/assets/js/site.js?v=20260928a"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -52,10 +52,18 @@
         <h2>Who we are</h2>
         <p>WV Roofing is a proposed roofing business covering the Wirral and Liverpool. The data controller's name and address will be added here before launch. Until then, you can use the contact details in the <a href="/WVROOFING/roof-replacement/#contact">contact section</a>.</p>
 
+        <h2>Your address</h2>
+        <ul>
+          <li><strong>Optional.</strong> The visualiser starts by asking for your address so the roofer can prepare a quote or a survey. You can skip it and use only a photo.</li>
+          <li><strong>Looking it up.</strong> Your postcode is sent to <strong>Ideal Postcodes</strong> (a UK company) to list the addresses there. Only the address you choose is saved; the list isn't kept. You can type your address instead.</li>
+          <li><strong>The satellite view.</strong> To help you confirm your house, your browser loads a satellite image of the address straight from <strong>Google</strong>, so Google receives that location and your IP address. The image isn't stored by us, isn't measured or traced, and is never sent to OpenAI.</li>
+          <li><strong>Kept with your visualiser session.</strong> Your address, and what you told us about the property, are kept for 30 days (12 months if you send an enquiry) and deleted with your photo and project.</li>
+        </ul>
+
         <h2>The Roof Visualiser and your photo</h2>
         <ul>
           <li><strong>Uploaded to private storage.</strong> When you choose a photo, it's uploaded to WV Roofing's private storage so you can mark your roof and come back to it in the same browser tab. Hidden information in the file, such as GPS location, the camera details and any comments, is removed as soon as it arrives; the picture itself isn't changed. Only you (through the key your browser holds for this tab) and the WV Roofing team can open it.</li>
-          <li><strong>Kept for 30 days, or until you delete it.</strong> Your photo, the roof outline you draw and any photo-real renders made from them are deleted automatically after 30 days unless you send us an enquiry about them. You can delete them yourself at any time with "Delete my photo from WV Roofing" in the visualiser.</li>
+          <li><strong>Kept for 30 days, or until you delete it.</strong> Your photo, the roof outline you draw and any photo-real renders made from them are deleted automatically after 30 days unless you send us an enquiry about them. You can delete them yourself at any time with "Delete my photo" in the visualiser, which also deletes your address.</li>
           <li><strong>Why we use it.</strong> We use your photo only to show you roof options you've asked to see (our legitimate interest in providing the visualiser you're using), and, if you send an enquiry, to prepare your quote.</li>
           <li><strong>Photo-real renders are optional.</strong> They're only created if you switch them on. Your photo and roof outline are then sent to <strong>OpenAI</strong> (a US company acting as our processor) to generate the images. OpenAI does not use API data to train its models by default, and it may keep requests for up to about 30 days for abuse monitoring, under its current terms. The finished renders are kept with your photo in WV Roofing's private storage. You can switch renders off again at any time; renders not yet sent are then cancelled.</li>
           <li><strong>A tip:</strong> photos from the pavement work best. Try to avoid people and readable car number plates.</li>
@@ -71,11 +79,13 @@
           <li><strong>Cloudflare</strong> hosts the website.</li>
           <li><strong>Vercel</strong> runs the server functions and stores your photo privately (Vercel Blob, London).</li>
           <li><strong>Neon</strong> holds the record of your visualiser session and any quote request you send (a Postgres database in London).</li>
+          <li><strong>Ideal Postcodes</strong> finds the addresses at your postcode.</li>
+          <li><strong>Google Maps Platform</strong> provides the satellite view of your address (loaded by your browser, not stored by us).</li>
           <li><strong>OpenAI</strong> generates the photo-real renders, and only if you ask for them.</li>
           <li><strong>Apple iCloud Mail</strong> delivers quote-request emails.</li>
           <li><strong>Google Fonts</strong> serves the Inter typeface to devices that don't have Apple's system font, so your browser may connect to Google to download it.</li>
         </ul>
-        <p>There are no advertising or analytics cookies on this site, so there's no cookie banner. When you upload a photo, your browser keeps a key to your visualiser session for this tab only; it's needed for the service you're using and disappears when you close the tab.</p>
+        <p>There are no advertising or analytics cookies on this site, so there's no cookie banner. When you start the visualiser with your address or a photo, your browser keeps a key to your visualiser session for this tab only (the page's address shows the session's number, which is useless without that key); it's needed for the service you're using and disappears when you close the tab.</p>
 
         <h2>Your rights</h2>
         <p>Under UK data protection law you can ask for a copy of your data, ask for it to be corrected or deleted, and object to how it's used. You can delete your visualiser photo yourself at any time. If you're unhappy with how your data has been handled, you can complain to the Information Commissioner's Office at <a href="https://ico.org.uk" rel="noopener">ico.org.uk</a>.</p>

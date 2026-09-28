@@ -76,7 +76,9 @@ CREATE TABLE IF NOT EXISTS wvr_provider_calls (
   status text NOT NULL,
   http_status integer,
   duration_ms integer,
-  cost_usd numeric(10, 4),
+  cost numeric(10, 4),
+  -- OpenAI bills in US dollars, Ideal Postcodes in pounds
+  currency text NOT NULL DEFAULT 'USD',
   request_id text,
   created_at timestamptz NOT NULL DEFAULT now()
 );

@@ -3,7 +3,7 @@
 // browser by the Roof Visualiser engine (or from a pre-rendered AI render of
 // the sample when one exists), sharing one decoded photo and roof analysis per
 // sample house.
-import { loadCatalogue, priceBandNode } from "../catalogue.js";
+import { loadCatalogue } from "../catalogue.js";
 import { ROOT } from "../config.js";
 import { paintSwatchElement } from "../tiles.js";
 import { buildMask, featherAlpha } from "./mask-ops.js";
@@ -131,7 +131,6 @@ export async function initPicker(el) {
   const layers = Array.from(el.querySelectorAll(".picker-layer"));
   const nameEl = el.querySelector("[data-picker-name]");
   const colourEl = el.querySelector("[data-picker-colour]");
-  const priceEl = el.querySelector("[data-picker-price]");
   const linkEl = el.querySelector("[data-picker-link]");
   if (!dotsBox || layers.length < 2) return;
   const cat = await loadCatalogue();
@@ -177,7 +176,6 @@ export async function initPicker(el) {
   function showLabel(p) {
     if (nameEl) nameEl.textContent = p.name;
     if (colourEl) colourEl.textContent = p.colourName;
-    if (priceEl) priceEl.replaceChildren(priceBandNode(p.price));
     if (linkEl) linkEl.href = ROOT + "visualiser/?tile=" + encodeURIComponent(p.id);
     dots.forEach((d) => {
       const on = d.p.id === p.id;

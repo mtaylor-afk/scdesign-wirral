@@ -124,3 +124,46 @@ Vercel hands over a rewritten request.
   `require` (a `.d.ts` would join SC's own type check, which includes every `.ts` file in the repo).
   `public/WVROOFING/assets/js/package.json` marks the browser scripts as ES modules for Node.
 - **Render seam threshold.** `WVR_MAX_SEAM` default raised from 35 to 50 (see A3).
+
+## Decisions made while building A5 (2026-09-28)
+
+- **Six steps, one page.** Your home, photo, mark, compare, estimate, send (`vis/journey.js`). Each step is
+  a History API entry, so the browser's and Android's Back walk through the steps. `?sample=` still lands on
+  the marking panel and `?tile=` still picks the first roof. Phones show "Step 2 of 6: Photo" instead of the
+  six-part control.
+- **Resume.** The URL carries `?project=<id>` (useless without the key, which stays in `sessionStorage`).
+  A refresh rebuilds the address and property answers, the photo (from the server's copy), the outline, the
+  previews and the renders (each repeat request is answered from the existing job, so nothing is rendered
+  twice), and an enquiry's reference instead of the form. The page returns to the step in the URL, or the
+  furthest step reached.
+- **A project that has gone** (deleted, expired, or from an older session) now answers `project_not_found`.
+  The browser forgets the key, starts a new project and retries once; an enquiry about a photo that has gone
+  is still sent, as a plain enquiry.
+- **Address lookup** (Ideal Postcodes, server-side key). Postcodes are normalised first; Ideal Postcodes' free
+  test postcodes pass through. The list is never stored or cached (Royal Mail's terms): each address goes back
+  with a signed token (HMAC with `WVR_SESSION_SECRET`, bound to the project, valid for an hour) and only the
+  address chosen from a token is stored. Typing an address is always possible. `nyb` addresses show "New
+  build". Coordinates count as rooftop only when the address has a UPRN. The customer says what kind of
+  property it is.
+- **Satellite view** (Google Maps Static API). The server signs the URL (HMAC-SHA1 over the path and query,
+  the secret never leaves the server) and the browser loads the image straight from Google, so the CSP's
+  `img-src` now allows `maps.googleapis.com` on both hosts. Pin and zoom 20 only for rooftop coordinates, zoom
+  18 and no pin for a postcode centroid. Display only: never stored, proxied, traced or sent to OpenAI.
+  Every lookup and every signed view is rate-limited and logged in `wvr_provider_calls` (`cost` and
+  `currency`: lookups in GBP, maps in USD; migration 0003's column was renamed before it reached any
+  database).
+- **Ambiguity** is stored as reasons, not a score: `no_rooftop_coordinate`, `not_seen_from_above`,
+  `pin_not_confirmed`, `shared_roof` (semi, end or mid terrace), `flat_or_shared_block`,
+  `property_type_unclear`. A new address supersedes the confirmation (kept, marked superseded). The enquiry
+  snapshot and email carry the address, the confirmation and "check before quoting" in plain words.
+- **No prices anywhere.** The £ / ££ / £££ bands are gone from the visualiser, lightbox, compare grid and home
+  picker (the catalogue's `price` field goes in B1). The home page's "£0 survey" statistic now reads "Free …
+  (concept wording, to be confirmed)": the owner should confirm the offer. The QA checks every page for "£".
+- **The estimate step** says "Suitable data unavailable", why, the brief's disclaimer verbatim and what's not
+  included, and offers "Request a survey". **The enquiry step** replaces the quote dialog (contact details are
+  only asked for here); the lightbox gained Before / Side by side / After buttons.
+- **Smaller things.** The watermark uses the site's font (it named Barlow, which never loaded).
+  `#compare-sub` now describes what's on screen. The health request waits up to 15 seconds (a cold function
+  also wakes the database), and the dev server starts the test database when it starts. Nested ES-module
+  imports are not versioned: this host revalidates static assets by default, and the page-level assets carry
+  a new `?v=`.

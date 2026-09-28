@@ -15,7 +15,8 @@ export function watermarked(source, label) {
   const ctx = c.getContext("2d");
   ctx.drawImage(source, 0, 0, w, h);
   const s = Math.max(12, Math.round(Math.min(w, h) * 0.022));
-  ctx.font = "600 " + s + "px Barlow, 'Segoe UI', system-ui, sans-serif";
+  // The site's own font stack (Inter is loaded on the page; Barlow never was).
+  ctx.font = "600 " + s + "px -apple-system, BlinkMacSystemFont, Inter, 'Segoe UI', system-ui, sans-serif";
   const line1 = "WV Roofing";
   const line2 = label;
   const tw = Math.max(ctx.measureText(line1).width, ctx.measureText(line2).width);
@@ -36,7 +37,7 @@ export function watermarked(source, label) {
   ctx.textBaseline = "top";
   ctx.fillText(line1, x + pad, y + pad * 0.6);
   ctx.fillStyle = "#ffffff";
-  ctx.font = "500 " + Math.round(s * 0.85) + "px Barlow, 'Segoe UI', system-ui, sans-serif";
+  ctx.font = "500 " + Math.round(s * 0.85) + "px -apple-system, BlinkMacSystemFont, Inter, 'Segoe UI', system-ui, sans-serif";
   ctx.fillText(line2, x + pad, y + pad * 0.6 + s * 1.25);
   return c;
 }

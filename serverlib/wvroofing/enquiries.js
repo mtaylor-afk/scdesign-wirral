@@ -214,11 +214,48 @@ async function snapshotFor(p, visualId) {
     );
     snap.renders = js.rows.map((j) => ({ id: j.id, visualId: j.visual_id, model: j.model, quality: j.quality, promptVersion: j.prompt_version, catalogueVersion: j.catalogue_version }));
   }
-  // Filled in by later increments: the address and property confirmation (A5), measurement and quantities (Release B).
   snap.address = null;
+  snap.property = null;
+  if (p.address_id) {
+    const ad = await db.query("SELECT * FROM wvr_addresses WHERE id = $1 AND project_id = $2", [p.address_id, p.id]);
+    const r = ad.rows[0];
+    if (r) {
+      const lines = typeof r.lines === "string" ? JSON.parse(r.lines) : r.lines || [];
+      snap.address = { id: r.id, provider: r.provider, lines, postTown: r.post_town, postcode: r.postcode, uprn: r.uprn, udprn: r.udprn, lat: r.lat, lng: r.lng, coordSource: r.coord_source, dataset: r.dataset };
+    }
+  }
+  if (p.property_confirmation_id) {
+    const pc = await db.query("SELECT * FROM wvr_property_confirmations WHERE id = $1 AND project_id = $2", [p.property_confirmation_id, p.id]);
+    const r = pc.rows[0];
+    if (r) {
+      const reasons = typeof r.ambiguity_reasons === "string" ? JSON.parse(r.ambiguity_reasons) : r.ambiguity_reasons || [];
+      snap.property = { id: r.id, propertyType: r.property_type, pinShown: r.pin_shown, pinConfirmed: r.pin_confirmed, ambiguous: r.ambiguous, reasons };
+    }
+  }
+  // Filled in by Release B: measurement and quantities (only when shown to the customer).
   snap.measurement = null;
   return snap;
 }
+
+const PROPERTY_WORDS = /** @type {Record<string, string>} */ ({
+  detached: "Detached house",
+  semi: "Semi-detached house",
+  end_terrace: "End of terrace",
+  mid_terrace: "Mid terrace",
+  bungalow: "Bungalow",
+  flat: "Flat or maisonette",
+  other: "Other",
+  not_sure: "Not sure",
+});
+
+const REASON_WORDS = /** @type {Record<string, string>} */ ({
+  no_rooftop_coordinate: "the address has no rooftop location (postcode area only)",
+  not_seen_from_above: "the house wasn't checked on an aerial view",
+  pin_not_confirmed: "the customer didn't confirm the pin on the aerial view",
+  shared_roof: "the roof is shared with a neighbour",
+  flat_or_shared_block: "a flat, so the roof may belong to the block",
+  property_type_unclear: "the kind of property is unclear",
+});
 
 // ---------------------------------------------------------------------------
 // routes
@@ -436,6 +473,15 @@ async function buildMessage(e) {
     ["Message", e.notes || "-"],
     ["From page", e.source],
   ];
+  if (snap.address) {
+    const a = snap.address;
+    rows.push(["Property address", a.lines.concat(a.postTown ? [a.postTown] : [], a.postcode ? [a.postcode] : []).join(", ") + (a.provider === "manual" ? " (typed in)" : "") + (a.dataset === "nyb" ? " (new build)" : "")]);
+  }
+  if (snap.property) {
+    const pr = snap.property;
+    rows.push(["Property", (PROPERTY_WORDS[pr.propertyType] || pr.propertyType) + (pr.pinConfirmed ? ", confirmed on the aerial view" : "")]);
+    if (pr.reasons.length) rows.push(["Check before quoting", pr.reasons.map((/** @type {string} */ r) => REASON_WORDS[r] || r).join("; ")]);
+  }
   if (snap.photo) {
     rows.push(["Their photo", snap.photo.origW + " x " + snap.photo.origH + " px" + (snap.mask ? ", roof outline covers " + Math.round(snap.mask.coverage * 100) + "% of it" : ", roof not marked")]);
     rows.push(["Photo-real renders", renderNames.length ? renderNames.join(", ") : "none"]);
