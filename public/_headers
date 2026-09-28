@@ -47,8 +47,13 @@
 # testing. Must never be indexed and is deliberately NOT listed anywhere public
 # (no robots.txt entry, sitemap, llms.txt or links) — this header plus each
 # page's own <meta name="robots"> keep it out of search. Security headers come
-# from /* above; only X-Robots-Tag is added here (Cloudflare appends rules).
+# from /* above (Cloudflare appends rules), plus a content CSP for WV Roofing's
+# pages only: they hold a customer project token in sessionStorage. The script
+# hash is the pages' one inline line (document.documentElement.classList.add("js"););
+# scripts/wvroofing/tests/csp.test.mjs keeps it, and vercel.json, in sync.
 /WVROOFING
   X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-WZRJfWvsnNCPcxzZwvyhovnZGqhZaC+8gPGPRbx6wTk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://scdesign-wirral.vercel.app https://vercel.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
 /WVROOFING/*
   X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-WZRJfWvsnNCPcxzZwvyhovnZGqhZaC+8gPGPRbx6wTk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://scdesign-wirral.vercel.app https://vercel.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'

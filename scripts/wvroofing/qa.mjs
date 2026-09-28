@@ -6,7 +6,10 @@
 // points at a deployed copy. Checks every page at phone and desktop widths
 // (console errors, failed requests, horizontal overflow), then drives the Roof
 // Visualiser: sample house -> quick previews -> mock AI renders -> lightbox ->
-// quote dialog, and an upload + hand-drawn outline on a phone viewport.
+// quote dialog; and on a phone viewport: the photo notice, a HEIC refusal, an
+// upload to the customer's project, a hand-drawn outline saved to the project,
+// and "Delete my photo". Pages are served with their real headers (incl. CSP),
+// so a CSP violation shows up as a console error.
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
 import os from "node:os";
@@ -279,15 +282,30 @@ try {
     await ctx.close();
   }
 
-  // ---- phone: upload + hand-drawn outline ---------------------------------------
+  // ---- phone: upload to the project, hand-drawn outline, outline saved, delete ------
   {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     const page = await ctx.newPage();
     const errors = watch(page);
+    page.on("dialog", (d) => d.accept());
+    const isPath = (r, re) => re.test(new URL(r.url()).pathname);
     await page.goto(BASE + "/WVROOFING/visualiser/", { waitUntil: "load", timeout: 45000 });
+    await page.waitForTimeout(500);
+    const notice = (await page.isVisible("#storage-notice")) ? await page.textContent("#storage-notice") : "";
+    ok("phone: the photo notice explains upload, 30-day keeping and deletion", /uploaded/.test(notice) && /30 days/.test(notice) && /delete/.test(notice));
+    // A HEIC file is caught in the browser with a clear message; nothing is uploaded.
+    const heic = Buffer.alloc(64);
+    heic.writeUInt32BE(24, 0);
+    heic.write("ftypheic", 4, "ascii");
+    await page.setInputFiles("#file-library", { name: "IMG_0001.HEIC", mimeType: "image/heic", buffer: heic });
+    await page.waitForSelector("#photo-error:not([hidden])", { timeout: 5000 }).catch(() => null);
+    ok("phone: a HEIC photo gets a clear message", /HEIC/.test((await page.textContent("#photo-error")) || ""));
     const photo = path.resolve(here, "../../public/WVROOFING/samples/detached-modern.jpg");
+    const committed = page.waitForResponse((r) => isPath(r, /\/photo\/commit$/), { timeout: 60000 }).catch(() => null);
     await page.setInputFiles("#file-library", photo);
-    await page.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 15000 });
+    const commitRes = await committed;
+    ok("phone: the photo is uploaded to the project and prepared by the server", !!commitRes && commitRes.status() === 200, commitRes ? String(commitRes.status()) : "no commit");
+    await page.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 30000 });
     const box = await page.locator(".editor-canvas").boundingBox();
     const pts = [
       [0.1, 0.33],
@@ -306,10 +324,22 @@ try {
     const enabled = await page.isEnabled("#btn-compare");
     ok("phone: compare enabled after outlining", enabled);
     if (enabled) {
+      const saved = page.waitForResponse((r) => isPath(r, /\/mask$/) && r.request().method() === "POST", { timeout: 30000 }).catch(() => null);
       await page.click("#btn-compare");
       await page.waitForFunction(() => Array.from(document.querySelectorAll(".result-card .badge")).filter((b) => /Quick preview|AI concept/.test(b.textContent)).length === 8, null, { timeout: 60000 });
       ok("phone: 8 previews from an uploaded photo", true);
+      const maskRes = await saved;
+      ok("phone: the roof outline is saved to the project", !!maskRes && maskRes.status() === 200, maskRes ? String(maskRes.status()) : "not sent");
       await shot(page, { path: path.join(OUT, "vis-previews-phone.png"), fullPage: true });
+      // Delete it all again (this also tidies up the project the check created).
+      await page.click("#btn-edit-mark");
+      await page.waitForSelector("#btn-delete-photo:not([hidden])", { timeout: 5000 }).catch(() => null);
+      const del = page.waitForResponse((r) => isPath(r, /\/delete$/), { timeout: 30000 }).catch(() => null);
+      await page.click("#btn-delete-photo");
+      const delRes = await del;
+      await page.waitForSelector('[data-panel="photo"]:not([hidden])', { timeout: 10000 }).catch(() => null);
+      const kept = await page.evaluate(() => sessionStorage.getItem("wvr.project.v1"));
+      ok("phone: 'Delete my photo' deletes the project", !!delRes && delRes.status() === 200 && kept === null, delRes ? String(delRes.status()) : "no delete");
     }
     ok("phone visualiser has no console errors", errors.length === 0, errors.join(" | "));
     await ctx.close();

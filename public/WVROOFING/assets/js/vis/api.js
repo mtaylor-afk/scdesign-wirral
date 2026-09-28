@@ -36,6 +36,24 @@ export function getHealth(force) {
   return healthPromise;
 }
 
+let capsPromise = null;
+
+/**
+ * Capability states from /api/wvroofing/health (e.g. whether uploads can be
+ * stored). Never throws: an unreachable API means "nothing is available".
+ */
+export function getCapabilities() {
+  if (capsPromise) return capsPromise;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 7000);
+  capsPromise = fetch(API_BASE + "/api/wvroofing/health", { cache: "no-store", signal: ctl.signal })
+    .then((r) => (r.ok ? r.json() : {}))
+    .then((j) => (j && j.capabilities) || {})
+    .catch(() => ({}))
+    .finally(() => clearTimeout(timer));
+  return capsPromise;
+}
+
 /** Mock mode is only offered on a local dev server with no key configured. */
 export function mockAllowed(health) {
   const q = new URLSearchParams(window.location.search);

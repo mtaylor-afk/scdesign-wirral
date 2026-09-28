@@ -3,14 +3,18 @@
 // Flow: 1 photo (upload / camera / sample)  ->  2 mark the roof (MaskEditor)
 //       ->  3 compare: eight instant quick previews, then photo-real AI renders
 //          (optional, with consent) composited so only the roof changes.
+// An uploaded photo goes to the customer's project on the server (client.js):
+// it is checked, stripped of metadata and prepared there, and the editor works
+// on the server's prepared copy so the saved roof outline lines up exactly.
 import { loadCatalogue, priceBandNode } from "../catalogue.js";
 import { ROOT, IS_LOCAL } from "../config.js";
-import { preparePhoto, loadSample, photoWarnings, PhotoError } from "./photo.js";
+import { loadSample, photoWarnings, blobToCanvas } from "./photo.js";
 import { MaskEditor } from "./mask-editor.js";
 import { analyseRoof, renderPreview } from "./preview.js";
 import { chooseAiSize, buildAiInputs } from "./ai-input.js";
 import { compositeRender, decodeRenderToPhotoGrid } from "./composite.js";
-import { getHealth, requestRender, mockAllowed } from "./api.js";
+import { getHealth, getCapabilities, requestRender, mockAllowed } from "./api.js";
+import { ensureProject, uploadPhoto, fetchDisplay, saveOutline, deleteProject, setConsent, currentProject, sniffFile, ClientError, MAX_BYTES } from "./client.js";
 import { RenderQueue } from "./queue.js";
 import { Lightbox } from "./lightbox.js";
 import { watermarked, downloadCanvas } from "./watermark.js";
@@ -44,6 +48,10 @@ const S = {
   saveRenders: false,
   timer: 0,
   urls: [],
+  caps: {},
+  photoWarns: [],
+  outlineKey: "",
+  uploading: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -100,6 +108,18 @@ function showError(msg) {
   const el = $("#photo-error");
   el.textContent = msg;
   el.hidden = !msg;
+}
+
+function showStatus(msg) {
+  const el = $("#photo-status");
+  if (!el) return;
+  el.textContent = msg;
+  el.hidden = !msg;
+}
+
+function storageReady() {
+  const c = S.caps && S.caps.enquiry_storage;
+  return !!c && c.state === "enabled";
 }
 
 function showStep(step, focus) {
@@ -174,13 +194,43 @@ function renderSampleGrid() {
 
 async function handleFile(file) {
   showError("");
-  if (!file) return;
+  showStatus("");
+  if (!file || S.uploading) return;
+  const kind = await sniffFile(file).catch(() => "other");
+  if (kind === "heic") {
+    showError('This photo is in the iPhone HEIC format. Choose it again from your photo library (your phone converts it to JPEG), or set the camera to "Most Compatible".');
+    return;
+  }
+  if (kind !== "jpeg" && kind !== "png") {
+    showError("Please choose a JPG or PNG photo.");
+    return;
+  }
+  if (file.size > MAX_BYTES) {
+    showError("That photo is over 20 MB. Please choose a smaller copy.");
+    return;
+  }
+  if (!storageReady()) {
+    showError("Uploading your own photo isn't available right now. You can still try a sample house below.");
+    return;
+  }
+  S.uploading = true;
+  $("#dropzone").classList.add("is-busy");
   try {
-    announce("Preparing your photo…");
-    const photo = await preparePhoto(file);
-    startMarking(photo, null);
+    showStatus("Uploading your photo…");
+    announce("Uploading your photo.");
+    await ensureProject({ consentAi: $("#consent-ai").checked });
+    const photo = await uploadPhoto(file, kind, (f) => showStatus("Uploading your photo… " + Math.round(f * 100) + "%"));
+    showStatus("Preparing your photo…");
+    const canvas = await blobToCanvas(await fetchDisplay());
+    if (canvas.width !== photo.w || canvas.height !== photo.h) throw new ClientError(0, "size_mismatch", "Your photo couldn't be prepared. Please try again.");
+    showStatus("");
+    startMarking({ canvas, w: photo.w, h: photo.h, name: file.name || "photo", originalW: photo.origW, originalH: photo.origH, warnings: photo.warnings, uploaded: true }, null);
   } catch (err) {
-    showError(err instanceof PhotoError ? err.message : "Sorry, that photo couldn't be opened. Please try a JPG or PNG.");
+    showStatus("");
+    showError(err instanceof ClientError ? err.message : "Sorry, that photo couldn't be added. Please try a JPG or PNG.");
+  } finally {
+    S.uploading = false;
+    $("#dropzone").classList.remove("is-busy");
   }
 }
 
@@ -265,10 +315,13 @@ function startMarking(photo, sample) {
     $("#mark-lede").textContent =
       "Tap round the edge of each roof slope, then tap the first point again to close the shape. Cut out chimneys and roof windows so they stay as they are.";
   }
-  const warns = photoWarnings(photo);
+  // Photo warnings are worked out once (the server's for uploads, the browser's for samples).
+  S.photoWarns = photo.warnings || photoWarnings(photo);
+  S.outlineKey = "";
   const w = $("#mark-warn");
-  w.hidden = !warns.length;
-  w.textContent = warns.join(" ");
+  w.hidden = !S.photoWarns.length;
+  w.textContent = S.photoWarns.join(" ");
+  $("#btn-delete-photo").hidden = !photo.uploaded;
   showStep("mark");
   S.editor.fit();
   announce("Photo ready. Now mark your roof.");
@@ -282,8 +335,7 @@ function setTool(tool) {
 function updateMarkUI(st) {
   $("#mark-pct").textContent = st.empty ? "0%" : (st.frac * 100).toFixed(st.frac < 0.1 ? 1 : 0) + "%";
   const warn = $("#mark-warn");
-  const photoWarns = S.photo ? photoWarnings(S.photo) : [];
-  let msg = photoWarns.join(" ");
+  let msg = (S.photoWarns || []).join(" ");
   if (st.warning === "small") msg = "That's a very small area. Make sure you've marked the whole roof.";
   if (st.warning === "large") msg = "That's more than half the photo. Check you've only marked the roof.";
   warn.hidden = !msg;
@@ -304,6 +356,7 @@ function wireMarkTools() {
   $("#snap-edges").addEventListener("change", (e) => S.editor && S.editor.setSnap(e.target.checked));
   $("#btn-change-photo").addEventListener("click", () => showStep("photo"));
   $("#btn-compare").addEventListener("click", goCompare);
+  $("#btn-delete-photo").addEventListener("click", deleteMyPhoto);
   if (IS_LOCAL) {
     const b = $("#btn-copy-shapes");
     b.hidden = false;
@@ -317,6 +370,48 @@ function wireMarkTools() {
         announce("Outline logged to the console.");
       }
     });
+  }
+}
+
+/** The roof as a PNG where alpha 0 marks the roof (the saved outline). */
+function maskToPngDataUrl(mask, w, h) {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  const img = ctx.createImageData(w, h);
+  for (let i = 0; i < w * h; i++) img.data[i * 4 + 3] = mask[i] >= 128 ? 0 : 255;
+  ctx.putImageData(img, 0, 0);
+  return c.toDataURL("image/png");
+}
+
+/** Save the outline to the project (uploaded photos only; samples stay on this device). */
+async function saveOutlineIfChanged() {
+  if (!S.photo || !S.photo.uploaded || !S.mask || !S.editor) return;
+  const key = S.shapesKey;
+  if (key === S.outlineKey) return;
+  try {
+    await saveOutline(maskToPngDataUrl(S.mask, S.photo.w, S.photo.h), S.editor.getShapes(), S.photo.w, S.photo.h);
+    S.outlineKey = key;
+  } catch (err) {
+    showBanner("Your roof outline couldn't be saved just now. Your previews are fine; we'll try again when you next compare.");
+  }
+}
+
+async function deleteMyPhoto() {
+  if (!currentProject()) return;
+  if (!window.confirm("Delete your photo and roof outline from WV Roofing? This can't be undone.")) return;
+  try {
+    await deleteProject();
+    resetResults();
+    if (S.editor) S.editor.destroy();
+    S.editor = null;
+    S.photo = null;
+    showStep("photo");
+    showStatus("Your photo and roof outline have been deleted.");
+    announce("Your photo has been deleted.");
+  } catch (err) {
+    window.alert(err instanceof ClientError ? err.message : "Your photo couldn't be deleted just now. Please try again.");
   }
 }
 
@@ -407,6 +502,7 @@ async function goCompare() {
   const ctx = S.photo.canvas.getContext("2d", { willReadFrequently: true });
   S.orig = ctx.getImageData(0, 0, w, h);
   S.mask = ed.getMask();
+  saveOutlineIfChanged(); // not awaited: the previews don't depend on it
   S.beforeUrl = await canvasToUrl(S.photo.canvas);
   buildGrid();
   showStep("compare");
@@ -783,10 +879,15 @@ async function boot() {
   wireMarkTools();
   wireCompare();
   wireDialogs();
-  const [cat, samples, health] = await Promise.all([loadCatalogue(), loadSamples(), getHealth()]);
+  const [cat, samples, health, caps] = await Promise.all([loadCatalogue(), loadSamples(), getHealth(), getCapabilities()]);
   S.cat = cat;
   S.samples = samples;
   S.health = health;
+  S.caps = caps;
+  // Record a change of mind about photo-real renders on the project, if there is one.
+  $("#consent-ai").addEventListener("change", (e) => {
+    if (currentProject()) setConsent(e.target.checked).catch(() => undefined);
+  });
   if (S.priority && !cat.byId.has(S.priority)) S.priority = null;
   renderSampleGrid();
   const note = $("#ai-availability");

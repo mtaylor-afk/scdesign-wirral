@@ -17,8 +17,9 @@ Handover files (`handover-<date>-vN.md`, `setup-and-deploy.md`, `operator-guide.
 
 | Increment | State |
 |---|---|
-| A1 Foundations and the function swap | In progress |
-| A2–A8, B1–B5 | Not started |
+| A1 Foundations and the function swap | Live (commit 110432b, verified 2026-09-28) |
+| A2 Projects, uploads, photo pipeline, CSP, retention | Built and tested locally; goes live once Neon + Blob are connected (push gate D17) |
+| A3–A8, B1–B5 | Not started |
 
 ## Commands
 

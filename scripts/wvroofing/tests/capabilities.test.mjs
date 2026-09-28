@@ -6,7 +6,7 @@ import { load } from "./helpers.mjs";
 const { capability, capabilities, NAMES } = load("serverlib/wvroofing/capabilities.js");
 const { PROVIDERS, REQUIREMENTS, rightsFor, toMarkdown } = load("serverlib/wvroofing/permissions.js");
 
-const PROD_STORAGE = { DATABASE_URL: "postgres://x", BLOB_STORE_ID: "store_1", WVR_SESSION_SECRET: "s" };
+const PROD_STORAGE = { DATABASE_URL: "postgres://x", BLOB_STORE_ID: "store_1", WVR_SESSION_SECRET: "s", CRON_SECRET: "c" };
 
 test("no credential -> implemented", () => {
   assert.equal(capability("image_generation", {}).state, "implemented");
@@ -31,8 +31,11 @@ test("aerial display needs both the key and the URL-signing secret", () => {
   assert.equal(capability("aerial_display", { WVR_GOOGLE_MAPS_STATIC_KEY: "k", WVR_GOOGLE_MAPS_SIGNING_SECRET: "s", WVR_CAP_AERIAL_DISPLAY: "on" }).state, "enabled");
 });
 
-test("storage needs database, blob store and session secret; it has no switch", () => {
+test("storage needs database, blob store, session secret and the cron secret; it has no switch", () => {
   assert.equal(capability("enquiry_storage", { DATABASE_URL: "postgres://x" }).state, "implemented");
+  const noCron = Object.assign({}, PROD_STORAGE);
+  delete noCron.CRON_SECRET;
+  assert.equal(capability("enquiry_storage", noCron).state, "implemented", "no retention job, no uploads");
   assert.equal(capability("enquiry_storage", PROD_STORAGE).state, "enabled");
 });
 

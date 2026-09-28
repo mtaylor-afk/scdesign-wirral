@@ -1,11 +1,10 @@
-// WV Roofing Roof Visualiser — photo intake. Everything here runs on the
-// visitor's device: the photo is decoded, oriented from its EXIF tag, shrunk to
-// a working size and re-drawn on a canvas, which also drops every metadata
-// block (including GPS). Ported from public/admin/image-prep.js.
+// WV Roofing Roof Visualiser — photo decoding on the visitor's device.
+// Sample houses and the server's prepared photo are decoded here onto a
+// canvas at the working size. (Uploaded photos are checked, stripped of
+// metadata and oriented on the server: see serverlib/wvroofing/images.js.)
 import { ROOT } from "../config.js";
 
 export const WORK_EDGE = 1600;
-const MAX_FILE_BYTES = 30 * 1024 * 1024;
 
 export class PhotoError extends Error {}
 
@@ -19,11 +18,7 @@ function decodeViaImg(file) {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(
-        new PhotoError(
-          "This photo couldn't be opened. If it came from an iPhone it may be a HEIC file: share it to yourself as a JPEG (or set the camera to \"Most Compatible\") and try again."
-        )
-      );
+      reject(new PhotoError("This photo couldn't be opened. Please try again, or use a different photo."));
     };
     img.src = url;
   });
@@ -67,21 +62,15 @@ function toCanvas(source, srcW, srcH) {
 }
 
 /**
- * @param {File} file
- * @returns {Promise<{canvas:HTMLCanvasElement,w:number,h:number,name:string,originalW:number,originalH:number}>}
+ * The server's prepared photo (already oriented and at most WORK_EDGE px) onto
+ * a canvas at its exact size, so the roof outline lines up pixel for pixel.
+ * @param {Blob} blob
  */
-export async function preparePhoto(file) {
-  if (!file) throw new PhotoError("No photo was chosen.");
-  const type = (file.type || "").toLowerCase();
-  const name = file.name || "photo";
-  if (type && !type.startsWith("image/")) throw new PhotoError("That file isn't a photo. Please choose a JPG or PNG image.");
-  if (file.size > MAX_FILE_BYTES) throw new PhotoError("That photo is very large (over 30 MB). Please choose a smaller copy.");
-  const src = await decode(file);
-  const sw = src.naturalWidth || src.width;
-  const sh = src.naturalHeight || src.height;
-  if (!sw || !sh) throw new PhotoError("This photo has no readable size.");
-  const canvas = toCanvas(src, sw, sh);
-  return { canvas, w: canvas.width, h: canvas.height, name, originalW: sw, originalH: sh };
+export async function blobToCanvas(blob) {
+  const src = await decode(blob);
+  const w = src.naturalWidth || src.width;
+  const h = src.naturalHeight || src.height;
+  return toCanvas(src, w, h);
 }
 
 /** Load a demo house from samples/. */

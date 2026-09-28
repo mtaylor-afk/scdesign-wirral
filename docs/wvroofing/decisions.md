@@ -30,3 +30,21 @@ per-function region may fail the deployment, so it waits for the owner's answer 
 **Rewrite detail:** the rewrite destination also carries the route (`/api/wvroofing/app?path=:path*`). The router
 prefers the original request path and falls back to that single `path` value, so routing works whichever way
 Vercel hands over a rewritten request.
+
+## Decisions made while building A2 (2026-09-28)
+
+- **sharp stays at 0.34.5, locked down.** npm audit reports libvips CVEs (GIF, TIFF and VIPS loaders; fixed in
+  sharp 0.35.0) and libheif CVEs (fixed in 0.35.4). sharp is a shared dependency of SC Design's own build scripts,
+  so the upgrade is SC's decision. WV Roofing only ever hands sharp JPEG or PNG buffers it has already sniffed by
+  magic bytes, and `images.js` blocks every other libvips loader (`sharp.block({operation: ["VipsForeignLoad"]})`,
+  then unblocks the JPEG and PNG loaders only). Recommended: upgrade the repo to sharp ≥ 0.35.5.
+- **Storage needs `CRON_SECRET`.** The photo notice promises deletion after 30 days, and only the daily job keeps
+  that promise, so `enquiry_storage` is not enabled until the cron can run.
+- **Origin rule.** A disallowed `Origin` is always refused. A missing `Origin` is accepted for `GET`/`HEAD` (browsers
+  omit it on same-origin GETs; project routes still need the bearer token) but never for `POST`.
+- **POSTs must be JSON** (415 otherwise), so a cross-site HTML form can't reach the API without a CORS preflight.
+- **Content Security Policy** for `/WVROOFING/*` on both hosts; the pages' one inline script is allowed by hash
+  (`scripts/wvroofing/tests/csp.test.mjs` recomputes it). `style-src` keeps `'unsafe-inline'` for the pages'
+  inline `style` attributes.
+- **Legacy mask check hardened** (live render endpoint): the PNG header size is checked before anything is
+  inflated, and inflation is capped at the size the header implies.

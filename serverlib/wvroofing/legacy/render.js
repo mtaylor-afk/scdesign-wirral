@@ -79,7 +79,7 @@ function validate(body, cfg) {
   if (!dims) throw new W.HttpError(400, "invalid_image", "The photo must be a JPEG.");
   if (dims.w !== Wd || dims.h !== Ht) throw new W.HttpError(400, "invalid_image", "The photo size doesn't match.");
   const mask = W.parseDataUrl(body.mask, ["image/png"], MAX_MASK, "mask");
-  const info = W.pngAlphaInfo(mask.buf);
+  const info = W.pngAlphaInfo(mask.buf, Wd, Ht);
   if (!info || !info.supported) throw new W.HttpError(400, "invalid_mask", "The roof mask must be an 8-bit PNG with transparency.");
   if (info.w !== Wd || info.h !== Ht) throw new W.HttpError(400, "invalid_mask", "The roof mask size doesn't match the photo.");
   if (info.transparentFrac < 0.005 || info.transparentFrac > 0.85) {

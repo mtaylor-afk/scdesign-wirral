@@ -80,16 +80,16 @@
               <p class="small muted">or</p>
               <div class="dropzone-actions">
                 <label class="btn btn-primary file-btn">
-                  <input type="file" accept="image/*" capture="environment" id="file-camera" class="sr-only">
+                  <input type="file" accept="image/jpeg,image/png" capture="environment" id="file-camera" class="sr-only">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5a2 2 0 0 1 2-2h2.3l1.6-2.5h5.2l1.6 2.5h2.3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
                   Take a photo
                 </label>
                 <label class="btn btn-secondary file-btn">
-                  <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" id="file-library" class="sr-only">
+                  <input type="file" accept="image/jpeg,image/png" id="file-library" class="sr-only">
                   Choose a photo
                 </label>
               </div>
-              <p class="caption dropzone-hint">JPG, PNG or WebP. Your photo stays on this device while you mark the roof.</p>
+              <p class="caption dropzone-hint">JPG or PNG, up to 20 MB.</p>
             </div>
             <aside class="photo-tips" aria-labelledby="tips-title">
               <h3 id="tips-title">For the best result</h3>
@@ -102,17 +102,25 @@
             </aside>
           </div>
 
+          <p class="notice photo-notice" id="storage-notice">
+            <strong>What happens to your photo.</strong>
+            It's uploaded to WV Roofing's private storage so you can mark your roof and come back to it in this tab.
+            Location data and other hidden details are removed when it arrives. It's kept for 30 days unless you
+            send us an enquiry, and you can delete it at any time. <a href="/WVROOFING/privacy/">Privacy notice</a>
+          </p>
+
           <div class="consent-box">
             <label class="switch-row" for="consent-ai">
               <span class="consent-copy">
                 <strong>Also create photo-real AI renders</strong>
-                <span class="small muted">Your photo and roof outline are sent securely to OpenAI to create them, and they aren't stored by us. See the <a href="/WVROOFING/privacy/">privacy notice</a>.</span>
+                <span class="small muted">Your photo and roof outline are then sent to OpenAI, a US company, to create them. OpenAI doesn't train its models on them and keeps them for up to 30 days for abuse checks. See the <a href="/WVROOFING/privacy/">privacy notice</a>.</span>
               </span>
               <input type="checkbox" id="consent-ai" class="switch">
             </label>
             <p class="caption consent-note" id="ai-availability">Checking whether photo-real rendering is available…</p>
           </div>
 
+          <p class="caption photo-status" id="photo-status" role="status" hidden></p>
           <p class="field-error photo-error" id="photo-error" role="alert" hidden></p>
 
           <div class="samples">
@@ -175,6 +183,7 @@
                 <button type="button" class="btn btn-secondary" id="btn-change-photo">Change photo</button>
                 <button type="button" class="btn btn-primary" id="btn-compare" disabled>Show my 8 roofs</button>
               </div>
+              <button type="button" class="link-btn delete-photo" id="btn-delete-photo" hidden>Delete my photo from WV Roofing</button>
               <button type="button" class="btn btn-neutral btn-sm dev-only" id="btn-copy-shapes" hidden>Copy outline JSON (dev)</button>
             </div>
           </div>

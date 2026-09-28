@@ -133,6 +133,55 @@ async function handleSave(req, res) {
   return send(res, 200, JSON.stringify({ ok: true, path: rel }), { "Content-Type": "application/json" });
 }
 
+// Cloudflare-style public/_headers: every matching rule's headers are sent
+// (values for a repeated header are appended), so the CSP is exercised locally.
+function headersFor(urlPath) {
+  const out = {};
+  let rule = null;
+  for (const line of fs.readFileSync(path.join(publicDir, "_headers"), "utf8").split(/\r?\n/)) {
+    if (!line.trim() || line.trim().startsWith("#")) continue;
+    if (!/^\s/.test(line)) {
+      const p = line.trim();
+      rule = p.endsWith("/*") ? urlPath.startsWith(p.slice(0, -1)) : urlPath === p || urlPath === p + "/";
+      continue;
+    }
+    const m = /^\s+([^:]+):\s*(.*)$/.exec(line);
+    if (rule && m) {
+      const k = m[1].trim();
+      out[k] = out[k] ? out[k] + ", " + m[2].trim() : m[2].trim();
+    }
+  }
+  delete out["Strict-Transport-Security"]; // meaningless on http://localhost
+  return out;
+}
+
+// TEST ENVIRONMENT stand-in for Vercel Blob's presigned URLs (local-folder storage).
+async function handleDevBlob(req, res, url) {
+  const op = url.searchParams.get("op");
+  const p = url.searchParams.get("path") || "";
+  const until = Number(url.searchParams.get("until"));
+  if (!p || !until || Date.now() > until) return send(res, 403, "expired or invalid link");
+  const { storage } = require(path.join(repo, "serverlib", "wvroofing", "storage.js"));
+  if (op === "put" && req.method === "PUT") {
+    const types = (url.searchParams.get("types") || "").split(",");
+    const max = Number(url.searchParams.get("max"));
+    const type = String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
+    if (!types.includes(type)) return send(res, 415, "content type not allowed");
+    const body = await readBody(req, max).catch(() => null);
+    if (!body) return send(res, 413, "too large");
+    await storage().put(p, body, type);
+    return send(res, 200, "{}", { "Content-Type": "application/json" });
+  }
+  if (op === "get" && req.method === "GET") {
+    const obj = await storage().get(p);
+    if (!obj) return send(res, 404, "not found");
+    res.writeHead(200, { "Content-Type": obj.contentType, "Cache-Control": "no-store" });
+    obj.stream.pipe(res);
+    return;
+  }
+  return send(res, 405, "method not allowed");
+}
+
 function serveStatic(req, res, urlPath) {
   let rel = decodeURIComponent(urlPath);
   if (rel.includes("\0")) return send(res, 400, "bad path");
@@ -144,7 +193,7 @@ function serveStatic(req, res, urlPath) {
   }
   if (!fs.existsSync(file)) return send(res, 404, "Not found: " + rel, { "Content-Type": "text/plain; charset=utf-8" });
   const ext = path.extname(file).toLowerCase();
-  res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream", "Cache-Control": "no-store" });
+  res.writeHead(200, Object.assign({ "Content-Type": MIME[ext] || "application/octet-stream", "Cache-Control": "no-store" }, headersFor(rel)));
   fs.createReadStream(file).pipe(res);
 }
 
@@ -154,6 +203,7 @@ const server = http.createServer(async (req, res) => {
     const m = /^\/api\/wvroofing\/(.*?)\/?$/.exec(url.pathname);
     if (m) return await handleApi(req, res, m[1]);
     if (url.pathname === "/__dev/save" && req.method === "POST") return await handleSave(req, res);
+    if (url.pathname === "/__dev/blob" && process.env.WVR_ENV === "test") return await handleDevBlob(req, res, url);
     if (url.pathname === "/") return send(res, 302, "", { Location: "/WVROOFING/" });
     return serveStatic(req, res, url.pathname);
   } catch (err) {

@@ -93,6 +93,11 @@
 .consent-copy strong { font-size: 17px; }
 .consent-note { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); }
 .photo-error { margin-top: 16px; font-size: 14px; }
+.photo-notice { margin-top: 16px; }
+.photo-status { margin-top: 16px; font-size: 15px; color: var(--text); }
+.dropzone.is-busy { opacity: 0.6; pointer-events: none; }
+.delete-photo { display: block; margin: 14px auto 0; }
+@media (max-width: 1068px) { .delete-photo { margin-bottom: 72px; } }
 .samples { margin-top: 48px; }
 .sample-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
 @media (min-width: 734px) { .sample-grid { gap: 20px; } }

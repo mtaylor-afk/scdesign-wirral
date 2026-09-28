@@ -54,11 +54,12 @@
 
         <h2>The Roof Visualiser and your photo</h2>
         <ul>
-          <li><strong>On your device first.</strong> When you add a photo, your browser shrinks it and removes hidden information such as GPS location. Marking the roof and the instant quick previews all happen on your own device. Nothing is uploaded at that stage.</li>
-          <li><strong>Photo-real renders are optional.</strong> They're only created if you switch them on. Your photo and the roof outline you drew are then sent securely to our server, which forwards them to <strong>OpenAI</strong> (a US company acting as our processor) to generate the images.</li>
-          <li><strong>Not stored by us.</strong> Our server handles the photo in memory and doesn't save it. OpenAI does not use API data to train its models by default, and it may keep requests for up to about 30 days for abuse monitoring, under its current terms.</li>
+          <li><strong>Uploaded to private storage.</strong> When you choose a photo, it's uploaded to WV Roofing's private storage so you can mark your roof and come back to it in the same browser tab. Hidden information in the file, such as GPS location, the camera details and any comments, is removed as soon as it arrives; the picture itself isn't changed. Only you (through the key your browser holds for this tab) and the WV Roofing team can open it.</li>
+          <li><strong>Kept for 30 days, or until you delete it.</strong> Your photo and the roof outline you draw are deleted automatically after 30 days unless you send us an enquiry about them. You can delete them yourself at any time with "Delete my photo from WV Roofing" in the visualiser.</li>
+          <li><strong>Why we use it.</strong> We use your photo only to show you roof options you've asked to see (our legitimate interest in providing the visualiser you're using), and, if you send an enquiry, to prepare your quote.</li>
+          <li><strong>Photo-real renders are optional.</strong> They're only created if you switch them on. Your photo and roof outline are then sent to <strong>OpenAI</strong> (a US company acting as our processor) to generate the images. OpenAI does not use API data to train its models by default, and it may keep requests for up to about 30 days for abuse monitoring, under its current terms.</li>
           <li><strong>A tip:</strong> photos from the pavement work best. Try to avoid people and readable car number plates.</li>
-          <li>The sample houses on the site are stock photographs. Number plates and house numbers are blurred.</li>
+          <li>The sample houses on the site are stock photographs. Number plates and house numbers are blurred. Using a sample house doesn't upload anything.</li>
         </ul>
 
         <h2>Quote requests</h2>
@@ -67,15 +68,16 @@
         <h2>Services we use</h2>
         <ul>
           <li><strong>Cloudflare</strong> hosts the website.</li>
-          <li><strong>Vercel</strong> runs the server functions for renders and quote requests.</li>
+          <li><strong>Vercel</strong> runs the server functions and stores your photo privately (Vercel Blob, London).</li>
+          <li><strong>Neon</strong> holds the record of your visualiser session (a Postgres database in London).</li>
           <li><strong>OpenAI</strong> generates the photo-real renders, and only if you ask for them.</li>
           <li><strong>Apple iCloud Mail</strong> delivers quote-request emails.</li>
           <li><strong>Google Fonts</strong> serves the Inter typeface to devices that don't have Apple's system font, so your browser may connect to Google to download it.</li>
         </ul>
-        <p>There are no advertising or analytics cookies on this site, so there's no cookie banner. Your browser may remember small preferences locally.</p>
+        <p>There are no advertising or analytics cookies on this site, so there's no cookie banner. When you upload a photo, your browser keeps a key to your visualiser session for this tab only; it's needed for the service you're using and disappears when you close the tab.</p>
 
         <h2>Your rights</h2>
-        <p>Under UK data protection law you can ask for a copy of your data, ask for it to be corrected or deleted, and object to how it's used. If you're unhappy with how your data has been handled, you can complain to the Information Commissioner's Office at <a href="https://ico.org.uk" rel="noopener">ico.org.uk</a>.</p>
+        <p>Under UK data protection law you can ask for a copy of your data, ask for it to be corrected or deleted, and object to how it's used. You can delete your visualiser photo yourself at any time. If you're unhappy with how your data has been handled, you can complain to the Information Commissioner's Office at <a href="https://ico.org.uk" rel="noopener">ico.org.uk</a>.</p>
 
         <p class="caption legal-updated">Last updated: September 2026 (concept draft).</p>
       </div>

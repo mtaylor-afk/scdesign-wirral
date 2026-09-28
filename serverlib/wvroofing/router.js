@@ -18,8 +18,8 @@ const SAFE_ROUTE = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/;
 /**
  * @typedef {import("http").IncomingMessage & { body?: unknown, query?: unknown }} Req
  * @typedef {import("http").ServerResponse} Res
- * @typedef {{ req: Req, res: Res, params: Record<string, string>, url: URL }} Ctx
- * @typedef {"none" | "cron"} Auth
+ * @typedef {{ req: Req, res: Res, params: Record<string, string>, url: URL, project?: Record<string, any> }} Ctx
+ * @typedef {"none" | "cron" | "project"} Auth
  * @typedef {object} Route
  * @property {string} path            e.g. "health" or "projects/:id/renders"
  * @property {(() => (req: Req, res: Res) => Promise<void>)} [legacy]  pre-v02 handler that does its own CORS and method checks
@@ -36,6 +36,15 @@ const ROUTES = [
   { path: "enquiry", legacy: () => require("./legacy/enquiry.js") },
   { path: "health", methods: ["GET"], auth: "none", origin: "any", handler: (ctx) => require("./health.js").health(ctx) },
   { path: "cron/daily", methods: ["GET"], auth: "cron", origin: "any", handler: (ctx) => require("./cron/daily.js").daily(ctx) },
+  // Customer projects (A2). The token in "Authorization: Bearer" opens one project only.
+  { path: "projects", methods: ["POST"], auth: "none", handler: (ctx) => require("./projects.js").create(ctx) },
+  { path: "projects/:id", methods: ["GET"], auth: "project", handler: (ctx) => require("./projects.js").get(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/consent", methods: ["POST"], auth: "project", handler: (ctx) => require("./projects.js").consent(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/photo/presign", methods: ["POST"], auth: "project", handler: (ctx) => require("./projects.js").presign(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/photo/commit", methods: ["POST"], auth: "project", handler: (ctx) => require("./projects.js").commit(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/photo/display", methods: ["GET"], auth: "project", handler: (ctx) => require("./projects.js").display(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/mask", methods: ["POST"], auth: "project", handler: (ctx) => require("./projects.js").mask(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/delete", methods: ["POST"], auth: "project", handler: (ctx) => require("./projects.js").remove(/** @type {any} */ (ctx)) },
 ];
 
 /** @param {string} pattern */
@@ -132,15 +141,20 @@ function safeEqual(a, b) {
 }
 
 /**
+ * Apply a route's auth rule; for "project" routes, load the project into ctx.
  * @param {Auth} auth
- * @param {Req} req
+ * @param {Ctx} ctx
  */
-function authorise(auth, req) {
+async function authorise(auth, ctx) {
   if (auth === "none") return;
   if (auth === "cron") {
     const secret = process.env.CRON_SECRET;
     if (!secret) throw new HttpError(503, "not_configured", "The scheduled job isn't set up yet.");
-    if (!safeEqual(String(req.headers.authorization || ""), "Bearer " + secret)) throw new HttpError(401, "unauthorised", "Not allowed.");
+    if (!safeEqual(String(ctx.req.headers.authorization || ""), "Bearer " + secret)) throw new HttpError(401, "unauthorised", "Not allowed.");
+    return;
+  }
+  if (auth === "project") {
+    ctx.project = await require("./auth.js").requireProject(ctx.req, ctx.params.id);
     return;
   }
   throw new HttpError(500, "server_error", "Unknown auth rule.");
@@ -176,12 +190,23 @@ async function handle(req, res) {
     if (!methods.includes(String(req.method))) {
       return json(res, 405, { ok: false, error: "method_not_allowed" }, { Allow: methods.concat(["OPTIONS"]).join(", ") });
     }
-    if (route.origin !== "any" && !allowed) {
+    // Origin rule: a disallowed Origin is always refused. Browsers send no Origin on
+    // same-origin GETs, so a missing one is accepted for GET/HEAD (no side effects,
+    // and project routes still need the bearer token) but never for POST.
+    const hasOrigin = !!req.headers.origin;
+    const safeMethod = req.method === "GET" || req.method === "HEAD";
+    if (route.origin !== "any" && (hasOrigin ? !allowed : !safeMethod)) {
       return json(res, 403, { ok: false, error: "origin", message: "Requests from this site aren't allowed." });
     }
-    authorise(route.auth || "none", req);
+    // JSON only: a cross-site HTML form can't send it without a CORS preflight, which only our origins pass.
+    if (req.method === "POST" && !/^application\/json\b/i.test(String(req.headers["content-type"] || ""))) {
+      return json(res, 415, { ok: false, error: "invalid_content_type", message: "Send JSON." });
+    }
+    /** @type {Ctx} */
+    const ctx = { req, res, params: m.params, url: resolved.url };
+    await authorise(route.auth || "none", ctx);
     if (!route.handler) throw new HttpError(500, "server_error", "Route has no handler.");
-    await route.handler({ req, res, params: m.params, url: resolved.url });
+    await route.handler(ctx);
   } catch (err) {
     if (err instanceof HttpError) {
       const extra = err.extra || {};

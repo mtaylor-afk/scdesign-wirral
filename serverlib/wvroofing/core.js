@@ -309,10 +309,14 @@ function jpegSize(buf) {
  * much of it is transparent (= the area the model may edit).
  * Pre-v02 validator used by the legacy render bridge; A2 replaces it with a
  * version that checks the header dimensions before inflating anything.
+ * When expectW/expectH are given, a PNG of any other size is reported without
+ * being inflated, and inflation is always capped at the size the header implies.
  * @param {Buffer} buf
+ * @param {number} [expectW]
+ * @param {number} [expectH]
  * @returns {{ w: number, h: number, supported: boolean, transparentFrac?: number } | null}
  */
-function pngAlphaInfo(buf) {
+function pngAlphaInfo(buf, expectW, expectH) {
   const SIG = "89504e470d0a1a0a";
   if (buf.length < 33 || buf.subarray(0, 8).toString("hex") !== SIG) return null;
   let pos = 8;
@@ -337,10 +341,13 @@ function pngAlphaInfo(buf) {
     pos += 12 + len;
   }
   if (!w || !h || depth !== 8 || interlace !== 0 || (ctype !== 6 && ctype !== 4)) return { w, h, supported: false };
+  // Size first: a mask of the wrong (or an absurd) size is refused without inflating anything.
+  if ((expectW && w !== expectW) || (expectH && h !== expectH)) return { w, h, supported: true, transparentFrac: NaN };
+  if (w * h > 4096 * 4096) return { w, h, supported: false };
   const bpp = ctype === 6 ? 4 : 2;
   let raw;
   try {
-    raw = zlib.inflateSync(Buffer.concat(idat));
+    raw = zlib.inflateSync(Buffer.concat(idat), { maxOutputLength: h * (w * bpp + 1) });
   } catch (err) {
     return { w, h, supported: false };
   }

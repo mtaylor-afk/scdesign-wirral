@@ -27,11 +27,16 @@ function databaseUrl(env) {
   return env.WVR_DATABASE_URL || env.DATABASE_URL || env.POSTGRES_URL || "";
 }
 
-/** @param {Env} env */
+/**
+ * Storage needs the database, the private Blob store, the session secret AND
+ * the cron secret: without the daily job nothing would be deleted after 30
+ * days, so uploads stay off until it can run.
+ * @param {Env} env
+ */
 function storageCredentials(env) {
   if (isTest(env)) return true; // PGlite + local file storage
   const blob = !!(env.BLOB_STORE_ID || env.BLOB_READ_WRITE_TOKEN);
-  return !!databaseUrl(env) && blob && !!env.WVR_SESSION_SECRET;
+  return !!databaseUrl(env) && blob && !!env.WVR_SESSION_SECRET && !!env.CRON_SECRET;
 }
 
 /** @param {Env} env */
