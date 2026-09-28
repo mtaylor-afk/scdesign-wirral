@@ -10,7 +10,9 @@ The overview of the concept site itself is in `docs/WVROOFING.md`.
 | `permissions-record.md` | Generated from `serverlib/wvroofing/permissions.js`: what each provider's terms allow |
 | `wvroofing.env.example` | Every environment variable, names only |
 | `operator-guide.md` | The operator screen: setting the password, enquiries, search, scope corrections, renders to check, costs, deleting |
-| `handover-2026-09-28-v1.md` | Where things stand, in the brief's status words; commits; owner actions; flags; the test record |
+| `handover-2026-09-28-v2.md` | **Current.** Where things stand after Release B's required increments, in the brief's status words; commits; owner actions; flags; the test record |
+| `handover-2026-09-28-v1.md` | The same at the end of Release A's A7 (kept) |
+| `supplier-enquiries.md` | Draft enquiries for Matthew to send: Bluesky, Getmapping, Vexcel, Google (Solar API); and what to do if one says yes |
 | `setup-and-deploy.md` | Running it locally, the owner's go-live steps, pushing, live checks, switching off and rolling back |
 | `privacy-record.md` | What is processed, lawful bases, the legitimate interests assessment, processors and transfers, requests |
 | `retention.md` | Every retention period (from `retention.js`), deletion on request, copies outside our control |
@@ -34,7 +36,8 @@ Earlier handover versions are kept; a new version is a new file.
 | B1 Catalogue v2 and quantities | Built and tested locally; held with A2. Looks in the public catalogue, products server-only (nine draft specifications from manufacturers' datasheets, one or more per look). None is verified yet, so no quantities reach customers |
 | B2 Measurement core and the estimate step | Built and tested locally; held with A2 |
 | B3 Assisted measurement | Built and tested locally; held with A2. The roofer enters, approves and shows measurements (Hover and desk estimates stay hidden); customers add plans and drawings; Hover template. B3b (OS reference panel) not built: optional |
-| B4–B5 | Not started |
+| B4 Automatic measurement as honest stubs, release checks | Built and tested locally; held with A2. Automatic measurement stays disabled (no licensed provider); the measurement switch is enforced; permissions record complete; supplier enquiries drafted |
+| B5 Desk-measure tool (optional) | Not started: needs a separate approval and 20–30 reference properties |
 
 ## Commands
 

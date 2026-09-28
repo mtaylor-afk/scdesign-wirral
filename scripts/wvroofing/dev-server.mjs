@@ -50,6 +50,7 @@ if (process.env.WVR_ENV === "test") {
   if (!process.env.WVR_CAP_ENQUIRY_DELIVERY) process.env.WVR_CAP_ENQUIRY_DELIVERY = "on";
   if (!process.env.WVR_CAP_ADDRESS_LOOKUP) process.env.WVR_CAP_ADDRESS_LOOKUP = "on";
   if (!process.env.WVR_CAP_AERIAL_DISPLAY) process.env.WVR_CAP_AERIAL_DISPLAY = "on";
+  if (!process.env.WVR_CAP_ASSISTED_MEASUREMENT) process.env.WVR_CAP_ASSISTED_MEASUREMENT = "on";
   // Repeated QA runs send several enquiries an hour from one address (the limits have their own tests).
   if (!process.env.WVR_ENQUIRIES_PER_IP_HOURLY) process.env.WVR_ENQUIRIES_PER_IP_HOURLY = "200";
   if (!process.env.WVR_FIXTURE_LATENCY_MS) process.env.WVR_FIXTURE_LATENCY_MS = "1500";

@@ -39,8 +39,11 @@ function envNum(n, dflt) {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : dflt;
 }
 
+// Plans and drawings are for measuring the roof: they need storage and the measurement switch.
 function requireStorage() {
-  if (!isEnabled("enquiry_storage", process.env)) throw new HttpError(503, "not_configured", "Adding plans and drawings isn't available right now.");
+  if (!isEnabled("enquiry_storage", process.env) || !isEnabled("assisted_measurement", process.env)) {
+    throw new HttpError(503, "not_configured", "Adding plans and drawings isn't available right now.");
+  }
 }
 
 /** @param {Record<string, any>} r */

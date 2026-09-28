@@ -74,7 +74,10 @@ function table(head, rows) {
 export function measurementCard(e, p, ui) {
   const card = h("section", { class: "op-card", id: "op-measure" }, h("h3", { text: "Roof measurement" }));
   const current = p.measurements.find((m) => !m.supersededAt && !m.rejectedAt) || null;
-  if (current) card.append(currentView(current, ui));
+  if (!p.measurementEnabled) {
+    card.append(h("p", { class: "notice notice--warn op-small", text: "Roof measurement is switched off: customers see no figures and nothing new can be added. The owner's switch is WVR_CAP_ASSISTED_MEASUREMENT." }));
+  }
+  if (current) card.append(currentView(current, Object.assign({ enabled: p.measurementEnabled }, ui)));
   else card.append(h("p", { class: "op-muted op-small", text: "Not measured yet. The customer sees that the roof is measured at a survey." }));
   if (current && p.quantities.length) card.append(quantitiesView(p.quantities, e, ui));
   const older = p.measurements.filter((m) => m !== current);
@@ -96,7 +99,8 @@ export function measurementCard(e, p, ui) {
       )
     );
   }
-  card.append(evidenceView(p, ui), entryForm(e, p, current, ui));
+  card.append(evidenceView(p, ui));
+  if (p.measurementEnabled) card.append(entryForm(e, p, current, ui));
   return card;
 }
 
@@ -133,7 +137,9 @@ function currentView(m, ui) {
   );
   if (m.edges.length) wrap.append(table(["Edge", "Kind", "Length m"], m.edges.map((x) => h("tr", {}, h("td", { text: x.id }), h("td", { text: x.kind }), h("td", { text: n2(x.length_m) })))));
   const actions = h("div", { class: "op-actions" });
-  if (!m.approvedAt) {
+  if (!ui.enabled) {
+    // switched off: it can still be rejected, nothing else
+  } else if (!m.approvedAt) {
     actions.append(
       h("button", {
         class: "btn btn-primary btn-sm",

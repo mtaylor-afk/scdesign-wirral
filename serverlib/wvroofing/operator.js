@@ -248,6 +248,7 @@ async function projectDetail(p, visualId) {
       finishedAt: iso(j.finished_at),
     })),
     costs: costs.rows,
+    measurementEnabled: measurements.enabled(),
     measurements: measured.map(operatorView),
     evidence: ev.rows.map((r) => ({ id: r.id, kind: r.kind, mime: r.mime, bytes: r.bytes, addedAt: iso(r.created_at) })),
     // What the current measurement gives for the enquiry's look, drafts included (labelled).
@@ -609,6 +610,7 @@ async function measurementRow(ctx) {
  * @param {OperatorCtx} ctx
  */
 async function addMeasurement(ctx) {
+  measurements.requireEnabled();
   const e = await enquiryRow(ctx);
   if (!e.project_id) throw new HttpError(409, "conflict", "This enquiry has no project to measure.");
   const body = await readJson(ctx.req, 64 * 1024);
@@ -664,6 +666,7 @@ function assertCurrent(m) {
  * @param {OperatorCtx} ctx
  */
 async function approveMeasurement(ctx) {
+  measurements.requireEnabled();
   const m = await measurementRow(ctx);
   const body = await readJson(ctx.req, 4 * 1024);
   assertCurrent(m);
@@ -706,6 +709,7 @@ async function rejectMeasurement(ctx) {
  * @param {OperatorCtx} ctx
  */
 async function measurementVisibility(ctx) {
+  measurements.requireEnabled();
   const m = await measurementRow(ctx);
   const body = await readJson(ctx.req, 4 * 1024);
   if (typeof body.visible !== "boolean") throw new HttpError(400, "invalid_fields", "Say whether the figures should be shown.", { fields: ["visible"] });

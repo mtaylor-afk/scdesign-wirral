@@ -19,6 +19,8 @@ Generated from `serverlib/wvroofing/permissions.js` (do not edit by hand). A cap
 | Vercel (functions, Blob storage) | Runs the API and stores photos and renders (private store) | n/a | yes | n/a | yes | n/a | n/a | n/a | 2026-09-28 |
 | Neon Postgres (via the Vercel Marketplace) | The database for projects, jobs and enquiries | n/a | yes | n/a | yes | n/a | n/a | n/a | 2026-09-27 |
 | Apple iCloud Mail (SMTP) | Sends the enquiry notification to the roofer | n/a | yes | n/a | n/a | n/a | n/a | n/a | 2026-09-27 |
+| Cloudflare Pages | Hosts the static pages (shared with SC Design until WV Roofing has its own domain) | n/a | yes | n/a | n/a | n/a | n/a | n/a | 2026-09-28 |
+| Google Fonts | Serves the Inter typeface to devices without Apple's system font | n/a | yes | n/a | n/a | n/a | n/a | n/a | 2026-09-28 |
 
 ## Notes and sources
 
@@ -50,5 +52,9 @@ Generated from `serverlib/wvroofing/permissions.js` (do not edit by hand). A cap
 
 **Neon Postgres (via the Vercel Marketplace).** London region (aws-eu-west-2) chosen at creation. Sources: https://neon.com/docs/introduction/plans, https://neon.com/docs/introduction/regions
 
-**Apple iCloud Mail (SMTP).** Existing SMTP account; sender name is always 'WV Roofing'.
+**Apple iCloud Mail (SMTP).** Existing SMTP account; sender name is always 'WV Roofing'. A business mailbox with a data processing agreement is recommended before launch (privacy-record.md).
+
+**Cloudflare Pages.** Receives visitors' IP addresses in its request logs; covered by Cloudflare's data processing addendum. No customer data is stored there: pages only. Sources: https://developers.cloudflare.com/pages/configuration/headers/, https://www.cloudflare.com/cloudflare-customer-dpa/
+
+**Google Fonts.** The visitor's browser fetches the font from Google, so Google receives the IP address; the privacy notice says so. Self-hosting the font would remove this. Sources: https://developers.google.com/fonts/faq/privacy
 

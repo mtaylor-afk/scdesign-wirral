@@ -405,3 +405,27 @@ Vercel hands over a rewritten request.
 - **Not built:**
   - **B3b.** The optional OS reference panel needs its own approval and an OS key.
   - **Verifying a product's specification** is a change to `products.json`, not a screen.
+
+## Decisions made while building B4 (2026-09-28)
+
+- **Automatic measurement is honest stubs** (`measure/adapters.js`). Google Solar, Vexcel and Bluesky
+  each answer `unsupported` and are never called over the network.
+  - Every property gets `licence_unresolved`.
+  - Addresses outside the areas this site covers also get `geography_unsupported`. Those areas are the
+    Wirral, CH41–CH49 and CH60–CH64, and Liverpool, L1–L38, matching the home page's lists.
+  - `auto_measurement` stays disabled with `no_licensed_provider`, whatever keys or switches are set;
+    `/health` says so.
+  - The customer's "unavailable" estimate carries these reasons. For an address outside the area, it adds
+    that the address looks to be outside the areas covered.
+- **The measurement switch is enforced.** B2 and B3 didn't check `WVR_CAP_ASSISTED_MEASUREMENT`; now:
+  - with it off, the customer sees no measured figures and no place for plans and drawings;
+  - the operator's add, approve and show routes answer `not_configured`;
+  - rejecting still works, so a measurement can always be pulled back.
+
+  The test environment has it switched on.
+- **The permissions record is complete**, with 17 providers: Cloudflare and Google Fonts were added. A
+  test holds it to the plan's list.
+- **Supplier enquiries.** `supplier-enquiries.md` has four drafts, for Matthew to send himself: Bluesky,
+  Getmapping, Vexcel, and Google (Solar API). It also covers what to do if one says yes: the permissions
+  record, a real adapter, a 20–30 property pilot, then a switch.
+- **Handover v2** is `handover-2026-09-28-v2.md`; v1 is kept.

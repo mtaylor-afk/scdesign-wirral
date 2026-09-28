@@ -98,6 +98,7 @@ A key alone turns nothing on. Each capability also needs its switch set to `on`,
 | Address search | `WVR_IDEAL_POSTCODES_KEY` (set a daily lookup limit in their dashboard) | `WVR_CAP_ADDRESS_LOOKUP=on` |
 | Satellite view | `WVR_GOOGLE_MAPS_STATIC_KEY` and `WVR_GOOGLE_MAPS_SIGNING_SECRET` (URL signing on, a daily quota and a budget alert) | `WVR_CAP_AERIAL_DISPLAY=on` |
 | Photo-real renders | `WVR_OPENAI_API_KEY`, from a "WV Roofing concept" project with a hard monthly budget | `WVR_CAP_IMAGE_GENERATION=on` |
+| Roof measurement (the roofer's own, shown once approved) and customers' plans and drawings | none beyond storage | `WVR_CAP_ASSISTED_MEASUREMENT=on` |
 
 Photo uploads and enquiry storage come on by themselves once Neon, Blob, `WVR_SESSION_SECRET` and
 `CRON_SECRET` are all present.

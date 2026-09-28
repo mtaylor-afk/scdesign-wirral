@@ -66,7 +66,8 @@ function render(e, visualName) {
   const reason = $("#estimate-reason");
   const figures = $("#estimate-figures");
   if (status !== "indicative_available" || !e.measurement) {
-    reason.textContent = text;
+    const outside = e && e.automatic && e.automatic.reasons.includes("geography_unsupported");
+    reason.textContent = text + (outside ? " Your address also looks to be outside the Wirral and Liverpool, the areas we cover." : "");
     reason.hidden = false;
     figures.hidden = true;
     notIncluded(e && e.not_included);

@@ -18,6 +18,15 @@ const quantities = require("./quantities.js");
 
 const { HttpError, json, VISUALS } = core;
 
+/** The owner's switch for measurement (WVR_CAP_ASSISTED_MEASUREMENT, with storage). */
+function enabled() {
+  return require("./capabilities.js").isEnabled("assisted_measurement", process.env);
+}
+
+function requireEnabled() {
+  if (!enabled()) throw new HttpError(503, "not_configured", "Roof measurement isn't switched on.");
+}
+
 /**
  * @typedef {import("./projects.js").ProjectCtx} ProjectCtx
  * @typedef {Record<string, any>} Row
@@ -111,6 +120,21 @@ function forQuantities(m) {
   return { faces: m.faces.map((/** @type {any} */ f) => ({ id: f.id, surface_m2: f.surface_area_m2, pitch_deg: f.pitch_deg, included: f.included })), edges: m.edges };
 }
 
+/**
+ * What the automatic measurement providers say about this property: always
+ * "unsupported" today, with the reasons (measure/adapters.js).
+ * @param {string} projectId
+ */
+async function automaticFor(projectId) {
+  const { rows } = await db.query(
+    "SELECT a.postcode, a.uprn, a.lat, a.lng, a.coord_source FROM wvr_projects p LEFT JOIN wvr_addresses a ON a.id = p.address_id WHERE p.id = $1",
+    [projectId]
+  );
+  const a = rows[0] || {};
+  const results = await require("./measure/adapters.js").automatic({ postcode: a.postcode, uprn: a.uprn, lat: a.lat, lng: a.lng, coordSource: a.coord_source });
+  return { status: "unsupported", reasons: [...new Set(results.flatMap((r) => r.reasons))] };
+}
+
 /** The project's current measurement (any state), or null. @param {string} projectId */
 async function current(projectId) {
   const { rows } = await db.query("SELECT * FROM wvr_measurements WHERE project_id = $1 AND superseded_at IS NULL ORDER BY created_at DESC LIMIT 1", [projectId]);
@@ -178,11 +202,13 @@ const NOT_INCLUDED_WORDS = /** @type {Record<string, string>} */ ({
  * @param {string | null} visualId
  */
 async function estimateFor(projectId, visualId) {
-  const m = await visible(projectId);
+  // Switched off: nothing measured is shown (the roofer measures at a survey).
+  const on = enabled();
+  const m = on ? await visible(projectId) : null;
   if (!m) {
-    const cur = await current(projectId);
+    const cur = on ? await current(projectId) : null;
     const none = { measurement: null, products: [], not_included: BRIEF_NOT_INCLUDED };
-    if (!cur || cur.rejected_at) return Object.assign({ status: "unavailable", reason: "no_measurement" }, none);
+    if (!cur || cur.rejected_at) return Object.assign({ status: "unavailable", reason: "no_measurement", automatic: await automaticFor(projectId) }, none);
     if (cur.approved_at && cur.status === "indicative_available") return Object.assign({ status: "measured_not_shown", reason: "figures_in_quotation" }, none);
     return Object.assign({ status: "processing", reason: "being_checked" }, none);
   }
@@ -216,4 +242,4 @@ async function estimateRoute(ctx) {
   return json(ctx.res, 200, { ok: true, estimate: await estimateFor(ctx.project.id, visualId || null) });
 }
 
-module.exports = { create, current, visible, supersedeAll, sendBackForReview, estimateFor, estimate: estimateRoute, fromRow, forQuantities };
+module.exports = { create, current, visible, supersedeAll, sendBackForReview, estimateFor, estimate: estimateRoute, fromRow, forQuantities, enabled, requireEnabled };

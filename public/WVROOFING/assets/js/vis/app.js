@@ -1079,7 +1079,8 @@ async function boot() {
       if (step === "estimate") {
         const id = S.cat ? firstChoice() : null;
         const v = id && S.cat.byId.get(id);
-        showEstimate({ visualId: v ? id : null, visualName: v ? v.name + ", " + v.colourName : "this roof", canAddFiles: !!currentProject() && storageReady() });
+        const measuring = S.caps && S.caps.assisted_measurement && S.caps.assisted_measurement.state === "enabled";
+        showEstimate({ visualId: v ? id : null, visualName: v ? v.name + ", " + v.colourName : "this roof", canAddFiles: !!currentProject() && storageReady() && !!measuring });
       }
       updateSummary();
     },

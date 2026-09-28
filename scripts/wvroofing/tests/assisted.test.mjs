@@ -7,6 +7,7 @@ process.env.WVR_FS_STORAGE_DIR = path.join(os.tmpdir(), "wvr-assisted-test-" + p
 process.env.WVR_CAP_ENQUIRY_DELIVERY = "on";
 process.env.WVR_CAP_ADDRESS_LOOKUP = "on";
 process.env.WVR_CAP_AERIAL_DISPLAY = "on";
+process.env.WVR_CAP_ASSISTED_MEASUREMENT = "on";
 process.env.WVR_PROJECTS_PER_IP_DAILY = "1000";
 process.env.WVR_DAILY_UPLOADS = "1000";
 process.env.WVR_ENQUIRIES_PER_IP_HOURLY = "1000";
