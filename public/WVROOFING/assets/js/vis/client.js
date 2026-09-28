@@ -256,6 +256,17 @@ export async function cancelRender(jobId) {
 }
 
 /**
+ * The estimate step for a look (B2): { status, reason, measurement, products, not_included }.
+ * Null when there's no project (a sample house, or photo only).
+ */
+export async function getEstimate(visualId) {
+  const p = currentProject();
+  if (!p) return null;
+  const j = await call("GET", "projects/" + p.id + "/estimate?visual=" + encodeURIComponent(visualId), { project: p });
+  return j.estimate;
+}
+
+/**
  * Send the enquiry about this project's photo (saved before anyone is emailed).
  * Resolves with { status, json } for the shared enquiry form code.
  */

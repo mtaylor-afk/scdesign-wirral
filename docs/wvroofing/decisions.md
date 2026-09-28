@@ -294,3 +294,45 @@ Vercel hands over a rewritten request.
     length worked out from the area, which the rules forbid.
 - **Dev server.** It now reloads `catalogue.json` with the server modules, so catalogue edits apply
   without a restart.
+
+## Decisions made while building B2 (2026-09-28)
+
+- **Measurements** are in `wvr_measurements` (migration 0007).
+  - A measurement is never edited: a new one supersedes the old, which points at its replacement
+    (`superseded_by`).
+  - A new or cleared address supersedes all the project's measurements.
+  - The operator's scope correction sends the current one back to `needs_review` (reason
+    `ambiguous_scope`) and hides it, until it's approved again.
+- **Geometry** (`measure/geometry.js`).
+  - **Faces** are checked: unique ids, areas above 0, pitch 0–75° or unknown, azimuth 0–360°, at most 50
+    faces.
+  - **Surface area** is worked out only as plan area ÷ cos(pitch). An area the source already gave on the
+    slope is used as it is and never corrected again. Missing values stay null, never 0.
+  - **Edges** are entered lengths of a known kind, on known faces.
+  - **Storage and display.** Full precision is stored; the customer sees whole m² and whole degrees.
+  - **Labels** read "Measured by the roofer from `<method>` on `<date>`", never "aerial".
+- **Assessment** gives the reasons for review:
+  - `pitch_unknown` or `missing_faces` for faces without an area;
+  - face flags (`tree_cover`, `unreliable_pitch`, `complex_geometry`);
+  - `no_rooftop_coordinate`, for sources that find the roof from map coordinates;
+  - `shared_roof` and `ambiguous_scope`, from the customer's answers, unless the method is a site
+    survey, which settles the scope;
+  - `source_outdated`, for sources more than 5 years old.
+
+  No reasons means `indicative_available`.
+- **The customer's estimate** (`GET projects/:id/estimate?visual=`) has four states:
+  - `unavailable`: nothing measured, with the brief's list of what isn't included.
+  - `processing`: measured but not yet approved, or back for review.
+  - `measured_not_shown`: approved but not made visible. This is the plan's "figures will be in your
+    quotation", for sources without display rights.
+  - `indicative_available`: whole-m² area, the pitches, who measured it from what and when, and
+    quantities from verified products for the chosen look.
+
+  The "not included" line comes from the estimate. It never shows a draft. It asks about extensions or
+  changes since the source year.
+- **No separate quantity-estimate table.** Estimates are recalculated from the current measurement and the
+  product's specification version, so they're always consistent. What the customer could see when they
+  sent an enquiry is kept in the enquiry's snapshot (`measurement` and `quantities`), only if they could
+  see it.
+- **No `measurement/request` route.** The estimate step's "Request a survey" is the enquiry itself.
+  Contact details are needed to arrange a visit, and the enquiry already records the request.

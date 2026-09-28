@@ -178,6 +178,8 @@ async function choose(ctx) {
   await db.tx(async (t) => {
     await t.query("UPDATE wvr_addresses SET superseded_at = now() WHERE project_id = $1 AND superseded_at IS NULL", [ctx.project.id]);
     await t.query("UPDATE wvr_property_confirmations SET superseded_at = now() WHERE project_id = $1 AND superseded_at IS NULL", [ctx.project.id]);
+    // A measurement describes one address: a new one supersedes it.
+    await require("./measurements.js").supersedeAll(t, ctx.project.id);
     await t.query(
       "INSERT INTO wvr_addresses (id, project_id, provider, postcode, lines, post_town, uprn, udprn, umprn, lat, lng, coord_source, dataset, fetched_at) " +
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
@@ -209,6 +211,7 @@ async function clear(ctx) {
   await db.tx(async (t) => {
     await t.query("UPDATE wvr_addresses SET superseded_at = now() WHERE project_id = $1 AND superseded_at IS NULL", [ctx.project.id]);
     await t.query("UPDATE wvr_property_confirmations SET superseded_at = now() WHERE project_id = $1 AND superseded_at IS NULL", [ctx.project.id]);
+    await require("./measurements.js").supersedeAll(t, ctx.project.id);
     await t.query("UPDATE wvr_projects SET address_id = NULL, property_confirmation_id = NULL, updated_at = now() WHERE id = $1", [ctx.project.id]);
   });
   return json(ctx.res, 200, { ok: true, address: null });

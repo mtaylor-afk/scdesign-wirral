@@ -5,7 +5,7 @@
 //   2 photo (upload / camera / sample)  ->  3 mark the roof (MaskEditor)
 //   4 compare: eight instant quick previews, then photo-real AI renders
 //     (optional, with consent) composited so only the roof changes
-//   5 estimate (honest: no licensed measurement data yet)  ->  6 send the enquiry
+//   5 estimate (vis/estimate.js: figures only from a measurement the roofer approved)  ->  6 send the enquiry
 // The project id rides in the URL (?project=) and its key in sessionStorage, so
 // a refresh resumes where the customer was: address, photo, outline, previews,
 // renders and any enquiry are rebuilt from the server.
@@ -47,6 +47,7 @@ import {
   MAX_BYTES,
 } from "./client.js";
 import { Lightbox } from "./lightbox.js";
+import { showEstimate } from "./estimate.js";
 import { watermarked, downloadCanvas } from "./watermark.js";
 import { wireEnquiryForm, fillProductSelect, sendEnquiry, savedMessage } from "../enquiry.js";
 
@@ -1075,6 +1076,11 @@ async function boot() {
     onShow: (step) => {
       if (step === "property") propertyShown();
       if (step === "mark" && S.editor) requestAnimationFrame(() => S.editor && S.editor.fit());
+      if (step === "estimate") {
+        const id = S.cat ? firstChoice() : null;
+        const v = id && S.cat.byId.get(id);
+        showEstimate({ visualId: v ? id : null, visualName: v ? v.name + ", " + v.colourName : "this roof" });
+      }
       updateSummary();
     },
   });

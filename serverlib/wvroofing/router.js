@@ -52,6 +52,8 @@ const ROUTES = [
   { path: "projects/:id/address", methods: ["DELETE"], auth: "project", handler: (ctx) => require("./property.js").clear(/** @type {any} */ (ctx)) },
   { path: "projects/:id/property/view", methods: ["GET"], auth: "project", handler: (ctx) => require("./property.js").view(/** @type {any} */ (ctx)) },
   { path: "projects/:id/property/confirm", methods: ["POST"], auth: "project", handler: (ctx) => require("./property.js").confirm(/** @type {any} */ (ctx)) },
+  // The estimate step (B2): the roof's size and materials, only from a measurement the roofer approved and made visible.
+  { path: "projects/:id/estimate", methods: ["GET"], auth: "project", handler: (ctx) => require("./measurements.js").estimate(/** @type {any} */ (ctx)) },
   // Enquiries (A4): saved first, then the roofer is notified. "enquiry" is the pre-v02
   // path, kept permanently so older pages keep working.
   { path: "enquiries", methods: ["POST"], auth: "none", handler: (ctx) => require("./enquiries.js").createFree(ctx) },

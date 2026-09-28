@@ -319,8 +319,14 @@
           <div class="estimate-card">
             <p class="estimate-status"><span class="badge" id="estimate-badge">Suitable data unavailable</span></p>
             <p id="estimate-reason">We can't work out your roof's size or the materials it needs online yet: no licensed roof-measurement data is available for your area. The roofer measures the roof at a survey instead.</p>
+            <div class="estimate-figures" id="estimate-figures" hidden>
+              <p class="estimate-area" id="estimate-area"></p>
+              <p class="small muted" id="estimate-source"></p>
+              <ul class="estimate-products" id="estimate-products"></ul>
+              <p class="small" id="estimate-changes" hidden></p>
+            </div>
             <p class="small muted estimate-disclaimer">Indicative roof-area and material estimate based on available data. Final quantities, specification and price are subject to a roof survey.</p>
-            <p class="small muted">Not included in any online estimate: ridges, hips, valleys, verges, flashings, gutters and fixings.</p>
+            <p class="small muted" id="estimate-not-included">Not included in this estimate: ridges, hips, valleys, verges, flashings, gutters and fixings.</p>
           </div>
           <div class="compare-actions">
             <button type="button" class="btn btn-neutral" id="btn-estimate-back">Back to the roofs</button>

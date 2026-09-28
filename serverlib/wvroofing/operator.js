@@ -314,9 +314,10 @@ async function scope(ctx) {
       [id, p.id, a.id, prev ? prev.imagery_provider : null, pinShown, pinConfirmed, propertyType, reasons.length > 0, JSON.stringify(reasons), notes]
     );
     await t.query("UPDATE wvr_projects SET property_confirmation_id = $2, updated_at = now() WHERE id = $1", [p.id, id]);
-    // Release B: any measurement of this property goes back to needs_review here.
+    // The current measurement may not match the corrected scope: back for review, hidden until approved again.
+    const measurementBack = await require("./measurements.js").sendBackForReview(t, p.id);
     const before = prev ? { id: prev.id, propertyType: prev.property_type, by: prev.confirmed_by, reasons: parsed(prev.ambiguity_reasons), notes: prev.notes } : null;
-    const after = { id, propertyType, by: "operator", reasons, notes };
+    const after = { id, propertyType, by: "operator", reasons, notes, measurementBackForReview: measurementBack };
     await audit(t, ctx, "project", p.id, "scope_corrected", before, after);
     return after;
   });

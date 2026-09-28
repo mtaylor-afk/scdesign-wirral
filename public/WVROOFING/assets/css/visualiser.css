@@ -116,6 +116,11 @@
 .estimate-card, .enquiry-card { max-width: 720px; background: var(--tile); border-radius: var(--r-tile); padding: 22px 18px; display: grid; gap: 12px; }
 @media (min-width: 734px) { .estimate-card, .enquiry-card { padding: 28px 30px; } }
 .estimate-status { margin: 0; }
+.estimate-figures { display: grid; gap: 10px; }
+.estimate-area { font-family: var(--font-display); font-size: 21px; line-height: 1.24; font-weight: 600; letter-spacing: -0.012em; }
+@media (min-width: 734px) { .estimate-area { font-size: 24px; } }
+.estimate-products { margin: 0; padding-left: 1.15em; display: grid; gap: 8px; }
+.estimate-products li { line-height: 1.45; }
 .estimate-disclaimer { border-top: 1px solid var(--hairline); padding-top: 12px; }
 #enquiry-lede { max-width: 720px; margin-bottom: 18px; }
 .enquiry-done { max-width: 720px; margin-bottom: 18px; }

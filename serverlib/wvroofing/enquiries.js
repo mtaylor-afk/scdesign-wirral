@@ -233,8 +233,15 @@ async function snapshotFor(p, visualId) {
       snap.property = { id: r.id, propertyType: r.property_type, pinShown: r.pin_shown, pinConfirmed: r.pin_confirmed, ambiguous: r.ambiguous, reasons };
     }
   }
-  // Filled in by Release B: measurement and quantities (only when shown to the customer).
+  // The measurement and quantities the customer could see when they sent it (only those).
   snap.measurement = null;
+  snap.quantities = null;
+  const measurements = require("./measurements.js");
+  const m = await measurements.visible(p.id);
+  if (m) {
+    snap.measurement = { id: m.id, method: m.method, source_date: m.source_date, gross_surface_m2: m.gross_surface_m2, shown: require("./measure/geometry.js").customerView(m) };
+    if (visualId && VISUALS.has(visualId)) snap.quantities = (await measurements.estimateFor(p.id, visualId)).products;
+  }
   return snap;
 }
 
