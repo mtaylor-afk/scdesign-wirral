@@ -19,7 +19,10 @@
 // customer's enquiry, photo, render and satellite view, correct the scope,
 // change the status, the phone layout, delete after confirming, log out.
 // Pages are served with their real headers (incl. CSP), so a CSP violation
-// shows up as a console error.
+// shows up as a console error. With --live (a deployed copy) nothing is sent
+// that could reach the roofer or cost money: the enquiry forms are filled in but
+// not sent, and there are no renders and no operator login. The test photo it
+// uploads is deleted again at the end.
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
 import os from "node:os";
@@ -226,18 +229,23 @@ try {
     await page.waitForTimeout(300);
     const sel = await page.inputValue("#q-product");
     ok("'Ask about this roof' pre-selects it in the quote form", sel === "welsh-slate", sel);
-    // The survey request is saved first and answered with a reference.
+    // The survey request is saved first and answered with a reference. Never sent from a live
+    // site: it would be a real enquiry, and could email the roofer.
     await page.fill("#q-name", "QA Tester");
     await page.fill("#q-email", "qa@example.com");
     await page.check("#q-consent");
-    await page.waitForTimeout(2700);
-    await page.click('form[data-enquiry] button[type="submit"]');
-    await page.waitForFunction(() => {
-      const s = document.querySelector("form[data-enquiry] .form-status");
-      return s && !s.hidden && !/Saving/.test(s.textContent);
-    }, null, { timeout: 20000 });
-    const rr = await page.textContent("form[data-enquiry] .form-status");
-    ok("roof-replacement form: the enquiry is saved with a reference", (/saved/i.test(rr) && REF.test(rr)) || (LIVE && /concept site/i.test(rr)), rr);
+    if (!LIVE) {
+      await page.waitForTimeout(2700);
+      await page.click('form[data-enquiry] button[type="submit"]');
+      await page.waitForFunction(() => {
+        const s = document.querySelector("form[data-enquiry] .form-status");
+        return s && !s.hidden && !/Saving/.test(s.textContent);
+      }, null, { timeout: 20000 });
+      const rr = await page.textContent("form[data-enquiry] .form-status");
+      ok("roof-replacement form: the enquiry is saved with a reference", /saved/i.test(rr) && REF.test(rr), rr);
+    } else {
+      ok("roof-replacement form: filled in and ready (not sent on a live site)", await page.isEnabled('form[data-enquiry] button[type="submit"]'));
+    }
     await page.evaluate(() => window.scrollTo(0, 3000));
     await page.waitForTimeout(400);
     const top = await page.locator(".lnav").evaluate((n) => n.getBoundingClientRect().top);
@@ -338,15 +346,18 @@ try {
     await page.fill("#v-name", "QA Tester");
     await page.fill("#v-email", "qa@example.com");
     await page.check("#v-consent");
-    await page.waitForTimeout(2700);
-    await page.click('#quote-form button[type="submit"]');
-    await page.waitForFunction(() => {
-      const s = document.querySelector("#quote-form .form-status");
-      return s && !s.hidden && !/Saving|Sending/.test(s.textContent);
-    }, null, { timeout: 20000 });
-    const status = (await page.isVisible("#enquiry-done")) ? await page.textContent("#enquiry-done") : await page.textContent("#quote-form .form-status");
-    // Saved first, with a reference; a deployed copy without storage says it isn't collecting yet.
-    ok("quote form: the enquiry is saved with a reference", (/saved/i.test(status) && REF.test(status)) || (LIVE && /concept site/i.test(status)), status);
+    if (!LIVE) {
+      await page.waitForTimeout(2700);
+      await page.click('#quote-form button[type="submit"]');
+      await page.waitForFunction(() => {
+        const s = document.querySelector("#quote-form .form-status");
+        return s && !s.hidden && !/Saving|Sending/.test(s.textContent);
+      }, null, { timeout: 20000 });
+      const status = (await page.isVisible("#enquiry-done")) ? await page.textContent("#enquiry-done") : await page.textContent("#quote-form .form-status");
+      ok("quote form: the enquiry is saved with a reference", /saved/i.test(status) && REF.test(status), status);
+    } else {
+      ok("quote form: filled in and ready (not sent on a live site)", await page.isEnabled('#quote-form button[type="submit"]'));
+    }
     await shot(page, { path: path.join(OUT, "vis-quote-desktop.png") });
     ok("visualiser flow has no console errors", errors.length === 0, errors.join(" | "));
     await ctx.close();
@@ -596,6 +607,25 @@ try {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       ok("operator: no horizontal overflow (desktop)", overflow <= 0, overflow + "px");
       await shot(page, { path: path.join(OUT, "operator-desktop.png"), fullPage: true });
+      // Finding one customer's enquiries (a data request): the reference alone.
+      await page.fill("#op-q", made.ref);
+      const found = await page
+        .waitForFunction((ref) => {
+          const items = [...document.querySelectorAll(".op-item")];
+          return items.length === 1 && items[0].textContent.includes(ref);
+        }, made.ref, { timeout: 10000 })
+        .then(() => true)
+        .catch(() => false);
+      ok("operator: the search finds an enquiry by its reference", found);
+      await page.fill("#op-q", "");
+      await page.waitForFunction(() => !/matching/.test(document.querySelector("#op-status").textContent), null, { timeout: 10000 }).catch(() => null);
+      // Costs and the daily tidy-up.
+      await page.click("#tab-costs");
+      const costs = await page.waitForSelector("#op-costs .op-big", { timeout: 10000 }).then(() => true).catch(() => false);
+      const costText = costs ? (await page.textContent("#op-costs")) || "" : "";
+      ok("operator: the costs tab shows today's render budget and the paid calls", costs && /of US\$5\.00/.test(costText) && /OpenAI/.test(costText), costText.slice(0, 100));
+      await shot(page, { path: path.join(OUT, "operator-costs-desktop.png"), fullPage: true });
+      await page.click("#tab-enquiries");
       // Phone width: the enquiry fills the screen, with a way back to the list.
       await page.setViewportSize({ width: 390, height: 844 });
       await page.waitForTimeout(300);

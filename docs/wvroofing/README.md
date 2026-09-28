@@ -9,10 +9,15 @@ The overview of the concept site itself is in `docs/WVROOFING.md`.
 | `decisions.md` | Decision record (D1–D17) with evidence |
 | `permissions-record.md` | Generated from `serverlib/wvroofing/permissions.js`: what each provider's terms allow |
 | `wvroofing.env.example` | Every environment variable, names only |
-| `operator-guide.md` | The operator screen: setting the password, enquiries, scope corrections, renders to check, deleting |
+| `operator-guide.md` | The operator screen: setting the password, enquiries, search, scope corrections, renders to check, costs, deleting |
+| `handover-2026-09-28-v1.md` | Where things stand, in the brief's status words; commits; owner actions; flags; the test record |
+| `setup-and-deploy.md` | Running it locally, the owner's go-live steps, pushing, live checks, switching off and rolling back |
+| `privacy-record.md` | What is processed, lawful bases, the legitimate interests assessment, processors and transfers, requests |
+| `retention.md` | Every retention period (from `retention.js`), deletion on request, copies outside our control |
+| `cost-model.md` | Unit costs, the spending controls and their defaults, worst cases, typical costs |
+| `screens/` | Screenshots from the test environment (QA run) |
 
-Handover files (`handover-<date>-vN.md`, `setup-and-deploy.md`, `privacy-record.md`, `cost-model.md`,
-`retention.md`) arrive with the increments that need them.
+Earlier handover versions are kept; a new version is a new file.
 
 ## Status by increment
 
@@ -24,7 +29,9 @@ Handover files (`handover-<date>-vN.md`, `setup-and-deploy.md`, `privacy-record.
 | A4 Enquiries saved first, notified second | Built and tested locally (test outbox, no email sent); held with A2. Emails also need `WVR_LEAD_TO` and `WVR_CAP_ENQUIRY_DELIVERY=on` |
 | A5 Journey: your home first, resume, estimate and enquiry steps, no prices | Built and tested locally against the address and satellite stand-ins; held with A2. Live lookups need `WVR_IDEAL_POSTCODES_KEY` + `WVR_CAP_ADDRESS_LOOKUP=on`; the satellite view needs the Google key, the signing secret and `WVR_CAP_AERIAL_DISPLAY=on` |
 | A6 Operator screen | Built and tested locally with the test password; held with A2. Live use needs `WVR_OPERATOR_PASSWORD_HASH` (made with `scripts/wvroofing/operator-hash.mjs`) |
-| A7–A8, B1–B5 | Not started |
+| A7 Retention, search for data requests, costs, handover v1 | Built and tested locally; held with A2. The daily tidy-up needs `CRON_SECRET` |
+| A8 Live integration | Waits for the owner steps in `setup-and-deploy.md` (storage, secrets, keys) and his OK on spend |
+| B1–B5 | Not started |
 
 ## Commands
 

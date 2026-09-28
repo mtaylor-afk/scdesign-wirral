@@ -19,8 +19,7 @@ process.env.WVR_ADDRESS_LOOKUPS_DAILY = "1000";
 import { test, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import zlib from "node:zlib";
-import { load, call, SITE, repo, removeTempDir } from "./helpers.mjs";
+import { load, call, repo, removeTempDir, apiFor, customerJourney } from "./helpers.mjs";
 
 const app = load("api/wvroofing/app.js");
 const db = load("serverlib/wvroofing/db.js");
@@ -28,11 +27,8 @@ const jobs = load("serverlib/wvroofing/jobs.js");
 const auth = load("serverlib/wvroofing/auth.js");
 const mailer = load("serverlib/wvroofing/mailer.js");
 const openai = load("serverlib/wvroofing/openai.js");
-const images = load("serverlib/wvroofing/images.js");
 const router = load("serverlib/wvroofing/router.js");
 const { storage } = load("serverlib/wvroofing/storage.js");
-const { crc32 } = load("serverlib/wvroofing/core.js");
-const sharp = images.sharp();
 
 const PASSWORD = auth.TEST_OPERATOR_PASSWORD;
 process.env.WVR_OPERATOR_PASSWORD_HASH = auth.hashPassword(PASSWORD);
@@ -50,13 +46,10 @@ beforeEach(async () => {
   await db.query("DELETE FROM wvr_login_attempts");
 });
 
-function api(method, route, { token, body, ip, origin = SITE } = {}) {
-  const h = { origin };
-  if (method === "POST") h["content-type"] = "application/json";
-  if (token) h.authorization = "Bearer " + token;
-  if (ip) h["x-real-ip"] = ip;
-  return call(app, method, "/api/wvroofing/" + route, h, method === "POST" ? body || {} : undefined);
-}
+const api = apiFor(app);
+
+/** A customer's whole journey (helpers.mjs), with a render unless asked not to. */
+const enquiryWithProject = ({ render = true, propertyType = "semi" } = {}) => customerJourney(api, { render, propertyType });
 
 let ipN = 0;
 const nextIp = () => "203.0.113." + ++ipN;
@@ -71,64 +64,6 @@ async function login() {
 
 async function enquiryId(reference) {
   return (await db.query("SELECT id FROM wvr_enquiries WHERE reference = $1", [reference])).rows[0].id;
-}
-
-function chunk(type, data) {
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(data.length);
-  const td = Buffer.concat([Buffer.from(type, "ascii"), data]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(td));
-  return Buffer.concat([len, td, crc]);
-}
-
-function outline(w, h) {
-  const raw = Buffer.alloc(h * (w * 4 + 1));
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) raw[y * (w * 4 + 1) + 1 + x * 4 + 3] = x > w * 0.2 && x < w * 0.6 && y > h * 0.2 && y < h * 0.6 ? 0 : 255;
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(w, 0);
-  ihdr.writeUInt32BE(h, 4);
-  ihdr[8] = 8;
-  ihdr[9] = 6;
-  return "data:image/png;base64," + Buffer.concat([Buffer.from("89504e470d0a1a0a", "hex"), chunk("IHDR", ihdr), chunk("IDAT", zlib.deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]).toString("base64");
-}
-
-/**
- * A customer's whole journey: address (1 Test Road, rooftop), the kind of
- * property, a photo, an outline, optionally a render, then an enquiry.
- */
-async function enquiryWithProject({ render = true, propertyType = "semi" } = {}) {
-  const p = (await api("POST", "projects", { body: { noticeShown: true, consentAi: true } })).json;
-  const l = await api("POST", "projects/" + p.id + "/address/lookup", { token: p.token, body: { postcode: "CH45 1AB" } });
-  const a = l.json.addresses.find((x) => x.label.startsWith("1 Test Road"));
-  assert.equal((await api("POST", "projects/" + p.id + "/address", { token: p.token, body: { token: a.token } })).status, 200);
-  assert.equal((await api("POST", "projects/" + p.id + "/property/confirm", { token: p.token, body: { propertyType, pinConfirmed: true } })).status, 200);
-  const raw = Buffer.alloc(900 * 600 * 3);
-  for (let y = 0; y < 600; y++)
-    for (let x = 0; x < 900; x++) {
-      const i = (y * 900 + x) * 3;
-      const v = 110 + 50 * Math.sin(x / 41) + 30 * Math.cos(y / 29);
-      raw[i] = v;
-      raw[i + 1] = v * 0.92;
-      raw[i + 2] = v * 0.85;
-    }
-  const jpg = await sharp(raw, { raw: { width: 900, height: 600, channels: 3 } }).jpeg({ quality: 88 }).toBuffer();
-  const pre = await api("POST", "projects/" + p.id + "/photo/presign", { token: p.token, body: { contentType: "image/jpeg", bytes: jpg.length } });
-  await storage().put(new URL(pre.json.url, "http://localhost").searchParams.get("path"), jpg, "image/jpeg");
-  assert.equal((await api("POST", "projects/" + p.id + "/photo/commit", { token: p.token, body: { uploadId: pre.json.uploadId } })).status, 200);
-  const m = await api("POST", "projects/" + p.id + "/mask", { token: p.token, body: { png: outline(900, 600), shapes: [{ mode: "add", pts: [[180, 120], [540, 120], [540, 360]] }], displayW: 900, displayH: 600 } });
-  assert.equal(m.status, 200, JSON.stringify(m.json));
-  if (render) {
-    const r = await api("POST", "projects/" + p.id + "/renders", { token: p.token, body: { visualIds: ["welsh-slate"], idempotencyKey: key() } });
-    assert.equal(r.status, 202, JSON.stringify(r.json));
-    await jobs.drain();
-  }
-  const e = await api("POST", "projects/" + p.id + "/enquiry", {
-    token: p.token,
-    body: { name: "Sam Test", email: "sam@example.com", phone: "0151 496 0000", consent: true, elapsedMs: 9000, idempotencyKey: key(), product: "welsh-slate", includeImages: true },
-  });
-  assert.equal(e.status, 201, JSON.stringify(e.json));
-  return { p, ref: e.json.reference, id: await enquiryId(e.json.reference) };
 }
 
 async function freeEnquiry() {
@@ -363,6 +298,48 @@ test("status changes and survey requests are recorded with before and after", as
   const list = await api("GET", "operator/enquiries?status=survey_requested", { token: t });
   assert.ok(list.json.enquiries.some((x) => x.id === id));
   assert.equal((await api("POST", "operator/enquiries/" + id + "/scope", { token: t, body: { propertyType: "detached" } })).status, 409, "no project to correct");
+});
+
+test("finding a customer's enquiries by name, email, phone, postcode, address or reference", async () => {
+  const t = await login();
+  const free = await freeEnquiry();
+  const full = await enquiryWithProject({ render: false });
+  const find = async (q) => (await api("GET", "operator/enquiries?q=" + encodeURIComponent(q), { token: t })).json.enquiries.map((e) => e.id);
+  assert.ok((await find("jo TEST")).includes(free.id), "name, any case");
+  assert.ok((await find(free.ref.toLowerCase())).includes(free.id), "reference");
+  assert.ok((await find("01514960001")).includes(free.id), "phone digits, spaces ignored");
+  assert.ok((await find("+44 151 496 0001".slice(4))).includes(free.id));
+  assert.ok((await find("sam@example")).includes(full.id), "email");
+  assert.ok((await find("1 test road")).includes(full.id), "the address the customer chose");
+  assert.ok((await find("ch45 1ab")).includes(free.id), "postcode");
+  assert.deepEqual(await find("nobody by this name"), []);
+  assert.deepEqual(await find("_%"), [], "wildcards are matched literally");
+  const both = await api("GET", "operator/enquiries?status=contacted&q=" + encodeURIComponent("jo test"), { token: t });
+  assert.ok(!both.json.enquiries.some((e) => e.id === free.id), "search and status filter together");
+});
+
+test("costs: paid calls by month and provider, today's render budget, the last daily tidy-up", async () => {
+  const t = await login();
+  await enquiryWithProject({ render: true });
+  const c = await api("GET", "operator/costs", { token: t });
+  assert.equal(c.status, 200, JSON.stringify(c.json));
+  assert.ok(c.json.last30Days.byProvider.some((x) => x.provider === "openai" && x.currency === "USD" && x.calls >= 1));
+  assert.ok(c.json.byMonth.some((x) => x.provider === "ideal_postcodes" && x.currency === "GBP" && /^\d{4}-\d{2}$/.test(x.month)));
+  assert.ok(c.json.budget.spent > 0, "a settled render counts against today's budget");
+  assert.equal(c.json.budget.cap, 5);
+  assert.ok(c.json.last30Days.renderCalls.ok >= 1, "renders counted from the paid-call log");
+  assert.ok(c.json.held.withPhoto >= 1);
+  assert.equal(c.json.retention.projectDays, 30);
+  process.env.CRON_SECRET = "test-cron-secret-operator";
+  try {
+    const run = await call(app, "GET", "/api/wvroofing/cron/daily", { authorization: "Bearer test-cron-secret-operator" });
+    assert.equal(run.status, 200);
+  } finally {
+    delete process.env.CRON_SECRET;
+  }
+  const after2 = await api("GET", "operator/costs", { token: t });
+  assert.ok(after2.json.lastSweep && after2.json.lastSweep.at, "the last tidy-up is shown");
+  assert.ok("projectsDeleted" in after2.json.lastSweep.detail);
 });
 
 test("the roofer's email can be sent again, only when confirmed, and the history says so", async () => {

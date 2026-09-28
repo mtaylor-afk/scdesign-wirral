@@ -30,6 +30,8 @@ Until a hash is set, the login says "The operator login isn't set up yet."
 ## Enquiries
 
 - **The list** shows the newest first, up to 200. The buttons at the top filter it by status.
+- **Find** searches by name, email, phone (digits only; spaces don't matter), postcode, address or
+  reference. Use it when someone asks to see or delete their data: it finds every enquiry from them.
 - **"Check scope first"** means the customer's answers leave the roof's extent unclear. One of these applies:
   - the roof is shared (a semi or a terrace);
   - it's a flat;
@@ -95,6 +97,22 @@ This tab lists photo-real renders from the last 30 days that **failed**, or that
 - Try again is refused if the customer has withdrawn their OK to use OpenAI, or has since changed their
   photo or roof outline.
 
+## Costs
+
+- **Today's render budget.** What photo-real renders have cost today, including renders in progress or
+  uncertain, against the daily limit. At the limit, renders pause until midnight UTC.
+- **The last 30 days.**
+  - Enquiries, and how many were emailed.
+  - Renders made, timed out (these may have been charged) or failed.
+  - How many projects are held now.
+  - Paid calls per service.
+- **By month.** Paid calls per service for the last 12 months.
+  - Figures are recorded at the time of each call, at the most it could cost.
+  - The providers' own bills are the final word.
+- **Daily tidy-up.** When it last ran and what it deleted.
+  - It runs once a day and needs `CRON_SECRET`.
+  - If it says it hasn't run for more than a day, check that variable in Vercel.
+
 ## Deleting
 
 - **Delete the photo and project only.** Removes the photo, roof outline, renders, address and property
@@ -113,7 +131,8 @@ This tab lists photo-real renders from the last 30 days that **failed**, or that
 
 - **Roof measurements and material estimates** come in Release B.
 - **Replying to customers** isn't on this screen; use their phone number or email.
-- **Cost totals across all projects** arrive with A7.
+- **Correcting contact details** isn't possible yet. Note the correction in your reply, or delete the
+  enquiry and ask the customer to send it again.
 
 ## The local test environment
 

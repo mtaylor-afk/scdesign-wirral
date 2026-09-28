@@ -703,8 +703,10 @@ async function failStale() {
 
 /** Files of renders that were never shown (failed, cancelled, quarantined...) go after 7 days. */
 async function purgeUnusedFiles() {
+  const { RETENTION } = require("./retention.js");
   const { rows } = await db.query(
-    "SELECT id, raw_path, composite_path FROM wvr_jobs WHERE (status <> 'succeeded' OR quarantined) AND finished_at < now() - interval '7 days' AND (raw_path IS NOT NULL OR composite_path IS NOT NULL) LIMIT 200"
+    "SELECT id, raw_path, composite_path FROM wvr_jobs WHERE (status <> 'succeeded' OR quarantined) AND finished_at < now() - make_interval(days => $1) AND (raw_path IS NOT NULL OR composite_path IS NOT NULL) LIMIT 200",
+    [RETENTION.unusedRenderFileDays]
   );
   if (!rows.length) return 0;
   const files = rows.flatMap((r) => [r.raw_path, r.composite_path].filter(Boolean));

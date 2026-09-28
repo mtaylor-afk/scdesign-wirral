@@ -73,9 +73,10 @@ async function undo(scope, key, windowSeconds, nowMs, n) {
   ]);
 }
 
-/** Delete windows that ended more than 48 hours ago. @returns {Promise<number>} rows removed */
+/** Delete windows that ended more than 48 hours ago (retention.js). @returns {Promise<number>} rows removed */
 async function purge() {
-  const { rowCount } = await db.query("DELETE FROM wvr_rate_limits WHERE window_start < now() - interval '48 hours'");
+  const { RETENTION } = require("./retention.js");
+  const { rowCount } = await db.query("DELETE FROM wvr_rate_limits WHERE window_start < now() - make_interval(hours => $1)", [RETENTION.rateLimitHours]);
   return rowCount;
 }
 

@@ -13,8 +13,9 @@ const crypto = require("crypto");
 const db = require("./db.js");
 const { HttpError } = require("./core.js");
 const { isTest } = require("./capabilities.js");
+const { RETENTION } = require("./retention.js");
 
-const PROJECT_TTL_DAYS = 30;
+const PROJECT_TTL_DAYS = RETENTION.projectDays;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const DUMMY_HASH = "0".repeat(64);
 
@@ -194,12 +195,12 @@ async function operatorLogout(sessionId) {
 
 /**
  * The daily sweep: sessions that ended and login attempts go after 7 days, the
- * operator's history after 12 months (as enquiries do).
+ * operator's history after 12 months (as enquiries do). See retention.js.
  */
 async function purgeOperatorRecords() {
-  const s = await db.query("DELETE FROM wvr_operator_sessions WHERE coalesce(revoked_at, expires_at) < now() - interval '7 days'");
-  const a = await db.query("DELETE FROM wvr_login_attempts WHERE created_at < now() - interval '7 days'");
-  const h = await db.query("DELETE FROM wvr_operator_actions WHERE created_at < now() - interval '12 months'");
+  const s = await db.query("DELETE FROM wvr_operator_sessions WHERE coalesce(revoked_at, expires_at) < now() - make_interval(days => $1)", [RETENTION.operatorSessionDays]);
+  const a = await db.query("DELETE FROM wvr_login_attempts WHERE created_at < now() - make_interval(days => $1)", [RETENTION.loginAttemptDays]);
+  const h = await db.query("DELETE FROM wvr_operator_actions WHERE created_at < now() - make_interval(months => $1)", [RETENTION.operatorHistoryMonths]);
   return { operatorSessionsPurged: s.rowCount, loginAttemptsPurged: a.rowCount, operatorActionsPurged: h.rowCount };
 }
 

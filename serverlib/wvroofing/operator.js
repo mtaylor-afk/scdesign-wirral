@@ -2,12 +2,13 @@
 //
 //   POST operator/login { password }                 -> { token, expiresAt }   (lockouts in auth.js)
 //   POST operator/logout, GET operator/session
-//   GET  operator/enquiries?status=                  -> the list
+//   GET  operator/enquiries?status=&q=               -> the list (q finds a name, email, phone, postcode, address or reference)
 //   GET  operator/enquiries/:id                      -> everything about one enquiry and its project
 //   GET  operator/enquiries/:id/aerial               -> the satellite view of its address
 //   POST operator/enquiries/:id/scope | status | request-survey | resend | delete
 //   GET  operator/projects/:id/photo | original, POST operator/projects/:id/delete
 //   GET  operator/jobs?status=failed|uncertain, GET operator/jobs/:id/image, POST operator/jobs/:id/retry
+//   GET  operator/costs                              -> paid calls by month, today's budget, the last daily tidy-up
 //
 // Every change is written to wvr_operator_actions with the state before and
 // after; nothing the customer confirmed is overwritten (a correction is a new row).
@@ -122,14 +123,28 @@ async function session(ctx) {
 // ---------------------------------------------------------------------------
 // enquiries
 
-/** @param {OperatorCtx} ctx */
+/**
+ * The enquiries, newest first: by status, and/or found by name, email, phone,
+ * postcode, address or reference (for a customer asking for their data or for
+ * it to be deleted).
+ * @param {OperatorCtx} ctx
+ */
 async function listEnquiries(ctx) {
   const status = String(ctx.url.searchParams.get("status") || "");
   const filter = STATUSES.includes(status) ? status : null;
+  const q = String(ctx.url.searchParams.get("q") || "")
+    .trim()
+    .slice(0, 100);
+  const like = q.length >= 2 ? "%" + q.replace(/[\\%_]/g, (c) => "\\" + c) + "%" : null;
+  const digits = q.replace(/\D/g, "");
+  const phone = digits.length >= 4 ? "%" + digits + "%" : null;
   const { rows } = await db.query(
     "SELECT e.*, (SELECT count(*)::int FROM wvr_jobs j WHERE j.project_id = e.project_id AND j.status = 'succeeded' AND NOT j.quarantined) AS renders " +
-      "FROM wvr_enquiries e WHERE ($1::text IS NULL OR e.status = $1) ORDER BY e.created_at DESC LIMIT 200",
-    [filter]
+      "FROM wvr_enquiries e WHERE ($1::text IS NULL OR e.status = $1) " +
+      "AND ($2::text IS NULL OR e.reference ILIKE $2 OR e.contact_name ILIKE $2 OR e.contact_email ILIKE $2 OR e.postcode ILIKE $2 OR (e.snapshot -> 'address')::text ILIKE $2 " +
+      "OR ($3::text IS NOT NULL AND regexp_replace(coalesce(e.contact_phone, ''), '\\D', '', 'g') LIKE $3)) " +
+      "ORDER BY e.created_at DESC LIMIT 200",
+    [filter, like, phone]
   );
   const list = rows.map((e) => {
     const snap = parsed(e.snapshot) || {};
@@ -460,7 +475,52 @@ async function retryJob(ctx) {
   return json(ctx.res, 200, { ok: true, job: { id: fresh.id, status: fresh.status }, created: made.created > 0 });
 }
 
+// ---------------------------------------------------------------------------
+// costs and housekeeping
+
+/**
+ * What the outside services have cost (as recorded at each call), today's
+ * render budget, recent activity and the last daily tidy-up.
+ * @param {OperatorCtx} ctx
+ */
+async function costs(ctx) {
+  const cfg = openai.renderConfig(process.env);
+  const today = await require("./limits.js").budgetToday();
+  const byMonth = await db.query(
+    "SELECT to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM') AS month, provider, currency, count(*)::int AS calls, coalesce(sum(cost), 0)::float AS cost " +
+      "FROM wvr_provider_calls WHERE created_at > now() - interval '12 months' GROUP BY 1, 2, 3 ORDER BY 1 DESC, 2, 3"
+  );
+  const recent = await db.query(
+    "SELECT provider, currency, count(*)::int AS calls, coalesce(sum(cost), 0)::float AS cost FROM wvr_provider_calls WHERE created_at > now() - interval '30 days' GROUP BY 1, 2 ORDER BY 1, 2"
+  );
+  // From the paid-call log, which outlives deleted projects (their render records go with them).
+  const renders = await db.query(
+    "SELECT status, count(*)::int AS n FROM wvr_provider_calls WHERE provider = 'openai' AND created_at > now() - interval '30 days' GROUP BY status ORDER BY status"
+  );
+  const enq = await db.query(
+    "SELECT count(*)::int AS total, count(*) FILTER (WHERE delivery_status = 'sent')::int AS emailed, count(*) FILTER (WHERE delivery_status IN ('failed', 'uncertain'))::int AS email_problems " +
+      "FROM wvr_enquiries WHERE created_at > now() - interval '30 days'"
+  );
+  const held = await db.query("SELECT count(*)::int AS projects, count(*) FILTER (WHERE photo_id IS NOT NULL)::int AS with_photo FROM wvr_projects");
+  const run = await db.query("SELECT started_at, finished_at, detail FROM wvr_retention_runs WHERE kind = 'daily' ORDER BY started_at DESC LIMIT 1");
+  const r = run.rows[0];
+  return json(ctx.res, 200, {
+    ok: true,
+    budget: { reserved: today.reserved, spent: today.spent, cap: cfg.budgetUsd, currency: "USD" },
+    last30Days: {
+      byProvider: recent.rows,
+      renderCalls: Object.fromEntries(renders.rows.map((x) => [x.status, x.n])),
+      enquiries: { total: enq.rows[0].total, emailed: enq.rows[0].emailed, emailProblems: enq.rows[0].email_problems },
+    },
+    byMonth: byMonth.rows,
+    held: { projects: held.rows[0].projects, withPhoto: held.rows[0].with_photo },
+    lastSweep: r ? { at: iso(r.finished_at || r.started_at), detail: parsed(r.detail) } : null,
+    retention: require("./retention.js").RETENTION,
+  });
+}
+
 module.exports = {
+  costs,
   login,
   logout,
   session,

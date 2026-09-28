@@ -21,6 +21,7 @@ const mailer = require("./mailer.js");
 const images = require("./images.js");
 const { storage } = require("./storage.js");
 const { isEnabled, isTest } = require("./capabilities.js");
+const { RETENTION } = require("./retention.js");
 
 const { HttpError, json, readJson, PRODUCTS, oneLine, clean, esc } = core;
 
@@ -171,7 +172,7 @@ async function save(o) {
           ]
         );
         if (o.projectId) {
-          await t.query("UPDATE wvr_projects SET expires_at = GREATEST(expires_at, now() + interval '12 months'), updated_at = now() WHERE id = $1", [o.projectId]);
+          await t.query("UPDATE wvr_projects SET expires_at = GREATEST(expires_at, now() + make_interval(months => $2)), updated_at = now() WHERE id = $1", [o.projectId, RETENTION.enquiryMonths]);
         }
         return ins.rows[0];
       });
@@ -555,7 +556,7 @@ async function sweep() {
     );
     for (const r of due.rows) if ((await deliver(r.id)) === "sent") delivered++;
   }
-  const old = await db.query("DELETE FROM wvr_enquiries WHERE created_at < now() - interval '12 months'");
+  const old = await db.query("DELETE FROM wvr_enquiries WHERE created_at < now() - make_interval(months => $1)", [RETENTION.enquiryMonths]);
   return { enquiriesUncertain: stuck.rowCount, enquiriesDelivered: delivered, enquiriesDeleted: old.rowCount };
 }
 

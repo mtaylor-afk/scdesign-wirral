@@ -51,6 +51,7 @@
         <div class="op-tabs" role="tablist" aria-label="Views">
           <button class="op-tab" id="tab-enquiries" type="button" role="tab" aria-selected="true" aria-controls="op-view-enquiries" data-tab="enquiries">Enquiries</button>
           <button class="op-tab" id="tab-jobs" type="button" role="tab" aria-selected="false" aria-controls="op-view-jobs" data-tab="jobs">Renders to check <span class="op-count" id="op-jobs-count" hidden></span></button>
+          <button class="op-tab" id="tab-costs" type="button" role="tab" aria-selected="false" aria-controls="op-view-costs" data-tab="costs">Costs</button>
         </div>
         <button class="btn btn-neutral btn-sm" id="op-refresh" type="button">Refresh</button>
       </div>
@@ -58,6 +59,10 @@
 
       <div id="op-view-enquiries" class="op-split" role="tabpanel" aria-labelledby="tab-enquiries" data-show="list">
         <div class="op-list-pane">
+          <form class="op-search" id="op-search" role="search">
+            <label class="sr-only" for="op-q">Find an enquiry</label>
+            <input class="op-search-input" id="op-q" name="q" type="search" maxlength="100" autocomplete="off" placeholder="Find: name, email, phone, postcode or reference">
+          </form>
           <div class="op-filters" id="op-filters" role="group" aria-label="Show enquiries"></div>
           <ul class="op-list" id="op-list" aria-label="Enquiries"></ul>
           <p class="op-empty op-muted" id="op-list-empty" hidden>No enquiries here yet.</p>
@@ -71,6 +76,10 @@
         <p class="op-muted op-intro">Photo-real renders from the last 30 days that failed, or whose result never came back. An uncertain render may already have been charged by OpenAI, so trying again always makes a new one, and only when you confirm.</p>
         <ul class="op-joblist" id="op-jobs"></ul>
         <p class="op-empty op-muted" id="op-jobs-empty" hidden>Nothing to check.</p>
+      </div>
+
+      <div id="op-view-costs" class="op-costs-view" role="tabpanel" aria-labelledby="tab-costs" hidden>
+        <div id="op-costs"></div>
       </div>
     </section>
   </main>

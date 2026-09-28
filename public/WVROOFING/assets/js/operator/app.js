@@ -31,6 +31,7 @@ const FILTERS = [["", "All"]].concat(Object.entries(STATUS_WORDS));
 
 const S = {
   filter: "",
+  q: "",
   enquiries: [],
   jobs: [],
   selected: null,
@@ -128,6 +129,9 @@ function showLogin(msg) {
   S.selected = null;
   S.enquiries = [];
   S.jobs = [];
+  S.q = "";
+  $("op-q").value = "";
+  $("op-costs").replaceChildren();
   $("op-app").hidden = true;
   $("op-logout").hidden = true;
   $("op-env").hidden = true;
@@ -214,15 +218,36 @@ function renderFilters() {
 }
 
 async function loadList() {
+  const asked = listParams();
   try {
-    const r = await api("GET", "operator/enquiries" + (S.filter ? "?status=" + encodeURIComponent(S.filter) : ""));
+    const r = await api("GET", "operator/enquiries" + (asked ? "?" + asked : ""));
+    if (asked !== listParams()) return; // the filter or search changed while this was loading
     S.enquiries = r.enquiries;
     renderList();
     const n = r.enquiries.length;
-    status(n + (n === 1 ? " enquiry" : " enquiries") + (S.filter ? " marked " + STATUS_WORDS[S.filter].toLowerCase() : "") + ".");
+    status(n + (n === 1 ? " enquiry" : " enquiries") + (S.filter ? " marked " + STATUS_WORDS[S.filter].toLowerCase() : "") + (S.q ? " matching “" + S.q + "”" : "") + ".");
   } catch (ex) {
     if (ex.status !== 401) status(ex.message, true);
   }
+}
+
+function listParams() {
+  const params = new URLSearchParams();
+  if (S.filter) params.set("status", S.filter);
+  if (S.q) params.set("q", S.q);
+  return params.toString();
+}
+
+let searchTimer = 0;
+
+function onSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    const q = $("op-q").value.trim();
+    if (q === S.q) return;
+    S.q = q;
+    loadList();
+  }, 300);
 }
 
 function flags(e) {
@@ -373,7 +398,7 @@ function customerCard(e) {
       ["Roof choice", productName(e.roof)],
       ["Message", e.notes],
       ["Images in the email", e.includeImages ? "Yes" : "No"],
-      ["Marketing", e.marketing ? "Opted in" : "Not opted in"],
+      ["Marketing", e.marketing ? "Opted in" : null],
       ["Lawful basis", e.lawfulBasis === "steps_before_contract" ? "Steps before a contract (a quote)" : e.lawfulBasis],
     ])
   );
@@ -786,6 +811,131 @@ function switchTab(tab) {
   for (const b of document.querySelectorAll(".op-tab")) b.setAttribute("aria-selected", String(b.dataset.tab === tab));
   $("op-view-enquiries").hidden = tab !== "enquiries";
   $("op-view-jobs").hidden = tab !== "jobs";
+  $("op-view-costs").hidden = tab !== "costs";
+  if (tab === "costs") loadCosts();
+}
+
+// ---------------------------------------------------------------------------
+// costs and housekeeping
+
+/** Calls to OpenAI in words: made, timed out (may have been charged), or failed. */
+function renderCounts(calls) {
+  const made = calls.ok || 0;
+  const timedOut = calls.timeout || 0;
+  const failed = Object.entries(calls).reduce((n, [k, v]) => (k === "ok" || k === "timeout" ? n : n + v), 0);
+  const parts = [made + " made"];
+  if (timedOut) parts.push(timedOut + " timed out (may have been charged)");
+  if (failed) parts.push(failed + " failed");
+  return made || timedOut || failed ? parts.join(", ") : "None";
+}
+
+const SWEEP_WORDS = [
+  ["projectsDeleted", "projects deleted"],
+  ["filesDeleted", "files deleted"],
+  ["enquiriesDeleted", "enquiries deleted"],
+  ["staleUploadsRemoved", "unfinished uploads removed"],
+  ["renderFilesDeleted", "files of unused renders deleted"],
+  ["enquiriesDelivered", "emails sent"],
+  ["enquiriesUncertain", "emails marked uncertain"],
+  ["rendersRun", "renders made"],
+];
+
+async function loadCosts() {
+  const box = $("op-costs");
+  if (!box.childElementCount) box.replaceChildren(h("p", { class: "op-empty op-muted", text: "Loading…" }));
+  try {
+    renderCosts(await api("GET", "operator/costs"));
+  } catch (ex) {
+    if (ex.status !== 401) box.replaceChildren(h("p", { class: "op-empty op-muted", text: ex.message }));
+  }
+}
+
+function table(head, body) {
+  return h(
+    "div",
+    { class: "op-table-wrap" },
+    h("table", { class: "op-table" }, h("thead", {}, h("tr", {}, head.map((t) => h("th", { scope: "col", text: t })))), h("tbody", {}, body))
+  );
+}
+
+function renderCosts(c) {
+  const b = c.budget;
+  const last = c.last30Days;
+  const enq = last.enquiries;
+  $("op-costs").replaceChildren(
+    h(
+      "div",
+      { class: "op-grid-2" },
+      h(
+        "section",
+        { class: "op-card" },
+        h("h3", { text: "Today's render budget" }),
+        h("p", { class: "op-big", text: money(b.spent + b.reserved, b.currency) + " of " + money(b.cap, b.currency) }),
+        h("p", {
+          class: "op-muted op-small",
+          text: money(b.spent, b.currency) + " spent and " + money(b.reserved, b.currency) + " held for renders in progress or uncertain. Photo-real renders pause for the rest of the day (UTC) at the limit.",
+        })
+      ),
+      h(
+        "section",
+        { class: "op-card" },
+        h("h3", { text: "The last 30 days" }),
+        kv([
+          ["Enquiries", enq.total + (enq.total ? " (" + enq.emailed + " emailed" + (enq.emailProblems ? ", " + enq.emailProblems + " with email problems" : "") + ")" : "")],
+          ["Photo-real renders", renderCounts(last.renderCalls)],
+          ["Projects held now", c.held.projects + " (" + c.held.withPhoto + " with a photo)"],
+        ]),
+        last.byProvider.length
+          ? table(
+              ["Service", "Calls", "Cost (estimate)"],
+              last.byProvider.map((x) => h("tr", {}, h("td", { text: PROVIDER_WORDS[x.provider] || x.provider }), h("td", { text: String(x.calls) }), h("td", { text: money(x.cost, x.currency) })))
+            )
+          : h("p", { class: "op-muted op-small", text: "No paid calls." })
+      )
+    ),
+    h(
+      "section",
+      { class: "op-card" },
+      h("h3", { text: "By month" }),
+      c.byMonth.length
+        ? table(
+            ["Month (UTC)", "Service", "Calls", "Cost (estimate)"],
+            c.byMonth.map((x) =>
+              h("tr", {}, h("td", { text: x.month }), h("td", { text: PROVIDER_WORDS[x.provider] || x.provider }), h("td", { text: String(x.calls) }), h("td", { text: money(x.cost, x.currency) }))
+            )
+          )
+        : h("p", { class: "op-muted op-small", text: "No paid calls in the last 12 months." }),
+      h("p", { class: "op-caption", text: "Recorded at the time of each call, at the most it could cost; the providers' own bills are the final word." })
+    ),
+    sweepCard(c.lastSweep, c.retention)
+  );
+}
+
+function sweepCard(s, r) {
+  const card = h("section", { class: "op-card" }, h("h3", { text: "Daily tidy-up" }));
+  if (s) {
+    const d = s.detail || {};
+    const done = SWEEP_WORDS.filter(([k]) => d[k]).map(([k, t]) => d[k] + " " + t);
+    card.append(h("p", { class: "op-small", text: "Last ran " + when(s.at) + ". " + (done.length ? done.join(", ") + "." : "Nothing was due.") }));
+  } else {
+    card.append(h("p", { class: "op-small", text: "It hasn't run yet. It runs once a day on Vercel's schedule, once CRON_SECRET is set." }));
+  }
+  card.append(
+    h("p", {
+      class: "op-muted op-small",
+      text:
+        "Projects without an enquiry are deleted after " +
+        r.projectDays +
+        " days; enquiries and their projects after " +
+        r.enquiryMonths +
+        " months; files of renders that were never shown after " +
+        r.unusedRenderFileDays +
+        " days; this screen's history after " +
+        r.operatorHistoryMonths +
+        " months.",
+    })
+  );
+  return card;
 }
 
 function showJobEnquiry(id) {
@@ -800,7 +950,17 @@ async function boot() {
   whenSignedOut((msg) => showLogin(msg));
   $("op-login-form").addEventListener("submit", onLogin);
   $("op-logout").addEventListener("click", logout);
-  $("op-refresh").addEventListener("click", () => refreshAll());
+  $("op-refresh").addEventListener("click", () => {
+    refreshAll();
+    if (!$("op-view-costs").hidden) loadCosts();
+  });
+  $("op-q").addEventListener("input", onSearch);
+  $("op-search").addEventListener("submit", (e) => {
+    e.preventDefault();
+    clearTimeout(searchTimer);
+    S.q = $("op-q").value.trim();
+    loadList();
+  });
   for (const b of document.querySelectorAll(".op-tab")) b.addEventListener("click", () => switchTab(b.dataset.tab));
   loadCatalogue()
     .then((c) => {

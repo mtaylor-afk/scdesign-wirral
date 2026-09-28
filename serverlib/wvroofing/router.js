@@ -76,6 +76,7 @@ const ROUTES = [
   { path: "operator/jobs", methods: ["GET"], auth: "operator", handler: (ctx) => op().listJobs(/** @type {any} */ (ctx)) },
   { path: "operator/jobs/:id/image", methods: ["GET"], auth: "operator", handler: (ctx) => op().jobImage(/** @type {any} */ (ctx)) },
   { path: "operator/jobs/:id/retry", methods: ["POST"], auth: "operator", handler: (ctx) => op().retryJob(/** @type {any} */ (ctx)) },
+  { path: "operator/costs", methods: ["GET"], auth: "operator", handler: (ctx) => op().costs(/** @type {any} */ (ctx)) },
 ];
 
 function op() {

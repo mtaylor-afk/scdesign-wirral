@@ -215,3 +215,43 @@ Vercel hands over a rewritten request.
   while that enquiry is open.
 - **Satellite views opened by the operator** are logged as paid calls (`issued_operator`), like the
   customer's.
+
+## Decisions made while building A7 (2026-09-28)
+
+- **Every retention period lives in `retention.js`, and not in environment variables.** The plan said the
+  periods would be configurable. They are, in that one place, but not per deployment. The privacy notice
+  states them, so changing one is a code change made together with the notice.
+  `retention.test.mjs` checks the privacy notice, the photo notice and `retention.md` against the numbers.
+  The scattered SQL literals now use `make_interval` with these values.
+- **New purges in the daily tidy-up.**
+  - The paid-call log and the budget ledger after 13 months. They hold no personal data once the project
+    has gone, and 13 months gives a year of cost history.
+  - The tidy-up's own record after 90 days.
+  - Leases left by a crashed run, a day after they ran out.
+  - Records of committed uploads after 24 hours.
+- **Copies outside our control, checked 28 September 2026** (recorded in `retention.md` and the privacy
+  record):
+  - Neon Free keeps 6 hours of point-in-time history. This is fixed; paid plans keep 7 or 30 days.
+  - After a delete, Vercel Blob's CDN cache "may take up to 60 seconds" to stop serving a copy. The copy is
+    readable only with our credentials, and our routes check the database first.
+  - Vercel describes no backups of deleted blobs.
+- **Search for data requests.** `operator/enquiries?q=` matches the reference, name, email, postcode, the
+  chosen address, or the phone number's digits (4 or more).
+  - Wildcards typed in the search are matched literally.
+  - This is how the operator finds everything from one person for an access or erasure request.
+- **Costs.** `operator/costs` reports:
+  - the paid calls by provider for the last 30 days and by month for 12 months (UTC);
+  - today's render budget;
+  - the render outcomes, counted from the paid-call log (render records go with deleted projects);
+  - how many projects are held;
+  - the last daily tidy-up.
+
+  The operator screen has a Costs tab for it.
+- **Live QA sends nothing.** Until now, `qa.mjs --live` submitted both enquiry forms. Once storage and
+  email are on, that would be a real enquiry and a real email to the roofer. On a deployed copy it now
+  fills the forms in but never sends them. It still uploads one test photo and deletes it again.
+- **Known gap.** Contact details can't be edited on the operator screen. For now, a correction is noted in
+  the reply, or the enquiry is deleted and sent again.
+- **Handover v1** is in `handover-2026-09-28-v1.md`, `setup-and-deploy.md`, `privacy-record.md`,
+  `cost-model.md`, `retention.md` and `screens/`. The screenshots are from the test environment: the
+  names are QA stand-ins and the photos are stock.
