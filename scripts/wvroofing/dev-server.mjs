@@ -9,9 +9,10 @@
 //   rewrite (modules are re-required on every request, so edits apply without
 //   a restart; the database and storage modules are kept so their state lives on).
 // - Runs as the labelled TEST ENVIRONMENT (WVR_ENV=test): PGlite instead of
-//   Neon, a local folder instead of Vercel Blob, and a stand-in for OpenAI that
+//   Neon, a local folder instead of Vercel Blob, a stand-in for OpenAI that
 //   paints the product's colour into the marked roof (switched on here, ~1.5 s
-//   a render). Production never uses any of these.
+//   a render), and an in-memory outbox instead of email (enquiry emails are
+//   logged to this console, never sent). Production never uses any of these.
 // - --fixture <mode> makes the stand-in answer another way, to try the render
 //   states in the browser: timeout | network | 5xx | 5xx_once | 429_once |
 //   refused | budget | misaligned.
@@ -40,8 +41,12 @@ const PROXY_LIVE = !!arg("proxy-live", false);
 const LIVE_API = "https://scdesign-wirral.vercel.app";
 if (!PROXY_LIVE && !process.env.WVR_ENV) process.env.WVR_ENV = "test";
 if (process.env.WVR_ENV === "test") {
-  // The test environment's stand-in renderer is switched on here, like the owner switch in production.
+  // The test environment's stand-ins (renderer, email outbox) are switched on here,
+  // like the owner switches in production.
   if (!process.env.WVR_CAP_IMAGE_GENERATION) process.env.WVR_CAP_IMAGE_GENERATION = "on";
+  if (!process.env.WVR_CAP_ENQUIRY_DELIVERY) process.env.WVR_CAP_ENQUIRY_DELIVERY = "on";
+  // Repeated QA runs send several enquiries an hour from one address (the limits have their own tests).
+  if (!process.env.WVR_ENQUIRIES_PER_IP_HOURLY) process.env.WVR_ENQUIRIES_PER_IP_HOURLY = "200";
   if (!process.env.WVR_FIXTURE_LATENCY_MS) process.env.WVR_FIXTURE_LATENCY_MS = "1500";
   if (typeof FIXTURE === "string" && FIXTURE) process.env.WVR_FIXTURE_OPENAI = FIXTURE;
 }
@@ -182,7 +187,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`WV Roofing dev server: http://localhost:${PORT}/WVROOFING/` + (PROXY_LIVE ? " (API proxied to live)" : ""));
   if (process.env.WVR_ENV === "test") {
-    console.log("TEST ENVIRONMENT: PGlite database, local-folder storage and a stand-in renderer (never used in production).");
+    console.log("TEST ENVIRONMENT: PGlite database, local-folder storage, a stand-in renderer and an email outbox (never used in production).");
     if (process.env.WVR_FIXTURE_OPENAI) console.log("Render stand-in mode: " + process.env.WVR_FIXTURE_OPENAI);
   }
 });

@@ -51,8 +51,10 @@ async function health(ctx) {
       }
     }
   }
-  // Renders also need storage (projects) and a model whose settings we know.
+  // Renders and enquiry emails also need storage (projects, and enquiries are saved
+  // before anyone is emailed); renders need a model whose settings we know.
   if (caps.image_generation.state === "enabled" && caps.enquiry_storage.state !== "enabled") caps.image_generation = { state: "configured", reason: "needs_storage" };
+  if (caps.enquiry_delivery.state === "enabled" && caps.enquiry_storage.state !== "enabled") caps.enquiry_delivery = { state: "configured", reason: "needs_storage" };
   if (caps.image_generation.state === "enabled" && !openai.profile(cfg.model).known) caps.image_generation = { state: "disabled", reason: "unsupported_model" };
   const rendering = caps.image_generation.state === "enabled";
   return core.json(ctx.res, 200, {

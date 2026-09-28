@@ -63,13 +63,14 @@
         </ul>
 
         <h2>Quote requests</h2>
-        <p>If you send a quote request, we receive the details you enter: your name, phone or email, postcode (optional), your preferred roof and your message. If you choose to include your visualiser images, they're attached too. The request is emailed to the WV Roofing team and used only to reply to you and prepare a quote. Our lawful basis is taking steps at your request before entering into a contract. <span class="placeholder-note">(Retention period to be confirmed before launch.)</span></p>
+        <p>If you send a quote request, we receive the details you enter: your name, phone or email, postcode (optional), your preferred roof and your message. It's saved in WV Roofing's private database first, and you get a reference, so it can't be lost; the WV Roofing team is then told about it by email. If you sent it from the visualiser with your own photo and chose to include your images, the before photo and your chosen photo-real render are attached to that email. We use it only to reply to you and prepare a quote. Our lawful basis is taking steps at your request before entering into a contract.</p>
+        <p>We keep a quote request, and the visualiser photo, outline and renders it's about, for 12 months, then delete them automatically. You can still delete the photo yourself at any time in the visualiser. An email that has already reached the team can't be recalled, but we'll delete our copy if you ask.</p>
 
         <h2>Services we use</h2>
         <ul>
           <li><strong>Cloudflare</strong> hosts the website.</li>
           <li><strong>Vercel</strong> runs the server functions and stores your photo privately (Vercel Blob, London).</li>
-          <li><strong>Neon</strong> holds the record of your visualiser session (a Postgres database in London).</li>
+          <li><strong>Neon</strong> holds the record of your visualiser session and any quote request you send (a Postgres database in London).</li>
           <li><strong>OpenAI</strong> generates the photo-real renders, and only if you ask for them.</li>
           <li><strong>Apple iCloud Mail</strong> delivers quote-request emails.</li>
           <li><strong>Google Fonts</strong> serves the Inter typeface to devices that don't have Apple's system font, so your browser may connect to Google to download it.</li>

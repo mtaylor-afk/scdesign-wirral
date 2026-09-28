@@ -32,12 +32,13 @@ import {
   fetchRenderImage,
   cancelRender,
   newKey,
+  sendProjectEnquiry,
   ClientError,
   MAX_BYTES,
 } from "./client.js";
 import { Lightbox } from "./lightbox.js";
 import { watermarked, downloadCanvas } from "./watermark.js";
-import { wireEnquiryForm, fillProductSelect } from "../enquiry.js";
+import { wireEnquiryForm, fillProductSelect, sendEnquiry } from "../enquiry.js";
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
@@ -899,16 +900,9 @@ async function download(id, view) {
   downloadCanvas(watermarked(img, label), "wv-roofing-" + id + (view === "ai" ? "-ai" : "-preview") + ".jpg");
 }
 
-async function smallJpeg(url, maxEdge, quality) {
-  const img = new Image();
-  img.src = url;
-  await img.decode();
-  const s = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
-  const c = document.createElement("canvas");
-  c.width = Math.round(img.naturalWidth * s);
-  c.height = Math.round(img.naturalHeight * s);
-  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-  return c.toDataURL("image/jpeg", quality);
+/** An enquiry about the customer's own photo goes with their project (the server attaches the images). */
+function aboutMyPhoto() {
+  return !!(S.photo && S.photo.uploaded && currentProject());
 }
 
 let quoteWired = false;
@@ -917,21 +911,12 @@ function openQuote(productId) {
   const form = $("#quote-form");
   const select = $("#v-product");
   fillProductSelect(select, productId || "");
-  $("#v-images-row").hidden = !S.beforeUrl;
+  $("#v-images-row").hidden = !aboutMyPhoto();
   if (!quoteWired) {
     quoteWired = true;
     wireEnquiryForm(form, {
-      getContext: async () => {
-        const ctx = {};
-        if (!$("#v-images").checked || !S.beforeUrl) return ctx;
-        const chosen = select.value && S.cat.byId.has(select.value) ? select.value : firstChoice();
-        const item = chosen ? lightboxItem(chosen) : null;
-        const after = item && (item.aiUrl || item.previewUrl);
-        const atts = [{ name: "before.jpg", dataUrl: await smallJpeg(S.beforeUrl, 1100, 0.8) }];
-        if (after) atts.push({ name: "after-" + chosen + (item.aiUrl ? "-ai" : "-preview") + ".jpg", dataUrl: await smallJpeg(after, 1100, 0.8) });
-        ctx.attachments = atts;
-        return ctx;
-      },
+      getContext: () => (aboutMyPhoto() ? { includeImages: $("#v-images").checked } : { source: S.sample ? "visualiser-sample" : "visualiser" }),
+      send: (payload) => (aboutMyPhoto() ? sendProjectEnquiry(payload) : sendEnquiry(payload)),
     });
   }
   dlg.showModal();

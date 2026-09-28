@@ -1,13 +1,13 @@
 // WV Roofing (concept site) — shared server helpers (the product catalogue,
-// CORS/origins, JSON errors, request bodies, image sniffers, text helpers).
-// The render settings, prompt and OpenAI adapter live in openai.js.
+// allowed origins, JSON errors, request bodies, image sniffers, text helpers).
+// CORS is applied by router.js; the render settings, prompt and OpenAI adapter
+// live in openai.js.
 //
 // Deliberately self-contained: it does not import any other project's helpers,
 // so the WV Roofing code can be lifted into its own project unchanged.
 // Uses Node built-ins only.
 "use strict";
 
-const crypto = require("crypto");
 const CATALOGUE = require("../../public/WVROOFING/data/catalogue.json");
 
 /**
@@ -36,35 +36,6 @@ function allowedOrigins() {
     .map((s) => s.trim())
     .filter(Boolean);
   return DEFAULT_ORIGINS.concat(extra);
-}
-
-/**
- * CORS for the bridged pre-v02 enquiry endpoint (the router has its own).
- * Returns "preflight" (already answered), "forbidden" or "ok".
- * Disallowed origins get no CORS headers at all.
- * @param {Req} req
- * @param {Res} res
- * @returns {"preflight" | "forbidden" | "ok"}
- */
-function cors(req, res) {
-  const origin = req.headers.origin || "";
-  const allowed = origin && allowedOrigins().includes(origin);
-  res.setHeader("Vary", "Origin");
-  res.setHeader("Cache-Control", "no-store");
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  if (allowed) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    res.setHeader("Access-Control-Expose-Headers", "Retry-After");
-    res.setHeader("Access-Control-Max-Age", "600");
-  }
-  if (req.method === "OPTIONS") {
-    res.statusCode = allowed ? 204 : 403;
-    res.end();
-    return "preflight";
-  }
-  return allowed ? "ok" : "forbidden";
 }
 
 /**
@@ -141,48 +112,6 @@ function clientIp(req) {
   if (h["x-vercel-forwarded-for"]) return pick(h["x-vercel-forwarded-for"]);
   if (h["x-forwarded-for"]) return pick(h["x-forwarded-for"]);
   return (req.socket && req.socket.remoteAddress) || "unknown";
-}
-
-/**
- * Hashed IP (never logged raw). Used only by the pre-v02 in-memory limiters of
- * the bridged enquiry endpoint; persisted keys use limits.ipHash (keyed, daily).
- * @param {Req} req
- */
-function ipKey(req) {
-  return crypto.createHash("sha256").update("wvr:" + clientIp(req)).digest("hex").slice(0, 16);
-}
-
-/**
- * In-memory fixed-window limiter (per server instance — a soft limit by design).
- * Used only by the bridged enquiry endpoint until A4.
- * @param {number} max
- * @param {number} windowMs
- */
-function createLimiter(max, windowMs) {
-  /** @type {Map<string, { start: number, count: number }>} */
-  const hits = new Map();
-  return {
-    /** @param {string} key */
-    hit(key) {
-      const now = Date.now();
-      let rec = hits.get(key);
-      if (!rec || now - rec.start >= windowMs) {
-        rec = { start: now, count: 0 };
-        hits.set(key, rec);
-      }
-      rec.count++;
-      if (hits.size > 5000) {
-        for (const [k, r] of hits) if (now - r.start >= windowMs) hits.delete(k);
-      }
-      if (rec.count > max) return { ok: false, retryAfter: Math.ceil((rec.start + windowMs - now) / 1000) };
-      return { ok: true, retryAfter: 0 };
-    },
-    /** @param {string} key */
-    undo(key) {
-      const rec = hits.get(key);
-      if (rec && rec.count > 0) rec.count--;
-    },
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -293,13 +222,10 @@ module.exports = {
   CATALOGUE,
   PRODUCTS,
   allowedOrigins,
-  cors,
   json,
   HttpError,
   readJson,
   clientIp,
-  ipKey,
-  createLimiter,
   parseDataUrl,
   jpegSize,
   crc32,

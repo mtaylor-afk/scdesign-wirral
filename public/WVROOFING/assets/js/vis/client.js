@@ -219,3 +219,18 @@ export async function cancelRender(jobId) {
   const j = await call("POST", "projects/" + p.id + "/renders/" + jobId + "/cancel", { body: {}, project: p });
   return j.render;
 }
+
+/**
+ * Send the enquiry about this project's photo (saved before anyone is emailed).
+ * Resolves with { status, json } for the shared enquiry form code.
+ */
+export async function sendProjectEnquiry(payload) {
+  const p = requireProject();
+  const res = await fetch(API_BASE + "/api/wvroofing/projects/" + p.id + "/enquiry", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + p.token },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+  return { status: res.status, json: await res.json().catch(() => ({})) };
+}

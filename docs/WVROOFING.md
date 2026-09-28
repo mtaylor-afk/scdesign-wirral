@@ -65,6 +65,19 @@ The home picker and heroes are drawn live by `assets/js/vis/hero.js` from the sa
 The 8 products, their colours, swatch patterns and prompt wording all live in
 `public/WVROOFING/data/catalogue.json` — edit that one file to change the range.
 
+## Enquiries
+
+Every quote request is **saved before anyone is emailed** (`serverlib/wvroofing/enquiries.js`) and
+the customer gets a reference such as `WVR-2609-7K3Q`. The email to the roofer (WV Roofing's own
+mailer, `mailer.js`) is a separate step: tried at once, once more a few seconds later, then by the
+daily job, at most three times. A send that may have gone out before the connection dropped is
+"uncertain" and isn't repeated automatically. The customer is told the truth: the roofer has been
+notified, is being notified, or (while this is a concept and emails are switched off) isn't being
+notified yet. An enquiry from the visualiser about the customer's own photo keeps that photo and its
+renders for 12 months and can attach the before photo and the chosen render; enquiries are deleted
+after 12 months. Without storage, the forms say the site isn't collecting enquiries yet and nothing is
+saved or sent.
+
 ## Environment variables (Vercel project that runs `api/*`)
 
 Set these in the Vercel dashboard (never in the repo), then redeploy. The complete list, including the
@@ -78,7 +91,7 @@ state and the reason.
 | Variable | Needed for | Default |
 |---|---|---|
 | `WVR_OPENAI_API_KEY` | photo-real renders (use a dedicated OpenAI project with a hard budget); also needs `WVR_CAP_IMAGE_GENERATION=on` and project storage | unset = previews only |
-| `WVR_LEAD_TO` | where quote requests are emailed (comma-separated) | unset = "not collecting yet" |
+| `WVR_LEAD_TO` | where enquiry notifications are emailed (comma-separated); also needs `WVR_CAP_ENQUIRY_DELIVERY=on` | unset = saved, not emailed |
 | `WVR_IMAGE_MODEL` | image model; unknown models are refused, not guessed at | `gpt-image-2.5-sunburst` |
 | `WVR_IMAGE_QUALITY` | a quality the model accepts (always sent explicitly) | `high` |
 | `WVR_ENABLED` | `0` switches every paid call off | on |
@@ -88,11 +101,13 @@ state and the reason.
 | `WVR_IP_DAILY` / `WVR_RENDERS_PER_PROJECT_DAILY` / `WVR_DAILY_CAP` | renders per visitor / per project / in total, per day | 40 / 12 / 200 |
 | `WVR_DAILY_BUDGET_USD` | spending ceiling per UTC day, counting renders in flight | 5 |
 | `WVR_OPENAI_TIMEOUT_MS` | how long one render may take | 240000 |
-| `WVR_MAX_SEAM` | renders whose edges miss the photo by more than this are rejected | 35 |
+| `WVR_MAX_SEAM` | renders whose edges miss the photo by more than this are rejected (uncalibrated until A8) | 50 |
 | `WVR_MAIL_FROM` | From header for quote emails | `"WV Roofing (concept)" <mail@tailoredquote.co.uk>` |
 | `WVR_EXTRA_ORIGINS` | extra allowed browser origins (comma-separated) | — |
 
-Quote emails reuse the project's existing `SMTP_USER` / `SMTP_PASS` (iCloud SMTP).
+Quote emails reuse the project's existing `SMTP_USER` / `SMTP_PASS` (iCloud SMTP), sent by WV
+Roofing's own mailer as "WV Roofing"; per-visitor and daily limits: `WVR_ENQUIRIES_PER_IP_HOURLY` (5),
+`WVR_ENQUIRIES_DAILY` (200).
 The instant kill switch for spend is `WVR_ENABLED=0` (or disabling the key in the OpenAI
 dashboard); the site then falls back to quick previews. If OpenAI reports the key refused or the
 budget spent, renders pause for everyone for a few minutes rather than retrying.

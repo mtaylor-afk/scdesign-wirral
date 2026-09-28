@@ -1,10 +1,64 @@
 // WV Roofing — quote request form (roof-replacement page + visualiser dialog).
+//
+// Enquiries are saved on the server before anyone is emailed, and each gets a
+// reference. The request key is kept in sessionStorage until the enquiry is
+// saved, so sending again after a lost connection or a reload returns the same
+// enquiry instead of making a second one.
 import { API_BASE } from "./config.js";
 import { loadCatalogue } from "./catalogue.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[+()\d\s-]{7,20}$/;
 const POSTCODE_RE = /^[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}$/;
+const KEY_PREFIX = "wvr.enquiry-key.";
+
+function randomKey() {
+  const b = new Uint8Array(12);
+  crypto.getRandomValues(b);
+  return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+/** The request key for this form, kept until the enquiry is saved. */
+function requestKey(source) {
+  try {
+    let k = sessionStorage.getItem(KEY_PREFIX + source);
+    if (!k) {
+      k = randomKey();
+      sessionStorage.setItem(KEY_PREFIX + source, k);
+    }
+    return k;
+  } catch (err) {
+    return randomKey(); // storage blocked: still one key per attempt
+  }
+}
+
+function forgetKey(source) {
+  try {
+    sessionStorage.removeItem(KEY_PREFIX + source);
+  } catch (err) {
+    /* nothing kept */
+  }
+}
+
+/** Send an enquiry that isn't about an uploaded photo. Resolves with { status, json }. */
+export async function sendEnquiry(payload) {
+  const res = await fetch(API_BASE + "/api/wvroofing/enquiries", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return { status: res.status, json: await res.json().catch(() => ({})) };
+}
+
+/** What the customer is told once the enquiry is saved (always the truth about who's been told). */
+export function savedMessage(name, json) {
+  const first = name ? ", " + name.split(" ")[0] : "";
+  if (!json.reference) return "Thank you" + first + " - your request has been sent.";
+  const saved = (json.existing ? "You've already sent us this enquiry" + first + ". " : "Thank you" + first + ". Your enquiry is saved. ") + "Your reference is " + json.reference + ". ";
+  if (json.delivery === "sent") return saved + "The roofer has been notified and will be in touch.";
+  if (json.delivery === "pending") return saved + "We're notifying the roofer; your enquiry is safely stored.";
+  return saved + "WV Roofing is a concept site, so no one is being notified yet, but your enquiry is stored safely.";
+}
 
 function field(form, name) {
   return form.elements.namedItem(name);
@@ -64,7 +118,8 @@ export async function fillProductSelect(select, selectedId) {
 
 /**
  * @param {HTMLFormElement} form
- * @param {{getContext?: () => Promise<object>|object, onSent?: () => void}} [opts]
+ * @param {{getContext?: () => Promise<object>|object, send?: (payload: object) => Promise<{status:number, json:object}>, onSent?: (json: object) => void}} [opts]
+ *   send: how to deliver the enquiry (default: the plain enquiries endpoint)
  */
 export function wireEnquiryForm(form, opts) {
   opts = opts || {};
@@ -119,9 +174,11 @@ export function wireEnquiryForm(form, opts) {
       return;
     }
 
+    const source = form.dataset.source || "roof-replacement";
     const payload = Object.assign({}, data, {
-      source: form.dataset.source || window.location.pathname,
+      source,
       elapsedMs: Date.now() - started,
+      idempotencyKey: requestKey(source),
     });
     if (opts.getContext) {
       try {
@@ -136,34 +193,26 @@ export function wireEnquiryForm(form, opts) {
       submit.dataset.label = submit.dataset.label || submit.textContent;
       submit.textContent = "Sending…";
     }
-    showStatus(form, "warn", "Sending your request…");
+    showStatus(form, "warn", "Saving your enquiry…");
     try {
-      const res = await fetch(API_BASE + "/api/wvroofing/enquiry", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (res.ok && json.ok) {
-        showStatus(
-          form,
-          "ok",
-          "Thank you" + (data.name ? ", " + data.name.split(" ")[0] : "") + " - your request has been sent. We'll be in touch soon."
-        );
+      const { status, json } = await (opts.send || sendEnquiry)(payload);
+      if (status < 300 && json.ok) {
+        showStatus(form, "ok", savedMessage(data.name, json));
+        forgetKey(source);
         form.reset();
-        if (opts.onSent) opts.onSent();
+        if (opts.onSent) opts.onSent(json);
       } else if (json.error === "not_configured") {
         showStatus(
           form,
           "warn",
           "WV Roofing is a concept site, so enquiries aren't being collected yet. Nothing has been sent or stored. When it launches, this form will go straight to the team."
         );
-      } else if (res.status === 429) {
-        showStatus(form, "err", "You've sent a few requests already - please try again a little later.");
-      } else if (res.status === 400) {
+      } else if (status === 429) {
+        showStatus(form, "err", json.message || "You've sent a few requests already - please try again a little later.");
+      } else if (status === 400) {
         showStatus(form, "err", json.message || "Something in the form wasn't accepted - please check and try again.");
       } else {
-        showStatus(form, "err", "Sorry, the request didn't go through. Please try again in a moment.");
+        showStatus(form, "err", "Sorry, your enquiry didn't go through. Please try again in a moment.");
       }
     } catch (err) {
       showStatus(form, "err", "We couldn't reach the server - check your connection and try again.");

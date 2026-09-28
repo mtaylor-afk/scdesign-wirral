@@ -20,7 +20,8 @@ Handover files (`handover-<date>-vN.md`, `setup-and-deploy.md`, `operator-guide.
 | A1 Foundations and the function swap | Live (commit 110432b, verified 2026-09-28) |
 | A2 Projects, uploads, photo pipeline, CSP, retention | Built and tested locally; goes live once Neon + Blob are connected (push gate D17) |
 | A3 Durable render jobs, server compositing, budget ledger | Built and tested locally against the OpenAI stand-in; held with A2. Live renders also need the OpenAI key and `WVR_CAP_IMAGE_GENERATION=on` |
-| A4–A8, B1–B5 | Not started |
+| A4 Enquiries saved first, notified second | Built and tested locally (test outbox, no email sent); held with A2. Emails also need `WVR_LEAD_TO` and `WVR_CAP_ENQUIRY_DELIVERY=on` |
+| A5–A8, B1–B5 | Not started |
 
 ## Commands
 

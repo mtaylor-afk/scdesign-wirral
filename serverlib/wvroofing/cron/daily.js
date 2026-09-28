@@ -9,7 +9,10 @@
 //      cascade). This is what makes the "kept for 30 days" promise true.
 //   2. Uploads presigned but never committed are removed after 24 hours.
 //   3. Rate-limit windows older than 48 hours are purged.
-//   4. Renders: expired leases are settled (queued again, or 'uncertain' if
+//   4. Enquiries: sends that never reported back become 'uncertain' (not
+//      resent), failed emails due a retry are tried again (at most 3 attempts
+//      in all), and enquiries older than 12 months are deleted.
+//   5. Renders: expired leases are settled (queued again, or 'uncertain' if
 //      OpenAI was called), jobs queued for over a day are dropped, files of
 //      renders that were never shown go after 7 days, and any queue nobody is
 //      polling is worked while this run has time for a whole render.
@@ -19,6 +22,7 @@ const core = require("../core.js");
 const db = require("../db.js");
 const limits = require("../limits.js");
 const jobs = require("../jobs.js");
+const enquiries = require("../enquiries.js");
 
 const BATCH = 200;
 
@@ -46,6 +50,7 @@ async function daily(ctx) {
   const out = await db.withLease("cron_daily", 600, async () => {
     const started = new Date().toISOString();
     const detail = Object.assign({}, await expireProjects(), await sweepUploads(), { rateLimitRowsPurged: await limits.purge() });
+    Object.assign(detail, await enquiries.sweep());
     Object.assign(detail, await jobs.sweep(jobs.deadlineFrom(ctx.startedAt)));
     await db.query("INSERT INTO wvr_retention_runs (kind, started_at, finished_at, detail) VALUES ($1, $2, now(), $3)", ["daily", started, JSON.stringify(detail)]);
     return detail;

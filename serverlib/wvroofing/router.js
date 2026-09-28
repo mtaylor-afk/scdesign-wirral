@@ -22,17 +22,14 @@ const SAFE_ROUTE = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/;
  * @typedef {"none" | "cron" | "project"} Auth
  * @typedef {object} Route
  * @property {string} path            e.g. "health" or "projects/:id/renders"
- * @property {(() => (req: Req, res: Res) => Promise<void>)} [legacy]  pre-v02 handler that does its own CORS and method checks
- * @property {string[]} [methods]
- * @property {Auth} [auth]
+ * @property {string[]} methods
+ * @property {Auth} auth
  * @property {"any" | "allowed"} [origin]  "any": callers without an allowed Origin are served too (health, cron)
- * @property {(ctx: Ctx) => Promise<void>} [handler]
+ * @property {(ctx: Ctx) => Promise<void>} handler
  */
 
 /** @type {Route[]} */
 const ROUTES = [
-  // Bridged pre-v02 endpoint: kept byte-for-byte until A4 replaces it.
-  { path: "enquiry", legacy: () => require("./legacy/enquiry.js") },
   { path: "health", methods: ["GET"], auth: "none", origin: "any", handler: (ctx) => require("./health.js").health(ctx) },
   { path: "cron/daily", methods: ["GET"], auth: "cron", origin: "any", handler: (ctx) => require("./cron/daily.js").daily(ctx) },
   // Customer projects (A2). The token in "Authorization: Bearer" opens one project only.
@@ -49,6 +46,12 @@ const ROUTES = [
   { path: "projects/:id/renders", methods: ["GET"], auth: "project", handler: (ctx) => require("./renders.js").list(/** @type {any} */ (ctx)) },
   { path: "projects/:id/renders/:jobId/image", methods: ["GET"], auth: "project", handler: (ctx) => require("./renders.js").image(/** @type {any} */ (ctx)) },
   { path: "projects/:id/renders/:jobId/cancel", methods: ["POST"], auth: "project", handler: (ctx) => require("./renders.js").cancel(/** @type {any} */ (ctx)) },
+  // Enquiries (A4): saved first, then the roofer is notified. "enquiry" is the pre-v02
+  // path, kept permanently so older pages keep working.
+  { path: "enquiries", methods: ["POST"], auth: "none", handler: (ctx) => require("./enquiries.js").createFree(ctx) },
+  { path: "enquiry", methods: ["POST"], auth: "none", handler: (ctx) => require("./enquiries.js").createFree(ctx) },
+  { path: "projects/:id/enquiry", methods: ["POST"], auth: "project", handler: (ctx) => require("./enquiries.js").createForProject(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/enquiry", methods: ["GET"], auth: "project", handler: (ctx) => require("./enquiries.js").getForProject(/** @type {any} */ (ctx)) },
 ];
 
 /** @param {string} pattern */
@@ -118,8 +121,8 @@ function match(path, method) {
     });
     const hit = { route: c.route, params, allowed };
     if (!first) first = hit;
-    allowed.push(...(c.route.methods || []));
-    if (method && (c.route.legacy || (c.route.methods || []).includes(method))) return hit;
+    allowed.push(...c.route.methods);
+    if (method && c.route.methods.includes(method)) return hit;
   }
   return first;
 }
@@ -196,10 +199,8 @@ async function handle(req, res) {
       return json(res, 404, { ok: false, error: "not_found" });
     }
     const route = m.route;
-    if (route.legacy) return await route.legacy()(req, res);
-
     const allowed = applyCors(req, res);
-    const methods = route.methods || [];
+    const methods = route.methods;
     if (req.method === "OPTIONS") {
       res.statusCode = allowed ? 204 : 403;
       res.end();
@@ -222,8 +223,7 @@ async function handle(req, res) {
     }
     /** @type {Ctx} */
     const ctx = { req, res, params: m.params, url: resolved.url, startedAt };
-    await authorise(route.auth || "none", ctx);
-    if (!route.handler) throw new HttpError(500, "server_error", "Route has no handler.");
+    await authorise(route.auth, ctx);
     await route.handler(ctx);
   } catch (err) {
     if (err instanceof HttpError) {

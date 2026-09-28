@@ -86,8 +86,13 @@ function renderConfig(env) {
     projectDaily: envInt(e, "WVR_RENDERS_PER_PROJECT_DAILY", 12, 1, 1000),
     dailyCap: envInt(e, "WVR_DAILY_CAP", 200, 1, 100000),
     budgetUsd: envNum(e, "WVR_DAILY_BUDGET_USD", 5, 0, 10000),
-    /** composites whose seam error (mean luma difference round the roof) is above this are rejected */
-    maxSeam: envNum(e, "WVR_MAX_SEAM", 35, 1, 255),
+    /**
+     * composites whose seam error (mean luma difference in a band round the roof) is above
+     * this are rejected as misaligned. Uncalibrated until the A8 benchmark: set well above
+     * the lightbox's 18 "edges may not line up" warning, because a real render redraws fine
+     * texture round the roof even when it lines up.
+     */
+    maxSeam: envNum(e, "WVR_MAX_SEAM", 50, 1, 255),
   };
 }
 

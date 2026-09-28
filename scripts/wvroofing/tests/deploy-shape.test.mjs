@@ -37,6 +37,15 @@ test("vercel.json: every functions pattern matches a file, and the WV rewrite an
   assert.ok(!("regions" in cfg), "no project-wide region: that would move the SC functions too");
 });
 
+test("the browser scripts the server imports are marked as ES modules for Node", () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(repo, "public/WVROOFING/assets/js/package.json"), "utf8"));
+  assert.equal(pkg.type, "module");
+  const compose = fs.readFileSync(path.join(repo, "serverlib/wvroofing/compose.js"), "utf8");
+  for (const m of compose.matchAll(/import\("(\.\.\/\.\.\/public\/WVROOFING\/assets\/js\/[^"]+)"\)/g)) {
+    assert.ok(fs.existsSync(path.join(repo, "serverlib/wvroofing", m[1])), "literal import path (traced by Vercel) must exist: " + m[1]);
+  }
+});
+
 test("the cron path resolves to the cron route", () => {
   const router = load("serverlib/wvroofing/router.js");
   const r = router.resolvePath(fakeReq("GET", "/api/wvroofing/cron/daily"));

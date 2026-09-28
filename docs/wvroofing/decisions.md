@@ -72,8 +72,11 @@ Vercel hands over a rewritten request.
   for block. The QA compares the served composite with the served photo this way. Files are about 10 %
   larger.
 - **Misaligned renders are rejected**, not used: a composite whose seam error (mean luma difference in a
-  band round the roof) is above `WVR_MAX_SEAM` (35) fails as `misaligned`. The threshold is uncalibrated
-  until the A8 benchmark. The model's raw answer is kept for the operator either way.
+  band round the roof) is above `WVR_MAX_SEAM` fails as `misaligned`. The default, 50, is uncalibrated
+  until the A8 benchmark; it sits well above the lightbox's 18 "edges may not line up" warning because a
+  real render redraws fine texture round the roof even when it lines up (raised from 35 in A4 after a
+  noisy test photo showed how large that effect can be). The model's raw answer is kept for the operator
+  either way.
 - **Stopping and consent.** "Stop renders" cancels renders not yet sent; one already sent can't be
   recalled (it is paid for) and still appears. Withdrawing consent cancels queued renders. The first time
   consent was given is kept.
@@ -87,3 +90,37 @@ Vercel hands over a rewritten request.
   pre-render path are removed (A8 adds a pre-render tool that runs with the owner's approval).
 - **Retention.** Files of renders that were never shown (failed, cancelled, quarantined) are deleted
   after 7 days; queued jobs older than a day are dropped and their budget released (daily job).
+
+## Decisions made while building A4 (2026-09-28)
+
+- **Saved first, notified second.** `POST enquiries` (and the permanent `enquiry` alias) and
+  `POST projects/:id/enquiry` write the enquiry to Postgres, then email. References are `WVR-YYMM-XXXX`
+  in Crockford base32 (no I, L, O or U), shown to the customer and used in emails, never used to look
+  anything up. One enquiry per project; a form's request key lives in `sessionStorage` until the
+  enquiry is saved, and unique indexes make a double tap or a reload return the same enquiry.
+- **Truthful status.** The request waits up to 8 seconds for the email, so "the roofer has been
+  notified" is said only once the SMTP server has accepted it; otherwise "we're notifying the roofer;
+  your enquiry is safely stored". While `WVR_CAP_ENQUIRY_DELIVERY` is off, enquiries are still saved and
+  the customer is told no one is being notified yet (this is a concept).
+- **Bounded delivery.** One quick retry after about 11 seconds, then the daily job, at most three
+  attempts in all. A connection lost after the message was handed over (during or after DATA) is
+  `uncertain` and never repeated automatically; a send that never reported back is settled as
+  `uncertain` by the daily job. The operator screen (A6) will show and resend these.
+- **Bots.** A filled honeypot is dropped with a fake "thank you". A form completed in under 2.5 seconds
+  is now kept as `spam_suspected` and never emailed (it used to be dropped, which could silently lose a
+  real enquiry filled by autofill).
+- **The email** comes from WV Roofing's own mailer (never SC's), with 15/10/30-second connection,
+  greeting and socket timeouts. A `WVR_MAIL_FROM` that doesn't name "WV Roofing", or names SC Design, is
+  ignored in favour of the default. No links or keys in the email. Images are attached only if the
+  customer asked, at most two JPEGs of at most 450 KB (the before photo and the chosen photo-real
+  render), read from storage on the server; the browser no longer uploads base64 images, and quick
+  previews (browser-only) are not attached. The link to the operator page arrives with A6.
+- **Retention now, not in A7.** An enquiry keeps its project (photo, outline, renders) for 12 months
+  instead of 30 days, and the daily job deletes enquiries older than 12 months, so the privacy notice is
+  true from the day enquiries are stored. Deleting the photo keeps the enquiry (its project link is
+  cleared).
+- **Clean-up.** The `legacy/` bridge is gone, and so are core.js's bridge-only helpers (`cors`, `ipKey`,
+  `createLimiter`) and the "£ estimate" block. nodemailer has no types: one `@ts-ignore` at its
+  `require` (a `.d.ts` would join SC's own type check, which includes every `.ts` file in the repo).
+  `public/WVROOFING/assets/js/package.json` marks the browser scripts as ES modules for Node.
+- **Render seam threshold.** `WVR_MAX_SEAM` default raised from 35 to 50 (see A3).

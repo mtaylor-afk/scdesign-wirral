@@ -72,7 +72,8 @@ const DEFS = {
     paid: false,
   },
   enquiry_delivery: {
-    credential: (env) => !!env.WVR_LEAD_TO && (!!(env.SMTP_USER && env.SMTP_PASS) || env.WVR_MAIL_DRYRUN === "1"),
+    // test environment: the in-memory outbox in mailer.js (never SMTP)
+    credential: (env) => isTest(env) || (!!env.WVR_LEAD_TO && (!!(env.SMTP_USER && env.SMTP_PASS) || env.WVR_MAIL_DRYRUN === "1")),
     switch: "WVR_CAP_ENQUIRY_DELIVERY",
     paid: false,
   },

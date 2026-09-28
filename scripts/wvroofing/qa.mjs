@@ -30,6 +30,7 @@ const OUT = path.resolve(String(opt("out", path.join(os.tmpdir(), "wvroofing-qa"
 const LIVE = !!opt("live", false);
 fs.mkdirSync(OUT, { recursive: true });
 
+const REF = /WVR-\d{4}-[0-9A-Z]{4}/;
 const results = [];
 const ok = (name, pass, detail) => {
   results.push({ name, pass: !!pass, detail: detail || "" });
@@ -154,6 +155,18 @@ try {
     await page.waitForTimeout(300);
     const sel = await page.inputValue("#q-product");
     ok("'Ask about this roof' pre-selects it in the quote form", sel === "welsh-slate", sel);
+    // The survey request is saved first and answered with a reference.
+    await page.fill("#q-name", "QA Tester");
+    await page.fill("#q-email", "qa@example.com");
+    await page.check("#q-consent");
+    await page.waitForTimeout(2700);
+    await page.click('form[data-enquiry] button[type="submit"]');
+    await page.waitForFunction(() => {
+      const s = document.querySelector("form[data-enquiry] .form-status");
+      return s && !s.hidden && !/Saving/.test(s.textContent);
+    }, null, { timeout: 20000 });
+    const rr = await page.textContent("form[data-enquiry] .form-status");
+    ok("roof-replacement form: the enquiry is saved with a reference", (/saved/i.test(rr) && REF.test(rr)) || (LIVE && /concept site/i.test(rr)), rr);
     await page.evaluate(() => window.scrollTo(0, 3000));
     await page.waitForTimeout(400);
     const top = await page.locator(".lnav").evaluate((n) => n.getBoundingClientRect().top);
@@ -233,10 +246,11 @@ try {
     await page.click('#quote-form button[type="submit"]');
     await page.waitForFunction(() => {
       const s = document.querySelector("#quote-form .form-status");
-      return s && !s.hidden && !/Sending/.test(s.textContent);
+      return s && !s.hidden && !/Saving|Sending/.test(s.textContent);
     }, null, { timeout: 20000 });
     const status = await page.textContent("#quote-form .form-status");
-    ok("quote form reports a clear outcome", /concept site|sent/i.test(status), status);
+    // Saved first, with a reference; a deployed copy without storage says it isn't collecting yet.
+    ok("quote form: the enquiry is saved with a reference", (/saved/i.test(status) && REF.test(status)) || (LIVE && /concept site/i.test(status)), status);
     await shot(page, { path: path.join(OUT, "vis-quote-desktop.png") });
     ok("visualiser flow has no console errors", errors.length === 0, errors.join(" | "));
     await ctx.close();
@@ -353,6 +367,26 @@ try {
         });
         ok("phone: the served composite matches the photo outside the roof", exact.sameSize && exact.blocks > 100 && exact.bad === 0, JSON.stringify(exact));
         await shot(page, { path: path.join(OUT, "vis-ai-phone.png"), fullPage: true });
+      }
+      // An enquiry about this photo: sent with the project (the server attaches the images).
+      if (!LIVE) {
+        await page.click("#btn-quote");
+        await page.waitForSelector("#quote-dialog[open]");
+        const imagesOffered = await page.isVisible("#v-images-row");
+        await page.fill("#v-name", "QA Phone");
+        await page.fill("#v-phone", "0151 496 0000");
+        await page.check("#v-consent");
+        await page.waitForTimeout(2700);
+        const sent = page.waitForResponse((r) => isPath(r, /\/projects\/[^/]+\/enquiry$/) && r.request().method() === "POST", { timeout: 30000 }).catch(() => null);
+        await page.click('#quote-form button[type="submit"]');
+        const sentRes = await sent;
+        await page.waitForFunction(() => {
+          const s = document.querySelector("#quote-form .form-status");
+          return s && !s.hidden && !/Saving/.test(s.textContent);
+        }, null, { timeout: 20000 });
+        const st = (await page.textContent("#quote-form .form-status")) || "";
+        ok("phone: an enquiry about my photo is saved with a reference and the images offered", imagesOffered && !!sentRes && sentRes.status() === 201 && REF.test(st) && /notified/.test(st), (sentRes ? sentRes.status() : "no request") + " " + st);
+        await page.click("#qd-close");
       }
       // Delete it all again (this also tidies up the project the check created).
       await page.click("#btn-edit-mark");

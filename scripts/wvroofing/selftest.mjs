@@ -1,5 +1,5 @@
 // WV Roofing — self-test for the pure maths, the compositing guarantee, the
-// server validators, the render settings and the bridged enquiry handler.
+// server validators, the render settings and the enquiry routes' checks.
 // No browser needed. (The render jobs have their own node:test suites.)
 //
 //   node scripts/wvroofing/selftest.mjs
@@ -309,13 +309,6 @@ const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 429496
     "prompt: the brief's instruction, the product, and the edit limited to the roof",
     prompt.startsWith("Edit the supplied original house photograph.") && prompt.includes("Natural Spanish slate") && prompt.includes("Replace only the selected visible roof covering") && prompt.includes("Keep unchanged")
   );
-
-  // Only used by the bridged enquiry endpoint until A4.
-  const lim = S.createLimiter(2, 60000);
-  check("limiter allows then blocks", lim.hit("a").ok && lim.hit("a").ok && !lim.hit("a").ok && lim.hit("b").ok);
-  lim.undo("a");
-  lim.undo("a");
-  check("limiter undo frees a slot", lim.hit("a").ok);
 }
 
 // ---------------------------------------------------------------- handlers
@@ -369,20 +362,20 @@ async function call(handler, method, headers, body, url) {
   const gone = await call(at("/api/wvroofing/render"), "POST", LOCAL, { productId: "welsh-slate" });
   check("the pre-v02 render endpoint is gone", gone.status === 404);
 
-  const enquiry = at("/api/wvroofing/enquiry");
-  delete process.env.WVR_LEAD_TO;
-  const good = { name: "Test Person", email: "test@example.com", consent: true, elapsedMs: 8000, product: "clay-pantile-terracotta" };
-  const nc = await call(enquiry, "POST", LOCAL, good);
-  check("enquiry reports not_configured without WVR_LEAD_TO", nc.status === 200 && nc.json.ok === false && nc.json.error === "not_configured");
-  process.env.WVR_LEAD_TO = "owner@example.com";
-  process.env.WVR_MAIL_DRYRUN = "1";
-  const sent = await call(enquiry, "POST", LOCAL, Object.assign({}, good, { measure: { planAreaM2: 62.4, pitchDeg: 35, roofAreaM2: 76.2, estimate: { product: "clay-pantile-terracotta", low: 7000, high: 9500 } } }));
-  check("enquiry dry-run send succeeds", sent.status === 200 && sent.json.ok === true && sent.json.dryRun === true, JSON.stringify(sent.json));
+  // Enquiries are saved before anyone is emailed (the saving itself is covered by
+  // tests/enquiries.test.mjs); with no storage here, nothing is saved or sent.
+  const good = { name: "Test Person", email: "test@example.com", consent: true, elapsedMs: 8000, product: "clay-pantile-terracotta", source: "roof-replacement", idempotencyKey: "selftest-000001" };
+  for (const route of ["/api/wvroofing/enquiries", "/api/wvroofing/enquiry"]) {
+    const nc = await call(at(route), "POST", LOCAL, good);
+    check("enquiry without storage: nothing saved or sent, and it says so (" + route + ")", nc.status === 200 && nc.json.ok === false && nc.json.error === "not_configured");
+  }
+  const enquiry = at("/api/wvroofing/enquiries");
   const invalid = await call(enquiry, "POST", LOCAL, { name: "X", consent: false });
   check("enquiry validates fields", invalid.status === 400 && invalid.json.fields.includes("consent"));
   const bot = await call(enquiry, "POST", LOCAL, Object.assign({}, good, { company: "spam" }));
-  check("enquiry honeypot pretends success", bot.status === 200 && bot.json.ok === true);
-  delete process.env.WVR_MAIL_DRYRUN;
+  check("enquiry honeypot pretends success", bot.status === 200 && bot.json.ok === true && !bot.json.reference);
+  const M = require(path.join(repo, "serverlib/wvroofing/mailer.js"));
+  check("enquiry emails always come from WV Roofing, never SC Design", /WV Roofing/.test(M.fromAddress({ WVR_MAIL_FROM: '"SC Design" <a@b.co>' })) && !/SC Design/.test(M.fromAddress({ WVR_MAIL_FROM: '"SC Design" <a@b.co>' })));
 }
 
 // ---------------------------------------------------------------- samples

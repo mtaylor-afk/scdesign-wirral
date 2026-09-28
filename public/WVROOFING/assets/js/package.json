@@ -1,0 +1,5 @@
+{
+  "description": "WV Roofing browser scripts are ES modules. This file tells Node so when serverlib/wvroofing/compose.js imports the shared maths (vis/mask-ops.js, vis/ai-input.js, vis/composite.js).",
+  "private": true,
+  "type": "module"
+}
