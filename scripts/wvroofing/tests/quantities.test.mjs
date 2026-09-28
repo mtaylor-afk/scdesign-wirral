@@ -191,6 +191,23 @@ test("an entered length with a per-metre figure is estimated; without the figure
   assert.deepEqual(none.linear, []);
 });
 
+test("the pre-filled specifications: every look has one, all are drafts with their sources, none reaches customers", () => {
+  const all = [...catalogue.PRODUCTS.values()];
+  assert.equal(new Set(all.map((p) => p.visual_id)).size, 8, "every look has at least one product");
+  for (const p of all) {
+    assert.equal(p.spec.status, "draft", p.id + " stays a draft until the roofer verifies it");
+    assert.equal(p.spec.verified_by, null, p.id);
+    assert.ok(Array.isArray(p.sources) && p.sources.length && p.sources.every((s) => /^https:\/\//.test(s.url)), p.id + " lists its sources");
+    const rows = p.spec.coverage.type === "by_pitch" ? p.spec.coverage.rows : [];
+    for (const r of rows) assert.ok(["printed", "manufacturer formula"].includes(r.basis), p.id + ": each figure says where it came from");
+  }
+  const roof = { faces: [{ id: "f", surface_m2: 50, pitch_deg: 35 }] };
+  for (const v of new Set(all.map((p) => p.visual_id))) {
+    assert.deepEqual(Q.estimateForVisual(roof, v), [], v + ": no quantities for customers from drafts");
+    assert.ok(Q.estimateForVisual(roof, v, { drafts: true }).every((e) => e.spec_status === "draft" && e.total.units > 0), v + ": the operator can see the drafts");
+  }
+});
+
 test("the catalogue: v2 looks without prices; products server-side only, every entry checked", () => {
   const cat = JSON.parse(fs.readFileSync(path.join(repo, "public/WVROOFING/data/catalogue.json"), "utf8"));
   const doc = JSON.parse(fs.readFileSync(path.join(repo, "serverlib/wvroofing/products.json"), "utf8"));

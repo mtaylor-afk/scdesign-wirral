@@ -294,6 +294,36 @@ Vercel hands over a rewritten request.
     length worked out from the area, which the rules forbid.
 - **Dev server.** It now reloads `catalogue.json` with the server modules, so catalogue edits apply
   without a restart.
+- **Nine draft specifications, pre-filled 28 Sep 2026** from the manufacturers' own published data. Every
+  look now has at least one:
+  - CUPA 12 slate;
+  - Penrhyn Heather Blue slate;
+  - Marley Edgemere;
+  - Marley Modern;
+  - Redland Rosemary Clay Classic;
+  - Redland 50 Double Roman;
+  - Sandtoft Old English;
+  - Redland 49 and Marley Ludlow Plus (Ludlow Plus is the exact size of the granular look).
+
+  How they were made:
+  - **Sources.** Each draft lists its sources. Two figures were spot-checked by hand: Marley Edgemere's
+    coverage and Welsh Slate's formula.
+  - **Formula rows.** Where a slate headlap has no printed figure, the row is worked out with the
+    manufacturer's own published formula and marked `basis: "manufacturer formula"`. Cupa's printed
+    numbers match its formula without the joint gap; Welsh Slate's include the 5 mm joint.
+  - **Exposure.** Slate headlaps are for moderate exposure. The roofer must check each site: coastal Wirral
+    may be severe, which needs bigger laps and more slates.
+  - **Packs and allowance.** Pack size is 1 (counted singly), with the pallet quantity alongside for
+    ordering. The 5% allowance follows Cupa's and Welsh Slate's advice; for the tiles it is an assumption
+    for the roofer to confirm.
+
+  Mismatches are noted on each draft:
+  - two looks' sizes don't match their first comparable;
+  - four looks name colours the manufacturers don't use;
+  - one pallet quantity conflicts between the manufacturer's documents;
+  - no ridge cover lengths are published, so no ridge figures are pre-filled.
+
+  None is verified, so customers still see no quantities.
 
 ## Decisions made while building B2 (2026-09-28)
 

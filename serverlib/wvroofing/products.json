@@ -1,5 +1,364 @@
 {
   "version": 1,
-  "note": "WV Roofing: real manufacturers' products behind the eight looks, with specifications for material quantities (serverlib/wvroofing/catalogue.js and quantities.js). Server only: never served to browsers. A specification is a draft until the roofer checks it against the manufacturer's datasheet and marks it verified (verified_by, verified_at); drafts appear only on the operator screen, and customers see quantities from verified products only.",
-  "products": []
+  "note": "WV Roofing: real manufacturers' products behind the eight looks, with specifications for material quantities (serverlib/wvroofing/catalogue.js and quantities.js). Server only: never served to browsers. Every specification here is a DRAFT, pre-filled on 2026-09-28 from the manufacturers' own published data (sources listed per product); drafts appear only on the operator screen until the roofer checks each against the datasheet and marks it verified (verified_by, verified_at). Coverage rows marked basis 'manufacturer formula' are worked out with the manufacturer's own published formula where no figure is printed for that headlap. Slate headlaps are for MODERATE exposure (under 56.5 l/m2 per spell); severe exposure needs bigger laps and more slates. The 5% default allowance follows Cupa's and Welsh Slate's advice to add at least 5% for waste; for the tiles it is WV's assumption for the roofer to confirm. Pack size 1 means counted singly; pallet quantities are given for ordering.",
+  "products": [
+    {
+      "id": "cupa-12-grey-500x250",
+      "visual_id": "spanish-slate",
+      "manufacturer": "Cupa Pizarras",
+      "product": "CUPA 12 natural slate, 500 × 250 mm",
+      "colour": "Grey",
+      "size_mm": [500, 250],
+      "notes": [
+        "Cupa calls CUPA 12 grey or blue-grey, not blue-black; SSQ Del Carmen (the look's other comparable) wasn't researched.",
+        "Cupa's printed coverage matches 1,000,000 ÷ (((500 − headlap) ÷ 2) × 250); the 95, 85, 70, 60 and 55 mm rows use that formula (no printed figure).",
+        "Moderate exposure. Severe exposure needs bigger headlaps: 27.5° 110 mm, 30° 100 mm, 35° 85 mm, 40° 80 mm, 45–75° 70 mm.",
+        "Conditions: at most 12 m to the eaves; rafters up to 9 m (moderate) or 6 m (severe). Hook fixing not below 25°.",
+        "Crate and pallet quantities aren't published; Cupa names no matching ridge."
+      ],
+      "sources": [
+        { "url": "https://www.cupapizarras.com/uk/resource-centre/faqs/slates-per-m2/", "supports": "slates per m² by headlap for 500 × 250; waste advice" },
+        { "url": "https://www.cupapizarras.com/uk/resource-centre/faqs/minimum-headlap-fixing-slates/", "supports": "minimum headlap by pitch and exposure" },
+        { "url": "https://www.cupapizarras.com/uk/resource-centre/faqs/minimum-pitch-for-slate-roof/", "supports": "eaves height and rafter length conditions" },
+        { "url": "https://www.cupapizarras.com/wp-content/uploads/2018/11/fixing_guide_cupa_pizarras.pdf", "supports": "gauge formula; hooks not below 25°" },
+        { "url": "https://www.cupapizarras.com/uk/roofing-slate-cupa-12/", "supports": "product and colour" }
+      ],
+      "spec": {
+        "status": "draft",
+        "version": 1,
+        "unit": "slate",
+        "coverage": {
+          "type": "by_pitch",
+          "rows": [
+            { "min_pitch_deg": 25, "max_pitch_deg": 27.5, "headlap_mm": 95, "gauge_mm": 202.5, "units_per_m2": 19.8, "basis": "manufacturer formula" },
+            { "min_pitch_deg": 27.5, "max_pitch_deg": 30, "headlap_mm": 85, "gauge_mm": 207.5, "units_per_m2": 19.3, "basis": "manufacturer formula" },
+            { "min_pitch_deg": 30, "max_pitch_deg": 35, "headlap_mm": 80, "gauge_mm": 210, "units_per_m2": 19.0, "basis": "printed" },
+            { "min_pitch_deg": 35, "max_pitch_deg": 40, "headlap_mm": 70, "gauge_mm": 215, "units_per_m2": 18.6, "basis": "manufacturer formula" },
+            { "min_pitch_deg": 40, "max_pitch_deg": 45, "headlap_mm": 60, "gauge_mm": 220, "units_per_m2": 18.2, "basis": "manufacturer formula" },
+            { "min_pitch_deg": 45, "max_pitch_deg": 75, "headlap_mm": 55, "gauge_mm": 222.5, "units_per_m2": 18.0, "basis": "manufacturer formula" }
+          ],
+          "note": "Moderate exposure headlaps from Cupa's 500 × 250 table; no entry below 25°."
+        },
+        "min_pitch_deg": 25,
+        "pack_size": 1,
+        "pallet_units": null,
+        "allowance_default_pct": 5,
+        "weight_kg_m2": 35.51,
+        "source_url": "https://www.cupapizarras.com/uk/resource-centre/faqs/slates-per-m2/",
+        "source_date": "2026-09-28",
+        "verified_by": null,
+        "verified_at": null
+      }
+    },
+    {
+      "id": "welsh-slate-penrhyn-heather-blue-500x300",
+      "visual_id": "welsh-slate",
+      "manufacturer": "Welsh Slate",
+      "product": "Penrhyn Heather Blue slate, 500 × 300 mm",
+      "colour": "Heather Blue",
+      "size_mm": [500, 300],
+      "notes": [
+        "Welsh Slate's coverage includes a 5 mm joint (BS 8000-6): 1,000,000 ÷ (((500 − headlap) ÷ 2) × 305). The 95 and 85 mm rows use that formula (no printed figure).",
+        "Moderate exposure. Severe exposure: 22.5° 130 mm, 25° 120 mm, 27.5° 110 mm, 30° 100 mm, 35° 85 mm, 40° 80 mm, 45–75° 70 mm (no entry at 20°).",
+        "Rafters up to 9 m (moderate) or 6 m (severe); very windy sites may need better nails or bigger laps.",
+        "Grade (Capital 5.5, County 7, Celtic 9 mm) doesn't change coverage, only weight. Crate quantities aren't published; no matching ridge is named."
+      ],
+      "sources": [
+        { "url": "https://www.welshslate.com/roofing/architects-and-specifiers/slate-coverage/", "supports": "slates per m² by headlap for 500 × 300; formula; waste advice" },
+        { "url": "https://www.welshslate.com/roofing/architects-and-specifiers/slate-headlap/", "supports": "minimum headlap by pitch and exposure" },
+        { "url": "https://www.welshslate.com/roofing/architects-and-specifiers/battening-and-holing-gauges/", "supports": "batten gauges" },
+        { "url": "https://www.welshslate.com/clientfiles/files/brochures/2023roofing/files/assets/common/downloads/Welsh-Slate-Roofing-Brochure-A4.pdf", "supports": "batten gauges for every headlap (January 2023 brochure, p.15)" },
+        { "url": "https://www.welshslate.com/roofing/penrhyn-welsh-slate-roofing/", "supports": "product, size and colour" }
+      ],
+      "spec": {
+        "status": "draft",
+        "version": 1,
+        "unit": "slate",
+        "coverage": {
+          "type": "by_pitch",
+          "rows": [
+            { "min_pitch_deg": 20, "max_pitch_deg": 22.5, "headlap_mm": 115, "gauge_mm": 193, "units_per_m2": 17.0, "basis": "printed" },
+            { "min_pitch_deg": 22.5, "max_pitch_deg": 25, "headlap_mm": 105, "gauge_mm": 198, "units_per_m2": 16.6, "basis": "printed" },
+            { "min_pitch_deg": 25, "max_pitch_deg": 27.5, "headlap_mm": 95, "gauge_mm": 203, "units_per_m2": 16.2, "basis": "manufacturer formula" },
+            { "min_pitch_deg": 27.5, "max_pitch_deg": 30, "headlap_mm": 85, "gauge_mm": 208, "units_per_m2": 15.8, "basis": "manufacturer formula" },
+            { "min_pitch_deg": 30, "max_pitch_deg": 35, "headlap_mm": 80, "gauge_mm": 210, "units_per_m2": 15.6, "basis": "printed" },
+            { "min_pitch_deg": 35, "max_pitch_deg": 40, "headlap_mm": 70, "gauge_mm": 215, "units_per_m2": 15.2, "basis": "printed" },
+            { "min_pitch_deg": 40, "max_pitch_deg": 45, "headlap_mm": 60, "gauge_mm": 220, "units_per_m2": 14.9, "basis": "printed" },
+            { "min_pitch_deg": 45, "max_pitch_deg": 75, "headlap_mm": 55, "gauge_mm": 223, "units_per_m2": 14.7, "basis": "printed" }
+          ],
+          "note": "Moderate exposure headlaps from Welsh Slate's 500 × 300 table."
+        },
+        "min_pitch_deg": 20,
+        "pack_size": 1,
+        "pallet_units": null,
+        "allowance_default_pct": 5,
+        "weight_kg_m2": null,
+        "source_url": "https://www.welshslate.com/roofing/architects-and-specifiers/slate-coverage/",
+        "source_date": "2026-09-28",
+        "verified_by": null,
+        "verified_at": null
+      }
+    },
+    {
+      "id": "marley-edgemere-smooth-grey",
+      "visual_id": "slate-effect-grey",
+      "manufacturer": "Marley",
+      "product": "Edgemere interlocking slate",
+      "colour": "Smooth Grey",
+      "size_mm": [420, 330],
+      "notes": [
+        "Net figures. No gauge is printed for the 100 mm headlap row, and no minimum gauge.",
+        "Marley: special circumstances (exposure, long slopes) may need more; ask its Technical Advisory Service.",
+        "240 per pallet (40 per band) from Marley's minimum-order table (Product Catalogue, August 2026). Ridges are sold 'to match', with no cover length published."
+      ],
+      "sources": [
+        { "url": "https://www.marley.co.uk/roof-tiles/concrete-roof-tiles/edgemere", "supports": "size, coverage, maximum gauge, minimum pitch, headlap, weight" },
+        { "url": "https://www.marley.co.uk/-/media/files/brochures/marley-product-catalogue.ashx", "supports": "pallet quantity (p.73); technical data (p.34)" }
+      ],
+      "spec": {
+        "status": "draft",
+        "version": 1,
+        "unit": "slate",
+        "coverage": {
+          "type": "by_pitch",
+          "rows": [
+            { "min_pitch_deg": 17.5, "max_pitch_deg": 22.5, "headlap_mm": 100, "gauge_mm": null, "units_per_m2": 10.5, "basis": "printed" },
+            { "min_pitch_deg": 22.5, "max_pitch_deg": 90, "headlap_mm": 75, "gauge_mm": 345, "units_per_m2": 9.7, "basis": "printed" }
+          ],
+          "note": "Minimum headlap 75 mm at 22.5° and above, 100 mm below."
+        },
+        "min_pitch_deg": 17.5,
+        "pack_size": 1,
+        "pallet_units": 240,
+        "allowance_default_pct": 5,
+        "weight_kg_m2": 44,
+        "source_url": "https://www.marley.co.uk/roof-tiles/concrete-roof-tiles/edgemere",
+        "source_date": "2026-09-28",
+        "verified_by": null,
+        "verified_at": null
+      }
+    },
+    {
+      "id": "marley-modern-smooth-brown",
+      "visual_id": "flat-smooth-brown",
+      "manufacturer": "Marley",
+      "product": "Modern interlocking tile",
+      "colour": "Smooth Brown",
+      "size_mm": [420, 330],
+      "notes": [
+        "Pitches are for the smooth finish (granular colours need 25° at 100 mm or 30° at 75 mm).",
+        "Net figures. No gauge is printed for the 100 mm headlap row. Ask Marley where the slope is over 6 m or the site is severely exposed.",
+        "192 per pallet (32 per band) from Marley's minimum-order table (August 2026). No specific matching ridge or cover length is published."
+      ],
+      "sources": [
+        { "url": "https://www.marley.co.uk/roof-tiles/concrete-roof-tiles/modern", "supports": "size, coverage, maximum gauge, minimum pitch, weight" },
+        { "url": "https://www.marley.co.uk/-/media/files/brochures/marley-roof-system-specification-guide.ashx", "supports": "headlap by pitch" },
+        { "url": "https://www.marley.co.uk/-/media/files/brochures/marley-product-catalogue.ashx", "supports": "colour (p.37) and pallet quantity (p.73)" }
+      ],
+      "spec": {
+        "status": "draft",
+        "version": 1,
+        "unit": "tile",
+        "coverage": {
+          "type": "by_pitch",
+          "rows": [
+            { "min_pitch_deg": 17.5, "max_pitch_deg": 22.5, "headlap_mm": 100, "gauge_mm": null, "units_per_m2": 10.7, "basis": "printed" },
+            { "min_pitch_deg": 22.5, "max_pitch_deg": 90, "headlap_mm": 75, "gauge_mm": 345, "units_per_m2": 9.9, "basis": "printed" }
+          ],
+          "note": "Smooth finish. Minimum lap 75 mm at 22.5° and above, 100 mm below."
+        },
+        "min_pitch_deg": 17.5,
+        "pack_size": 1,
+        "pallet_units": 192,
+        "allowance_default_pct": 5,
+        "weight_kg_m2": 50,
+        "source_url": "https://www.marley.co.uk/roof-tiles/concrete-roof-tiles/modern",
+        "source_date": "2026-09-28",
+        "verified_by": null,
+        "verified_at": null
+      }
+    },
+    {
+      "id": "redland-rosemary-clay-classic-red",
+      "visual_id": "clay-plain-red",
+      "manufacturer": "Redland (BMI)",
+      "product": "Rosemary Clay Classic plain tile",
+      "colour": "Red",
+      "size_mm": [265, 165],
+      "notes": [
+        "60 per m² at 100 mm gauge and 65 mm headlap, net with no allowance for waste (90°, vertical tiling: 52 per m²).",
+        "Plain tiles also need eaves and top courses and tile-and-a-half at the verges: not in these figures.",
+        "840 per pallet. The matching Clay Half Round Ridge publishes only its overall length (300 mm), not a cover length.",
+        "The datasheet (ref RED_TDS_2203) has no issue date; it's the one BMI's product page links to."
+      ],
+      "sources": [
+        { "url": "https://www.bmigroup.com/uk/p/rosemary-clay-classic-tile-red-smooth-2519169676/", "supports": "product page: colour, pallet, gauge, pitch; links the datasheet" },
+        { "url": "https://store.bmigroup.com/medias/Redland-Technical-Data-Sheet-Rosemary-Clay-Classic?context=bWFzdGVyfHJvb3R8NDU0NzY5fGFwcGxpY2F0aW9uL3BkZnxhREkxTDJnNFlTODVNREE0T1RFNE5EWXlORGswTDFKbFpHeGhibVFnVkdWamFHNXBZMkZzSUVSaGRHRWdVMmhsWlhRNklGSnZjMlZ0WVhKNUlFTnNZWGtnUTJ4aGMzTnBZd3w5ZjBiYWYxMTI2ZWQ2YTVmYWM3MmE5NGEyM2E3Njk0NzA0YzE5ZTQ3NjliZjg2ZDQxMzYxN2I3MTliYzliNTc5", "supports": "technical datasheet: size, coverage, gauge, headlap, pitch, weight, pallet" }
+      ],
+      "spec": {
+        "status": "draft",
+        "version": 1,
+        "unit": "tile",
+        "coverage": {
+          "type": "by_pitch",
+          "rows": [{ "min_pitch_deg": 35, "max_pitch_deg": 90, "headlap_mm": 65, "gauge_mm": 100, "units_per_m2": 60, "basis": "printed" }],
+          "note": "Roof pitches from 35°; the datasheet's 90° (vertical) figure isn't used for roofs."
+        },
+        "min_pitch_deg": 35,
+        "pack_size": 1,
+        "pallet_units": 840,
+        "allowance_default_pct": 5,
+        "weight_kg_m2": 77,
+        "source_url": "https://www.bmigroup.com/uk/p/rosemary-clay-classic-tile-red-smooth-2519169676/",
+        "source_date": "2026-09-28",
+        "verified_by": null,
+        "verified_at": null
+      }
+    },
+    {
+      "id": "redland-50-double-roman-farmhouse-red",
+      "visual_id": "double-roman-red",
+      "manufacturer": "Redland (BMI)",
+      "product": "50 Double Roman tile",
+      "colour": "Farmhouse Red",
+      "size_mm": [418, 330],
+      "notes": [
+        "Redland makes no 'Antique Red' 50 Double Roman; Farmhouse Red is the closest red in the October 2025 datasheet.",
+        "Net figures, no waste allowance. Minimum gauge 293 mm, maximum headlap 125 mm (no coverage printed at those).",
+        "252 per pallet. The concrete Half Round Ridge publishes only its overall length (450 mm), and its colour list doesn't include Farmhouse Red."
+      ],
+      "sources": [
+        { "url": "https://www.bmigroup.com/uk/p/50-double-roman-tile-farmhouse-red-smooth-3777998572/", "supports": "product page: colour, pallet, weight; links the datasheet" },
+        { "url": "https://store.bmigroup.com/medias/?context=bWFzdGVyfHJvb3R8MjE3NTgwfGFwcGxpY2F0aW9uL3BkZnxhR1UzTDJneE15ODVOVGM1TlRNeE5UWTNNVE0wTDBKTlNTMVNaV1JzWVc1a0xWUkVVeTAxTUMxRWIzVmliR1V0VW05dFlXNHRVa1ZFWDFSRVUxODVNalZmTVRBd01EQXdNak16WDFZeExuQmtaZ3wzNzNmYzBkZjliZTJkMzRiZmQ1MmY4ZDYwMjkyNTc2ZjNhMzc3ZDhkNjE3OTg1NzEwZDhlYWM0MDFiZjYxZmVm", "supports": "technical datasheet (October 2025, V1): size, coverage by gauge, pitch, weight, pallet" }
+      ],
+      "spec": {
+        "status": "draft",
+        "version": 1,
+        "unit": "tile",
+        "coverage": {
+          "type": "by_pitch",
+          "rows": [
+            { "min_pitch_deg": 17.5, "max_pitch_deg": 22.5, "headlap_mm": 100, "gauge_mm": 318, "units_per_m2": 10.5, "basis": "printed" },
+            { "min_pitch_deg": 22.5, "max_pitch_deg": 90, "headlap_mm": 75, "gauge_mm": 343, "units_per_m2": 9.7, "basis": "printed" }
+          ],
+          "note": "Maximum gauge 318 mm below 22.5°, 343 mm from 22.5°."
+        },
+        "min_pitch_deg": 17.5,
+        "pack_size": 1,
+        "pallet_units": 252,
+        "allowance_default_pct": 5,
+        "weight_kg_m2": 41,
+        "source_url": "https://www.bmigroup.com/uk/p/50-double-roman-tile-farmhouse-red-smooth-3777998572/",
+        "source_date": "2026-09-28",
+        "verified_by": null,
+        "verified_at": null
+      }
+    },
+    {
+      "id": "sandtoft-old-english-natural-red",
+      "visual_id": "clay-pantile-terracotta",
+      "manufacturer": "Sandtoft (Wienerberger)",
+      "product": "Old English pantile (fixed headlap)",
+      "colour": "Natural Red",
+      "size_mm": [365, 250],
+      "notes": [
+        "Its size (365 × 250) doesn't match the look's 342 × 252; New County (the other comparable) is 382 × 256.",
+        "Sandtoft has no 'terracotta' Old English; Natural Red is closest.",
+        "Fixed gauge 290 mm, 75 mm headlap. Wienerberger advises checking each batch for size variation before setting the gauge.",
+        "Pallet quantity conflicts: 504 in the newest datasheet (31 July 2026) but 432 on the product page. The Clay Half Round Ridge 305 publishes no cover length."
+      ],
+      "sources": [
+        { "url": "https://www.wienerberger.co.uk/content/dam/wienerberger/united-kingdom/marketing/documents-magazines/product-data-sheets/roof/UK_MKT_DOC_PDS_ROOF_FIXED_HEADLAP_Clay_Old_English.pdf", "supports": "datasheet V1.1 (31 July 2026): size, coverage, pitch, headlap, pallet, weight" },
+        { "url": "https://www.wienerberger.co.uk/product-range/roof/old-english-natural-red.html", "supports": "product page: gauge, ridge fittings, pallet quantity (conflicting)" }
+      ],
+      "spec": {
+        "status": "draft",
+        "version": 1,
+        "unit": "tile",
+        "coverage": { "type": "fixed", "units_per_m2": 17.3, "gauge_mm": 290, "note": "Fixed headlap 75 mm, laid at minimum headlap." },
+        "min_pitch_deg": 30,
+        "pack_size": 1,
+        "pallet_units": 504,
+        "allowance_default_pct": 5,
+        "weight_kg_m2": 42.4,
+        "source_url": "https://www.wienerberger.co.uk/content/dam/wienerberger/united-kingdom/marketing/documents-magazines/product-data-sheets/roof/UK_MKT_DOC_PDS_ROOF_FIXED_HEADLAP_Clay_Old_English.pdf",
+        "source_date": "2026-09-28",
+        "verified_by": null,
+        "verified_at": null
+      }
+    },
+    {
+      "id": "redland-49-brown-granular",
+      "visual_id": "granular-tawny",
+      "manufacturer": "Redland (BMI)",
+      "product": "Redland 49 tile",
+      "colour": "Brown (granular)",
+      "size_mm": [382, 226],
+      "notes": [
+        "Its size (382 × 226) doesn't match the look's 387 × 229, which is Marley Ludlow Plus (also listed).",
+        "No 'tawny' colour; Brown (granular) is the closest granular brown.",
+        "Granular finish: maximum gauge 282 mm below 30°, 307 mm from 30°. Net figures, no waste allowance. Minimum gauge 257 mm, maximum headlap 125 mm.",
+        "336 per pallet. Weight 47 kg/m² in the June 2026 datasheet (46 on the product page). The Half Round Ridge publishes only its overall length."
+      ],
+      "sources": [
+        { "url": "https://www.bmigroup.com/uk/p/redland-49-tile-brown-granular-1879346601/", "supports": "product page: colour and finish, pallet; links the datasheet" },
+        { "url": "https://store.bmigroup.com/medias/?context=bWFzdGVyfHJvb3R8NTg1MzI2fGFwcGxpY2F0aW9uL3BkZnxhR013TDJnMlpDODVPRGcxT1RrNU5EazNNalEyTDBKTlNTMVNaV1JzWVc1a0xWUkVVeTFTWldSc1lXNWtMVFE1TFZKRlJDMVVSRk10T1RJMUxURXdNREF3TURJek5TMVdNeTV3WkdZfDAzYmIxYzhmYzIzN2ZhY2ZmOTJhN2Q3OWUwYzQxNDc0OWUwMjBhOWVkYzc4Y2UwNzRjNDk0NGE0YjBkNmM0NzQ", "supports": "technical datasheet (June 2026, V3): size, coverage by gauge, granular pitches, weight, pallet" }
+      ],
+      "spec": {
+        "status": "draft",
+        "version": 1,
+        "unit": "tile",
+        "coverage": {
+          "type": "by_pitch",
+          "rows": [
+            { "min_pitch_deg": 22.5, "max_pitch_deg": 30, "headlap_mm": 100, "gauge_mm": 282, "units_per_m2": 17.7, "basis": "printed" },
+            { "min_pitch_deg": 30, "max_pitch_deg": 90, "headlap_mm": 75, "gauge_mm": 307, "units_per_m2": 16.3, "basis": "printed" }
+          ],
+          "note": "Granular finish (through-coloured Redland 49 goes to 17.5° with the gauge change at 25°)."
+        },
+        "min_pitch_deg": 22.5,
+        "pack_size": 1,
+        "pallet_units": 336,
+        "allowance_default_pct": 5,
+        "weight_kg_m2": 47,
+        "source_url": "https://www.bmigroup.com/uk/p/redland-49-tile-brown-granular-1879346601/",
+        "source_date": "2026-09-28",
+        "verified_by": null,
+        "verified_at": null
+      }
+    },
+    {
+      "id": "marley-ludlow-plus-antique-brown",
+      "visual_id": "granular-tawny",
+      "manufacturer": "Marley",
+      "product": "Ludlow Plus tile",
+      "colour": "Antique Brown (granular)",
+      "size_mm": [387, 229],
+      "notes": [
+        "Matches the look's size exactly (387 × 229).",
+        "Only the 75 mm headlap figure is placed on a pitch band: Marley's catalogue gives 17.1 per m² at 100 mm headlap, but not the pitch that allows it for the granular finish; the roofer can add that band.",
+        "Maximum gauge 312 mm. 516 per pallet (43 per band) from Marley's minimum-order table (August 2026)."
+      ],
+      "sources": [{ "url": "https://www.marley.co.uk/-/media/files/brochures/marley-product-catalogue.ashx", "supports": "Product Catalogue (August 2026): size, granular colours, minimum pitch, coverage, gauge, weight, pallet" }],
+      "spec": {
+        "status": "draft",
+        "version": 1,
+        "unit": "tile",
+        "coverage": {
+          "type": "by_pitch",
+          "rows": [{ "min_pitch_deg": 30, "max_pitch_deg": 90, "headlap_mm": 75, "gauge_mm": 312, "units_per_m2": 15.7, "basis": "printed" }],
+          "note": "Granular finish at 75 mm headlap."
+        },
+        "min_pitch_deg": 30,
+        "pack_size": 1,
+        "pallet_units": 516,
+        "allowance_default_pct": 5,
+        "weight_kg_m2": 47,
+        "source_url": "https://www.marley.co.uk/-/media/files/brochures/marley-product-catalogue.ashx",
+        "source_date": "2026-09-28",
+        "verified_by": null,
+        "verified_at": null
+      }
+    }
+  ]
 }

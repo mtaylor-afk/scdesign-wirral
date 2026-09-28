@@ -117,9 +117,11 @@ function validate(catalogue, products) {
   return out;
 }
 
-const problems = validate(CATALOGUE, PRODUCTS_DOC.products);
+// Checked here at run time, so the file's own loose JSON types don't matter.
+const RAW_PRODUCTS = /** @type {any[]} */ (PRODUCTS_DOC.products || []);
+const problems = validate(CATALOGUE, RAW_PRODUCTS);
 /** The products, or none at all if any entry is faulty (the looks carry on regardless). @type {Map<string, Product>} */
-const PRODUCTS = new Map(problems.length ? [] : (PRODUCTS_DOC.products || []).map((/** @type {Product} */ p) => [p.id, p]));
+const PRODUCTS = new Map(problems.length ? [] : RAW_PRODUCTS.map((/** @type {Product} */ p) => [p.id, p]));
 if (problems.length) console.error("[wvroofing] products ignored:", problems.join("; "));
 
 /**
