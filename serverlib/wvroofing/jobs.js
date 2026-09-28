@@ -25,7 +25,7 @@ const compose = require("./compose.js");
 const images = require("./images.js");
 const { storage } = require("./storage.js");
 const { isEnabled } = require("./capabilities.js");
-const { PRODUCTS, CATALOGUE } = require("./core.js");
+const { VISUALS, CATALOGUE } = require("./core.js");
 
 /** vercel.json maxDuration for api/wvroofing/app.js (deploy-shape.test keeps the two equal). */
 const FUNCTION_SECONDS = 300;
@@ -464,7 +464,7 @@ function errText(err) {
  * @param {Row} job
  */
 async function prepare(job) {
-  const product = PRODUCTS.get(job.visual_id);
+  const product = VISUALS.get(job.visual_id);
   /** @type {import("./compose.js").AiSpec} */
   const spec = typeof job.spec === "string" ? JSON.parse(job.spec) : job.spec;
   const ph = await db.query("SELECT working_path, work_w, work_h FROM wvr_photos WHERE id = $1 AND project_id = $2", [job.photo_id, job.project_id]);

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { load } from "./helpers.mjs";
 
 const openai = load("serverlib/wvroofing/openai.js");
-const { PRODUCTS } = load("serverlib/wvroofing/core.js");
+const { VISUALS } = load("serverlib/wvroofing/core.js");
 
 const kind = (fn) => {
   try {
@@ -57,7 +57,7 @@ test("the request body: PNG photo and mask, explicit quality, no input_fidelity 
 });
 
 test("the prompt is the brief's instruction plus the product's fields, and is versioned", () => {
-  const p = openai.buildPrompt(PRODUCTS.get("spanish-slate"));
+  const p = openai.buildPrompt(VISUALS.get("spanish-slate"));
   assert.match(p, /^Edit the supplied original house photograph\. Replace only the selected visible roof covering/);
   assert.match(p, /Produce a realistic appearance preview, not a survey drawing\./);
   assert.match(p, /Natural Spanish slate/);

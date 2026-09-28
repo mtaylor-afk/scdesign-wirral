@@ -31,7 +31,8 @@ Earlier handover versions are kept; a new version is a new file.
 | A6 Operator screen | Built and tested locally with the test password; held with A2. Live use needs `WVR_OPERATOR_PASSWORD_HASH` (made with `scripts/wvroofing/operator-hash.mjs`) |
 | A7 Retention, search for data requests, costs, handover v1 | Built and tested locally; held with A2. The daily tidy-up needs `CRON_SECRET` |
 | A8 Live integration | Waits for the owner steps in `setup-and-deploy.md` (storage, secrets, keys) and his OK on spend |
-| B1–B5 | Not started |
+| B1 Catalogue v2 and quantities | Built and tested locally; held with A2. Looks in the public catalogue, products server-only; no product is verified yet, so no quantities reach customers |
+| B2–B5 | Not started |
 
 ## Commands
 

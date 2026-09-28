@@ -142,11 +142,11 @@ const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 429496
 // ---------------------------------------------------------------- tiles + preview
 {
   const cat = JSON.parse(fs.readFileSync(path.join(repo, "public/WVROOFING/data/catalogue.json"), "utf8"));
-  check("catalogue has 8 products", cat.products.length === 8);
-  const ids = new Set(cat.products.map((p) => p.id));
+  check("catalogue v2 has 8 looks, and none carries a price", cat.version === 2 && cat.visuals.length === 8 && cat.visuals.every((v) => !("price" in v)));
+  const ids = new Set(cat.visuals.map((p) => p.id));
   check("catalogue ids unique", ids.size === 8);
   let ok = true;
-  for (const p of cat.products) {
+  for (const p of cat.visuals) {
     if (!/^#[0-9A-Fa-f]{6}$/.test(p.hex[0]) || !/^#[0-9A-Fa-f]{6}$/.test(p.hex[1])) ok = false;
     if (!["slate", "flat", "plain", "roman", "pantile", "granular"].includes(p.pattern.type)) ok = false;
     for (const k of ["material", "profile", "colourWords", "finish", "bond", "courses", "ridge"]) if (!p.prompt[k]) ok = false;
@@ -171,7 +171,7 @@ const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 429496
   const mask = M.buildMask([{ mode: "add", pts: [[40, 120], [200, 120], [160, 40], [80, 40]] }], w, h);
   const an = P.analyseRoof(photo, mask);
   check("analyseRoof returns an analysis", !!an);
-  const out = P.renderPreview(an, photo, cat.products[0]);
+  const out = P.renderPreview(an, photo, cat.visuals[0]);
   let outsideChanged = 0;
   let insideChanged = 0;
   for (let i = 0; i < w * h; i++) {
@@ -303,7 +303,7 @@ const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 429496
   check("size rules for fixed-size models", valid(1536, 1024, "gpt-image-1.5") && !valid(1440, 1024, "gpt-image-1.5"));
   check("unknown models are refused", !valid(1536, 1024, "some-new-model"));
 
-  const p = S.PRODUCTS.get("spanish-slate");
+  const p = S.VISUALS.get("spanish-slate");
   const prompt = O.buildPrompt(p);
   check(
     "prompt: the brief's instruction, the product, and the edit limited to the roof",

@@ -19,7 +19,7 @@ const { storage } = require("./storage.js");
 const { capability } = require("./capabilities.js");
 const { UUID_RE } = require("./auth.js");
 
-const { HttpError, json, readJson, PRODUCTS } = core;
+const { HttpError, json, readJson, VISUALS } = core;
 const DAY = 24 * 3600;
 
 /** @typedef {import("./projects.js").ProjectCtx} ProjectCtx */
@@ -74,7 +74,7 @@ async function submit(ctx) {
   if (!p.consent_ai_at) throw new HttpError(409, "consent_required", "Photo-real renders need your OK to send your photo to OpenAI.");
   if (!p.photo_id || !p.mask_id) throw new HttpError(409, "conflict", "Mark your roof before asking for photo-real renders.");
   const ids = Array.isArray(body.visualIds) ? body.visualIds.map(String) : [];
-  if (!ids.length || ids.length > 8 || new Set(ids).size !== ids.length || !ids.every((v) => PRODUCTS.has(v))) {
+  if (!ids.length || ids.length > 8 || new Set(ids).size !== ids.length || !ids.every((v) => VISUALS.has(v))) {
     throw new HttpError(400, "invalid_fields", "Choose between one and eight roofs from the range.");
   }
   const key = String(body.idempotencyKey || "");

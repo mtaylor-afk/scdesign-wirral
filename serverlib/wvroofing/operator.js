@@ -29,7 +29,7 @@ const projects = require("./projects.js");
 const { storage } = require("./storage.js");
 const { isEnabled, isTest } = require("./capabilities.js");
 
-const { HttpError, json, readJson, clean, PRODUCTS } = core;
+const { HttpError, json, readJson, clean, VISUALS } = core;
 const { UUID_RE } = auth;
 const STATUSES = ["new", "contacted", "survey_requested", "quoted", "closed", "spam_suspected"];
 
@@ -148,7 +148,7 @@ async function listEnquiries(ctx) {
   );
   const list = rows.map((e) => {
     const snap = parsed(e.snapshot) || {};
-    const p = e.visual_id && PRODUCTS.get(e.visual_id);
+    const p = e.visual_id && VISUALS.get(e.visual_id);
     return {
       id: e.id,
       reference: e.reference,

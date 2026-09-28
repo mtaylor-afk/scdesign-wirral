@@ -503,7 +503,7 @@ async function deleteMyPhoto() {
 // step 3: compare
 
 function productOrder() {
-  const ids = S.cat.products.map((p) => p.id);
+  const ids = S.cat.visuals.map((p) => p.id);
   if (S.priority && ids.includes(S.priority)) return [S.priority].concat(ids.filter((i) => i !== S.priority));
   return ids;
 }
@@ -677,7 +677,7 @@ async function startAiIfPossible(gen) {
       }
     }
     if (gen !== S.gen) return;
-    if (done) setRenderStatus(done + " of " + S.cat.products.length + " photo-real renders ready (pre-rendered sample).", done / S.cat.products.length);
+    if (done) setRenderStatus(done + " of " + S.cat.visuals.length + " photo-real renders ready (pre-rendered sample).", done / S.cat.visuals.length);
     else setRenderStatus("Showing quick previews. Photo-real renders are made from your own photo: upload one to see your house.");
     return;
   }
@@ -870,7 +870,7 @@ function tickTimers() {
 }
 
 function updateOverall() {
-  const total = S.cat.products.length;
+  const total = S.cat.visuals.length;
   const done = S.ai.size;
   const latest = [...S.jobs.values()].filter((j) => !S.ai.has(j.visualId));
   const busy = latest.filter((j) => j.status === "queued" || j.status === "running").length;

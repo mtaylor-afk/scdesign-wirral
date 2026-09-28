@@ -1,5 +1,6 @@
-// WV Roofing (concept site) — shared server helpers (the product catalogue,
+// WV Roofing (concept site) — shared server helpers (the catalogue's looks,
 // allowed origins, JSON errors, request bodies, image sniffers, text helpers).
+// The manufacturers' products and their specifications are in catalogue.js.
 // CORS is applied by router.js; the render settings, prompt and OpenAI adapter
 // live in openai.js.
 //
@@ -13,11 +14,11 @@ const CATALOGUE = require("../../public/WVROOFING/data/catalogue.json");
 /**
  * @typedef {import("http").IncomingMessage & { body?: unknown }} Req
  * @typedef {import("http").ServerResponse} Res
- * @typedef {{ id: string, name: string, colourName: string, hex: string[], prompt: Record<string, any>, [k: string]: any }} Product
+ * @typedef {{ id: string, name: string, colourName: string, hex: string[], prompt: Record<string, any>, [k: string]: any }} Visual
  */
 
-/** @type {Map<string, Product>} */
-const PRODUCTS = new Map((CATALOGUE.products || []).map((/** @type {Product} */ p) => [p.id, p]));
+/** The eight looks (swatches, previews, render prompts); they never produce quantities. @type {Map<string, Visual>} */
+const VISUALS = new Map((CATALOGUE.visuals || []).map((/** @type {Visual} */ v) => [v.id, v]));
 
 // ---------------------------------------------------------------------------
 // HTTP helpers
@@ -220,7 +221,7 @@ function esc(v) {
 
 module.exports = {
   CATALOGUE,
-  PRODUCTS,
+  VISUALS,
   allowedOrigins,
   json,
   HttpError,

@@ -23,7 +23,7 @@ const { storage } = require("./storage.js");
 const { isEnabled, isTest } = require("./capabilities.js");
 const { RETENTION } = require("./retention.js");
 
-const { HttpError, json, readJson, PRODUCTS, oneLine, clean, esc } = core;
+const { HttpError, json, readJson, VISUALS, oneLine, clean, esc } = core;
 
 const PHONE_RE = /^[+()\d\s-]{7,20}$/;
 const POSTCODE_RE = /^[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}$/;
@@ -80,7 +80,7 @@ function validate(body) {
   if (d.email && !mailer.EMAIL_RE.test(d.email)) problems.push("email");
   if (d.phone && !PHONE_RE.test(d.phone)) problems.push("phone");
   if (d.postcode && !POSTCODE_RE.test(d.postcode)) problems.push("postcode");
-  if (d.product && d.product !== "not-sure" && !PRODUCTS.has(d.product)) problems.push("product");
+  if (d.product && d.product !== "not-sure" && !VISUALS.has(d.product)) problems.push("product");
   if (body.consent !== true) problems.push("consent");
   if (!SOURCES.includes(d.source)) d.source = "roof-replacement";
   return { d, problems };
@@ -464,9 +464,9 @@ async function attachmentsFor(e) {
  */
 async function buildMessage(e) {
   const snap = typeof e.snapshot === "string" ? JSON.parse(e.snapshot) : e.snapshot || {};
-  const product = e.visual_id && PRODUCTS.get(e.visual_id);
+  const product = e.visual_id && VISUALS.get(e.visual_id);
   const renderNames = (snap.renders || [])
-    .map((/** @type {any} */ r) => PRODUCTS.get(r.visualId))
+    .map((/** @type {any} */ r) => VISUALS.get(r.visualId))
     .filter(Boolean)
     .map((/** @type {any} */ p) => p.name);
   /** @type {[string, string][]} */

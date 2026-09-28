@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "note": "WV Roofing: real manufacturers' products behind the eight looks, with specifications for material quantities (serverlib/wvroofing/catalogue.js and quantities.js). Server only: never served to browsers. A specification is a draft until the roofer checks it against the manufacturer's datasheet and marks it verified (verified_by, verified_at); drafts appear only on the operator screen, and customers see quantities from verified products only.",
+  "products": []
+}

@@ -255,3 +255,42 @@ Vercel hands over a rewritten request.
 - **Handover v1** is in `handover-2026-09-28-v1.md`, `setup-and-deploy.md`, `privacy-record.md`,
   `cost-model.md`, `retention.md` and `screens/`. The screenshots are from the test environment: the
   names are QA stand-ins and the photos are stock.
+
+## Decisions made while building B1 (2026-09-28)
+
+- **Catalogue v2 separates looks from products.**
+  - The public `data/catalogue.json` (`version: 2`) now holds only the eight **looks** (`visuals`),
+    without the old price bands.
+  - The looks drive the swatches, the previews and the render prompts, and never produce a quantity or a
+    price.
+  - The server's map of looks is now `VISUALS` (core.js), matching the `visual_id` columns.
+- **Manufacturers' products are server-only**, in `serverlib/wvroofing/products.json`. The plan had put
+  them in the public catalogue. This change keeps draft figures off the public site, and the browser
+  never needs them.
+  - `catalogue.js` checks every entry when it loads. If any entry is faulty, no products are used and the
+    problem is logged; the looks carry on regardless.
+- **A specification** records:
+  - coverage per m², either fixed or by pitch band (a band is [min, max); the top band includes its
+    maximum);
+  - the minimum pitch, the pack size and the default allowance;
+  - optional figures per metre by edge kind;
+  - the source URL and the date it was checked;
+  - `status` (`draft` or `verified`, with `verified_by` and `verified_at`).
+
+  Drafts produce figures only when the operator asks for them; customers get verified products only.
+- **Quantities** (`quantities.js`, pure functions; the measurement is never changed):
+  - **Faces and totals.**
+    - Each face is worked out first, then the faces are added up for the product.
+    - The allowance is applied once, to that total, and shown.
+    - The total is rounded up once, to whole units and then packs.
+  - **Face statuses.** `needs_pitch` (coverage depends on pitch and the pitch isn't known; no default is
+    ever used), `below_min_pitch`, `outside_published_range`, `no_area`, `excluded`, and
+    `no_verified_product`.
+    - An estimate is `complete` only when every face in scope was estimated.
+    - With a fixed coverage and an unknown pitch, a warning says to check the minimum pitch.
+  - **Linear items.** Ridges, hips, valleys, eaves, verges and abutments come only from lengths entered
+    for that kind, times a per-metre figure. Otherwise each is listed as not included, with the reason.
+  - **Never estimated online:** flashings, gutters, fixings, underlay and battens. Battens would need a
+    length worked out from the area, which the rules forbid.
+- **Dev server.** It now reloads `catalogue.json` with the server modules, so catalogue edits apply
+  without a restart.

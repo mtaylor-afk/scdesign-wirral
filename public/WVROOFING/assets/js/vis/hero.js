@@ -134,7 +134,7 @@ export async function initPicker(el) {
   const linkEl = el.querySelector("[data-picker-link]");
   if (!dotsBox || layers.length < 2) return;
   const cat = await loadCatalogue();
-  const products = cat.products;
+  const products = cat.visuals;
   const urls = new Map();
   let current = cat.byId.has(el.dataset.pickerProduct) ? el.dataset.pickerProduct : products[0].id;
   let front = 0;

@@ -228,7 +228,7 @@ async function initCompare() {
   for (const box of boxes) {
     const frag = document.createDocumentFragment();
     const painters = [];
-    for (const p of cat.products) {
+    for (const p of cat.visuals) {
       const { col, canvas } = compareCard(p);
       frag.appendChild(col);
       painters.push(() => paintSwatchElement(canvas, p, 520));

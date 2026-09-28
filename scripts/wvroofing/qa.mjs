@@ -135,6 +135,9 @@ function watch(page) {
   page.on("requestfailed", (r) => {
     const u = r.url();
     if (/fonts\.(googleapis|gstatic)\.com/.test(u)) return; // offline-tolerant
+    // A reload or navigation cancels API polls in flight (a render poll during the refresh check):
+    // not a fault. Real API problems fail the functional checks.
+    if (r.method() === "GET" && u.includes("/api/wvroofing/") && /ERR_ABORTED/.test((r.failure() && r.failure().errorText) || "")) return;
     errors.push("requestfailed: " + u + " " + (r.failure() && r.failure().errorText));
   });
   page.on("response", (r) => {

@@ -111,7 +111,10 @@ async function handleApi(req, res) {
   // which must survive between requests.
   const keep = [path.join("serverlib", "wvroofing", "db.js"), path.join("serverlib", "wvroofing", "storage.js"), path.join("serverlib", "wvroofing", "openai.js")];
   for (const k of Object.keys(require.cache)) {
-    const ours = k.includes(path.sep + "api" + path.sep + "wvroofing") || k.includes(path.sep + "serverlib" + path.sep + "wvroofing");
+    const ours =
+      k.includes(path.sep + "api" + path.sep + "wvroofing") ||
+      k.includes(path.sep + "serverlib" + path.sep + "wvroofing") ||
+      k.endsWith(path.join("WVROOFING", "data", "catalogue.json"));
     if (ours && !keep.some((p) => k.endsWith(p))) delete require.cache[k];
   }
   const handler = require(path.join(repo, "api", "wvroofing", "app.js"));

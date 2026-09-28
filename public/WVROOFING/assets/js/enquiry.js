@@ -100,7 +100,7 @@ export async function fillProductSelect(select, selectedId) {
     const keep = select.querySelector('option[value=""]');
     select.replaceChildren();
     if (keep) select.appendChild(keep);
-    for (const p of cat.products) {
+    for (const p of cat.visuals) {
       const o = document.createElement("option");
       o.value = p.id;
       o.textContent = p.name + " - " + p.colourName;
