@@ -1,20 +1,34 @@
-// WV Roofing (concept site) — shared server code for api/wvroofing/*.js.
+// WV Roofing (concept site) — shared server helpers (config, CORS/origins, JSON
+// errors, image sniffers, prompt builder, OpenAI adapter, mock renders).
 //
 // Deliberately self-contained: it does not import any other project's helpers,
-// so the WV Roofing functions can be lifted into their own project unchanged.
-// No npm dependencies beyond Node 20 built-ins (fetch, FormData, Blob, zlib) and,
-// for email only, nodemailer.
+// so the WV Roofing code can be lifted into its own project unchanged.
+// Uses Node built-ins only (fetch, FormData, Blob, zlib, crypto).
 "use strict";
 
 const zlib = require("zlib");
 const crypto = require("crypto");
-const CATALOGUE = require("../public/WVROOFING/data/catalogue.json");
+const CATALOGUE = require("../../public/WVROOFING/data/catalogue.json");
 
-const PRODUCTS = new Map((CATALOGUE.products || []).map((p) => [p.id, p]));
+/**
+ * @typedef {import("http").IncomingMessage & { body?: unknown }} Req
+ * @typedef {import("http").ServerResponse} Res
+ * @typedef {{ id: string, name: string, colourName: string, hex: string[], prompt: Record<string, any>, [k: string]: any }} Product
+ */
+
+/** @type {Map<string, Product>} */
+const PRODUCTS = new Map((CATALOGUE.products || []).map((/** @type {Product} */ p) => [p.id, p]));
 
 // ---------------------------------------------------------------------------
 // configuration
 
+/**
+ * An integer env var, clamped to [min, max], or dflt when unset/invalid.
+ * @param {string} name
+ * @param {number} dflt
+ * @param {number} min
+ * @param {number} max
+ */
 function envInt(name, dflt, min, max) {
   const v = Number(process.env[name]);
   if (!Number.isFinite(v)) return dflt;
@@ -41,7 +55,10 @@ function config() {
   };
 }
 
-/** gpt-image-2 / 2.5 accept any size (multiples of 16); older models use fixed sizes. */
+/**
+ * gpt-image-2 / 2.5 accept any size (multiples of 16); older models use fixed sizes.
+ * @param {string} model
+ */
 function modelProfile(model) {
   const flex = /^gpt-image-2/.test(model);
   return { flex, sendInputFidelity: /^gpt-image-1/.test(model) };
@@ -49,6 +66,11 @@ function modelProfile(model) {
 
 const FIXED_SIZES = ["1024x1024", "1536x1024", "1024x1536"];
 
+/**
+ * @param {number} W
+ * @param {number} H
+ * @param {boolean} flex
+ */
 function validSize(W, H, flex) {
   if (!Number.isInteger(W) || !Number.isInteger(H)) return false;
   if (!flex) return FIXED_SIZES.includes(W + "x" + H);
@@ -78,6 +100,7 @@ function allowedOrigins() {
   return DEFAULT_ORIGINS.concat(extra);
 }
 
+/** @param {string | undefined} origin */
 function isLocalOrigin(origin) {
   return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin || "");
 }
@@ -85,6 +108,9 @@ function isLocalOrigin(origin) {
 /**
  * CORS. Returns "preflight" (already answered), "forbidden" or "ok".
  * Disallowed origins get no CORS headers at all.
+ * @param {Req} req
+ * @param {Res} res
+ * @returns {"preflight" | "forbidden" | "ok"}
  */
 function cors(req, res) {
   const origin = req.headers.origin || "";
@@ -107,6 +133,12 @@ function cors(req, res) {
   return allowed ? "ok" : "forbidden";
 }
 
+/**
+ * @param {Res} res
+ * @param {number} status
+ * @param {unknown} obj
+ * @param {Record<string, string>} [headers]
+ */
 function json(res, status, obj, headers) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -115,6 +147,12 @@ function json(res, status, obj, headers) {
 }
 
 class HttpError extends Error {
+  /**
+   * @param {number} status   HTTP status to answer with
+   * @param {string} code     machine-readable error code, e.g. "invalid_image"
+   * @param {string} [message] plain-English message for the customer
+   * @param {Record<string, any>} [extra] extra JSON fields (retryAfter becomes a Retry-After header)
+   */
   constructor(status, code, message, extra) {
     super(message || code);
     this.status = status;
@@ -123,10 +161,16 @@ class HttpError extends Error {
   }
 }
 
-/** Read a JSON body with a hard size cap (works with and without Vercel's parser). */
+/**
+ * Read a JSON body with a hard size cap (works with and without Vercel's parser).
+ * @param {Req} req
+ * @param {number} maxBytes
+ * @returns {Promise<Record<string, any>>}
+ */
 async function readJson(req, maxBytes) {
   const len = Number(req.headers["content-length"] || 0);
   if (len && len > maxBytes) throw new HttpError(413, "too_large", "The request is too large.");
+  /** @type {any} */
   let body = req.body;
   if (body === undefined || body === null) {
     const chunks = [];
@@ -151,25 +195,39 @@ async function readJson(req, maxBytes) {
   return body;
 }
 
-/** Client IP for rate limiting: the right-most value a proxy appended (not spoofable). */
+/**
+ * Client IP for rate limiting: the right-most value a proxy appended (not spoofable).
+ * @param {Req} req
+ */
 function clientIp(req) {
   const h = req.headers || {};
-  const pick = (v) => String(v).split(",").pop().trim();
+  /** @param {string | string[]} v */
+  const pick = (v) => (String(v).split(",").pop() || "").trim();
   if (h["x-real-ip"]) return pick(h["x-real-ip"]);
   if (h["x-vercel-forwarded-for"]) return pick(h["x-vercel-forwarded-for"]);
   if (h["x-forwarded-for"]) return pick(h["x-forwarded-for"]);
   return (req.socket && req.socket.remoteAddress) || "unknown";
 }
 
-/** Hashed IP (never logged raw). */
+/**
+ * Hashed IP (never logged raw). Used only by the pre-v02 in-memory limiters;
+ * persisted keys use limits.ipHash (keyed, rotated daily).
+ * @param {Req} req
+ */
 function ipKey(req) {
   return crypto.createHash("sha256").update("wvr:" + clientIp(req)).digest("hex").slice(0, 16);
 }
 
-/** In-memory fixed-window limiter (per server instance — a soft limit by design). */
+/**
+ * In-memory fixed-window limiter (per server instance — a soft limit by design).
+ * @param {number} max
+ * @param {number} windowMs
+ */
 function createLimiter(max, windowMs) {
+  /** @type {Map<string, { start: number, count: number }>} */
   const hits = new Map();
   return {
+    /** @param {string} key */
     hit(key) {
       const now = Date.now();
       let rec = hits.get(key);
@@ -184,6 +242,7 @@ function createLimiter(max, windowMs) {
       if (rec.count > max) return { ok: false, retryAfter: Math.ceil((rec.start + windowMs - now) / 1000) };
       return { ok: true, retryAfter: 0 };
     },
+    /** @param {string} key */
     undo(key) {
       const rec = hits.get(key);
       if (rec && rec.count > 0) rec.count--;
@@ -194,6 +253,13 @@ function createLimiter(max, windowMs) {
 // ---------------------------------------------------------------------------
 // image validation
 
+/**
+ * Decode a base64 data URL of an allowed type, within a byte cap.
+ * @param {unknown} s
+ * @param {string[]} mimes
+ * @param {number} maxBytes
+ * @param {string} what  used in error codes/messages, e.g. "image"
+ */
 function parseDataUrl(s, mimes, maxBytes, what) {
   if (typeof s !== "string") throw new HttpError(400, "invalid_" + what, "Missing " + what + ".");
   const m = /^data:([a-z/+.-]+);base64,/.exec(s);
@@ -206,7 +272,11 @@ function parseDataUrl(s, mimes, maxBytes, what) {
   return { mime: m[1], buf };
 }
 
-/** Width/height from a JPEG's SOF marker, or null. */
+/**
+ * Width/height from a JPEG's SOF marker, or null.
+ * @param {Buffer} buf
+ * @returns {{ w: number, h: number } | null}
+ */
 function jpegSize(buf) {
   if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8 || buf[2] !== 0xff) return null;
   let i = 2;
@@ -237,6 +307,10 @@ function jpegSize(buf) {
 /**
  * Decode a PNG mask (8-bit RGBA or grey+alpha, non-interlaced) and measure how
  * much of it is transparent (= the area the model may edit).
+ * Pre-v02 validator used by the legacy render bridge; A2 replaces it with a
+ * version that checks the header dimensions before inflating anything.
+ * @param {Buffer} buf
+ * @returns {{ w: number, h: number, supported: boolean, transparentFrac?: number } | null}
  */
 function pngAlphaInfo(buf) {
   const SIG = "89504e470d0a1a0a";
@@ -304,6 +378,7 @@ function pngAlphaInfo(buf) {
 // ---------------------------------------------------------------------------
 // prompt
 
+/** @param {Product} p */
 function buildPrompt(p) {
   const q = p.prompt || {};
   return [
@@ -333,6 +408,7 @@ function buildPrompt(p) {
 // ---------------------------------------------------------------------------
 // OpenAI adapter
 
+/** @param {Headers} headers */
 function retryAfterSeconds(headers) {
   const ms = Number(headers.get("retry-after-ms"));
   if (Number.isFinite(ms) && ms > 0) return Math.ceil(ms / 1000);
@@ -341,12 +417,18 @@ function retryAfterSeconds(headers) {
   return 20;
 }
 
+/**
+ * One call to OpenAI's image edits endpoint.
+ * @param {{ key: string, model: string, prompt: string, image: Buffer, mask: Buffer, W: number, H: number, quality?: string, compression: number, timeoutMs: number }} opts
+ * @returns {Promise<{ b64: string, usage: any }>}
+ */
 async function openaiEdit(opts) {
   const form = new FormData();
   form.append("model", opts.model);
   form.append("prompt", opts.prompt);
-  form.append("image", new Blob([opts.image], { type: "image/jpeg" }), "photo.jpg");
-  form.append("mask", new Blob([opts.mask], { type: "image/png" }), "mask.png");
+  // Node Buffers are valid Blob parts; the cast only satisfies TypeScript's DOM typing.
+  form.append("image", new Blob([/** @type {BlobPart} */ (/** @type {unknown} */ (opts.image))], { type: "image/jpeg" }), "photo.jpg");
+  form.append("mask", new Blob([/** @type {BlobPart} */ (/** @type {unknown} */ (opts.mask))], { type: "image/png" }), "mask.png");
   form.append("size", opts.W + "x" + opts.H);
   form.append("n", "1");
   if (opts.quality) form.append("quality", opts.quality);
@@ -363,9 +445,11 @@ async function openaiEdit(opts) {
       signal: AbortSignal.timeout(opts.timeoutMs),
     });
   } catch (err) {
-    if (err && (err.name === "TimeoutError" || err.name === "AbortError")) throw new HttpError(504, "timeout", "The render took too long.");
+    const name = err instanceof Error ? err.name : "";
+    if (name === "TimeoutError" || name === "AbortError") throw new HttpError(504, "timeout", "The render took too long.");
     throw new HttpError(502, "upstream", "The render service couldn't be reached.");
   }
+  /** @type {any} */
   let body = {};
   try {
     body = await res.json();
@@ -396,6 +480,10 @@ async function openaiEdit(opts) {
   throw new HttpError(502, "upstream", "The render request wasn't accepted.");
 }
 
+/**
+ * @param {string} key
+ * @param {string} model
+ */
 async function checkModel(key, model) {
   try {
     const r = await fetch("https://api.openai.com/v1/models/" + encodeURIComponent(model), {
@@ -421,12 +509,17 @@ const CRC_TABLE = (() => {
   return t;
 })();
 
+/** @param {Buffer} buf */
 function crc32(buf) {
   let c = 0xffffffff;
   for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 255] ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 }
 
+/**
+ * @param {string} type
+ * @param {Buffer} data
+ */
 function pngChunk(type, data) {
   const len = Buffer.alloc(4);
   len.writeUInt32BE(data.length);
@@ -436,6 +529,11 @@ function pngChunk(type, data) {
   return Buffer.concat([len, td, crc]);
 }
 
+/**
+ * @param {number} W
+ * @param {number} H
+ * @param {string} hex
+ */
 function mockPng(W, H, hex) {
   const n = parseInt(String(hex || "#777777").replace("#", ""), 16) || 0x777777;
   const r = (n >> 16) & 255;
@@ -473,6 +571,11 @@ function mockPng(W, H, hex) {
 // ---------------------------------------------------------------------------
 // text helpers for email
 
+/**
+ * Strip control characters, trim and cap the length.
+ * @param {unknown} v
+ * @param {number} max
+ */
 function clean(v, max) {
   return String(v == null ? "" : v)
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
@@ -480,10 +583,15 @@ function clean(v, max) {
     .slice(0, max);
 }
 
+/**
+ * @param {unknown} v
+ * @param {number} max
+ */
 function oneLine(v, max) {
   return clean(v, max).replace(/[\r\n]+/g, " ");
 }
 
+/** HTML-escape. @param {unknown} v */
 function esc(v) {
   return String(v == null ? "" : v)
     .replace(/&/g, "&amp;")
@@ -499,6 +607,7 @@ module.exports = {
   config,
   modelProfile,
   validSize,
+  allowedOrigins,
   cors,
   isLocalOrigin,
   json,

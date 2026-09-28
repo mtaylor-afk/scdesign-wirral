@@ -1,3 +1,4 @@
+// @ts-nocheck -- temporary v02 bridge (deleted in A3); not worth typing.
 // WV Roofing (concept site) — photo-real roof render.
 //
 // GET  /api/wvroofing/render           -> capabilities (is photo-real rendering live?)
@@ -7,9 +8,20 @@
 // Prompts are fixed on the server per product (the client only sends an id), so
 // the API key can't be used to generate anything else. The client composites
 // the result back through the roof mask, so only the roof changes.
+//
+// v02 bridge (A1): moved here unchanged from api/wvroofing/render.js and served
+// by the router until A3 replaces it with durable render jobs. One change: live
+// renders also need the image_generation capability switched on
+// (WVR_CAP_IMAGE_GENERATION=on), so an API key alone never enables them.
 "use strict";
 
-const W = require("../../serverlib/wvroofing.js");
+const W = require("../core.js");
+const { isEnabled } = require("../capabilities.js");
+
+/** The OpenAI key, but only when image generation is switched on. @param {{ key: string }} cfg */
+function liveKey(cfg) {
+  return cfg.key && isEnabled("image_generation", process.env) ? cfg.key : "";
+}
 
 const MAX_BODY = 3.6 * 1024 * 1024;
 const MAX_IMAGE = 2.6 * 1024 * 1024;
@@ -32,20 +44,21 @@ function sleep(ms) {
 
 async function health(req, res) {
   const cfg = W.config();
+  const key = liveKey(cfg);
   const url = new URL(req.url, "http://x");
   const out = {
     ok: true,
     service: "wvroofing-render",
-    live: !!cfg.key && cfg.enabled,
-    mock: !cfg.key,
+    live: !!key && cfg.enabled,
+    mock: !key,
     model: cfg.model,
     flex: W.modelProfile(cfg.model).flex,
     maxConcurrent: Math.min(3, cfg.maxConcurrent),
     autoRender: cfg.autoRender,
     products: W.PRODUCTS.size,
   };
-  if (url.searchParams.get("check") === "1" && cfg.key) {
-    if (Date.now() - modelCheck.at > 10 * 60 * 1000) modelCheck = { at: Date.now(), ok: await W.checkModel(cfg.key, cfg.model) };
+  if (url.searchParams.get("check") === "1" && key) {
+    if (Date.now() - modelCheck.at > 10 * 60 * 1000) modelCheck = { at: Date.now(), ok: await W.checkModel(key, cfg.model) };
     out.modelOk = modelCheck.ok;
   }
   return W.json(res, 200, out);
@@ -99,8 +112,9 @@ module.exports = async (req, res) => {
     }
 
     if (!cfg.enabled) throw new W.HttpError(503, "disabled", "Photo-real rendering is switched off at the moment.");
-    const mockAllowed = !cfg.key && v.mock && (cfg.allowMock || W.isLocalOrigin(req.headers.origin));
-    if (!cfg.key && !mockAllowed) throw new W.HttpError(503, "not_configured", "Photo-real rendering isn't switched on yet.");
+    const apiKey = liveKey(cfg);
+    const mockAllowed = !apiKey && v.mock && (cfg.allowMock || W.isLocalOrigin(req.headers.origin));
+    if (!apiKey && !mockAllowed) throw new W.HttpError(503, "not_configured", "Photo-real rendering isn't switched on yet.");
 
     // limits (applied only to valid requests)
     const a = ipWindow.hit(key);
@@ -139,7 +153,7 @@ module.exports = async (req, res) => {
       }
       dayCount++;
       const out = await W.openaiEdit({
-        key: cfg.key,
+        key: apiKey,
         model: cfg.model,
         prompt: W.buildPrompt(v.product),
         image: v.image,

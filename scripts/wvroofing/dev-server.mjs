@@ -4,8 +4,13 @@
 //
 // - Serves public/ exactly as Cloudflare Pages would at /WVROOFING/ (directory
 //   -> index.html, trailing-slash redirect), with caching disabled.
-// - Mounts the Vercel functions in api/wvroofing/*.js at /api/wvroofing/* (re-
-//   required on every request, so edits apply without a restart).
+// - Routes every /api/wvroofing/* request to the single function
+//   api/wvroofing/app.js with the original URL, exactly like the vercel.json
+//   rewrite (modules are re-required on every request, so edits apply without
+//   a restart; the database and storage modules are kept so their state lives on).
+// - Runs as the labelled TEST ENVIRONMENT (WVR_ENV=test): PGlite instead of
+//   Neon, a local folder instead of Vercel Blob, fixture adapters. Production
+//   never uses any of these.
 // - --simulate 429|503 makes every other render request fail that way, to test
 //   the client's queue/back-off and banners.
 // - --proxy-live forwards /api/wvroofing/* to the deployed API instead (used to
@@ -34,6 +39,7 @@ const PORT = Number(arg("port", process.env.PORT || 8772));
 const SIMULATE = arg("simulate", "");
 const PROXY_LIVE = !!arg("proxy-live", false);
 const LIVE_API = "https://scdesign-wirral.vercel.app";
+if (!PROXY_LIVE && !process.env.WVR_ENV) process.env.WVR_ENV = "test";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -98,13 +104,14 @@ async function handleApi(req, res, name) {
       });
     }
   }
-  const file = path.join(repo, "api", "wvroofing", name + ".js");
-  if (!fs.existsSync(file)) return send(res, 404, JSON.stringify({ ok: false, error: "no_such_function" }), { "Content-Type": "application/json" });
-  // Fresh copy on every request (hot reload for the function and serverlib).
+  // Fresh copy on every request (hot reload), except the modules that hold the
+  // PGlite database and the storage driver, which must survive between requests.
+  const keep = [path.join("serverlib", "wvroofing", "db.js"), path.join("serverlib", "wvroofing", "storage.js")];
   for (const k of Object.keys(require.cache)) {
-    if (k.includes(path.sep + "api" + path.sep + "wvroofing") || k.includes(path.sep + "serverlib" + path.sep + "wvroofing")) delete require.cache[k];
+    const ours = k.includes(path.sep + "api" + path.sep + "wvroofing") || k.includes(path.sep + "serverlib" + path.sep + "wvroofing");
+    if (ours && !keep.some((p) => k.endsWith(p))) delete require.cache[k];
   }
-  const handler = require(file);
+  const handler = require(path.join(repo, "api", "wvroofing", "app.js"));
   await handler(req, res);
 }
 
@@ -144,7 +151,7 @@ function serveStatic(req, res, urlPath) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://localhost");
-    const m = /^\/api\/wvroofing\/([a-z-]+)\/?$/.exec(url.pathname);
+    const m = /^\/api\/wvroofing\/(.*?)\/?$/.exec(url.pathname);
     if (m) return await handleApi(req, res, m[1]);
     if (url.pathname === "/__dev/save" && req.method === "POST") return await handleSave(req, res);
     if (url.pathname === "/") return send(res, 302, "", { Location: "/WVROOFING/" });
@@ -157,4 +164,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`WV Roofing dev server: http://localhost:${PORT}/WVROOFING/` + (SIMULATE ? ` (simulating ${SIMULATE})` : "") + (PROXY_LIVE ? " (API proxied to live)" : ""));
+  if (process.env.WVR_ENV === "test") console.log("TEST ENVIRONMENT: PGlite database, local-folder storage and fixture adapters (never used in production).");
 });

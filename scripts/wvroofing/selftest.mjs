@@ -18,7 +18,7 @@ const P = await import("../../public/WVROOFING/assets/js/vis/preview.js");
 const C = await import("../../public/WVROOFING/assets/js/vis/composite.js");
 const A = await import("../../public/WVROOFING/assets/js/vis/ai-input.js");
 const T = await import("../../public/WVROOFING/assets/js/tiles.js");
-const S = require(path.join(repo, "serverlib/wvroofing.js"));
+const S = require(path.join(repo, "serverlib/wvroofing/core.js"));
 
 let pass = 0;
 let fail = 0;
@@ -301,11 +301,11 @@ const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 429496
 }
 
 // ---------------------------------------------------------------- handlers
-function fakeReq(method, headers, body) {
+function fakeReq(method, headers, body, url) {
   const buf = body === undefined ? Buffer.alloc(0) : Buffer.from(typeof body === "string" ? body : JSON.stringify(body));
   const req = Readable.from(buf.length ? [buf] : []);
   req.method = method;
-  req.url = "/api/wvroofing/x";
+  req.url = url || "/api/wvroofing/x";
   req.headers = Object.assign({ "content-length": String(buf.length) }, headers || {});
   req.socket = { remoteAddress: "127.0.0.1" };
   return req;
@@ -325,9 +325,9 @@ function fakeRes() {
   };
   return res;
 }
-async function call(handler, method, headers, body) {
+async function call(handler, method, headers, body, url) {
   const res = fakeRes();
-  await handler(fakeReq(method, headers, body), res);
+  await handler(fakeReq(method, headers, body, url), res);
   let json = null;
   try {
     json = JSON.parse(res.body);
@@ -338,7 +338,9 @@ async function call(handler, method, headers, body) {
 }
 {
   delete process.env.WVR_OPENAI_API_KEY;
-  const render = require(path.join(repo, "api/wvroofing/render.js"));
+  // Both legacy endpoints are reached through the single function and its router, as on Vercel.
+  const app = require(path.join(repo, "api/wvroofing/app.js"));
+  const render = (req, res) => app(Object.assign(req, { url: "/api/wvroofing/render" }), res);
   const LOCAL = { origin: "http://localhost:8772", "content-type": "application/json" };
   const h = await call(render, "GET", {});
   check("render GET health", h.status === 200 && h.json.ok && h.json.live === false && h.json.products === 8);
@@ -374,7 +376,7 @@ async function call(handler, method, headers, body) {
   const tooBig = await call(render, "POST", LOCAL, Object.assign({}, payload, { mask: "data:image/png;base64," + fullPng.toString("base64") }));
   check("render rejects a mask that edits the whole picture", tooBig.status === 400 && tooBig.json.error === "invalid_mask", tooBig.json && tooBig.json.error);
 
-  const enquiry = require(path.join(repo, "api/wvroofing/enquiry.js"));
+  const enquiry = (req, res) => app(Object.assign(req, { url: "/api/wvroofing/enquiry" }), res);
   delete process.env.WVR_LEAD_TO;
   const good = { name: "Test Person", email: "test@example.com", consent: true, elapsedMs: 8000, product: "clay-pantile-terracotta" };
   const nc = await call(enquiry, "POST", LOCAL, good);

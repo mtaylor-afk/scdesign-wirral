@@ -14,12 +14,19 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "validate": "npm run typecheck && npm run lint && npm run build",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "wvr:test": "node --test scripts/wvroofing/tests/",
+    "wvr:check": "tsc -p tsconfig.wvroofing.json",
+    "wvr:selftest": "node scripts/wvroofing/selftest.mjs",
+    "wvr:qa": "node scripts/wvroofing/qa.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
+    "@vercel/blob": "^2.8.0",
+    "@vercel/functions": "^3.9.9",
     "next": "^16.2.0",
     "nodemailer": "^6.10.1",
+    "pg": "^8.23.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "resend": "^4.0.0",
@@ -27,10 +34,12 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@eslint/eslintrc": "^3.1.0",
     "@playwright/test": "^1.48.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",

@@ -4,9 +4,14 @@
   "outputDirectory": "public",
   "functions": {
     "api/*.js": { "maxDuration": 30 },
-    "api/wvroofing/render.js": { "maxDuration": 300 },
-    "api/wvroofing/enquiry.js": { "maxDuration": 30 }
+    "api/wvroofing/app.js": { "maxDuration": 300, "includeFiles": "db/wvroofing/**" }
   },
+  "rewrites": [
+    { "source": "/api/wvroofing/:path*", "destination": "/api/wvroofing/app?path=:path*" }
+  ],
+  "crons": [
+    { "path": "/api/wvroofing/cron/daily", "schedule": "17 3 * * *" }
+  ],
   "headers": [
     {
       "source": "/WVROOFING/(.*)",

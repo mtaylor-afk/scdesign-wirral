@@ -1,13 +1,17 @@
+// @ts-nocheck -- temporary v02 bridge (deleted in A4); not worth typing.
 // WV Roofing (concept site) — quote / survey request.
 //
 // POST /api/wvroofing/enquiry  { name, phone?, email?, postcode?, product?, message?, consent,
 //                                source?, elapsedMs?, company? (honeypot), attachments?, measure? }
 // Emails the request to WVR_LEAD_TO. Nothing is stored. Until WVR_LEAD_TO (and
-// the SMTP credentials) are configured it answers 503 not_configured, and the
-// form tells the visitor that this concept site isn't collecting enquiries yet.
+// the SMTP credentials) are configured it answers 200 { error: "not_configured" },
+// and the form tells the visitor that this concept site isn't collecting enquiries yet.
+//
+// v02 bridge (A1): moved here unchanged from api/wvroofing/enquiry.js and served
+// by the router until A4 replaces it (enquiries saved before any email is sent).
 "use strict";
 
-const W = require("../../serverlib/wvroofing.js");
+const W = require("../core.js");
 
 const MAX_BODY = 2.6 * 1024 * 1024;
 const MAX_ATTACHMENT = 450 * 1024;

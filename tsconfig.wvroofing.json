@@ -1,0 +1,19 @@
+{
+  "//": "WV Roofing server code is JavaScript with JSDoc types, checked here (npm run wvr:check). Separate from the SC tsconfig so SC's typecheck is unaffected.",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["serverlib/wvroofing/**/*.js", "api/wvroofing/**/*.js"],
+  "exclude": ["serverlib/wvroofing/legacy/**"]
+}
