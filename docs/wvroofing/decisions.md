@@ -47,4 +47,43 @@ Vercel hands over a rewritten request.
   (`scripts/wvroofing/tests/csp.test.mjs` recomputes it). `style-src` keeps `'unsafe-inline'` for the pages'
   inline `style` attributes.
 - **Legacy mask check hardened** (live render endpoint): the PNG header size is checked before anything is
-  inflated, and inflation is capped at the size the header implies.
+  inflated, and inflation is capped at the size the header implies. (The endpoint itself went in A3.)
+
+## Decisions made while building A3 (2026-09-28)
+
+- **Renders are project jobs.** `POST projects/:id/renders` answers 202; a background worker (`waitUntil`)
+  makes the render; the page polls. The pre-v02 `/render` endpoint and the browser's render queue are gone.
+  Sample houses never call OpenAI: they show pre-rendered results only (none exist until A8, so for now
+  they show quick previews and say that photo-real renders are made from your own photo).
+- **When a render goes wrong.** A timeout or a dropped connection makes the job `uncertain`: its budget stays
+  reserved and it is never repeated automatically ("Try again" starts a new job). Only an explicit 5xx is
+  retried, once. A 429 from OpenAI puts the job back in the queue without counting an attempt. A
+  moderation refusal fails the job. "Budget spent" pauses renders for everyone for 15 minutes; "key or
+  model refused" for 5 minutes (a breaker row in `wvr_leases`), so a broken setup isn't hammered.
+- **Budget ledger.** Each job reserves a deliberately generous estimate (published output price for the
+  size and quality, plus $0.06 for inputs, times 1.25) and is settled from the `usage` OpenAI returns.
+  gpt-image-2.5's per-token prices are assumed to equal gpt-image-2's until A8 checks the OpenAI dashboard.
+- **Server-side compositing with the browser's own maths.** `compose.js` imports `mask-ops.js`,
+  `ai-input.js` and `composite.js` with literal `import()` paths, so Vercel's file tracer bundles them.
+  The three modules carry `// @ts-nocheck`, which keeps them out of the server's JSDoc type check (the
+  type checker follows the literal imports).
+- **Delivery JPEGs** (the photo's display copy and every composite) use plain libjpeg at quality 88,
+  without mozjpeg's trellis quantisation, so areas a composite leaves untouched encode identically block
+  for block. The QA compares the served composite with the served photo this way. Files are about 10 %
+  larger.
+- **Misaligned renders are rejected**, not used: a composite whose seam error (mean luma difference in a
+  band round the roof) is above `WVR_MAX_SEAM` (35) fails as `misaligned`. The threshold is uncalibrated
+  until the A8 benchmark. The model's raw answer is kept for the operator either way.
+- **Stopping and consent.** "Stop renders" cancels renders not yet sent; one already sent can't be
+  recalled (it is paid for) and still appears. Withdrawing consent cancels queued renders. The first time
+  consent was given is kept.
+- **Limits** are database-backed and shared by every instance: per visitor per day (`WVR_IP_DAILY`), per
+  project per day (`WVR_RENDERS_PER_PROJECT_DAILY`), in total per day (`WVR_DAILY_CAP`), pending per
+  project (`WVR_MAX_CONCURRENT`) and per minute to OpenAI (`WVR_UPSTREAM_IPM`). `WVR_IP_LIMIT` and
+  `WVR_ALLOW_MOCK` are gone. `WVR_AUTO_RENDER=0` now really means "only when tapped" (default 1).
+- **Files and names.** The AI inputs and the composite are in `compose.js` (not `images.js`), and the
+  polling lives in `vis/app.js` until A5 splits the page into journey modules. The dev server's stand-in
+  renderer (`--fixture <mode>`) replaces the old mock mode; `--simulate` and the `?save=1` sample
+  pre-render path are removed (A8 adds a pre-render tool that runs with the owner's approval).
+- **Retention.** Files of renders that were never shown (failed, cancelled, quarantined) are deleted
+  after 7 days; queued jobs older than a day are dropped and their budget released (daily job).

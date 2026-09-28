@@ -315,11 +315,19 @@ async function processUpload(buf) {
 }
 
 /**
+ * Delivery JPEG settings, shared by the photo's display copy and the render
+ * composites. Plain libjpeg (no trellis quantisation) encodes every 16x16 block
+ * from its own pixels alone, so areas a composite leaves untouched come out
+ * identical to the display copy.
+ */
+const JPEG_OPTIONS = Object.freeze({ quality: 88, chromaSubsampling: "4:2:0", mozjpeg: false });
+
+/**
  * JPEG for the browser, encoded from the lossless working copy.
  * @param {Buffer} workingPng
  */
 function displayJpeg(workingPng) {
-  return sharp()(workingPng).jpeg({ quality: 88, mozjpeg: true }).toBuffer();
+  return sharp()(workingPng).jpeg(JPEG_OPTIONS).toBuffer();
 }
 
 /**
@@ -417,4 +425,4 @@ function cleanShapes(shapes, W, H) {
   });
 }
 
-module.exports = { LIMITS, sharp, sniff, pngHeader, tiffOrientation, minimalExifTiff, stripJpeg, stripPng, processUpload, displayJpeg, maskInfo, cleanShapes };
+module.exports = { LIMITS, JPEG_OPTIONS, sharp, sniff, pngHeader, tiffOrientation, minimalExifTiff, stripJpeg, stripPng, processUpload, displayJpeg, maskInfo, cleanShapes };

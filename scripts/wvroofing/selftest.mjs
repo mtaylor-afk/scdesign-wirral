@@ -1,5 +1,6 @@
 // WV Roofing — self-test for the pure maths, the compositing guarantee, the
-// server validators and both API handlers. No browser needed.
+// server validators, the render settings and the bridged enquiry handler.
+// No browser needed. (The render jobs have their own node:test suites.)
 //
 //   node scripts/wvroofing/selftest.mjs
 import { createRequire } from "node:module";
@@ -19,6 +20,16 @@ const C = await import("../../public/WVROOFING/assets/js/vis/composite.js");
 const A = await import("../../public/WVROOFING/assets/js/vis/ai-input.js");
 const T = await import("../../public/WVROOFING/assets/js/tiles.js");
 const S = require(path.join(repo, "serverlib/wvroofing/core.js"));
+const O = require(path.join(repo, "serverlib/wvroofing/openai.js"));
+
+/** Would OpenAI accept this size for this model (per the server's own rules)? */
+function valid(W, H, model) {
+  try {
+    return O.validateParams({ model: model || "gpt-image-2.5-sunburst", quality: "high", W, H });
+  } catch (e) {
+    return false;
+  }
+}
 
 let pass = 0;
 let fail = 0;
@@ -114,18 +125,18 @@ const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 429496
   check("flex size multiples of 16", s1.W % 16 === 0 && s1.H % 16 === 0, s1.W + "x" + s1.H);
   check("flex size within pixel budget", s1.W * s1.H >= 655360 && s1.W * s1.H <= 1572864 + 16 * 1600, s1.W * s1.H);
   check("flex size keeps aspect", Math.abs(s1.W / s1.H - 1600 / 1145) < 0.02, (s1.W / s1.H).toFixed(3));
-  check("flex size accepted by server", S.validSize(s1.W, s1.H, true));
+  check("flex size accepted for gpt-image-2.5", valid(s1.W, s1.H));
   const s2 = A.chooseAiSize(1280, 1600, true);
-  check("flex portrait accepted by server", S.validSize(s2.W, s2.H, true), s2.W + "x" + s2.H);
+  check("flex portrait accepted for gpt-image-2.5", valid(s2.W, s2.H), s2.W + "x" + s2.H);
   const small = A.chooseAiSize(640, 480, true);
-  check("flex small photo meets minimum pixels", small.W * small.H >= 655360 && S.validSize(small.W, small.H, true), small.W + "x" + small.H);
+  check("flex small photo meets the 655,360 px floor", small.W * small.H >= 655360 && valid(small.W, small.H), small.W + "x" + small.H);
   const pano = A.chooseAiSize(4000, 800, true);
-  check("flex panorama letterboxed within 3:1", pano.mode === "letterbox" && S.validSize(pano.W, pano.H, true), pano.W + "x" + pano.H);
+  check("flex panorama letterboxed within 3:1", pano.mode === "letterbox" && valid(pano.W, pano.H), pano.W + "x" + pano.H);
   const l1 = A.chooseAiSize(1600, 1145, false);
-  check("legacy landscape -> 1536x1024", l1.W === 1536 && l1.H === 1024 && l1.mode === "letterbox");
+  check("fixed-size model: landscape -> 1536x1024", l1.W === 1536 && l1.H === 1024 && l1.mode === "letterbox" && valid(l1.W, l1.H, "gpt-image-1.5"));
   const l2 = A.chooseAiSize(1280, 1600, false);
-  check("legacy portrait -> 1024x1536", l2.W === 1024 && l2.H === 1536);
-  check("legacy rect inside canvas", l1.rect.x >= 0 && l1.rect.y >= 0 && l1.rect.x + l1.rect.w <= l1.W && l1.rect.y + l1.rect.h <= l1.H);
+  check("fixed-size model: portrait -> 1024x1536", l2.W === 1024 && l2.H === 1536);
+  check("fixed-size rect inside canvas", l1.rect.x >= 0 && l1.rect.y >= 0 && l1.rect.x + l1.rect.w <= l1.W && l1.rect.y + l1.rect.h <= l1.H);
 }
 
 // ---------------------------------------------------------------- tiles + preview
@@ -252,11 +263,17 @@ const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 429496
       raw[i + 3] = t ? 0 : 255;
       if (t) transparent++;
     }
+  const images = require(path.join(repo, "serverlib/wvroofing/images.js"));
   const png = await sharp(raw, { raw: { width: w, height: h, channels: 4 } }).png({ adaptiveFiltering: true, compressionLevel: 9 }).toBuffer();
-  const info = S.pngAlphaInfo(png);
-  check("pngAlphaInfo measures transparency through PNG filters", info && info.supported && Math.abs(info.transparentFrac - transparent / (w * h)) < 1e-9, info && info.transparentFrac);
-  const rgbPng = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#000" } }).png().toBuffer();
-  check("pngAlphaInfo flags a PNG without alpha as unsupported", S.pngAlphaInfo(rgbPng).supported === false);
+  const info = images.maskInfo(png, w, h);
+  check("maskInfo measures transparency through PNG filters", Math.abs(info.transparentFrac - transparent / (w * h)) < 1e-9, info.transparentFrac);
+  let refused = "";
+  try {
+    images.maskInfo(await sharp({ create: { width: 8, height: 8, channels: 3, background: "#000" } }).png().toBuffer(), 8, 8);
+  } catch (e) {
+    refused = e.code;
+  }
+  check("maskInfo refuses a PNG without alpha", refused === "invalid_mask", refused);
 
   const url = "data:image/jpeg;base64," + jpg.toString("base64");
   check("parseDataUrl accepts a JPEG data URL", S.parseDataUrl(url, ["image/jpeg"], 1e6, "image").buf.length === jpg.length);
@@ -282,17 +299,18 @@ const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 429496
   }
   check("parseDataUrl rejects invalid base64", threw === "invalid_image", threw);
 
-  check("validSize flex rules", S.validSize(1440, 1024, true) && !S.validSize(1441, 1024, true) && !S.validSize(3200, 800, true) && !S.validSize(512, 512, true));
-  check("validSize legacy rules", S.validSize(1536, 1024, false) && !S.validSize(1440, 1024, false));
+  check("size rules for flexible models", valid(1440, 1024) && !valid(1441, 1024) && !valid(3200, 800) && !valid(512, 512));
+  check("size rules for fixed-size models", valid(1536, 1024, "gpt-image-1.5") && !valid(1440, 1024, "gpt-image-1.5"));
+  check("unknown models are refused", !valid(1536, 1024, "some-new-model"));
 
   const p = S.PRODUCTS.get("spanish-slate");
-  const prompt = S.buildPrompt(p);
-  check("prompt names the product and restricts the edit to the roof", prompt.includes("Natural Spanish slate") && prompt.includes("ONLY") && prompt.includes("Keep unchanged"));
+  const prompt = O.buildPrompt(p);
+  check(
+    "prompt: the brief's instruction, the product, and the edit limited to the roof",
+    prompt.startsWith("Edit the supplied original house photograph.") && prompt.includes("Natural Spanish slate") && prompt.includes("Replace only the selected visible roof covering") && prompt.includes("Keep unchanged")
+  );
 
-  const mock = S.mockPng(160, 96, "#A1523A");
-  const meta = await sharp(mock).metadata();
-  check("mockPng is a valid PNG of the right size", meta.width === 160 && meta.height === 96 && meta.format === "png");
-
+  // Only used by the bridged enquiry endpoint until A4.
   const lim = S.createLimiter(2, 60000);
   check("limiter allows then blocks", lim.hit("a").ok && lim.hit("a").ok && !lim.hit("a").ok && lim.hit("b").ok);
   lim.undo("a");
@@ -338,45 +356,20 @@ async function call(handler, method, headers, body, url) {
 }
 {
   delete process.env.WVR_OPENAI_API_KEY;
-  // Both legacy endpoints are reached through the single function and its router, as on Vercel.
+  // Reached through the single function and its router, as on Vercel.
   const app = require(path.join(repo, "api/wvroofing/app.js"));
-  const render = (req, res) => app(Object.assign(req, { url: "/api/wvroofing/render" }), res);
+  const at = (url) => (req, res) => app(Object.assign(req, { url }), res);
   const LOCAL = { origin: "http://localhost:8772", "content-type": "application/json" };
-  const h = await call(render, "GET", {});
-  check("render GET health", h.status === 200 && h.json.ok && h.json.live === false && h.json.products === 8);
-  const pre = await call(render, "OPTIONS", { origin: "https://scdesignwirral.co.uk" });
-  check("render preflight from the site origin", pre.status === 204 && pre.headers["access-control-allow-origin"] === "https://scdesignwirral.co.uk");
-  const evil = await call(render, "POST", { origin: "https://evil.example", "content-type": "application/json" }, {});
-  check("render rejects other origins", evil.status === 403 && !evil.headers["access-control-allow-origin"]);
-  const bad = await call(render, "POST", LOCAL, { productId: "nope" });
-  check("render rejects an unknown product", bad.status === 400 && bad.json.error === "invalid_product");
+  const h = await call(at("/api/wvroofing/health"), "GET", {});
+  check(
+    "health: no key means photo-real renders are off, and the compositing maths loads",
+    h.status === 200 && h.json.capabilities.image_generation.state === "implemented" && h.json.renders.renderer === "ready" && h.json.renders.model === "gpt-image-2.5-sunburst",
+    JSON.stringify(h.json && h.json.renders)
+  );
+  const gone = await call(at("/api/wvroofing/render"), "POST", LOCAL, { productId: "welsh-slate" });
+  check("the pre-v02 render endpoint is gone", gone.status === 404);
 
-  const Wd = 1024;
-  const Ht = 640;
-  const img = await sharp({ create: { width: Wd, height: Ht, channels: 3, background: "#777" } }).jpeg().toBuffer();
-  const mraw = Buffer.alloc(Wd * Ht * 4, 255);
-  for (let y = 200; y < 400; y++) for (let x = 200; x < 800; x++) mraw[(y * Wd + x) * 4 + 3] = 0;
-  const mpng = await sharp(mraw, { raw: { width: Wd, height: Ht, channels: 4 } }).png().toBuffer();
-  const payload = {
-    productId: "welsh-slate",
-    image: "data:image/jpeg;base64," + img.toString("base64"),
-    mask: "data:image/png;base64," + mpng.toString("base64"),
-    W: Wd,
-    H: Ht,
-    mock: true,
-  };
-  const ok = await call(render, "POST", LOCAL, payload);
-  check("render mock returns an image from a local origin", ok.status === 200 && ok.json.ok && /^data:image\/png;base64,/.test(ok.json.image), ok.status + " " + (ok.json && ok.json.error));
-  const nokey = await call(render, "POST", { origin: "https://scdesignwirral.co.uk", "content-type": "application/json" }, payload);
-  check("render without a key refuses live requests", nokey.status === 503 && nokey.json.error === "not_configured", nokey.status);
-  const wrongSize = await call(render, "POST", LOCAL, Object.assign({}, payload, { W: 1040 }));
-  check("render rejects a size mismatch", wrongSize.status === 400, wrongSize.json && wrongSize.json.error);
-  const full = Buffer.alloc(Wd * Ht * 4, 0);
-  const fullPng = await sharp(full, { raw: { width: Wd, height: Ht, channels: 4 } }).png().toBuffer();
-  const tooBig = await call(render, "POST", LOCAL, Object.assign({}, payload, { mask: "data:image/png;base64," + fullPng.toString("base64") }));
-  check("render rejects a mask that edits the whole picture", tooBig.status === 400 && tooBig.json.error === "invalid_mask", tooBig.json && tooBig.json.error);
-
-  const enquiry = (req, res) => app(Object.assign(req, { url: "/api/wvroofing/enquiry" }), res);
+  const enquiry = at("/api/wvroofing/enquiry");
   delete process.env.WVR_LEAD_TO;
   const good = { name: "Test Person", email: "test@example.com", consent: true, elapsedMs: 8000, product: "clay-pantile-terracotta" };
   const nc = await call(enquiry, "POST", LOCAL, good);

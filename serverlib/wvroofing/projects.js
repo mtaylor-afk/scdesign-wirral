@@ -17,6 +17,7 @@ const db = require("./db.js");
 const images = require("./images.js");
 const limits = require("./limits.js");
 const auth = require("./auth.js");
+const jobs = require("./jobs.js");
 const { storage } = require("./storage.js");
 const { capabilities, isEnabled } = require("./capabilities.js");
 
@@ -91,7 +92,11 @@ async function get(ctx) {
 async function consent(ctx) {
   const body = await readJson(ctx.req, 4 * 1024);
   if (typeof body.ai !== "boolean") throw new HttpError(400, "invalid_fields", "Say whether photo-real renders are allowed.");
-  await db.query("UPDATE wvr_projects SET consent_ai_at = CASE WHEN $2 THEN now() END, updated_at = now() WHERE id = $1", [ctx.project.id, body.ai]);
+  await db.tx(async (t) => {
+    // Keep the first time it was given; withdrawing it stops any render not yet sent.
+    await t.query("UPDATE wvr_projects SET consent_ai_at = CASE WHEN $2 THEN COALESCE(consent_ai_at, now()) END, updated_at = now() WHERE id = $1", [ctx.project.id, body.ai]);
+    if (!body.ai) await jobs.closeQueued(t, ctx.project.id, "cancelled", "consent_withdrawn");
+  });
   return json(ctx.res, 200, { ok: true, consentAi: body.ai });
 }
 
@@ -160,8 +165,9 @@ async function commit(ctx) {
           "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
         [photoId, ctx.project.id, originalPath, sha, out.mime, out.original.length, out.origW, out.origH, out.orientation, workingPath, out.workW, out.workH, JSON.stringify(out.quality)]
       );
-      // A new photo never reuses the old outline (brief §15).
+      // A new photo never reuses the old outline or its renders (brief §15).
       await t.query("UPDATE wvr_projects SET photo_id = $2, mask_id = NULL, updated_at = now() WHERE id = $1", [ctx.project.id, photoId]);
+      await jobs.closeQueued(t, ctx.project.id, "superseded", null);
     });
     const { rows } = await db.query("SELECT * FROM wvr_photos WHERE id = $1", [photoId]);
     return json(ctx.res, 200, { ok: true, photo: photoOut(rows[0]) });
@@ -217,6 +223,8 @@ async function mask(ctx) {
       JSON.stringify({ shapes, displayW: photo.work_w, displayH: photo.work_h, editorVersion: 1 }),
     ]);
     await t.query("UPDATE wvr_projects SET mask_id = $2, updated_at = now() WHERE id = $1", [p.id, id]);
+    // Renders not yet sent were for the old outline; running ones are quarantined when they finish.
+    await jobs.closeQueued(t, p.id, "superseded", null);
   });
   return json(ctx.res, 200, { ok: true, mask: { id, coverage: info.transparentFrac } });
 }
@@ -226,6 +234,8 @@ async function mask(ctx) {
  * @param {string} projectId
  */
 async function deleteProject(projectId) {
+  // Release the budget held by renders that will now never be sent.
+  await db.tx((t) => jobs.closeQueued(t, projectId, "cancelled", "project_deleted"));
   const st = storage();
   const files = await st.list("projects/" + projectId + "/");
   if (files.length) await st.del(files);

@@ -1,4 +1,5 @@
-// WV Roofing Roof Visualiser — the customer's project on the server (A2).
+// WV Roofing Roof Visualiser — the customer's project on the server: the photo
+// and roof outline (A2) and the photo-real renders (A3).
 //
 // The project token is kept in sessionStorage: it survives a refresh and the
 // tab being restored, and disappears when the tab is closed. It is never put
@@ -171,4 +172,50 @@ export async function deleteProject() {
   if (!p) return;
   await call("POST", "projects/" + p.id + "/delete", { body: {}, project: p });
   forgetProject();
+}
+
+/** A random request key, so a repeated tap or a reload never makes a second render. */
+export function newKey() {
+  const b = new Uint8Array(12);
+  crypto.getRandomValues(b);
+  return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+function requireProject() {
+  const p = currentProject();
+  if (!p) throw new ClientError(0, "no_project", "Please choose your photo again.");
+  return p;
+}
+
+/**
+ * Ask for photo-real renders of these finishes. The same key always answers
+ * with the same render; a new key after a failure starts a new one.
+ * Resolves with the renders: [{ id, visualId, status, image, error, ... }].
+ */
+export async function submitRenders(visualIds, idempotencyKey) {
+  const p = requireProject();
+  const j = await call("POST", "projects/" + p.id + "/renders", { body: { visualIds, idempotencyKey }, project: p });
+  return j.renders;
+}
+
+/** The project's renders for its current photo and roof outline. */
+export async function listRenders() {
+  const p = currentProject();
+  if (!p) return [];
+  const j = await call("GET", "projects/" + p.id + "/renders", { project: p, projectRoute: true });
+  return j.renders;
+}
+
+/** A finished render: the composite (only the roof changed) as a JPEG blob. */
+export async function fetchRenderImage(jobId) {
+  const p = requireProject();
+  const r = await call("GET", "projects/" + p.id + "/renders/" + jobId + "/image", { project: p, raw: true });
+  return r.blob();
+}
+
+/** Cancel a render that hasn't started yet. */
+export async function cancelRender(jobId) {
+  const p = requireProject();
+  const j = await call("POST", "projects/" + p.id + "/renders/" + jobId + "/cancel", { body: {}, project: p });
+  return j.render;
 }

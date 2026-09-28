@@ -1,5 +1,6 @@
+// @ts-nocheck -- browser ES module shared with the server (serverlib/wvroofing/compose.js); outside the JSDoc type check.
 // WV Roofing Roof Visualiser — pure mask maths. No DOM access, so the same code
-// runs in the browser and in scripts/wvroofing/selftest.mjs under Node.
+// runs in the browser, on the server and in scripts/wvroofing/selftest.mjs.
 //
 // A mask is a Uint8Array of length w*h holding 0 (not roof) .. 255 (roof).
 

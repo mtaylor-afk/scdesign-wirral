@@ -90,9 +90,17 @@ test("cron: 503 without CRON_SECRET, 401 with a wrong bearer, runs with the righ
   }
 });
 
-test("legacy render health is still served at /api/wvroofing/render", async () => {
-  const r = await call(app, "GET", "/api/wvroofing/render", {});
-  assert.equal(r.status, 200);
-  assert.equal(r.json.service, "wvroofing-render");
-  assert.equal(r.json.products, 8);
+test("the pre-v02 render endpoint is gone (A3): renders are project jobs now", async () => {
+  const r = await call(app, "GET", "/api/wvroofing/render", { origin: SITE });
+  assert.equal(r.status, 404);
+  const post = await call(app, "POST", "/api/wvroofing/render", { origin: SITE, "content-type": "application/json" }, { productId: "welsh-slate" });
+  assert.equal(post.status, 404);
+});
+
+test("one path, one route per method: GET and POST renders, and 405 lists both", async () => {
+  assert.equal(router.match("projects/p1/renders", "GET").route.handler === router.match("projects/p1/renders", "POST").route.handler, false);
+  const r = await call(app, "DELETE", "/api/wvroofing/projects/00000000-0000-4000-8000-000000000000/renders", { origin: SITE });
+  assert.equal(r.status, 405);
+  assert.match(r.headers.allow, /POST/);
+  assert.match(r.headers.allow, /GET/);
 });

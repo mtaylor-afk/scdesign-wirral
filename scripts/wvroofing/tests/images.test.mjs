@@ -196,13 +196,6 @@ test("roof outline: coverage measured; wrong size or a decompression bomb refuse
   assert.throws(() => images.maskInfo(rgb, 10, 10), (e) => e.code === "invalid_mask");
 });
 
-test("the legacy mask check now refuses the wrong size before inflating", () => {
-  const core = load("serverlib/wvroofing/core.js");
-  const info = core.pngAlphaInfo(maskPng(100, 50, () => true), 64, 64);
-  assert.ok(Number.isNaN(info.transparentFrac));
-  assert.equal(core.pngAlphaInfo(maskPng(100, 50, (x) => x < 20)).transparentFrac, 0.2);
-});
-
 test("outline shapes are validated and rounded", () => {
   const out = images.cleanShapes([{ mode: "add", pts: [[1.4, 2.6], [50, 2], [50, 40]] }, { mode: "sub", pts: [[10, 10]], r: 6.4 }], 100, 50);
   assert.deepEqual(out, [{ mode: "add", pts: [[1, 3], [50, 2], [50, 40]] }, { mode: "sub", pts: [[10, 10]], r: 6 }]);

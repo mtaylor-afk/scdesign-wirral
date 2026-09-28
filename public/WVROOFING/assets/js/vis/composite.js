@@ -1,5 +1,7 @@
+// @ts-nocheck -- browser ES module shared with the server (serverlib/wvroofing/compose.js); outside the JSDoc type check.
 // WV Roofing Roof Visualiser — composites a photo-real AI render back onto the
-// ORIGINAL photo through the roof mask.
+// ORIGINAL photo through the roof mask. The server composites customer renders
+// with these same functions; the browser uses them for the pre-rendered samples.
 //
 // Image models regenerate the whole picture even when given a mask, so windows,
 // brickwork or cars can drift slightly. Here only roof pixels are taken from the

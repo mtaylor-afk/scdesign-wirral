@@ -1,6 +1,6 @@
 // WV Roofing — local development server (no dependencies).
 //
-//   node scripts/wvroofing/dev-server.mjs [--port 8772] [--simulate 429|503] [--proxy-live]
+//   node scripts/wvroofing/dev-server.mjs [--port 8772] [--fixture <mode>] [--proxy-live]
 //
 // - Serves public/ exactly as Cloudflare Pages would at /WVROOFING/ (directory
 //   -> index.html, trailing-slash redirect), with caching disabled.
@@ -9,14 +9,13 @@
 //   rewrite (modules are re-required on every request, so edits apply without
 //   a restart; the database and storage modules are kept so their state lives on).
 // - Runs as the labelled TEST ENVIRONMENT (WVR_ENV=test): PGlite instead of
-//   Neon, a local folder instead of Vercel Blob, fixture adapters. Production
-//   never uses any of these.
-// - --simulate 429|503 makes every other render request fail that way, to test
-//   the client's queue/back-off and banners.
-// - --proxy-live forwards /api/wvroofing/* to the deployed API instead (used to
-//   pre-render the sample houses once photo-real rendering is live).
-// - POST /__dev/save writes a pre-rendered sample image under
-//   public/WVROOFING/samples/renders/ (localhost only).
+//   Neon, a local folder instead of Vercel Blob, and a stand-in for OpenAI that
+//   paints the product's colour into the marked roof (switched on here, ~1.5 s
+//   a render). Production never uses any of these.
+// - --fixture <mode> makes the stand-in answer another way, to try the render
+//   states in the browser: timeout | network | 5xx | 5xx_once | 429_once |
+//   refused | budget | misaligned.
+// - --proxy-live forwards /api/wvroofing/* to the deployed API instead.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -36,10 +35,16 @@ const arg = (name, dflt) => {
   return v && !v.startsWith("--") ? v : true;
 };
 const PORT = Number(arg("port", process.env.PORT || 8772));
-const SIMULATE = arg("simulate", "");
+const FIXTURE = arg("fixture", "");
 const PROXY_LIVE = !!arg("proxy-live", false);
 const LIVE_API = "https://scdesign-wirral.vercel.app";
 if (!PROXY_LIVE && !process.env.WVR_ENV) process.env.WVR_ENV = "test";
+if (process.env.WVR_ENV === "test") {
+  // The test environment's stand-in renderer is switched on here, like the owner switch in production.
+  if (!process.env.WVR_CAP_IMAGE_GENERATION) process.env.WVR_CAP_IMAGE_GENERATION = "on";
+  if (!process.env.WVR_FIXTURE_LATENCY_MS) process.env.WVR_FIXTURE_LATENCY_MS = "1500";
+  if (typeof FIXTURE === "string" && FIXTURE) process.env.WVR_FIXTURE_OPENAI = FIXTURE;
+}
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -57,8 +62,6 @@ const MIME = {
   ".woff2": "font/woff2",
 };
 
-let simCounter = 0;
-
 function send(res, status, body, headers) {
   res.writeHead(status, Object.assign({ "Cache-Control": "no-store" }, headers || {}));
   res.end(body);
@@ -75,62 +78,28 @@ async function readBody(req, limit) {
   return Buffer.concat(chunks);
 }
 
-async function handleApi(req, res, name) {
+async function handleApi(req, res) {
   if (PROXY_LIVE) {
     const body = req.method === "POST" ? await readBody(req, 6 * 1024 * 1024) : undefined;
-    const r = await fetch(LIVE_API + req.url, {
-      method: req.method,
-      headers: { "Content-Type": req.headers["content-type"] || "application/json", Origin: "https://scdesignwirral.co.uk" },
-      body,
-    });
+    const headers = { "Content-Type": req.headers["content-type"] || "application/json", Origin: "https://scdesignwirral.co.uk" };
+    if (req.headers.authorization) headers.Authorization = req.headers.authorization;
+    const r = await fetch(LIVE_API + req.url, { method: req.method, headers, body });
     const buf = Buffer.from(await r.arrayBuffer());
     const h = { "Content-Type": r.headers.get("content-type") || "application/json" };
     const ra = r.headers.get("retry-after");
     if (ra) h["Retry-After"] = ra;
     return send(res, r.status, buf, h);
   }
-  if (SIMULATE && name === "render" && req.method === "POST") {
-    simCounter++;
-    if (simCounter % 2 === 1) {
-      await readBody(req, 8 * 1024 * 1024).catch(() => null);
-      if (SIMULATE === "429") {
-        return send(res, 429, JSON.stringify({ ok: false, error: "rate_limited", scope: "upstream", message: "Simulated rate limit" }), {
-          "Content-Type": "application/json",
-          "Retry-After": "3",
-        });
-      }
-      return send(res, 503, JSON.stringify({ ok: false, error: "budget", message: "Simulated budget stop" }), {
-        "Content-Type": "application/json",
-      });
-    }
-  }
   // Fresh copy on every request (hot reload), except the modules that hold the
-  // PGlite database and the storage driver, which must survive between requests.
-  const keep = [path.join("serverlib", "wvroofing", "db.js"), path.join("serverlib", "wvroofing", "storage.js")];
+  // PGlite database, the storage driver and the render stand-in's settings,
+  // which must survive between requests.
+  const keep = [path.join("serverlib", "wvroofing", "db.js"), path.join("serverlib", "wvroofing", "storage.js"), path.join("serverlib", "wvroofing", "openai.js")];
   for (const k of Object.keys(require.cache)) {
     const ours = k.includes(path.sep + "api" + path.sep + "wvroofing") || k.includes(path.sep + "serverlib" + path.sep + "wvroofing");
     if (ours && !keep.some((p) => k.endsWith(p))) delete require.cache[k];
   }
   const handler = require(path.join(repo, "api", "wvroofing", "app.js"));
   await handler(req, res);
-}
-
-async function handleSave(req, res) {
-  const body = JSON.parse((await readBody(req, 12 * 1024 * 1024)).toString("utf8"));
-  const rel = String(body.path || "");
-  if (!/^samples\/renders\/[a-z0-9-]+\/[a-z0-9-]+\.(jpg|png|json)$/.test(rel)) {
-    return send(res, 400, "bad path");
-  }
-  const out = path.join(publicDir, "WVROOFING", rel);
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  if (rel.endsWith(".json")) {
-    fs.writeFileSync(out, JSON.stringify(body.data, null, 2) + "\n");
-  } else {
-    const m = /^data:image\/(?:jpeg|png);base64,(.+)$/.exec(String(body.dataUrl || ""));
-    if (!m) return send(res, 400, "bad data url");
-    fs.writeFileSync(out, Buffer.from(m[1], "base64"));
-  }
-  return send(res, 200, JSON.stringify({ ok: true, path: rel }), { "Content-Type": "application/json" });
 }
 
 // Cloudflare-style public/_headers: every matching rule's headers are sent
@@ -200,9 +169,7 @@ function serveStatic(req, res, urlPath) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://localhost");
-    const m = /^\/api\/wvroofing\/(.*?)\/?$/.exec(url.pathname);
-    if (m) return await handleApi(req, res, m[1]);
-    if (url.pathname === "/__dev/save" && req.method === "POST") return await handleSave(req, res);
+    if (/^\/api\/wvroofing\//.test(url.pathname)) return await handleApi(req, res);
     if (url.pathname === "/__dev/blob" && process.env.WVR_ENV === "test") return await handleDevBlob(req, res, url);
     if (url.pathname === "/") return send(res, 302, "", { Location: "/WVROOFING/" });
     return serveStatic(req, res, url.pathname);
@@ -213,6 +180,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`WV Roofing dev server: http://localhost:${PORT}/WVROOFING/` + (SIMULATE ? ` (simulating ${SIMULATE})` : "") + (PROXY_LIVE ? " (API proxied to live)" : ""));
-  if (process.env.WVR_ENV === "test") console.log("TEST ENVIRONMENT: PGlite database, local-folder storage and fixture adapters (never used in production).");
+  console.log(`WV Roofing dev server: http://localhost:${PORT}/WVROOFING/` + (PROXY_LIVE ? " (API proxied to live)" : ""));
+  if (process.env.WVR_ENV === "test") {
+    console.log("TEST ENVIRONMENT: PGlite database, local-folder storage and a stand-in renderer (never used in production).");
+    if (process.env.WVR_FIXTURE_OPENAI) console.log("Render stand-in mode: " + process.env.WVR_FIXTURE_OPENAI);
+  }
 });

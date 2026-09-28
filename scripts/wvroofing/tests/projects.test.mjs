@@ -6,9 +6,8 @@ process.env.WVR_FS_STORAGE_DIR = path.join(os.tmpdir(), "wvr-projects-test-" + p
 
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import zlib from "node:zlib";
-import { load, call, SITE } from "./helpers.mjs";
+import { load, call, SITE, removeTempDir } from "./helpers.mjs";
 
 const app = load("api/wvroofing/app.js");
 const db = load("serverlib/wvroofing/db.js");
@@ -19,7 +18,7 @@ const sharp = images.sharp();
 
 after(async () => {
   await db.reset();
-  fs.rmSync(process.env.WVR_FS_STORAGE_DIR, { recursive: true, force: true });
+  removeTempDir(process.env.WVR_FS_STORAGE_DIR);
 });
 
 function api(method, route, { token, body, origin = SITE, headers = {} } = {}) {

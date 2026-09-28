@@ -9,8 +9,9 @@ analytics or error beacons, and its emails are sent as "WV Roofing".
 - Live (hidden, noindex): `https://scdesignwirral.co.uk/WVROOFING/`
 - Everything WV Roofing lives in: `public/WVROOFING/`, `api/wvroofing/app.js` (the one function),
   `serverlib/wvroofing/`, `db/wvroofing/`, `scripts/wvroofing/`, `docs/wvroofing/`, this file. The only
-  shared-file touches are the `/WVROOFING` blocks in `public/_headers` (X-Robots-Tag), the WV entries
-  in `vercel.json` (function, rewrite `/api/wvroofing/:path*`, daily cron, X-Robots-Tag) and, in
+  shared-file touches are the `/WVROOFING` blocks in `public/_headers` (X-Robots-Tag and the
+  Content-Security-Policy), the WV entries in `vercel.json` (function, rewrite `/api/wvroofing/:path*`,
+  daily cron, X-Robots-Tag, Content-Security-Policy) and, in
   `package.json`, five packages (`pg`, `@vercel/blob`, `@vercel/functions`; dev: `@electric-sql/pglite`,
   `@types/pg`) plus the `wvr:*` scripts.
 - **Never add another file under `api/wvroofing/`.** The project allows 12 functions per deployment on
@@ -43,15 +44,23 @@ The home picker and heroes are drawn live by `assets/js/vis/hero.js` from the sa
 ## How the roof images are made
 
 1. **Mark the roof** in the browser (outline / cut-out / brush tools; sample houses come pre-marked).
+   An uploaded photo lives in the visitor's project on the server (checked, metadata removed, a
+   lossless 1600 px working copy), and the outline is saved there too.
 2. **Quick previews** (`assets/js/vis/preview.js`): the roof is re-coloured and re-patterned in the
    browser for all 8 products, keeping the photo's own shading. Instant, free, approximate.
-3. **Photo-real renders** (optional, with the visitor's consent): the photo + a PNG roof mask go to
-   `POST /api/wvroofing/render`, which calls OpenAI `v1/images/edits` with a **fixed server-side
-   prompt per product** (`serverlib/wvroofing/core.js` `buildPrompt`, fields in `data/catalogue.json`).
-4. **Compositing** (`assets/js/vis/composite.js`): OpenAI treats masks as guidance and regenerates
-   the whole picture, so the browser pastes back only the roof pixels through a feathered mask,
-   after a small alignment search and exposure match. Everything outside the roof stays the
-   original photo.
+3. **Photo-real renders** (optional, only after the visitor agrees; uploaded photos only): durable
+   jobs (`POST /api/wvroofing/projects/:id/renders`, `serverlib/wvroofing/jobs.js`). The request
+   answers at once; the render carries on in the background and the page polls for it. The chosen
+   roof renders automatically, the others when tapped. The server builds the photo (PNG) and mask
+   (PNG) from the working copy and calls OpenAI `v1/images/edits` with a **fixed, versioned prompt**
+   (`serverlib/wvroofing/openai.js` `buildPrompt`, fields in `data/catalogue.json`). A render that
+   times out is marked "uncertain" (it may have been charged) and is never repeated automatically.
+4. **Compositing** (`serverlib/wvroofing/compose.js`, using the browser's own `mask-ops.js` and
+   `composite.js`): OpenAI treats masks as guidance and regenerates the whole picture, so only the
+   roof pixels are taken from the render, through a feathered mask, after a small alignment search
+   and exposure match. On the lossless working copy every pixel outside the roof is the original,
+   byte for byte (tested); a render whose edges don't line up is rejected rather than used.
+   Sample houses never call OpenAI: they show pre-rendered results, composited in the browser.
 
 The 8 products, their colours, swatch patterns and prompt wording all live in
 `public/WVROOFING/data/catalogue.json` — edit that one file to change the range.
@@ -68,40 +77,43 @@ state and the reason.
 
 | Variable | Needed for | Default |
 |---|---|---|
-| `WVR_OPENAI_API_KEY` | photo-real renders (use a dedicated OpenAI project with a hard budget); also needs `WVR_CAP_IMAGE_GENERATION=on` | unset = previews only |
+| `WVR_OPENAI_API_KEY` | photo-real renders (use a dedicated OpenAI project with a hard budget); also needs `WVR_CAP_IMAGE_GENERATION=on` and project storage | unset = previews only |
 | `WVR_LEAD_TO` | where quote requests are emailed (comma-separated) | unset = "not collecting yet" |
-| `WVR_IMAGE_MODEL` | image model | `gpt-image-2` |
-| `WVR_IMAGE_QUALITY` | `low` / `medium` / `high` | `medium` |
-| `WVR_ENABLED` | `0` switches renders off | on |
-| `WVR_AUTO_RENDER` | how many of the 8 render automatically | 8 |
-| `WVR_MAX_CONCURRENT` | in-flight renders per server instance | 2 |
-| `WVR_UPSTREAM_IPM` | images per minute sent to OpenAI (Tier 1 = 5) | 5 |
-| `WVR_IP_LIMIT` / `WVR_IP_DAILY` | renders per visitor per 15 min / per day | 12 / 40 |
-| `WVR_DAILY_CAP` | renders per server instance per day | 200 |
+| `WVR_IMAGE_MODEL` | image model; unknown models are refused, not guessed at | `gpt-image-2.5-sunburst` |
+| `WVR_IMAGE_QUALITY` | a quality the model accepts (always sent explicitly) | `high` |
+| `WVR_ENABLED` | `0` switches every paid call off | on |
+| `WVR_AUTO_RENDER` | how many finishes render automatically once agreed (`0` = only on tap) | 1 |
+| `WVR_MAX_CONCURRENT` | queued + running renders per project | 3 |
+| `WVR_UPSTREAM_IPM` | renders per minute sent to OpenAI, across every instance (Tier 1 = 5) | 5 |
+| `WVR_IP_DAILY` / `WVR_RENDERS_PER_PROJECT_DAILY` / `WVR_DAILY_CAP` | renders per visitor / per project / in total, per day | 40 / 12 / 200 |
+| `WVR_DAILY_BUDGET_USD` | spending ceiling per UTC day, counting renders in flight | 5 |
+| `WVR_OPENAI_TIMEOUT_MS` | how long one render may take | 240000 |
+| `WVR_MAX_SEAM` | renders whose edges miss the photo by more than this are rejected | 35 |
 | `WVR_MAIL_FROM` | From header for quote emails | `"WV Roofing (concept)" <mail@tailoredquote.co.uk>` |
 | `WVR_EXTRA_ORIGINS` | extra allowed browser origins (comma-separated) | — |
 
 Quote emails reuse the project's existing `SMTP_USER` / `SMTP_PASS` (iCloud SMTP).
-The instant kill switch for spend is disabling the key in the OpenAI dashboard; the site then falls
-back to quick previews automatically.
+The instant kill switch for spend is `WVR_ENABLED=0` (or disabling the key in the OpenAI
+dashboard); the site then falls back to quick previews. If OpenAI reports the key refused or the
+budget spent, renders pause for everyone for a few minutes rather than retrying.
 
 ## Local development and tests
 
 ```
 node scripts/wvroofing/dev-server.mjs            # http://localhost:8772/WVROOFING/ (labelled test environment)
-npm run wvr:test                                 # node:test suites: router, capabilities, database, limits, deploy shape
+npm run wvr:test                                 # node:test suites: router, projects, renders, images, OpenAI rules, compositing, deploy shape
 npm run wvr:check                                # JSDoc type check of serverlib/wvroofing (strict)
-node scripts/wvroofing/selftest.mjs              # maths, compositing guarantee, validators, handlers
+node scripts/wvroofing/selftest.mjs              # maths, compositing guarantee, validators, render settings
 node scripts/wvroofing/qa.mjs                    # headless browser pass over every page + the visualiser
 node scripts/wvroofing/prepare-samples.mjs <dir> # rebuild the sample photos from the originals
 ```
 
 The dev server runs as the **test environment** (`WVR_ENV=test`): PGlite instead of Neon, a local
-folder instead of Vercel Blob, fixture adapters; production never uses these. With no key set it
-returns stand-in "mock" renders so the whole pipeline can be tested. `--simulate 429|503` exercises
-the back-off and banners.
+folder instead of Vercel Blob, and a stand-in for OpenAI that paints the product's colour into the
+marked roof (about 1.5 s a render); production never uses these. `--fixture <mode>` makes the
+stand-in time out, fail, refuse the photo, run out of budget or return a misaligned picture, to try
+each render state in the browser (modes listed in `scripts/wvroofing/dev-server.mjs`).
 
-**Pre-rendering the sample houses** (after the key is live, costs about 7p a render): run the dev
-server with `--proxy-live`, open `/WVROOFING/visualiser/?sample=<id>&save=1`, create the photo-real
-renders; each raw render and a `meta.json` are written to `samples/renders/<id>/`. Then set
-`"prerendered": true` for that sample in `samples/samples.json` and commit.
+**Pre-rendering the sample houses** (photo-real results for the demo houses) is part of the owner-
+approved live integration (A8, at most 24 renders). Until then the sample houses show quick previews,
+and only a visitor's own photo can be rendered photo-real.

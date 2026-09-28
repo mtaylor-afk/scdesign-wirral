@@ -1,6 +1,7 @@
 // Shared helpers for the WV Roofing node:test suites (TEST ENVIRONMENT only).
 import { createRequire } from "node:module";
 import { Readable } from "node:stream";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -57,3 +58,17 @@ export async function call(handler, method, url, headers, body) {
 }
 
 export const SITE = "https://scdesignwirral.co.uk";
+
+/**
+ * Remove a suite's temporary storage folder. On Windows a virus scanner can
+ * briefly hold a file just written (EBUSY/EPERM), so retry, and never fail the
+ * suite over leftover temp files.
+ */
+export function removeTempDir(dir) {
+  if (!dir) return;
+  try {
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 150 });
+  } catch (err) {
+    console.warn("(temp folder left behind: " + dir + " - " + err.code + ")");
+  }
+}

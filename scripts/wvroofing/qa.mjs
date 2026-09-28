@@ -5,11 +5,14 @@
 // Needs the dev server running (scripts/wvroofing/dev-server.mjs) unless --base
 // points at a deployed copy. Checks every page at phone and desktop widths
 // (console errors, failed requests, horizontal overflow), then drives the Roof
-// Visualiser: sample house -> quick previews -> mock AI renders -> lightbox ->
-// quote dialog; and on a phone viewport: the photo notice, a HEIC refusal, an
-// upload to the customer's project, a hand-drawn outline saved to the project,
-// and "Delete my photo". Pages are served with their real headers (incl. CSP),
-// so a CSP violation shows up as a console error.
+// Visualiser: sample house -> quick previews (samples never call the AI
+// service) -> lightbox -> quote dialog; and on a phone viewport: the photo
+// notice, a HEIC refusal, an upload to the customer's project, a hand-drawn
+// outline saved to the project, photo-real renders (none before the customer
+// agrees; then the chosen roof automatically and the others on tap, rendered
+// by the test environment's stand-in; the served composite is compared with
+// the photo outside the roof), and "Delete my photo". Pages are served with
+// their real headers (incl. CSP), so a CSP violation shows up as a console error.
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
 import os from "node:os";
@@ -204,53 +207,10 @@ try {
     ok("8 quick previews", true, Date.now() - t0 + " ms");
     await shot(page, { path: path.join(OUT, "vis-previews-desktop.png"), fullPage: true });
 
-    if (!LIVE) {
-      const startVisible = await page.isVisible("#btn-start-ai");
-      ok("AI render button offered (consent not yet given)", startVisible);
-      if (startVisible) {
-        const t1 = Date.now();
-        await page.click("#btn-start-ai");
-        await page.waitForFunction(() => Array.from(document.querySelectorAll(".result-card .badge")).filter((b) => b.textContent === "AI concept").length === 8, null, { timeout: 120000 });
-        ok("8 mock AI renders composited", true, Date.now() - t1 + " ms");
-        // Pixels outside the (grown) roof must match the original exactly, 8x8 JPEG block-wise.
-        const exact = await page.evaluate(async () => {
-          const S = window.__wvr;
-          const id = S.cat.products[0].id;
-          const load = async (u) => {
-            const im = new Image();
-            im.src = u;
-            await im.decode();
-            const c = document.createElement("canvas");
-            c.width = im.naturalWidth;
-            c.height = im.naturalHeight;
-            const x = c.getContext("2d");
-            x.drawImage(im, 0, 0);
-            return x.getImageData(0, 0, c.width, c.height);
-          };
-          const a = await load(S.beforeUrl);
-          const b = await load(S.ai.get(id).url);
-          const w = a.width;
-          const h = a.height;
-          const alpha = S.analysis.alpha;
-          let blocks = 0;
-          let bad = 0;
-          for (let by = 0; by + 8 <= h; by += 8) {
-            for (let bx = 0; bx + 8 <= w; bx += 8) {
-              let touched = false;
-              for (let y = by - 32; y < by + 40 && !touched; y++) for (let x = bx - 32; x < bx + 40; x++) if (y >= 0 && x >= 0 && y < h && x < w && alpha[y * w + x] > 0.001) { touched = true; break; }
-              if (touched) continue;
-              blocks++;
-              let diff = 0;
-              for (let y = by; y < by + 8; y++) for (let x = bx; x < bx + 8; x++) { const i = (y * w + x) * 4; diff += Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]); }
-              if (diff > 0) bad++;
-            }
-          }
-          return { blocks, bad };
-        });
-        ok("outside-roof pixels unchanged after compositing", exact.bad === 0, JSON.stringify(exact));
-        await shot(page, { path: path.join(OUT, "vis-ai-mock-desktop.png"), fullPage: true });
-      }
-    }
+    // Sample houses show pre-rendered results only: no AI render is ever requested for them.
+    const startHidden = !(await page.isVisible("#btn-start-ai"));
+    const renderNote = (await page.textContent("#render-status")) || "";
+    ok("sample houses never call the AI service", startHidden && /own photo|pre-rendered/.test(renderNote), renderNote);
 
     await page.click(".result-card .result-open");
     await page.waitForSelector("#lightbox[open]");
@@ -289,6 +249,10 @@ try {
     const errors = watch(page);
     page.on("dialog", (d) => d.accept());
     const isPath = (r, re) => re.test(new URL(r.url()).pathname);
+    let renderPosts = 0;
+    page.on("request", (r) => {
+      if (r.method() === "POST" && isPath(r, /\/renders$/)) renderPosts++;
+    });
     await page.goto(BASE + "/WVROOFING/visualiser/", { waitUntil: "load", timeout: 45000 });
     await page.waitForTimeout(500);
     const notice = (await page.isVisible("#storage-notice")) ? await page.textContent("#storage-notice") : "";
@@ -331,6 +295,65 @@ try {
       const maskRes = await saved;
       ok("phone: the roof outline is saved to the project", !!maskRes && maskRes.status() === 200, maskRes ? String(maskRes.status()) : "not sent");
       await shot(page, { path: path.join(OUT, "vis-previews-phone.png"), fullPage: true });
+
+      // Photo-real renders: nothing goes to the AI service until the customer agrees.
+      const offered = await page.isVisible("#btn-start-ai");
+      ok("phone: no photo-real render is requested before the customer agrees", renderPosts === 0 && offered, renderPosts + " requests, offer shown: " + offered);
+      // Renders are driven only against the local test environment's stand-in, never a deployed
+      // copy (--live): a real render costs money and goes to OpenAI.
+      const live = await page.evaluate(() => !!(window.__wvr && window.__wvr.health && window.__wvr.health.renders.live && window.__wvr.health.renders.test));
+      if (live && offered && !LIVE) {
+        const t1 = Date.now();
+        await page.click("#btn-start-ai");
+        await page.waitForFunction(() => document.querySelectorAll(".result-card .badge--ai").length >= 1, null, { timeout: 60000 });
+        await page.waitForTimeout(3000); // long enough for a second automatic render to show, if there were one
+        const rendered = await page.locator(".result-card .badge--ai").count();
+        const offers = await page.locator(".result-card .link-btn:visible", { hasText: "Create AI render" }).count();
+        ok("phone: once agreed, the chosen roof renders automatically and the other 7 offer a render", rendered === 1 && offers === 7, rendered + " rendered, " + offers + " offered, " + (Date.now() - t1) + " ms");
+        await page.locator(".result-card .link-btn:visible", { hasText: "Create AI render" }).first().click();
+        const second = await page
+          .waitForFunction(() => document.querySelectorAll(".result-card .badge--ai").length >= 2, null, { timeout: 60000 })
+          .then(() => true)
+          .catch(() => false);
+        ok("phone: tapping 'Create AI render' renders that roof too", second);
+        // The composite the server serves must equal the photo it served, block for block, away from the roof.
+        const exact = await page.evaluate(async () => {
+          const S = window.__wvr;
+          const p = JSON.parse(sessionStorage.getItem("wvr.project.v1"));
+          const job = [...S.jobs.values()].find((j) => j.status === "succeeded" && j.image);
+          const pixels = async (u) => {
+            const r = await fetch(u, { headers: { Authorization: "Bearer " + p.token } });
+            const bm = await createImageBitmap(await r.blob());
+            const c = document.createElement("canvas");
+            c.width = bm.width;
+            c.height = bm.height;
+            const x = c.getContext("2d");
+            x.drawImage(bm, 0, 0);
+            return x.getImageData(0, 0, c.width, c.height);
+          };
+          const a = await pixels("/api/wvroofing/projects/" + p.id + "/photo/display");
+          const b = await pixels("/api/wvroofing/projects/" + p.id + "/renders/" + job.id + "/image");
+          const w = a.width;
+          const h = a.height;
+          const alpha = S.analysis.alpha;
+          let blocks = 0;
+          let bad = 0;
+          for (let by = 0; by + 16 <= h; by += 16) {
+            for (let bx = 0; bx + 16 <= w; bx += 16) {
+              let near = false;
+              for (let y = by - 32; y < by + 48 && !near; y++) for (let x = bx - 32; x < bx + 48; x++) if (y >= 0 && x >= 0 && y < h && x < w && alpha[y * w + x] > 0.001) { near = true; break; }
+              if (near) continue;
+              blocks++;
+              let diff = 0;
+              for (let y = by; y < by + 16; y++) for (let x = bx; x < bx + 16; x++) { const i = (y * w + x) * 4; diff += Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]); }
+              if (diff > 0) bad++;
+            }
+          }
+          return { blocks, bad, size: w + "x" + h, sameSize: w === b.width && h === b.height };
+        });
+        ok("phone: the served composite matches the photo outside the roof", exact.sameSize && exact.blocks > 100 && exact.bad === 0, JSON.stringify(exact));
+        await shot(page, { path: path.join(OUT, "vis-ai-phone.png"), fullPage: true });
+      }
       // Delete it all again (this also tidies up the project the check created).
       await page.click("#btn-edit-mark");
       await page.waitForSelector("#btn-delete-photo:not([hidden])", { timeout: 5000 }).catch(() => null);

@@ -29,6 +29,8 @@ test("vercel.json: every functions pattern matches a file, and the WV rewrite an
     assert.ok(fs.existsSync(path.join(repo, pattern)), "functions entry has no file: " + pattern);
   }
   assert.equal(cfg.functions["api/wvroofing/app.js"].maxDuration, 300);
+  // The render worker plans its time around the same limit.
+  assert.equal(load("serverlib/wvroofing/jobs.js").FUNCTION_SECONDS, cfg.functions["api/wvroofing/app.js"].maxDuration);
   // The destination also carries the route as ?path= so routing works whether or not Vercel keeps req.url.
   assert.deepEqual(cfg.rewrites, [{ source: "/api/wvroofing/:path*", destination: "/api/wvroofing/app?path=:path*" }]);
   assert.ok(cfg.crons.some((c) => c.path === "/api/wvroofing/cron/daily" && c.schedule.split(" ").length === 5));

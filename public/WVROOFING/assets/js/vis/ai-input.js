@@ -1,5 +1,8 @@
-// WV Roofing Roof Visualiser — builds the photo + mask sent for a photo-real render.
-import { dilate, clamp } from "./mask-ops.js";
+// @ts-nocheck -- browser ES module shared with the server (serverlib/wvroofing/compose.js); outside the JSDoc type check.
+// WV Roofing Roof Visualiser — the size of the photo sent for a photo-real render,
+// and how much the roof mask is grown for it. Pure maths: the server builds the
+// actual photo and mask from these (serverlib/wvroofing/compose.js).
+import { clamp } from "./mask-ops.js";
 
 export const FIXED_SIZES = [
   [1024, 1024],
@@ -64,58 +67,4 @@ export function chooseAiSize(w, h, flex) {
 /** The mask sent to the model is grown slightly so it redraws the roof edges. */
 export function aiMaskDilation(w, h) {
   return Math.max(2, Math.round(0.012 * Math.min(w, h)));
-}
-
-function makeCanvas(w, h) {
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  return c;
-}
-
-/**
- * @param {HTMLCanvasElement} photo  the working photo (w x h)
- * @param {Uint8Array} mask          precise roof mask (w x h)
- * @param {{W:number,H:number,mode:string,rect?:object}} spec
- * @returns {{image:string, mask:string, W:number, H:number, spec:object}}
- */
-export function buildAiInputs(photo, mask, spec) {
-  const w = photo.width;
-  const h = photo.height;
-  const { W, H } = spec;
-  const img = makeCanvas(W, H);
-  const ctx = img.getContext("2d");
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  const rect = spec.mode === "letterbox" ? spec.rect : { x: 0, y: 0, w: W, h: H };
-  if (spec.mode === "letterbox") {
-    // pad with a soft, stretched copy so the model sees no hard borders
-    ctx.filter = "blur(24px)";
-    ctx.drawImage(photo, 0, 0, W, H);
-    ctx.filter = "none";
-  }
-  ctx.drawImage(photo, rect.x, rect.y, rect.w, rect.h);
-  const image = img.toDataURL("image/jpeg", 0.9);
-
-  const grown = dilate(mask, w, h, aiMaskDilation(w, h));
-  const mc = makeCanvas(W, H);
-  const mctx = mc.getContext("2d");
-  const md = mctx.createImageData(W, H);
-  const px = md.data;
-  for (let y = 0; y < H; y++) {
-    const sy = Math.floor(((y - rect.y + 0.5) * h) / rect.h);
-    for (let x = 0; x < W; x++) {
-      const sx = Math.floor(((x - rect.x + 0.5) * w) / rect.w);
-      const i4 = (y * W + x) * 4;
-      const inside = sx >= 0 && sy >= 0 && sx < w && sy < h;
-      const roof = inside && grown[sy * w + sx] >= 128;
-      px[i4] = 0;
-      px[i4 + 1] = 0;
-      px[i4 + 2] = 0;
-      px[i4 + 3] = roof ? 0 : 255; // transparent = "edit here"
-    }
-  }
-  mctx.putImageData(md, 0, 0);
-  const maskUrl = mc.toDataURL("image/png");
-  return { image, mask: maskUrl, W, H, spec };
 }

@@ -61,7 +61,8 @@ const DEFS = {
     paid: true,
   },
   image_generation: {
-    credential: (env) => !!env.WVR_OPENAI_API_KEY,
+    // test environment: the OpenAI fixture in openai.js (never in production)
+    credential: (env) => isTest(env) || !!env.WVR_OPENAI_API_KEY,
     switch: "WVR_CAP_IMAGE_GENERATION",
     paid: true,
   },

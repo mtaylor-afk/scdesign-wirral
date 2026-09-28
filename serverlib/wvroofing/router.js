@@ -18,7 +18,7 @@ const SAFE_ROUTE = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/;
 /**
  * @typedef {import("http").IncomingMessage & { body?: unknown, query?: unknown }} Req
  * @typedef {import("http").ServerResponse} Res
- * @typedef {{ req: Req, res: Res, params: Record<string, string>, url: URL, project?: Record<string, any> }} Ctx
+ * @typedef {{ req: Req, res: Res, params: Record<string, string>, url: URL, startedAt: number, project?: Record<string, any> }} Ctx
  * @typedef {"none" | "cron" | "project"} Auth
  * @typedef {object} Route
  * @property {string} path            e.g. "health" or "projects/:id/renders"
@@ -31,8 +31,7 @@ const SAFE_ROUTE = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/;
 
 /** @type {Route[]} */
 const ROUTES = [
-  // Bridged pre-v02 endpoints: kept byte-for-byte until A3 (render) and A4 (enquiry) replace them.
-  { path: "render", legacy: () => require("./legacy/render.js") },
+  // Bridged pre-v02 endpoint: kept byte-for-byte until A4 replaces it.
   { path: "enquiry", legacy: () => require("./legacy/enquiry.js") },
   { path: "health", methods: ["GET"], auth: "none", origin: "any", handler: (ctx) => require("./health.js").health(ctx) },
   { path: "cron/daily", methods: ["GET"], auth: "cron", origin: "any", handler: (ctx) => require("./cron/daily.js").daily(ctx) },
@@ -45,6 +44,11 @@ const ROUTES = [
   { path: "projects/:id/photo/display", methods: ["GET"], auth: "project", handler: (ctx) => require("./projects.js").display(/** @type {any} */ (ctx)) },
   { path: "projects/:id/mask", methods: ["POST"], auth: "project", handler: (ctx) => require("./projects.js").mask(/** @type {any} */ (ctx)) },
   { path: "projects/:id/delete", methods: ["POST"], auth: "project", handler: (ctx) => require("./projects.js").remove(/** @type {any} */ (ctx)) },
+  // Photo-real renders (A3): durable jobs, polled by the customer.
+  { path: "projects/:id/renders", methods: ["POST"], auth: "project", handler: (ctx) => require("./renders.js").submit(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/renders", methods: ["GET"], auth: "project", handler: (ctx) => require("./renders.js").list(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/renders/:jobId/image", methods: ["GET"], auth: "project", handler: (ctx) => require("./renders.js").image(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/renders/:jobId/cancel", methods: ["POST"], auth: "project", handler: (ctx) => require("./renders.js").cancel(/** @type {any} */ (ctx)) },
 ];
 
 /** @param {string} pattern */
@@ -92,8 +96,18 @@ function resolvePath(req) {
   return { path: route, url };
 }
 
-/** @param {string} path */
-function match(path) {
+/**
+ * The route for a path (and method: one path can have a route per method).
+ * `allowed` lists the path's methods, for a 405's Allow header.
+ * @param {string} path
+ * @param {string} [method]
+ * @returns {{ route: Route, params: Record<string, string>, allowed: string[] } | null}
+ */
+function match(path, method) {
+  /** @type {{ route: Route, params: Record<string, string>, allowed: string[] } | null} */
+  let first = null;
+  /** @type {string[]} */
+  const allowed = [];
   for (const c of COMPILED) {
     const m = c.re.exec(path);
     if (!m) continue;
@@ -102,9 +116,12 @@ function match(path) {
     c.names.forEach((n, i) => {
       params[n] = m[i + 1];
     });
-    return { route: c.route, params };
+    const hit = { route: c.route, params, allowed };
+    if (!first) first = hit;
+    allowed.push(...(c.route.methods || []));
+    if (method && (c.route.legacy || (c.route.methods || []).includes(method))) return hit;
   }
-  return null;
+  return first;
 }
 
 /**
@@ -166,13 +183,14 @@ async function authorise(auth, ctx) {
  * @param {Res} res
  */
 async function handle(req, res) {
+  const startedAt = Date.now();
   try {
     const resolved = resolvePath(req);
     if ("error" in resolved) {
       applyCors(req, res);
       return json(res, resolved.status, { ok: false, error: resolved.error });
     }
-    const m = match(resolved.path);
+    const m = match(resolved.path, String(req.method));
     if (!m) {
       applyCors(req, res);
       return json(res, 404, { ok: false, error: "not_found" });
@@ -188,7 +206,7 @@ async function handle(req, res) {
       return;
     }
     if (!methods.includes(String(req.method))) {
-      return json(res, 405, { ok: false, error: "method_not_allowed" }, { Allow: methods.concat(["OPTIONS"]).join(", ") });
+      return json(res, 405, { ok: false, error: "method_not_allowed" }, { Allow: [...new Set(m.allowed.concat(["OPTIONS"]))].join(", ") });
     }
     // Origin rule: a disallowed Origin is always refused. Browsers send no Origin on
     // same-origin GETs, so a missing one is accepted for GET/HEAD (no side effects,
@@ -203,7 +221,7 @@ async function handle(req, res) {
       return json(res, 415, { ok: false, error: "invalid_content_type", message: "Send JSON." });
     }
     /** @type {Ctx} */
-    const ctx = { req, res, params: m.params, url: resolved.url };
+    const ctx = { req, res, params: m.params, url: resolved.url, startedAt };
     await authorise(route.auth || "none", ctx);
     if (!route.handler) throw new HttpError(500, "server_error", "Route has no handler.");
     await route.handler(ctx);

@@ -6,16 +6,35 @@
 // An uploaded photo goes to the customer's project on the server (client.js):
 // it is checked, stripped of metadata and prepared there, and the editor works
 // on the server's prepared copy so the saved roof outline lines up exactly.
+// Photo-real renders are durable jobs on the server: the chosen finish renders
+// automatically once the customer agrees, the others when tapped, and the page
+// polls until they're done. The server composites them, so what comes back is
+// the customer's own photo with only the roof changed. Sample houses show
+// pre-rendered results only; they never call the AI service.
 import { loadCatalogue, priceBandNode } from "../catalogue.js";
 import { ROOT, IS_LOCAL } from "../config.js";
 import { loadSample, photoWarnings, blobToCanvas } from "./photo.js";
 import { MaskEditor } from "./mask-editor.js";
 import { analyseRoof, renderPreview } from "./preview.js";
-import { chooseAiSize, buildAiInputs } from "./ai-input.js";
 import { compositeRender, decodeRenderToPhotoGrid } from "./composite.js";
-import { getHealth, getCapabilities, requestRender, mockAllowed } from "./api.js";
-import { ensureProject, uploadPhoto, fetchDisplay, saveOutline, deleteProject, setConsent, currentProject, sniffFile, ClientError, MAX_BYTES } from "./client.js";
-import { RenderQueue } from "./queue.js";
+import { getHealth } from "./api.js";
+import {
+  ensureProject,
+  uploadPhoto,
+  fetchDisplay,
+  saveOutline,
+  deleteProject,
+  setConsent,
+  currentProject,
+  sniffFile,
+  submitRenders,
+  listRenders,
+  fetchRenderImage,
+  cancelRender,
+  newKey,
+  ClientError,
+  MAX_BYTES,
+} from "./client.js";
 import { Lightbox } from "./lightbox.js";
 import { watermarked, downloadCanvas } from "./watermark.js";
 import { wireEnquiryForm, fillProductSelect } from "../enquiry.js";
@@ -41,16 +60,20 @@ const S = {
   previews: new Map(),
   ai: new Map(),
   cards: new Map(),
-  queue: null,
-  aiInputs: null,
+  jobs: new Map(), // finish id -> latest render job from the server
+  loading: new Set(), // job ids whose image is being fetched
+  runningSince: new Map(), // job id -> when this page first saw it running
+  attempts: new Map(), // finish id -> requests made for it in this compare session
+  renderKey: "",
+  pollTimer: 0,
   priority: null,
   aiRequested: false,
-  saveRenders: false,
   timer: 0,
   urls: [],
   caps: {},
   photoWarns: [],
   outlineKey: "",
+  outlineChain: null,
   uploading: false,
 };
 
@@ -277,13 +300,18 @@ function wireUpload() {
 
 function resetResults() {
   S.gen++;
-  if (S.queue) S.queue.cancelAll();
-  S.queue = null;
-  S.aiInputs = null;
+  // Renders already asked for carry on on the server; a new outline or photo
+  // supersedes them there, so this page just stops listening.
+  clearTimeout(S.pollTimer);
   S.aiRequested = false;
   S.previews.clear();
   S.ai.clear();
   S.cards.clear();
+  S.jobs.clear();
+  S.loading.clear();
+  S.runningSince.clear();
+  S.attempts.clear();
+  S.renderKey = "";
   S.shapesKey = "";
   S.analysis = null;
   S.mask = null;
@@ -385,17 +413,27 @@ function maskToPngDataUrl(mask, w, h) {
   return c.toDataURL("image/png");
 }
 
-/** Save the outline to the project (uploaded photos only; samples stay on this device). */
-async function saveOutlineIfChanged() {
-  if (!S.photo || !S.photo.uploaded || !S.mask || !S.editor) return;
+/**
+ * Save the outline to the project (uploaded photos only; samples stay on this
+ * device). Saves run one after another, so the last outline drawn is always the
+ * one the project keeps (renders are made for the project's current outline).
+ */
+function saveOutlineIfChanged() {
+  if (!S.photo || !S.photo.uploaded || !S.mask || !S.editor) return Promise.resolve();
   const key = S.shapesKey;
-  if (key === S.outlineKey) return;
-  try {
-    await saveOutline(maskToPngDataUrl(S.mask, S.photo.w, S.photo.h), S.editor.getShapes(), S.photo.w, S.photo.h);
-    S.outlineKey = key;
-  } catch (err) {
-    showBanner("Your roof outline couldn't be saved just now. Your previews are fine; we'll try again when you next compare.");
-  }
+  const mask = S.mask;
+  const shapes = S.editor.getShapes();
+  const { w, h } = S.photo;
+  S.outlineChain = (S.outlineChain || Promise.resolve()).then(async () => {
+    if (key === S.outlineKey) return;
+    try {
+      await saveOutline(maskToPngDataUrl(mask, w, h), shapes, w, h);
+      S.outlineKey = key;
+    } catch (err) {
+      showBanner("Your roof outline couldn't be saved just now. Your previews are fine; we'll try again when you next compare.");
+    }
+  });
+  return S.outlineChain;
 }
 
 async function deleteMyPhoto() {
@@ -558,36 +596,37 @@ async function loadPrerendered(sample) {
 }
 
 async function startAiIfPossible(gen) {
-  // Sample houses may carry pre-rendered photo-real results: free and instant.
+  $("#btn-start-ai").hidden = true;
+  // Sample houses show pre-rendered photo-real results only (free and instant);
+  // they never call the AI service from the public site.
   if (S.sample) {
     const meta = await loadPrerendered(S.sample);
     const sampleKey = JSON.stringify(
       S.sample.shapes.map((s) => ({ mode: s.mode, pts: s.pts.map((p) => [Math.round((p[0] * S.photo.w) / S.sample.w), Math.round((p[1] * S.photo.h) / S.sample.h)]) }))
     );
+    let done = 0;
     if (meta && meta.products && sampleKey === S.shapesKey) {
-      let done = 0;
       for (const id of productOrder()) {
         if (gen !== S.gen) return;
         if (!meta.products.includes(id)) continue;
         const src = ROOT + "samples/renders/" + S.sample.id + "/" + id + ".jpg";
         try {
-          await compositeInto(id, src, meta.spec, gen, meta.model);
+          await compositeInto(id, src, meta.spec, gen);
           done++;
         } catch (err) {
-          /* fall back to live rendering below */
+          /* that one stays a quick preview */
         }
       }
-      if (done) {
-        setRenderStatus(done + " of " + S.cat.products.length + " photo-real renders ready (pre-rendered sample).", done / S.cat.products.length);
-        if (done >= S.cat.products.length) return;
-      }
     }
+    if (gen !== S.gen) return;
+    if (done) setRenderStatus(done + " of " + S.cat.products.length + " photo-real renders ready (pre-rendered sample).", done / S.cat.products.length);
+    else setRenderStatus("Showing quick previews. Photo-real renders are made from your own photo: upload one to see your house.");
+    return;
   }
   const h = S.health || (await getHealth());
-  const canRender = h.live || mockAllowed(h);
-  $("#btn-start-ai").hidden = true;
-  if (!canRender) {
-    if (!S.ai.size) setRenderStatus("Showing quick previews. Photo-real rendering isn't switched on in this preview.");
+  if (gen !== S.gen) return;
+  if (!h.renders.live) {
+    setRenderStatus("Showing quick previews. Photo-real rendering isn't switched on yet.");
     return;
   }
   if ($("#consent-ai").checked || S.aiRequested) {
@@ -598,15 +637,21 @@ async function startAiIfPossible(gen) {
   }
 }
 
-async function compositeInto(id, src, spec, gen, model) {
+/** Sample houses: composite a pre-rendered result in the browser. */
+async function compositeInto(id, src, spec, gen) {
   const { w, h } = S.photo;
   const render = await decodeRenderToPhotoGrid(src, spec, w, h);
   if (gen !== S.gen) return;
   const out = compositeRender(S.orig, render, S.mask, S.analysis.alpha, w, h);
   const url = await pixelsToUrl(out.pixels, w, h);
   if (gen !== S.gen) return;
-  S.ai.set(id, { url, seam: out.seam, model: model || "" });
+  showAi(id, url, out.seam);
+}
+
+function showAi(id, url, seam) {
+  S.ai.set(id, { url, seam: seam || 0 });
   const c = S.cards.get(id);
+  if (!c) return;
   c.aiImg.src = url;
   c.aiImg.alt = "";
   requestAnimationFrame(() => c.aiImg.classList.add("is-in"));
@@ -615,157 +660,197 @@ async function compositeInto(id, src, spec, gen, model) {
   S.lightbox.refresh(id);
 }
 
-function startAi(gen) {
-  const h = S.health;
+/** The customer has agreed: record it, make sure the outline is saved, then render. */
+async function startAi(gen) {
   S.aiRequested = true;
   $("#btn-start-ai").hidden = true;
-  $("#btn-stop-ai").hidden = false;
   showBanner("");
-  const spec = chooseAiSize(S.photo.w, S.photo.h, h.flex);
-  S.aiInputs = buildAiInputs(S.photo.canvas, S.mask, spec);
-  const mock = mockAllowed(h);
-  S.queue = new RenderQueue({
-    concurrency: Math.min(3, h.maxConcurrent || 2),
-    run: async (job, signal) => {
-      const res = await requestRender({
-        productId: job.id,
-        image: S.aiInputs.image,
-        mask: S.aiInputs.mask,
-        W: S.aiInputs.W,
-        H: S.aiInputs.H,
-        mock,
-        signal,
-      });
-      if (gen !== S.gen) return null;
-      if (S.saveRenders && S.sample) saveRender(job.id, res.image);
-      await compositeInto(job.id, res.image, S.aiInputs.spec, gen, res.model);
-      return true;
-    },
-    onChange: (job) => onJobChange(job, gen),
-    onStop: (err) => onQueueStop(err),
-  });
+  setRenderStatus("Getting photo-real renders ready…");
+  try {
+    $("#consent-ai").checked = true;
+    await setConsent(true);
+    await saveOutlineIfChanged();
+    if (S.outlineKey !== S.shapesKey) throw new Error("outline not saved");
+  } catch (err) {
+    if (gen !== S.gen) return;
+    S.aiRequested = false;
+    showBanner("Photo-real renders couldn't start just now. Your quick previews are still here, so please try again.");
+    setRenderStatus("Showing quick previews.");
+    $("#btn-start-ai").hidden = false;
+    return;
+  }
+  if (gen !== S.gen) return;
+  S.renderKey = newKey();
   const todo = productOrder().filter((id) => !S.ai.has(id));
-  const auto = Math.max(0, Math.min(todo.length, h.autoRender || todo.length));
-  todo.forEach((id, i) => {
-    if (i < auto) S.queue.add(id);
-    else offerRender(id);
-  });
-  clearInterval(S.timer);
-  S.timer = setInterval(tickTimers, 1000);
+  const auto = todo.slice(0, S.health.renders.auto);
+  for (const id of todo) if (!auto.includes(id)) offerRender(id);
+  if (auto.length) await requestRenders(auto, gen);
   updateOverall();
+}
+
+/** One request per finish, each with its own key: a repeat tap returns the same render. */
+async function requestRenders(ids, gen) {
+  for (const id of ids) {
+    if (gen !== S.gen) return;
+    const n = (S.attempts.get(id) || 0) + 1;
+    S.attempts.set(id, n);
+    const c = S.cards.get(id);
+    if (c) c.action.hidden = true;
+    setBadge(id, "", "Queued");
+    try {
+      const jobs = await submitRenders([id], S.renderKey + "-" + id + "-" + n);
+      for (const j of jobs) applyJob(j, gen);
+    } catch (err) {
+      if (gen !== S.gen) return;
+      const e = err instanceof ClientError ? err : new ClientError(0, "network", "We couldn't reach the render service.");
+      failCard(id, { code: e.code, message: e.message });
+      if (["budget", "not_configured", "disabled", "consent_required"].includes(e.code)) {
+        showBanner(e.message);
+        break;
+      }
+    }
+  }
+  updateOverall();
+  schedulePoll(gen, 1500);
 }
 
 function offerRender(id) {
   const c = S.cards.get(id);
-  if (!c) return;
+  if (!c || S.ai.has(id)) return;
+  setBadge(id, "", "Quick preview");
   c.action.hidden = false;
   c.action.textContent = "Create AI render";
-  c.action.onclick = () => {
-    c.action.hidden = true;
-    S.queue.add(id);
-  };
+  c.action.onclick = () => requestRenders([id], S.gen);
 }
 
-function onJobChange(job, gen) {
+function failCard(id, error) {
+  const c = S.cards.get(id);
+  if (!c || S.ai.has(id)) return;
+  setBadge(id, "error", "Couldn't render");
+  c.badge.title = (error && error.message) || "";
+  c.action.hidden = false;
+  c.action.textContent = "Try again";
+  c.action.onclick = () => requestRenders([id], S.gen);
+  if (error && error.message) announce(error.message);
+}
+
+/** Show what the server says about one render. */
+function applyJob(j, gen) {
   if (gen !== S.gen) return;
-  const c = S.cards.get(job.id);
-  if (!c) return;
-  if (job.state === "queued") setBadge(job.id, "", "Queued");
-  else if (job.state === "running") setBadge(job.id, "busy", "Rendering 0:00");
-  else if (job.state === "error") {
-    setBadge(job.id, "error", "Couldn't render");
-    c.action.hidden = false;
-    c.action.textContent = "Try again";
-    c.action.onclick = () => {
-      c.action.hidden = true;
-      S.queue.retry(job.id);
-    };
-  } else if (job.state === "stopped") {
-    setBadge(job.id, "", "Quick preview");
+  const prev = S.jobs.get(j.visualId);
+  if (prev && prev.id !== j.id && Date.parse(prev.createdAt) > Date.parse(j.createdAt)) return; // an older try
+  S.jobs.set(j.visualId, j);
+  const id = j.visualId;
+  if (S.ai.has(id)) return;
+  if (j.status === "queued") {
+    setBadge(id, "", j.waitingUntil ? "Waiting…" : "Queued");
+  } else if (j.status === "running") {
+    if (!S.runningSince.has(j.id)) S.runningSince.set(j.id, Date.now());
+    tickTimers();
+    if (!S.timer) S.timer = setInterval(tickTimers, 1000);
+  } else if (j.status === "succeeded") {
+    if (j.image) loadRender(j, gen);
+  } else if (j.status === "cancelled") {
+    offerRender(id);
+  } else {
+    failCard(id, j.error);
   }
+}
+
+async function loadRender(j, gen) {
+  if (S.loading.has(j.id)) return;
+  S.loading.add(j.id);
+  setBadge(j.visualId, "busy", "Finishing…");
+  try {
+    const blob = await fetchRenderImage(j.id);
+    if (gen !== S.gen) return;
+    const url = URL.createObjectURL(blob);
+    S.urls.push(url);
+    showAi(j.visualId, url, j.seam);
+    updateOverall();
+  } catch (err) {
+    /* the next poll tries again */
+  } finally {
+    S.loading.delete(j.id);
+  }
+}
+
+function schedulePoll(gen, ms) {
+  clearTimeout(S.pollTimer);
+  S.pollTimer = setTimeout(() => pollRenders(gen), ms);
+}
+
+async function pollRenders(gen) {
+  if (gen !== S.gen) return;
+  let list;
+  try {
+    list = await listRenders();
+  } catch (err) {
+    if (gen === S.gen) schedulePoll(gen, 6000);
+    return;
+  }
+  if (gen !== S.gen) return;
+  for (const j of list) applyJob(j, gen);
   updateOverall();
+  const latest = [...S.jobs.values()];
+  const more = latest.some((j) => j.status === "queued" || j.status === "running" || (j.status === "succeeded" && j.image && !S.ai.has(j.visualId)));
+  if (more) schedulePoll(gen, document.hidden ? 8000 : 2500);
 }
 
 function tickTimers() {
-  if (!S.queue) return;
   let any = false;
-  for (const j of S.queue.jobs) {
-    if (j.state !== "running") continue;
+  for (const j of S.jobs.values()) {
+    if (j.status !== "running" || S.ai.has(j.visualId)) continue;
     any = true;
-    const s = Math.floor((Date.now() - j.started) / 1000);
-    setBadge(j.id, "busy", "Rendering " + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"));
+    const s = Math.floor((Date.now() - (S.runningSince.get(j.id) || Date.now())) / 1000);
+    setBadge(j.visualId, "busy", "Rendering " + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"));
   }
-  if (!any && S.queue.counts().queued === 0) clearInterval(S.timer);
+  if (!any) {
+    clearInterval(S.timer);
+    S.timer = 0;
+  }
 }
 
 function updateOverall() {
   const total = S.cat.products.length;
   const done = S.ai.size;
-  const c = S.queue ? S.queue.counts() : { queued: 0, running: 0 };
-  const busy = c.queued + c.running;
+  const latest = [...S.jobs.values()].filter((j) => !S.ai.has(j.visualId));
+  const busy = latest.filter((j) => j.status === "queued" || j.status === "running").length;
+  const waiting = latest.some((j) => j.status === "queued" && j.waitingUntil);
+  $("#btn-stop-ai").hidden = !latest.some((j) => j.status === "queued");
   if (busy) {
-    const paused = S.queue && S.queue.pausedUntil > Date.now();
     setRenderStatus(
-      done + " of " + total + " photo-real renders ready" + (paused ? " (the render service is busy, so continuing in a moment)" : ", about 20 to 60 seconds each") + ".",
+      done + " of " + total + " photo-real renders ready" + (waiting ? " (the render service is busy, so continuing in a moment)" : ", about 20 to 60 seconds each") + ".",
       done / total
     );
-  } else {
-    setRenderStatus(done ? done + " of " + total + " photo-real renders ready." : "Showing quick previews.", done ? done / total : undefined);
-    $("#btn-stop-ai").hidden = true;
-    if (done) announce(done + " photo-real renders ready.");
+  } else if (S.aiRequested) {
+    setRenderStatus(
+      (done ? done + " of " + total + " photo-real renders ready. " : "") + (done < total ? "Tap “Create AI render” on any roof to make it photo-real." : ""),
+      done ? done / total : undefined
+    );
+    if (done) announce(done + " photo-real render" + (done === 1 ? "" : "s") + " ready.");
   }
 }
 
-function onQueueStop(err) {
-  const code = err && err.code;
-  const msg =
-    code === "budget"
-      ? "Photo-real renders have reached their limit for now. Your quick previews are still here."
-      : code === "disabled" || code === "not_configured"
-        ? "Photo-real rendering is switched off at the moment, so you're seeing quick previews."
-        : "Photo-real rendering stopped. Your quick previews are still here.";
-  showBanner(msg);
-  $("#btn-stop-ai").hidden = true;
+/** Cancel renders that haven't started (one already being made will still arrive). */
+async function stopRenders() {
+  const gen = S.gen;
+  const queued = [...S.jobs.values()].filter((j) => j.status === "queued");
+  for (const j of queued) {
+    try {
+      const r = await cancelRender(j.id);
+      if (r) applyJob(r, gen);
+    } catch (err) {
+      /* it may have started meanwhile */
+    }
+  }
   updateOverall();
-}
-
-async function saveRender(id, dataUrl) {
-  // Local-only helper used to pre-render the sample houses (see docs/WVROOFING.md).
-  try {
-    await fetch("/__dev/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: "samples/renders/" + S.sample.id + "/" + id + ".jpg", dataUrl }),
-    });
-    const done = S.cat.products.filter((p) => S.ai.has(p.id) || p.id === id).map((p) => p.id);
-    await fetch("/__dev/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        path: "samples/renders/" + S.sample.id + "/meta.json",
-        data: { spec: S.aiInputs.spec, products: done, model: S.health.model },
-      }),
-    });
-  } catch (err) {
-    console.warn("save failed", err);
-  }
+  schedulePoll(gen, 500);
 }
 
 function wireCompare() {
-  $("#btn-start-ai").addEventListener("click", () => {
-    $("#consent-ai").checked = true;
-    startAi(S.gen);
-  });
-  $("#btn-stop-ai").addEventListener("click", () => {
-    if (S.queue) S.queue.cancelAll();
-    clearInterval(S.timer);
-    for (const id of productOrder()) if (!S.ai.has(id)) setBadge(id, "", "Quick preview");
-    $("#btn-stop-ai").hidden = true;
-    S.aiRequested = false;
-    S.queue = null;
-    setRenderStatus("Renders stopped. " + S.ai.size + " photo-real render" + (S.ai.size === 1 ? "" : "s") + " kept.");
-    $("#btn-start-ai").hidden = false;
-  });
+  $("#btn-start-ai").addEventListener("click", () => startAi(S.gen));
+  $("#btn-stop-ai").addEventListener("click", stopRenders);
   $("#btn-edit-mark").addEventListener("click", () => showStep("mark"));
   $("#btn-restart").addEventListener("click", () => {
     resetResults();
@@ -874,16 +959,15 @@ async function boot() {
   if (IS_LOCAL) window.__wvr = S; // test hook (local dev only)
   const params = new URLSearchParams(window.location.search);
   S.priority = params.get("tile");
-  S.saveRenders = IS_LOCAL && params.get("save") === "1";
   wireUpload();
   wireMarkTools();
   wireCompare();
   wireDialogs();
-  const [cat, samples, health, caps] = await Promise.all([loadCatalogue(), loadSamples(), getHealth(), getCapabilities()]);
+  const [cat, samples, health] = await Promise.all([loadCatalogue(), loadSamples(), getHealth()]);
   S.cat = cat;
   S.samples = samples;
   S.health = health;
-  S.caps = caps;
+  S.caps = health.caps;
   // Record a change of mind about photo-real renders on the project, if there is one.
   $("#consent-ai").addEventListener("change", (e) => {
     if (currentProject()) setConsent(e.target.checked).catch(() => undefined);
@@ -891,9 +975,9 @@ async function boot() {
   if (S.priority && !cat.byId.has(S.priority)) S.priority = null;
   renderSampleGrid();
   const note = $("#ai-availability");
-  if (health.live) note.textContent = "Photo-real rendering is available. Each render takes about 20 to 60 seconds.";
-  else if (mockAllowed(health)) note.textContent = "Local test mode: renders use a stand-in image instead of the AI service.";
-  else note.textContent = "Photo-real rendering isn't switched on in this preview yet, so you'll see quick previews.";
+  if (health.renders.live && health.renders.test) note.textContent = "Test environment: photo-real renders use a stand-in image instead of the AI service.";
+  else if (health.renders.live) note.textContent = "Photo-real rendering is available for your own photo. Each render takes about 20 to 60 seconds.";
+  else note.textContent = "Photo-real rendering isn't switched on yet, so you'll see quick previews.";
   const wanted = params.get("sample");
   const s = wanted && samples.find((x) => x.id === wanted);
   if (s) selectSample(s);
