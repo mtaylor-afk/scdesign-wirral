@@ -167,3 +167,51 @@ Vercel hands over a rewritten request.
   also wakes the database), and the dev server starts the test database when it starts. Nested ES-module
   imports are not versioned: this host revalidates static assets by default, and the page-level assets carry
   a new `?v=`.
+
+## Decisions made while building A6 (2026-09-28)
+
+- **One operator password, held only as a hash.** `WVR_OPERATOR_PASSWORD_HASH` is
+  `scrypt:N:r:p:salt:hash` (scrypt N=16384, r=8, p=1, 16-byte salt, 64-byte key, base64url). Colons rather
+  than `$`, so no `.env` loader can expand part of it. The owner makes it with
+  `node scripts/wvroofing/operator-hash.mjs` on his own machine: it reads the password twice without
+  showing it, needs at least 12 characters, refuses the test password and prints only the hash. Claude
+  never sees or types the real password.
+- **Sessions.** A login opens a 12-hour session. Its 256-bit key is stored only as a SHA-256 hash; the
+  browser keeps it in `sessionStorage` (this tab only) and sends it as a bearer token, so there are no
+  cookies and no cross-site form can act as the operator. Logging out revokes the session on the server.
+  Each session records which password hash it was opened under, so **a new password ends every session**.
+  With no hash set, the login answers `not_configured` and no session works.
+- **Lockouts.** Five failed logins from one visitor (the daily IP hash), or twenty in all, within 15 minutes
+  lock logins, even with the right password, until the window passes. Every attempt is recorded. Attempts
+  and ended sessions are deleted after 7 days.
+- **The test password.** The labelled test environment (dev server, QA, tests) logs in with
+  `TEST_OPERATOR_PASSWORD` in `serverlib/wvroofing/auth.js`. Outside the test environment that password is
+  refused even if a hash of it were ever set.
+- **Every route declares `operator` auth** except `operator/login`. A customer's project key, a revoked key
+  and an expired key all get 401; the test suite checks every operator route in the table.
+- **Audit.** Every change (status, survey requested, scope corrected, email sent again, render tried again,
+  original downloaded, deleted) is written to `wvr_operator_actions` with the state before and after and
+  the session that did it. The history is never edited and is deleted after 12 months, like enquiries.
+- **Scope correction** adds a new confirmation (`confirmed_by = operator`) and marks the customer's as
+  replaced. What the customer saw and answered on the satellite view (pin shown or confirmed) is carried
+  over unchanged. The enquiry's snapshot, which is what the customer sent, never changes. From Release B a
+  correction also sends any measurement back to `needs_review`.
+- **Status** is one field: `new`, `contacted`, `survey_requested`, `quoted`, `closed`, or
+  `spam_suspected`. Automatic email retries only run while an enquiry is `new`. Once the operator has
+  moved it on, it isn't emailed again unless he asks. "Request a survey" records the date; it doesn't
+  contact the customer.
+- **Sending the email again** needs `{confirm: true}`. It sends whatever the delivery state, even `sent`
+  (the roofer says it never arrived), but never while a send is in progress. The outcome is recorded.
+- **Trying a render again** needs `{confirm: true}`, and an uncertain render's message says it may already
+  have been charged. It is a new job with its own budget reservation, keyed on the old job, so a double
+  click makes one render. It is refused if the customer has since withdrawn their OK to use OpenAI, or if
+  the photo or outline has changed. The old job is left as it was.
+- **Deleting.** "Photo and project only" keeps the enquiry and contact details, for example when the
+  customer asks for their photo to be removed. "Enquiry and project" removes both, for example on an
+  erasure request. The history keeps the reference, not the contact details.
+- **The page** (`/WVROOFING/operator/`) is noindexed, linked from nowhere (a test searches `public/` and
+  `src/` for links) and served under the same CSP with no inline script. All customer text is put on the
+  page as text, never as HTML. Images are fetched with the operator's key, shown as object URLs, and kept
+  while that enquiry is open.
+- **Satellite views opened by the operator** are logged as paid calls (`issued_operator`), like the
+  customer's.

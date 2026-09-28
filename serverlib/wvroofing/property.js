@@ -280,4 +280,4 @@ async function summary(p) {
   return { address: a ? addressOut(a) : null, property };
 }
 
-module.exports = { lookup, choose, clear, view: viewRoute, confirm, summary, ambiguityReasons, PROPERTY_TYPES };
+module.exports = { lookup, choose, clear, view: viewRoute, confirm, summary, ambiguityReasons, logCall, PROPERTY_TYPES, MAP_COST_USD };

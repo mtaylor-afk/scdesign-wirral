@@ -1,0 +1,189 @@
+/* WV Roofing — the operator screen (A6). Builds on site.css's tokens, type and
+   controls (so dark mode comes for free); a denser, tool-like layout. */
+
+body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
+
+/* ---------- Top bar ---------- */
+.op-bar {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--nav-solid); border-bottom: 1px solid var(--nav-line);
+}
+.op-bar-inner {
+  max-width: 1320px; margin-inline: auto; padding: 8px 16px;
+  display: flex; align-items: center; gap: 12px; min-height: 52px;
+}
+.op-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.01em; }
+.op-brand .brand-mark { width: 28px; height: 28px; flex: none; }
+.op-brand-sub { color: var(--text-2); font-weight: 400; }
+.op-env {
+  font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: var(--r-pill);
+  background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--text);
+}
+.op-logout { margin-left: auto; }
+
+/* ---------- Page ---------- */
+.op-main { max-width: 1320px; margin-inline: auto; padding: 16px 16px 64px; }
+.op-muted { color: var(--text-2); }
+.op-small { font-size: 13px; }
+.op-noscript { margin-top: 24px; }
+.op-status { min-height: 1.45em; font-size: 13px; color: var(--text-2); margin: 6px 2px 10px; }
+.op-status.is-error { color: var(--err); }
+.op-empty { padding: 28px 8px; text-align: center; }
+
+/* ---------- Login ---------- */
+.op-login {
+  max-width: 420px; margin: 8vh auto 0; background: var(--bg-elev); border-radius: var(--r-card);
+  padding: 28px 24px; box-shadow: var(--shadow-card); display: grid; gap: 14px;
+}
+.op-login-title { font-size: 28px; line-height: 1.14; letter-spacing: -0.015em; }
+.op-login-form .btn { width: 100%; }
+
+/* ---------- Toolbar and tabs ---------- */
+.op-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.op-tabs {
+  display: inline-flex; padding: 3px; border-radius: var(--r-pill); background: var(--neutral); gap: 2px;
+}
+.op-tab {
+  border: 0; background: transparent; border-radius: var(--r-pill); padding: 7px 14px; min-height: 36px;
+  font-size: 14px; cursor: pointer; color: var(--text); display: inline-flex; align-items: center; gap: 6px;
+}
+.op-tab[aria-selected="true"] { background: var(--bg-elev); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); font-weight: 600; }
+.op-count {
+  min-width: 20px; padding: 0 6px; border-radius: var(--r-pill); background: var(--err); color: #fff;
+  font-size: 12px; font-weight: 600; line-height: 20px; text-align: center;
+}
+#op-refresh { margin-left: auto; }
+
+/* ---------- List and detail ---------- */
+.op-split { display: grid; gap: 16px; }
+.op-split[data-show="detail"] .op-list-pane { display: none; }
+.op-split[data-show="list"] .op-detail-pane { display: none; }
+@media (min-width: 960px) {
+  .op-split { grid-template-columns: minmax(300px, 380px) 1fr; align-items: start; }
+  .op-split[data-show] .op-list-pane, .op-split[data-show] .op-detail-pane { display: block; }
+  .op-list-pane { position: sticky; top: 68px; max-height: calc(100vh - 84px); overflow: auto; }
+  .op-back { display: none !important; }
+}
+
+.op-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.op-chip {
+  border: 1px solid var(--hairline); background: var(--bg-elev); color: var(--text);
+  border-radius: var(--r-pill); padding: 5px 12px; min-height: 32px; font-size: 13px; cursor: pointer;
+}
+.op-chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
+
+.op-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.op-item {
+  width: 100%; text-align: left; border: 1px solid transparent; background: var(--bg-elev); color: var(--text);
+  border-radius: 14px; padding: 12px 14px; cursor: pointer; display: grid; gap: 4px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.op-item:hover { border-color: var(--hairline); }
+.op-item[aria-current="true"] { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+.op-item-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.op-ref { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; font-weight: 600; letter-spacing: 0; }
+.op-item-name { font-weight: 600; }
+.op-item-meta { font-size: 13px; color: var(--text-2); }
+.op-flags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* Status and warning pills */
+.op-pill {
+  display: inline-block; font-size: 12px; line-height: 1.5; font-weight: 600; padding: 1px 8px;
+  border-radius: var(--r-pill); background: var(--neutral); color: var(--text); white-space: nowrap;
+}
+.op-pill--new { background: rgba(0, 113, 227, 0.12); color: var(--link); }
+.op-pill--survey_requested, .op-pill--quoted { background: var(--warn-bg); color: var(--text); }
+.op-pill--closed { color: var(--text-2); }
+.op-pill--spam_suspected, .op-pill--bad { background: var(--err-bg); color: var(--err); }
+.op-pill--good { background: var(--ok-bg); color: var(--ok); }
+.op-pill--warn { background: var(--warn-bg); color: var(--text); border: 1px solid var(--warn-line); }
+
+/* Detail */
+.op-detail-pane:focus { outline: none; }
+.op-detail { display: grid; gap: 14px; }
+.op-back { justify-self: start; }
+.op-head {
+  background: var(--bg-elev); border-radius: var(--r-card); padding: 18px 20px; display: grid; gap: 12px;
+}
+.op-head h2 { font-size: 24px; line-height: 1.17; letter-spacing: -0.012em; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.op-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.op-actions .select { height: 36px; padding: 6px 40px 6px 14px; font-size: 14px; width: auto; border-radius: var(--r-pill); }
+
+.op-card { background: var(--bg-elev); border-radius: var(--r-card); padding: 18px 20px; display: grid; gap: 12px; min-width: 0; }
+.op-card h3 { font-size: 17px; line-height: 1.3; letter-spacing: -0.01em; }
+.op-card h4 { font-size: 14px; line-height: 1.3; color: var(--text-2); font-weight: 600; margin: 0; }
+.op-grid-2 { display: grid; gap: 14px; }
+@media (min-width: 1200px) { .op-grid-2 { grid-template-columns: 1fr 1fr; align-items: start; } }
+
+.op-kv { display: grid; grid-template-columns: minmax(110px, max-content) 1fr; gap: 6px 16px; margin: 0; font-size: 14px; }
+.op-kv dt { color: var(--text-2); }
+.op-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+
+.op-table-wrap { overflow-x: auto; }
+.op-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.op-table th, .op-table td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--hairline-2); vertical-align: top; }
+.op-table th { color: var(--text-2); font-weight: 600; white-space: nowrap; }
+.op-table tr.is-old td { color: var(--text-3); }
+
+.op-form { display: grid; gap: 8px; border-top: 1px solid var(--hairline-2); padding-top: 14px; }
+.op-form .select, .op-form .textarea { font-size: 15px; }
+.op-form .textarea { min-height: 84px; padding-top: 12px; }
+.op-form .textarea::placeholder { color: var(--text-3); }
+.op-form .select { height: 44px; padding: 8px 44px 8px 14px; }
+.op-form .btn { justify-self: start; margin-top: 4px; }
+.op-label { font-size: 13px; font-weight: 600; color: var(--text-2); margin-top: 4px; }
+
+.op-aerial { border-radius: 12px; overflow: hidden; background: var(--bg-alt); }
+.op-aerial img { width: 100%; height: auto; }
+.op-caption { font-size: 12px; color: var(--text-2); }
+
+.op-photo {
+  border-radius: 12px; overflow: hidden; background: var(--bg-alt); max-width: 640px;
+  display: grid; place-items: center;
+}
+.op-photo a { display: block; width: 100%; }
+.op-photo img { width: 100%; height: auto; }
+.op-renders { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.op-render { margin: 0; border: 1px solid var(--hairline-2); border-radius: 12px; overflow: hidden; display: grid; align-content: start; }
+.op-aerial { margin: 0; }
+.op-render-img {
+  position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--bg-alt);
+  display: grid; place-items: center; color: var(--text-3); font-size: 12px;
+}
+/* Out of the flow, so a tall render can't stretch the tile over its caption; the whole render shows. */
+.op-render-img img, .op-render-img a { position: absolute; inset: 0; width: 100%; height: 100%; }
+.op-render-img img { object-fit: contain; }
+.op-render-body { padding: 10px 12px; display: grid; gap: 6px; font-size: 13px; }
+.op-render-body .btn { justify-self: start; }
+.op-render.is-old { opacity: 0.6; }
+
+.op-audit { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; font-size: 13px; }
+.op-audit li { display: grid; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--hairline-2); }
+.op-audit time { color: var(--text-2); }
+
+.op-danger { border: 1px solid var(--err-bg); }
+.btn-danger { background: var(--err); color: #fff; }
+.btn-danger:not([disabled]):hover { filter: brightness(1.08); }
+
+/* Renders to check */
+.op-jobs-view { display: grid; gap: 12px; }
+.op-intro { max-width: 820px; font-size: 14px; }
+.op-joblist { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.op-job { background: var(--bg-elev); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; }
+.op-job-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.op-linklike { border: 0; background: none; padding: 0; color: var(--link); cursor: pointer; font: inherit; }
+.op-linklike:hover { text-decoration: underline; }
+
+/* Confirm dialog */
+.op-dialog {
+  border: 0; border-radius: var(--r-card); padding: 22px 22px 18px; width: min(460px, calc(100vw - 32px));
+  background: var(--bg-elev); color: var(--text); box-shadow: var(--shadow-lift);
+}
+.op-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+.op-dialog-title { font-size: 19px; line-height: 1.25; margin-bottom: 8px; }
+.op-dialog-text { color: var(--text-2); font-size: 14px; white-space: pre-line; }
+.op-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .op-item { transition: none; }
+}

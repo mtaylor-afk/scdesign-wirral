@@ -12,7 +12,9 @@
 //   4. Enquiries: sends that never reported back become 'uncertain' (not
 //      resent), failed emails due a retry are tried again (at most 3 attempts
 //      in all), and enquiries older than 12 months are deleted.
-//   5. Renders: expired leases are settled (queued again, or 'uncertain' if
+//   5. Operator sessions that ended, and login attempts, go after 7 days; the
+//      operator's history (who changed what) after 12 months.
+//   6. Renders: expired leases are settled (queued again, or 'uncertain' if
 //      OpenAI was called), jobs queued for over a day are dropped, files of
 //      renders that were never shown go after 7 days, and any queue nobody is
 //      polling is worked while this run has time for a whole render.
@@ -51,6 +53,7 @@ async function daily(ctx) {
     const started = new Date().toISOString();
     const detail = Object.assign({}, await expireProjects(), await sweepUploads(), { rateLimitRowsPurged: await limits.purge() });
     Object.assign(detail, await enquiries.sweep());
+    Object.assign(detail, await require("../auth.js").purgeOperatorRecords());
     Object.assign(detail, await jobs.sweep(jobs.deadlineFrom(ctx.startedAt)));
     await db.query("INSERT INTO wvr_retention_runs (kind, started_at, finished_at, detail) VALUES ($1, $2, now(), $3)", ["daily", started, JSON.stringify(detail)]);
     return detail;

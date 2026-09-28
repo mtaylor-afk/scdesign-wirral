@@ -378,16 +378,22 @@ async function deliverWithRetry(id) {
 /**
  * One delivery attempt, if one is due. Returns the outcome, or null when there
  * was nothing to do (already sent, not due, out of attempts, delivery off).
+ * The operator's resend ({ force: true }) sends whatever the state, unless a
+ * send is in progress right now.
  * @param {string} id
+ * @param {{ force?: boolean }} [opts]
  * @returns {Promise<"sent" | "failed" | "uncertain" | null>}
  */
-async function deliver(id) {
+async function deliver(id, opts) {
   if (!isEnabled("enquiry_delivery", process.env)) return null;
-  const claim = await db.query(
-    "UPDATE wvr_enquiries SET delivery_status = 'sending', delivery_attempts = delivery_attempts + 1, delivery_lease_until = now() + interval '3 minutes', updated_at = now() " +
-      "WHERE id = $1 AND status = 'new' AND delivery_status IN ('pending', 'failed') AND delivery_attempts < $2 AND (next_attempt_at IS NULL OR next_attempt_at <= now()) RETURNING *",
-    [id, MAX_ATTEMPTS]
-  );
+  const set = "UPDATE wvr_enquiries SET delivery_status = 'sending', delivery_attempts = delivery_attempts + 1, delivery_lease_until = now() + interval '3 minutes', updated_at = now() ";
+  const claim =
+    opts && opts.force
+      ? await db.query(set + "WHERE id = $1 AND (delivery_status <> 'sending' OR delivery_lease_until < now()) RETURNING *", [id])
+      : await db.query(
+          set + "WHERE id = $1 AND status = 'new' AND delivery_status IN ('pending', 'failed') AND delivery_attempts < $2 AND (next_attempt_at IS NULL OR next_attempt_at <= now()) RETURNING *",
+          [id, MAX_ATTEMPTS]
+        );
   const e = claim.rows[0];
   if (!e) return null;
   /** @type {import("./mailer.js").SendResult} */

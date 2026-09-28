@@ -44,7 +44,7 @@ test("both hosts send the same CSP on every WV Roofing path", () => {
 
 test("every inline script in the WV pages is allowed by its hash, and nothing else inline", () => {
   const policy = cloudflarePolicies()["/WVROOFING/*"];
-  const pages = ["index.html", "visualiser/index.html", "roof-replacement/index.html", "privacy/index.html"];
+  const pages = ["index.html", "visualiser/index.html", "roof-replacement/index.html", "privacy/index.html", "operator/index.html"];
   for (const p of pages) {
     const html = fs.readFileSync(path.join(repo, "public/WVROOFING", p), "utf8");
     for (const m of html.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/g)) {

@@ -54,6 +54,12 @@ if (process.env.WVR_ENV === "test") {
   if (!process.env.WVR_ENQUIRIES_PER_IP_HOURLY) process.env.WVR_ENQUIRIES_PER_IP_HOURLY = "200";
   if (!process.env.WVR_FIXTURE_LATENCY_MS) process.env.WVR_FIXTURE_LATENCY_MS = "1500";
   if (typeof FIXTURE === "string" && FIXTURE) process.env.WVR_FIXTURE_OPENAI = FIXTURE;
+  // The operator screen logs in with the test environment's throwaway password
+  // (TEST_OPERATOR_PASSWORD in serverlib/wvroofing/auth.js), never a real one.
+  if (!process.env.WVR_OPERATOR_PASSWORD_HASH) {
+    const auth = require(path.join(repo, "serverlib", "wvroofing", "auth.js"));
+    process.env.WVR_OPERATOR_PASSWORD_HASH = auth.hashPassword(auth.TEST_OPERATOR_PASSWORD);
+  }
 }
 
 const MIME = {
@@ -197,6 +203,7 @@ server.listen(PORT, () => {
       .ensureSchema()
       .catch((err) => console.error("test database failed to start:", err.message));
     console.log("TEST ENVIRONMENT: PGlite database, local-folder storage and stand-ins for OpenAI, email, address lookup and the satellite view (never used in production).");
+    console.log(`Operator screen: http://localhost:${PORT}/WVROOFING/operator/ (test password: TEST_OPERATOR_PASSWORD in serverlib/wvroofing/auth.js)`);
     if (process.env.WVR_FIXTURE_OPENAI) console.log("Render stand-in mode: " + process.env.WVR_FIXTURE_OPENAI);
   }
 });

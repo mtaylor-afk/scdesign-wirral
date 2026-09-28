@@ -14,15 +14,22 @@
 // before the customer agrees; then the chosen roof automatically and the
 // others on tap; the served composite is compared with the photo outside the
 // roof), a refresh that brings everything back without rendering twice, an
-// enquiry with a reference, and "Delete my photo". Pages are served with their
-// real headers (incl. CSP), so a CSP violation shows up as a console error.
+// enquiry with a reference, and "Delete my photo". Then the operator screen
+// (local test environment only, with its throwaway password): log in, find a
+// customer's enquiry, photo, render and satellite view, correct the scope,
+// change the status, the phone layout, delete after confirming, log out.
+// Pages are served with their real headers (incl. CSP), so a CSP violation
+// shows up as a console error.
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import zlib from "node:zlib";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
 const args = process.argv.slice(2);
 const opt = (n, d) => {
   const i = args.indexOf("--" + n);
@@ -40,7 +47,7 @@ const ok = (name, pass, detail) => {
   console.log((pass ? "PASS " : "FAIL ") + name + (detail ? " - " + detail : ""));
 };
 
-const PAGES = ["/WVROOFING/", "/WVROOFING/roof-replacement/", "/WVROOFING/privacy/", "/WVROOFING/visualiser/"];
+const PAGES = ["/WVROOFING/", "/WVROOFING/roof-replacement/", "/WVROOFING/privacy/", "/WVROOFING/visualiser/", "/WVROOFING/operator/"];
 const VIEWPORTS = [
   { name: "phone", width: 375, height: 812, isMobile: true, hasTouch: true },
   { name: "desktop", width: 1280, height: 860 },
@@ -56,6 +63,64 @@ async function shot(page, opts) {
       console.log("(screenshot skipped: " + err2.message.split("\n")[0] + ")");
     }
   }
+}
+
+// ---- a customer's journey through the API, for the operator checks (test environment) ----
+async function apiCall(method, route, { token, body } = {}) {
+  const headers = { Origin: BASE };
+  if (method === "POST") headers["Content-Type"] = "application/json";
+  if (token) headers.Authorization = "Bearer " + token;
+  const r = await fetch(BASE + "/api/wvroofing/" + route, { method, headers, body: method === "POST" ? JSON.stringify(body || {}) : undefined });
+  return { status: r.status, json: await r.json().catch(() => null) };
+}
+
+function outlinePng(w, h) {
+  const { crc32 } = require("../../serverlib/wvroofing/core.js");
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(td));
+    return Buffer.concat([len, td, crc]);
+  };
+  const raw = Buffer.alloc(h * (w * 4 + 1));
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) raw[y * (w * 4 + 1) + 1 + x * 4 + 3] = x > w * 0.2 && x < w * 0.8 && y > h * 0.15 && y < h * 0.4 ? 0 : 255;
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  return "data:image/png;base64," + Buffer.concat([Buffer.from("89504e470d0a1a0a", "hex"), chunk("IHDR", ihdr), chunk("IDAT", zlib.deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]).toString("base64");
+}
+
+/** 1 Test Road (a semi, pin confirmed), a sample photo, an outline, one render, then an enquiry. */
+async function customerEnquiry() {
+  const run = "qa-op-" + Date.now();
+  const p = (await apiCall("POST", "projects", { body: { noticeShown: true, consentAi: true } })).json;
+  const l = await apiCall("POST", "projects/" + p.id + "/address/lookup", { token: p.token, body: { postcode: "CH45 1AB" } });
+  const a = l.json.addresses.find((x) => /^1 Test Road/.test(x.label));
+  await apiCall("POST", "projects/" + p.id + "/address", { token: p.token, body: { token: a.token } });
+  await apiCall("POST", "projects/" + p.id + "/property/confirm", { token: p.token, body: { propertyType: "semi", pinConfirmed: true } });
+  const jpg = fs.readFileSync(path.resolve(here, "../../public/WVROOFING/samples/detached-modern.jpg"));
+  const pre = (await apiCall("POST", "projects/" + p.id + "/photo/presign", { token: p.token, body: { contentType: "image/jpeg", bytes: jpg.length } })).json;
+  await fetch(new URL(pre.url, BASE), { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: jpg });
+  const photo = (await apiCall("POST", "projects/" + p.id + "/photo/commit", { token: p.token, body: { uploadId: pre.uploadId } })).json.photo;
+  const W = photo.w;
+  const H = photo.h;
+  const shape = [[W * 0.2, H * 0.15], [W * 0.8, H * 0.15], [W * 0.8, H * 0.4], [W * 0.2, H * 0.4]].map(([x, y]) => [Math.round(x), Math.round(y)]);
+  await apiCall("POST", "projects/" + p.id + "/mask", { token: p.token, body: { png: outlinePng(W, H), shapes: [{ mode: "add", pts: shape }], displayW: W, displayH: H } });
+  await apiCall("POST", "projects/" + p.id + "/renders", { token: p.token, body: { visualIds: ["welsh-slate"], idempotencyKey: run + "-r" } });
+  for (let i = 0; i < 40; i++) {
+    const r = await apiCall("GET", "projects/" + p.id + "/renders", { token: p.token });
+    if (r.json && r.json.renders.some((x) => x.status === "succeeded")) break;
+    await new Promise((res) => setTimeout(res, 750));
+  }
+  const e = await apiCall("POST", "projects/" + p.id + "/enquiry", {
+    token: p.token,
+    body: { name: "QA Operator Check", phone: "0151 496 0000", consent: true, elapsedMs: 9000, idempotencyKey: run + "-e", product: "welsh-slate", includeImages: true },
+  });
+  return { ref: e.json && e.json.reference, status: e.status };
 }
 
 function watch(page) {
@@ -477,6 +542,86 @@ try {
       ok("phone: 'Delete my photo and project' deletes it all and forgets it", !!delRes && delRes.status() === 200 && kept === null && gone, delRes ? String(delRes.status()) : "no delete");
     }
     ok("phone visualiser has no console errors", errors.length === 0, errors.join(" | "));
+    await ctx.close();
+  }
+
+  // ---- operator screen (local test environment only: its throwaway password) -----------
+  if (!LIVE) {
+    const made = await customerEnquiry();
+    ok("operator: a customer's enquiry to look at was made", made.status === 201 && REF.test(made.ref || ""), made.status + " " + made.ref);
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = watch(page);
+    await page.goto(BASE + "/WVROOFING/operator/", { waitUntil: "load", timeout: 45000 });
+    const loginShown = await page.waitForSelector("#op-login:not([hidden])", { timeout: 10000 }).then(() => true).catch(() => false);
+    ok("operator: the login shows first", loginShown);
+    await page.fill("#op-password", require("../../serverlib/wvroofing/auth.js").TEST_OPERATOR_PASSWORD);
+    await page.click("#op-login-btn");
+    const inApp = await page.waitForSelector("#op-app:not([hidden])", { timeout: 15000 }).then(() => true).catch(() => false);
+    const kept = await page.evaluate(() => [Object.keys(localStorage).length, !!sessionStorage.getItem("wvr.operator.session")]);
+    ok("operator: logged in; the key is kept for this tab only", inApp && kept[0] === 0 && kept[1], JSON.stringify(kept));
+    const item = page.locator(".op-item", { hasText: made.ref || "none" });
+    const listed = await item.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+    ok("operator: the new enquiry is in the list", listed);
+    if (listed) {
+      await item.click();
+      await page.waitForSelector("#op-ref-title", { timeout: 15000 });
+      ok("operator: the enquiry opens with its reference", ((await page.textContent("#op-ref-title")) || "").includes(made.ref));
+      const imgs = await page
+        .waitForFunction(() => {
+          const ph = document.querySelector(".op-photo img");
+          const r = document.querySelector(".op-render-img img");
+          return !!ph && !!r && ph.naturalWidth > 0 && r.naturalWidth > 0;
+        }, null, { timeout: 20000 })
+        .then(() => true)
+        .catch(() => false);
+      ok("operator: the customer's photo and the render load (with the operator's key)", imgs);
+      await page.click("button:has-text('Show the satellite view')");
+      const aerial = await page.waitForSelector(".op-aerial img", { timeout: 10000 }).then(() => true).catch(() => false);
+      ok("operator: the satellite view shows", aerial);
+      await page.selectOption("#op-scope-type", "detached");
+      await page.fill("#op-scope-notes", "QA: checked on site.");
+      await page.click('#op-scope-form button[type="submit"]');
+      const corrected = await page
+        .waitForFunction(() => /Scope corrected: Semi-detached house to Detached house/.test((document.querySelector(".op-audit") || {}).textContent || ""), null, { timeout: 10000 })
+        .then(() => true)
+        .catch(() => false);
+      ok("operator: a scope correction is saved and shows in the history", corrected);
+      await page.selectOption(".op-head select", "contacted");
+      const contacted = await page
+        .waitForFunction(() => /Contacted/.test(document.querySelector("#op-ref-title").textContent), null, { timeout: 10000 })
+        .then(() => true)
+        .catch(() => false);
+      ok("operator: the status changes", contacted);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      ok("operator: no horizontal overflow (desktop)", overflow <= 0, overflow + "px");
+      await shot(page, { path: path.join(OUT, "operator-desktop.png"), fullPage: true });
+      // Phone width: the enquiry fills the screen, with a way back to the list.
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.waitForTimeout(300);
+      const phoneOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      const listHidden = !(await page.isVisible(".op-list-pane"));
+      await shot(page, { path: path.join(OUT, "operator-phone.png"), fullPage: true });
+      await page.click(".op-back");
+      const listBack = await page.isVisible(".op-list-pane");
+      ok("operator (phone width): one pane at a time, back to the list, no overflow", listHidden && listBack && phoneOverflow <= 0, "overflow " + phoneOverflow + "px");
+      await page.setViewportSize({ width: 1280, height: 900 });
+      // Delete it (after confirming), which also tidies up what this check made.
+      await item.click();
+      await page.waitForSelector("#op-ref-title", { timeout: 15000 });
+      await page.click("button:has-text('Delete the enquiry and its project')");
+      await page.waitForSelector("#op-confirm[open]", { timeout: 5000 });
+      await page.click("#op-confirm-ok");
+      const deleted = await item.waitFor({ state: "detached", timeout: 15000 }).then(() => true).catch(() => false);
+      ok("operator: the enquiry is deleted once confirmed", deleted);
+    }
+    const key = await page.evaluate(() => sessionStorage.getItem("wvr.operator.session"));
+    await page.click("#op-logout");
+    await page.waitForSelector("#op-login:not([hidden])", { timeout: 10000 }).catch(() => null);
+    const after = await fetch(BASE + "/api/wvroofing/operator/session", { headers: { Authorization: "Bearer " + key } });
+    const cleared = await page.evaluate(() => sessionStorage.getItem("wvr.operator.session"));
+    ok("operator: logging out ends the session on the server and in the tab", after.status === 401 && cleared === null, String(after.status));
+    ok("operator screen has no console errors", errors.length === 0, errors.join(" | "));
     await ctx.close();
   }
 } finally {

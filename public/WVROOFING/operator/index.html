@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Operator | WV Roofing (concept)</title>
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/WVROOFING/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap">
+  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20260928a">
+  <link rel="stylesheet" href="/WVROOFING/assets/css/operator.css?v=20260928a">
+  <script type="module" src="/WVROOFING/assets/js/operator/app.js?v=20260928a"></script>
+</head>
+<body class="op">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="op-bar">
+    <div class="op-bar-inner">
+      <span class="op-brand">
+        <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#1b2a4a"/><path d="M14 30 32 14l18 16" fill="none" stroke="#c9a84c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><text x="32" y="52" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Inter, 'Segoe UI', Arial, sans-serif" font-weight="700" font-size="21" letter-spacing="-0.5" fill="#ffffff">WV</text></svg>
+        <span>WV Roofing <span class="op-brand-sub">Operator</span></span>
+      </span>
+      <span class="op-env" id="op-env" hidden>Test environment</span>
+      <button class="btn btn-neutral btn-sm op-logout" id="op-logout" type="button" hidden>Log out</button>
+    </div>
+  </header>
+
+  <main id="main" class="op-main">
+    <noscript><p class="notice notice--warn op-noscript">The operator screen needs JavaScript.</p></noscript>
+
+    <section id="op-login" class="op-login" aria-labelledby="op-login-title" hidden>
+      <h1 id="op-login-title" class="op-login-title">Operator login</h1>
+      <p class="op-muted">For the roofer only: enquiries, photos and renders from the Roof Visualiser.</p>
+      <form id="op-login-form" class="form op-login-form" method="post" novalidate>
+        <div class="field">
+          <input class="input" id="op-password" name="password" type="password" autocomplete="current-password" placeholder="Password" required>
+          <label class="fl-label" for="op-password">Password</label>
+        </div>
+        <p class="field-error" id="op-login-error" role="alert" hidden></p>
+        <button class="btn btn-primary" id="op-login-btn" type="submit">Log in</button>
+      </form>
+      <p class="op-muted op-small">Logins lock for 15 minutes after five wrong passwords. You stay logged in for up to 12 hours in this tab.</p>
+    </section>
+
+    <section id="op-app" class="op-app" aria-label="Operator" hidden>
+      <div class="op-toolbar">
+        <div class="op-tabs" role="tablist" aria-label="Views">
+          <button class="op-tab" id="tab-enquiries" type="button" role="tab" aria-selected="true" aria-controls="op-view-enquiries" data-tab="enquiries">Enquiries</button>
+          <button class="op-tab" id="tab-jobs" type="button" role="tab" aria-selected="false" aria-controls="op-view-jobs" data-tab="jobs">Renders to check <span class="op-count" id="op-jobs-count" hidden></span></button>
+        </div>
+        <button class="btn btn-neutral btn-sm" id="op-refresh" type="button">Refresh</button>
+      </div>
+      <p class="op-status" id="op-status" role="status" aria-live="polite"></p>
+
+      <div id="op-view-enquiries" class="op-split" role="tabpanel" aria-labelledby="tab-enquiries" data-show="list">
+        <div class="op-list-pane">
+          <div class="op-filters" id="op-filters" role="group" aria-label="Show enquiries"></div>
+          <ul class="op-list" id="op-list" aria-label="Enquiries"></ul>
+          <p class="op-empty op-muted" id="op-list-empty" hidden>No enquiries here yet.</p>
+        </div>
+        <div class="op-detail-pane" id="op-detail" aria-live="polite">
+          <p class="op-empty op-muted">Choose an enquiry to see everything about it.</p>
+        </div>
+      </div>
+
+      <div id="op-view-jobs" class="op-jobs-view" role="tabpanel" aria-labelledby="tab-jobs" hidden>
+        <p class="op-muted op-intro">Photo-real renders from the last 30 days that failed, or whose result never came back. An uncertain render may already have been charged by OpenAI, so trying again always makes a new one, and only when you confirm.</p>
+        <ul class="op-joblist" id="op-jobs"></ul>
+        <p class="op-empty op-muted" id="op-jobs-empty" hidden>Nothing to check.</p>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="op-dialog" id="op-confirm" aria-labelledby="op-confirm-title">
+    <form method="dialog">
+      <h2 class="op-dialog-title" id="op-confirm-title"></h2>
+      <p class="op-dialog-text" id="op-confirm-text"></p>
+      <div class="op-dialog-actions">
+        <button class="btn btn-neutral btn-sm" value="cancel" type="submit">Cancel</button>
+        <button class="btn btn-primary btn-sm" value="ok" type="submit" id="op-confirm-ok">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

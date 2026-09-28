@@ -9,9 +9,10 @@ The overview of the concept site itself is in `docs/WVROOFING.md`.
 | `decisions.md` | Decision record (D1–D17) with evidence |
 | `permissions-record.md` | Generated from `serverlib/wvroofing/permissions.js`: what each provider's terms allow |
 | `wvroofing.env.example` | Every environment variable, names only |
+| `operator-guide.md` | The operator screen: setting the password, enquiries, scope corrections, renders to check, deleting |
 
-Handover files (`handover-<date>-vN.md`, `setup-and-deploy.md`, `operator-guide.md`, `privacy-record.md`,
-`cost-model.md`, `retention.md`) arrive with the increments that need them.
+Handover files (`handover-<date>-vN.md`, `setup-and-deploy.md`, `privacy-record.md`, `cost-model.md`,
+`retention.md`) arrive with the increments that need them.
 
 ## Status by increment
 
@@ -22,7 +23,8 @@ Handover files (`handover-<date>-vN.md`, `setup-and-deploy.md`, `operator-guide.
 | A3 Durable render jobs, server compositing, budget ledger | Built and tested locally against the OpenAI stand-in; held with A2. Live renders also need the OpenAI key and `WVR_CAP_IMAGE_GENERATION=on` |
 | A4 Enquiries saved first, notified second | Built and tested locally (test outbox, no email sent); held with A2. Emails also need `WVR_LEAD_TO` and `WVR_CAP_ENQUIRY_DELIVERY=on` |
 | A5 Journey: your home first, resume, estimate and enquiry steps, no prices | Built and tested locally against the address and satellite stand-ins; held with A2. Live lookups need `WVR_IDEAL_POSTCODES_KEY` + `WVR_CAP_ADDRESS_LOOKUP=on`; the satellite view needs the Google key, the signing secret and `WVR_CAP_AERIAL_DISPLAY=on` |
-| A6–A8, B1–B5 | Not started |
+| A6 Operator screen | Built and tested locally with the test password; held with A2. Live use needs `WVR_OPERATOR_PASSWORD_HASH` (made with `scripts/wvroofing/operator-hash.mjs`) |
+| A7–A8, B1–B5 | Not started |
 
 ## Commands
 

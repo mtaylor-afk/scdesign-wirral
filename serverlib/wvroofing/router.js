@@ -18,8 +18,8 @@ const SAFE_ROUTE = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/;
 /**
  * @typedef {import("http").IncomingMessage & { body?: unknown, query?: unknown }} Req
  * @typedef {import("http").ServerResponse} Res
- * @typedef {{ req: Req, res: Res, params: Record<string, string>, url: URL, startedAt: number, project?: Record<string, any> }} Ctx
- * @typedef {"none" | "cron" | "project"} Auth
+ * @typedef {{ req: Req, res: Res, params: Record<string, string>, url: URL, startedAt: number, project?: Record<string, any>, operator?: Record<string, any> }} Ctx
+ * @typedef {"none" | "cron" | "project" | "operator"} Auth
  * @typedef {object} Route
  * @property {string} path            e.g. "health" or "projects/:id/renders"
  * @property {string[]} methods
@@ -58,7 +58,29 @@ const ROUTES = [
   { path: "enquiry", methods: ["POST"], auth: "none", handler: (ctx) => require("./enquiries.js").createFree(ctx) },
   { path: "projects/:id/enquiry", methods: ["POST"], auth: "project", handler: (ctx) => require("./enquiries.js").createForProject(/** @type {any} */ (ctx)) },
   { path: "projects/:id/enquiry", methods: ["GET"], auth: "project", handler: (ctx) => require("./enquiries.js").getForProject(/** @type {any} */ (ctx)) },
+  // The operator screen (A6). Every route but login needs the operator's session key.
+  { path: "operator/login", methods: ["POST"], auth: "none", handler: (ctx) => op().login(ctx) },
+  { path: "operator/logout", methods: ["POST"], auth: "operator", handler: (ctx) => op().logout(/** @type {any} */ (ctx)) },
+  { path: "operator/session", methods: ["GET"], auth: "operator", handler: (ctx) => op().session(/** @type {any} */ (ctx)) },
+  { path: "operator/enquiries", methods: ["GET"], auth: "operator", handler: (ctx) => op().listEnquiries(/** @type {any} */ (ctx)) },
+  { path: "operator/enquiries/:id", methods: ["GET"], auth: "operator", handler: (ctx) => op().enquiryDetail(/** @type {any} */ (ctx)) },
+  { path: "operator/enquiries/:id/aerial", methods: ["GET"], auth: "operator", handler: (ctx) => op().enquiryAerial(/** @type {any} */ (ctx)) },
+  { path: "operator/enquiries/:id/scope", methods: ["POST"], auth: "operator", handler: (ctx) => op().scope(/** @type {any} */ (ctx)) },
+  { path: "operator/enquiries/:id/status", methods: ["POST"], auth: "operator", handler: (ctx) => op().setStatus(/** @type {any} */ (ctx)) },
+  { path: "operator/enquiries/:id/request-survey", methods: ["POST"], auth: "operator", handler: (ctx) => op().requestSurvey(/** @type {any} */ (ctx)) },
+  { path: "operator/enquiries/:id/resend", methods: ["POST"], auth: "operator", handler: (ctx) => op().resend(/** @type {any} */ (ctx)) },
+  { path: "operator/enquiries/:id/delete", methods: ["POST"], auth: "operator", handler: (ctx) => op().deleteEnquiry(/** @type {any} */ (ctx)) },
+  { path: "operator/projects/:id/photo", methods: ["GET"], auth: "operator", handler: (ctx) => op().projectPhoto(/** @type {any} */ (ctx)) },
+  { path: "operator/projects/:id/original", methods: ["GET"], auth: "operator", handler: (ctx) => op().projectOriginal(/** @type {any} */ (ctx)) },
+  { path: "operator/projects/:id/delete", methods: ["POST"], auth: "operator", handler: (ctx) => op().deleteProjectRoute(/** @type {any} */ (ctx)) },
+  { path: "operator/jobs", methods: ["GET"], auth: "operator", handler: (ctx) => op().listJobs(/** @type {any} */ (ctx)) },
+  { path: "operator/jobs/:id/image", methods: ["GET"], auth: "operator", handler: (ctx) => op().jobImage(/** @type {any} */ (ctx)) },
+  { path: "operator/jobs/:id/retry", methods: ["POST"], auth: "operator", handler: (ctx) => op().retryJob(/** @type {any} */ (ctx)) },
 ];
+
+function op() {
+  return require("./operator.js");
+}
 
 /** @param {string} pattern */
 function compile(pattern) {
@@ -181,6 +203,10 @@ async function authorise(auth, ctx) {
   }
   if (auth === "project") {
     ctx.project = await require("./auth.js").requireProject(ctx.req, ctx.params.id);
+    return;
+  }
+  if (auth === "operator") {
+    ctx.operator = await require("./auth.js").requireOperator(ctx.req);
     return;
   }
   throw new HttpError(500, "server_error", "Unknown auth rule.");
