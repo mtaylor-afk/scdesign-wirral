@@ -1,4 +1,4 @@
-# WV Roofing: set-up and deploy (v1, 2026-09-28)
+# WV Roofing: set-up and deploy (v1, 2026-09-28; updated 2026-09-29)
 
 ## How it's hosted
 
@@ -77,9 +77,15 @@ Vercel.
 | `WVR_MAIL_FROM` (optional) | An alias on the iCloud account that names "WV Roofing" | n/a |
 | `WVR_DAILY_BUDGET_USD` | `5` | n/a |
 
-**Step 3: push the held work.** Increments A2–A7 are committed on `feat/wvroofing` but held until steps 1
-and 2 are done (push gate D17). Pushing them earlier would turn today's working live visualiser into "not
-available". Push them with the Desktop **PUSH WV ROOFING.cmd**:
+**Step 3: pushing.** A2–B4 were pushed on 2026-09-29, ahead of steps 1 and 2, so push gate D17 no longer
+holds anything back. Until storage is connected, the live visualiser works with the sample houses and quick
+previews only:
+
+- choosing your own photo says uploading "isn't available right now";
+- the enquiry forms say enquiries aren't being collected yet, and nothing is sent or stored.
+
+No further push is needed for storage: it switches on once steps 1 and 2 are done and Vercel has
+redeployed. Push later work with the Desktop **PUSH WV ROOFING.cmd**:
 
 - it fetches, rebases, and pushes `HEAD:main`;
 - you paste the GitHub token when it asks; Claude never types tokens;
@@ -114,7 +120,7 @@ Photo uploads and enquiry storage come on by themselves once Neon, Blob, `WVR_SE
 1. The Cloudflare Pages and Vercel deployments are green.
 2. `https://scdesign-wirral.vercel.app/api/wvroofing/health` shows:
    - `environment: "production"`;
-   - schema version 6;
+   - schema version 8 (`null` until the database is connected);
    - the expected capability states;
    - no secrets.
 3. `https://scdesignwirral.co.uk/WVROOFING/` loads with `X-Robots-Tag: noindex` and the content security
@@ -122,7 +128,9 @@ Photo uploads and enquiry storage come on by themselves once Neon, Blob, `WVR_SE
 4. SC Design's home page returns 200, and one SC API still works.
 5. `node scripts/wvroofing/qa.mjs --base https://scdesignwirral.co.uk --live`. On a deployed copy it
    fills in the enquiry forms but never sends them, makes no renders and doesn't log in to the operator
-   screen. The one test photo it uploads is deleted again at the end.
+   screen. The one test photo it uploads is deleted again at the end. It reads `/health` first and checks
+   what that copy has switched on: without storage, it checks the "isn't available" message instead of
+   uploading. Whatever it can't run is listed as SKIP, with the reason.
 6. Once storage is live, a smoke test on the live site: a sample photo, mark the roof, a render only if
    allowed, then **Delete my photo and project**.
 7. Matthew logs in to `/WVROOFING/operator/` himself and checks the **Costs** tab. "Daily tidy-up" shows a

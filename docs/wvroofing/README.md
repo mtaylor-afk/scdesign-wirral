@@ -26,17 +26,17 @@ Earlier handover versions are kept; a new version is a new file.
 | Increment | State |
 |---|---|
 | A1 Foundations and the function swap | Live (commit 110432b, verified 2026-09-28) |
-| A2 Projects, uploads, photo pipeline, CSP, retention | Built and tested locally; goes live once Neon + Blob are connected (push gate D17) |
-| A3 Durable render jobs, server compositing, budget ledger | Built and tested locally against the OpenAI stand-in; held with A2. Live renders also need the OpenAI key and `WVR_CAP_IMAGE_GENERATION=on` |
-| A4 Enquiries saved first, notified second | Built and tested locally (test outbox, no email sent); held with A2. Emails also need `WVR_LEAD_TO` and `WVR_CAP_ENQUIRY_DELIVERY=on` |
-| A5 Journey: your home first, resume, estimate and enquiry steps, no prices | Built and tested locally against the address and satellite stand-ins; held with A2. Live lookups need `WVR_IDEAL_POSTCODES_KEY` + `WVR_CAP_ADDRESS_LOOKUP=on`; the satellite view needs the Google key, the signing secret and `WVR_CAP_AERIAL_DISPLAY=on` |
-| A6 Operator screen | Built and tested locally with the test password; held with A2. Live use needs `WVR_OPERATOR_PASSWORD_HASH` (made with `scripts/wvroofing/operator-hash.mjs`) |
-| A7 Retention, search for data requests, costs, handover v1 | Built and tested locally; held with A2. The daily tidy-up needs `CRON_SECRET` |
+| A2 Projects, uploads, photo pipeline, CSP, retention | Built and tested locally; on `main` since 2026-09-29, pushed ahead of storage. Uploads and saving switch on by themselves once Neon, Blob, `WVR_SESSION_SECRET` and `CRON_SECRET` are all set |
+| A3 Durable render jobs, server compositing, budget ledger | Built and tested locally against the OpenAI stand-in; on `main` since 2026-09-29, waiting for storage like A2. Live renders also need the OpenAI key and `WVR_CAP_IMAGE_GENERATION=on` |
+| A4 Enquiries saved first, notified second | Built and tested locally (test outbox, no email sent); on `main` since 2026-09-29, waiting for storage like A2. Emails also need `WVR_LEAD_TO` and `WVR_CAP_ENQUIRY_DELIVERY=on` |
+| A5 Journey: your home first, resume, estimate and enquiry steps, no prices | Built and tested locally against the address and satellite stand-ins; on `main` since 2026-09-29, waiting for storage like A2. Live lookups need `WVR_IDEAL_POSTCODES_KEY` + `WVR_CAP_ADDRESS_LOOKUP=on`; the satellite view needs the Google key, the signing secret and `WVR_CAP_AERIAL_DISPLAY=on` |
+| A6 Operator screen | Built and tested locally with the test password; on `main` since 2026-09-29, waiting for storage like A2. Live use needs `WVR_OPERATOR_PASSWORD_HASH` (made with `scripts/wvroofing/operator-hash.mjs`) |
+| A7 Retention, search for data requests, costs, handover v1 | Built and tested locally; on `main` since 2026-09-29, waiting for storage like A2. The daily tidy-up needs `CRON_SECRET` |
 | A8 Live integration | Waits for the owner steps in `setup-and-deploy.md` (storage, secrets, keys) and his OK on spend |
-| B1 Catalogue v2 and quantities | Built and tested locally; held with A2. Looks in the public catalogue, products server-only (nine draft specifications from manufacturers' datasheets, one or more per look). None is verified yet, so no quantities reach customers |
-| B2 Measurement core and the estimate step | Built and tested locally; held with A2 |
-| B3 Assisted measurement | Built and tested locally; held with A2. The roofer enters, approves and shows measurements (Hover and desk estimates stay hidden); customers add plans and drawings; Hover template. B3b (OS reference panel) not built: optional |
-| B4 Automatic measurement as honest stubs, release checks | Built and tested locally; held with A2. Automatic measurement stays disabled (no licensed provider); the measurement switch is enforced; permissions record complete; supplier enquiries drafted |
+| B1 Catalogue v2 and quantities | Built and tested locally; on `main` since 2026-09-29, waiting for storage like A2. Looks in the public catalogue, products server-only (nine draft specifications from manufacturers' datasheets, one or more per look). None is verified yet, so no quantities reach customers |
+| B2 Measurement core and the estimate step | Built and tested locally; on `main` since 2026-09-29, waiting for storage like A2 |
+| B3 Assisted measurement | Built and tested locally; on `main` since 2026-09-29, waiting for storage like A2. The roofer enters, approves and shows measurements (Hover and desk estimates stay hidden); customers add plans and drawings; Hover template. B3b (OS reference panel) not built: optional |
+| B4 Automatic measurement as honest stubs, release checks | Built and tested locally; on `main` since 2026-09-29, waiting for storage like A2. Automatic measurement stays disabled (no licensed provider); the measurement switch is enforced; permissions record complete; supplier enquiries drafted |
 | B5 Desk-measure tool (optional) | Not started: needs a separate approval and 20–30 reference properties |
 
 ## Commands

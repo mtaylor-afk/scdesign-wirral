@@ -22,7 +22,9 @@
 // shows up as a console error. With --live (a deployed copy) nothing is sent
 // that could reach the roofer or cost money: the enquiry forms are filled in but
 // not sent, and there are no renders and no operator login. The test photo it
-// uploads is deleted again at the end.
+// uploads is deleted again at the end. It reads /health first and checks what that
+// copy has switched on: without storage, the upload checks become the "isn't
+// available" checks. Whatever can't run there is listed as SKIP, with the reason.
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
 import os from "node:os";
@@ -49,6 +51,20 @@ const ok = (name, pass, detail) => {
   results.push({ name, pass: !!pass, detail: detail || "" });
   console.log((pass ? "PASS " : "FAIL ") + name + (detail ? " - " + detail : ""));
 };
+const skipped = [];
+const skip = (name, why) => {
+  skipped.push({ name, why });
+  console.log("SKIP " + name + " - " + why);
+};
+
+// The API the pages call: the same rule as assets/js/config.js (the apex site calls the Vercel copy).
+const API = String(opt("api", /^(localhost|127\.0\.0\.1|scdesign-wirral\.vercel\.app)$/.test(new URL(BASE).hostname) ? BASE : "https://scdesign-wirral.vercel.app")).replace(/\/$/, "");
+const health = await fetch(API + "/api/wvroofing/health")
+  .then((r) => r.json())
+  .catch(() => null);
+const capState = (name) => (health && health.capabilities && health.capabilities[name] && health.capabilities[name].state) || "unknown";
+const STORAGE = capState("enquiry_storage") === "enabled";
+ok("health answers", !!(health && health.ok), health ? health.environment + ", storage " + capState("enquiry_storage") : API + " unreachable");
 
 const PAGES = ["/WVROOFING/", "/WVROOFING/roof-replacement/", "/WVROOFING/privacy/", "/WVROOFING/visualiser/", "/WVROOFING/operator/"];
 const VIEWPORTS = [
@@ -282,7 +298,8 @@ try {
     await page.waitForTimeout(800);
     const first = await page.isVisible('[data-panel="property"]');
     const capLine = (await page.textContent("#cap-line")) || "";
-    ok("visualiser: it starts with your address, and says measurement isn't available online", first && /measurement isn't available/i.test(capLine), capLine);
+    if (STORAGE) ok("visualiser: it starts with your address, and says measurement isn't available online", first && /measurement isn't available/i.test(capLine), capLine);
+    else ok("visualiser: without storage it says saving an address isn't switched on, and asks for no address", first && /Saving an address isn't switched on/.test(capLine) && !(await page.isVisible(".property-card")), capLine);
     await page.click("#btn-photo-only");
     const photoStep = await page.waitForSelector('[data-panel="photo"]:not([hidden])', { timeout: 5000 }).then(() => true).catch(() => false);
     ok("visualiser: 'Photo only' skips straight to the photo", photoStep && /step=photo/.test(page.url()), page.url());
@@ -345,7 +362,9 @@ try {
     await page.click("#lb-quote");
     await page.waitForSelector('[data-panel="enquiry"]:not([hidden])', { timeout: 5000 });
     const sel = await page.inputValue("#v-product");
-    ok("'Get a quote for this roof' opens the enquiry step with that roof chosen", !!sel && sel === (await page.evaluate(() => window.__wvr.chosen)), sel);
+    // The roof the lightbox was showing, from the file it downloaded (no test hook: works on a live copy too).
+    const shown = ((download && download.suggestedFilename()) || "").replace(/^wv-roofing-(.+)-(?:ai|preview)\.jpg$/, "$1");
+    ok("'Get a quote for this roof' opens the enquiry step with that roof chosen", !!sel && sel === shown, sel + " (lightbox showed " + shown + ")");
     await page.fill("#v-name", "QA Tester");
     await page.fill("#v-email", "qa@example.com");
     await page.check("#v-consent");
@@ -413,147 +432,156 @@ try {
     await page.waitForSelector("#photo-error:not([hidden])", { timeout: 5000 }).catch(() => null);
     ok("phone: a HEIC photo gets a clear message", /HEIC/.test((await page.textContent("#photo-error")) || ""));
     const photo = path.resolve(here, "../../public/WVROOFING/samples/detached-modern.jpg");
-    const committed = page.waitForResponse((r) => isPath(r, /\/photo\/commit$/), { timeout: 60000 }).catch(() => null);
-    await page.setInputFiles("#file-library", photo);
-    const commitRes = await committed;
-    ok("phone: the photo is uploaded to the project and prepared by the server", !!commitRes && commitRes.status() === 200, commitRes ? String(commitRes.status()) : "no commit");
-    await page.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 30000 });
-    const box = await page.locator(".editor-canvas").boundingBox();
-    const pts = [
-      [0.1, 0.33],
-      [0.47, 0.18],
-      [0.9, 0.24],
-      [0.95, 0.31],
-      [0.53, 0.26],
-      [0.05, 0.34],
-    ];
-    for (const [fx, fy] of pts) await page.touchscreen.tap(box.x + fx * box.width, box.y + fy * box.height);
-    await page.touchscreen.tap(box.x + pts[0][0] * box.width, box.y + pts[0][1] * box.height);
-    await page.waitForTimeout(300);
-    const pct = await page.textContent("#mark-pct");
-    ok("phone: tapping an outline marks the roof", pct && pct !== "0%", pct);
-    await shot(page, { path: path.join(OUT, "vis-mark-phone.png") });
-    const enabled = await page.isEnabled("#btn-compare");
-    ok("phone: compare enabled after outlining", enabled);
-    if (enabled) {
-      const saved = page.waitForResponse((r) => isPath(r, /\/mask$/) && r.request().method() === "POST", { timeout: 30000 }).catch(() => null);
-      await page.click("#btn-compare");
-      await page.waitForFunction(() => Array.from(document.querySelectorAll(".result-card .badge")).filter((b) => /Quick preview|AI concept/.test(b.textContent)).length === 8, null, { timeout: 60000 });
-      ok("phone: 8 previews from an uploaded photo", true);
-      const maskRes = await saved;
-      ok("phone: the roof outline is saved to the project", !!maskRes && maskRes.status() === 200, maskRes ? String(maskRes.status()) : "not sent");
-      await shot(page, { path: path.join(OUT, "vis-previews-phone.png"), fullPage: true });
-
-      // Photo-real renders: nothing goes to the AI service until the customer agrees.
-      const offered = await page.isVisible("#btn-start-ai");
-      ok("phone: no photo-real render is requested before the customer agrees", renderPosts === 0 && offered, renderPosts + " requests, offer shown: " + offered);
-      // Renders are driven only against the local test environment's stand-in, never a deployed
-      // copy (--live): a real render costs money and goes to OpenAI.
-      const live = await page.evaluate(() => !!(window.__wvr && window.__wvr.health && window.__wvr.health.renders.live && window.__wvr.health.renders.test));
-      if (live && offered && !LIVE) {
-        const t1 = Date.now();
-        await page.click("#btn-start-ai");
-        await page.waitForFunction(() => document.querySelectorAll(".result-card .badge--ai").length >= 1, null, { timeout: 60000 });
-        await page.waitForTimeout(3000); // long enough for a second automatic render to show, if there were one
-        const rendered = await page.locator(".result-card .badge--ai").count();
-        const offers = await page.locator(".result-card .link-btn:visible", { hasText: "Create AI render" }).count();
-        ok("phone: once agreed, the chosen roof renders automatically and the other 7 offer a render", rendered === 1 && offers === 7, rendered + " rendered, " + offers + " offered, " + (Date.now() - t1) + " ms");
-        await page.locator(".result-card .link-btn:visible", { hasText: "Create AI render" }).first().click();
-        const second = await page
-          .waitForFunction(() => document.querySelectorAll(".result-card .badge--ai").length >= 2, null, { timeout: 60000 })
-          .then(() => true)
-          .catch(() => false);
-        ok("phone: tapping 'Create AI render' renders that roof too", second);
-        // The composite the server serves must equal the photo it served, block for block, away from the roof.
-        const exact = await page.evaluate(async () => {
-          const S = window.__wvr;
-          const p = JSON.parse(sessionStorage.getItem("wvr.project.v1"));
-          const job = [...S.jobs.values()].find((j) => j.status === "succeeded" && j.image);
-          const pixels = async (u) => {
-            const r = await fetch(u, { headers: { Authorization: "Bearer " + p.token } });
-            const bm = await createImageBitmap(await r.blob());
-            const c = document.createElement("canvas");
-            c.width = bm.width;
-            c.height = bm.height;
-            const x = c.getContext("2d");
-            x.drawImage(bm, 0, 0);
-            return x.getImageData(0, 0, c.width, c.height);
-          };
-          const a = await pixels("/api/wvroofing/projects/" + p.id + "/photo/display");
-          const b = await pixels("/api/wvroofing/projects/" + p.id + "/renders/" + job.id + "/image");
-          const w = a.width;
-          const h = a.height;
-          const alpha = S.analysis.alpha;
-          let blocks = 0;
-          let bad = 0;
-          for (let by = 0; by + 16 <= h; by += 16) {
-            for (let bx = 0; bx + 16 <= w; bx += 16) {
-              let near = false;
-              for (let y = by - 32; y < by + 48 && !near; y++) for (let x = bx - 32; x < bx + 48; x++) if (y >= 0 && x >= 0 && y < h && x < w && alpha[y * w + x] > 0.001) { near = true; break; }
-              if (near) continue;
-              blocks++;
-              let diff = 0;
-              for (let y = by; y < by + 16; y++) for (let x = bx; x < bx + 16; x++) { const i = (y * w + x) * 4; diff += Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]); }
-              if (diff > 0) bad++;
-            }
-          }
-          return { blocks, bad, size: w + "x" + h, sameSize: w === b.width && h === b.height };
-        });
-        ok("phone: the served composite matches the photo outside the roof", exact.sameSize && exact.blocks > 100 && exact.bad === 0, JSON.stringify(exact));
-        await shot(page, { path: path.join(OUT, "vis-ai-phone.png"), fullPage: true });
-
-        // A refresh carries on where the customer was: address, photo, outline, previews and renders.
-        const posts = renderPosts;
-        await page.reload({ waitUntil: "load" });
-        const back = await page
-          .waitForFunction(() => {
-            const cmp = document.querySelector('[data-panel="compare"]');
-            return cmp && !cmp.hidden && document.querySelectorAll(".result-card").length === 8 && document.querySelectorAll(".result-card .badge--ai").length >= 2;
-          }, null, { timeout: 60000 })
-          .then(() => true)
-          .catch(() => false);
-        const home = (await page.textContent("#sum-home")) || "";
-        ok("phone: after a refresh the address, previews and photo-real renders are all back", back && /Test Road/.test(home), home);
-        await page.click("#btn-edit-mark");
-        await page.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 10000 });
-        const pctAfter = await page.textContent("#mark-pct");
-        ok("phone: after a refresh the outline is still there to edit", pctAfter && pctAfter !== "0%", pctAfter);
+    if (!STORAGE) {
+      // Without storage nothing is uploaded: a clear message, and the sample houses still work.
+      await page.setInputFiles("#file-library", photo);
+      await page.waitForSelector("#photo-error:not([hidden])", { timeout: 5000 }).catch(() => null);
+      const msg = (await page.textContent("#photo-error")) || "";
+      ok("phone: without storage, choosing a photo says uploading isn't available and points to the samples", /isn't available right now/.test(msg) && /sample/.test(msg), msg);
+      skip("phone: upload, outline saved to the project, previews from it, delete", "storage isn't switched on for this copy (enquiry_storage: " + capState("enquiry_storage") + ")");
+    } else {
+      const committed = page.waitForResponse((r) => isPath(r, /\/photo\/commit$/), { timeout: 60000 }).catch(() => null);
+      await page.setInputFiles("#file-library", photo);
+      const commitRes = await committed;
+      ok("phone: the photo is uploaded to the project and prepared by the server", !!commitRes && commitRes.status() === 200, commitRes ? String(commitRes.status()) : "no commit");
+      await page.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 30000 });
+      const box = await page.locator(".editor-canvas").boundingBox();
+      const pts = [
+        [0.1, 0.33],
+        [0.47, 0.18],
+        [0.9, 0.24],
+        [0.95, 0.31],
+        [0.53, 0.26],
+        [0.05, 0.34],
+      ];
+      for (const [fx, fy] of pts) await page.touchscreen.tap(box.x + fx * box.width, box.y + fy * box.height);
+      await page.touchscreen.tap(box.x + pts[0][0] * box.width, box.y + pts[0][1] * box.height);
+      await page.waitForTimeout(300);
+      const pct = await page.textContent("#mark-pct");
+      ok("phone: tapping an outline marks the roof", pct && pct !== "0%", pct);
+      await shot(page, { path: path.join(OUT, "vis-mark-phone.png") });
+      const enabled = await page.isEnabled("#btn-compare");
+      ok("phone: compare enabled after outlining", enabled);
+      if (enabled) {
+        const saved = page.waitForResponse((r) => isPath(r, /\/mask$/) && r.request().method() === "POST", { timeout: 30000 }).catch(() => null);
         await page.click("#btn-compare");
-        await page.waitForSelector('[data-panel="compare"]:not([hidden])', { timeout: 10000 });
-        await page.waitForTimeout(1500);
-        const jobs = await page.evaluate(async () => {
-          const p = JSON.parse(sessionStorage.getItem("wvr.project.v1"));
-          const r = await fetch("/api/wvroofing/projects/" + p.id + "/renders", { headers: { Authorization: "Bearer " + p.token } });
-          return (await r.json()).renders.length;
-        });
-        ok("phone: nothing was rendered twice because of the refresh", jobs === 2, jobs + " render jobs on the server (" + (renderPosts - posts) + " repeat requests answered from the existing job)");
+        await page.waitForFunction(() => Array.from(document.querySelectorAll(".result-card .badge")).filter((b) => /Quick preview|AI concept/.test(b.textContent)).length === 8, null, { timeout: 60000 });
+        ok("phone: 8 previews from an uploaded photo", true);
+        const maskRes = await saved;
+        ok("phone: the roof outline is saved to the project", !!maskRes && maskRes.status() === 200, maskRes ? String(maskRes.status()) : "not sent");
+        await shot(page, { path: path.join(OUT, "vis-previews-phone.png"), fullPage: true });
+
+        // Photo-real renders: nothing goes to the AI service until the customer agrees.
+        const offered = await page.isVisible("#btn-start-ai");
+        ok("phone: no photo-real render is requested before the customer agrees", renderPosts === 0 && offered, renderPosts + " requests, offer shown: " + offered);
+        // Renders are driven only against the local test environment's stand-in, never a deployed
+        // copy (--live): a real render costs money and goes to OpenAI.
+        const live = await page.evaluate(() => !!(window.__wvr && window.__wvr.health && window.__wvr.health.renders.live && window.__wvr.health.renders.test));
+        if (live && offered && !LIVE) {
+          const t1 = Date.now();
+          await page.click("#btn-start-ai");
+          await page.waitForFunction(() => document.querySelectorAll(".result-card .badge--ai").length >= 1, null, { timeout: 60000 });
+          await page.waitForTimeout(3000); // long enough for a second automatic render to show, if there were one
+          const rendered = await page.locator(".result-card .badge--ai").count();
+          const offers = await page.locator(".result-card .link-btn:visible", { hasText: "Create AI render" }).count();
+          ok("phone: once agreed, the chosen roof renders automatically and the other 7 offer a render", rendered === 1 && offers === 7, rendered + " rendered, " + offers + " offered, " + (Date.now() - t1) + " ms");
+          await page.locator(".result-card .link-btn:visible", { hasText: "Create AI render" }).first().click();
+          const second = await page
+            .waitForFunction(() => document.querySelectorAll(".result-card .badge--ai").length >= 2, null, { timeout: 60000 })
+            .then(() => true)
+            .catch(() => false);
+          ok("phone: tapping 'Create AI render' renders that roof too", second);
+          // The composite the server serves must equal the photo it served, block for block, away from the roof.
+          const exact = await page.evaluate(async () => {
+            const S = window.__wvr;
+            const p = JSON.parse(sessionStorage.getItem("wvr.project.v1"));
+            const job = [...S.jobs.values()].find((j) => j.status === "succeeded" && j.image);
+            const pixels = async (u) => {
+              const r = await fetch(u, { headers: { Authorization: "Bearer " + p.token } });
+              const bm = await createImageBitmap(await r.blob());
+              const c = document.createElement("canvas");
+              c.width = bm.width;
+              c.height = bm.height;
+              const x = c.getContext("2d");
+              x.drawImage(bm, 0, 0);
+              return x.getImageData(0, 0, c.width, c.height);
+            };
+            const a = await pixels("/api/wvroofing/projects/" + p.id + "/photo/display");
+            const b = await pixels("/api/wvroofing/projects/" + p.id + "/renders/" + job.id + "/image");
+            const w = a.width;
+            const h = a.height;
+            const alpha = S.analysis.alpha;
+            let blocks = 0;
+            let bad = 0;
+            for (let by = 0; by + 16 <= h; by += 16) {
+              for (let bx = 0; bx + 16 <= w; bx += 16) {
+                let near = false;
+                for (let y = by - 32; y < by + 48 && !near; y++) for (let x = bx - 32; x < bx + 48; x++) if (y >= 0 && x >= 0 && y < h && x < w && alpha[y * w + x] > 0.001) { near = true; break; }
+                if (near) continue;
+                blocks++;
+                let diff = 0;
+                for (let y = by; y < by + 16; y++) for (let x = bx; x < bx + 16; x++) { const i = (y * w + x) * 4; diff += Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]); }
+                if (diff > 0) bad++;
+              }
+            }
+            return { blocks, bad, size: w + "x" + h, sameSize: w === b.width && h === b.height };
+          });
+          ok("phone: the served composite matches the photo outside the roof", exact.sameSize && exact.blocks > 100 && exact.bad === 0, JSON.stringify(exact));
+          await shot(page, { path: path.join(OUT, "vis-ai-phone.png"), fullPage: true });
+
+          // A refresh carries on where the customer was: address, photo, outline, previews and renders.
+          const posts = renderPosts;
+          await page.reload({ waitUntil: "load" });
+          const back = await page
+            .waitForFunction(() => {
+              const cmp = document.querySelector('[data-panel="compare"]');
+              return cmp && !cmp.hidden && document.querySelectorAll(".result-card").length === 8 && document.querySelectorAll(".result-card .badge--ai").length >= 2;
+            }, null, { timeout: 60000 })
+            .then(() => true)
+            .catch(() => false);
+          const home = (await page.textContent("#sum-home")) || "";
+          ok("phone: after a refresh the address, previews and photo-real renders are all back", back && /Test Road/.test(home), home);
+          await page.click("#btn-edit-mark");
+          await page.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 10000 });
+          const pctAfter = await page.textContent("#mark-pct");
+          ok("phone: after a refresh the outline is still there to edit", pctAfter && pctAfter !== "0%", pctAfter);
+          await page.click("#btn-compare");
+          await page.waitForSelector('[data-panel="compare"]:not([hidden])', { timeout: 10000 });
+          await page.waitForTimeout(1500);
+          const jobs = await page.evaluate(async () => {
+            const p = JSON.parse(sessionStorage.getItem("wvr.project.v1"));
+            const r = await fetch("/api/wvroofing/projects/" + p.id + "/renders", { headers: { Authorization: "Bearer " + p.token } });
+            return (await r.json()).renders.length;
+          });
+          ok("phone: nothing was rendered twice because of the refresh", jobs === 2, jobs + " render jobs on the server (" + (renderPosts - posts) + " repeat requests answered from the existing job)");
+        } else if (LIVE) skip("phone: photo-real renders, the composite pixel check, resuming after a refresh", "a live site: renders cost money and go to OpenAI");
+        // An enquiry about this photo: sent with the project (the server attaches the images).
+        if (!LIVE) {
+          await page.click("#btn-quote");
+          await page.waitForSelector('[data-panel="enquiry"]:not([hidden])', { timeout: 5000 });
+          const imagesOffered = await page.isVisible("#v-images-row");
+          await page.fill("#v-name", "QA Phone");
+          await page.fill("#v-phone", "0151 496 0000");
+          await page.check("#v-consent");
+          await page.waitForTimeout(2700);
+          const sent = page.waitForResponse((r) => isPath(r, /\/projects\/[^/]+\/enquiry$/) && r.request().method() === "POST", { timeout: 30000 }).catch(() => null);
+          await page.click('#quote-form button[type="submit"]');
+          const sentRes = await sent;
+          await page.waitForSelector("#enquiry-done:not([hidden])", { timeout: 20000 }).catch(() => null);
+          const st = (await page.textContent("#enquiry-done")) || "";
+          ok("phone: an enquiry about my photo is saved with a reference and the images offered", imagesOffered && !!sentRes && sentRes.status() === 201 && REF.test(st) && /notified/.test(st), (sentRes ? sentRes.status() : "no request") + " " + st);
+          await shot(page, { path: path.join(OUT, "vis-enquiry-phone.png"), fullPage: true });
+        } else skip("phone: an enquiry about the photo is saved with a reference", "a live site: it would reach the roofer");
+        // Delete it all again from the summary (this also tidies up the project the check created).
+        await page.waitForSelector("#btn-delete-project:not([hidden])", { timeout: 5000 }).catch(() => null);
+        const del = page.waitForResponse((r) => isPath(r, /\/delete$/), { timeout: 30000 }).catch(() => null);
+        await page.click("#btn-delete-project");
+        const delRes = await del;
+        await page.waitForSelector('[data-panel="photo"]:not([hidden])', { timeout: 10000 }).catch(() => null);
+        const kept = await page.evaluate(() => sessionStorage.getItem("wvr.project.v1"));
+        const gone = !/project=/.test(page.url());
+        ok("phone: 'Delete my photo and project' deletes it all and forgets it", !!delRes && delRes.status() === 200 && kept === null && gone, delRes ? String(delRes.status()) : "no delete");
       }
-      // An enquiry about this photo: sent with the project (the server attaches the images).
-      if (!LIVE) {
-        await page.click("#btn-quote");
-        await page.waitForSelector('[data-panel="enquiry"]:not([hidden])', { timeout: 5000 });
-        const imagesOffered = await page.isVisible("#v-images-row");
-        await page.fill("#v-name", "QA Phone");
-        await page.fill("#v-phone", "0151 496 0000");
-        await page.check("#v-consent");
-        await page.waitForTimeout(2700);
-        const sent = page.waitForResponse((r) => isPath(r, /\/projects\/[^/]+\/enquiry$/) && r.request().method() === "POST", { timeout: 30000 }).catch(() => null);
-        await page.click('#quote-form button[type="submit"]');
-        const sentRes = await sent;
-        await page.waitForSelector("#enquiry-done:not([hidden])", { timeout: 20000 }).catch(() => null);
-        const st = (await page.textContent("#enquiry-done")) || "";
-        ok("phone: an enquiry about my photo is saved with a reference and the images offered", imagesOffered && !!sentRes && sentRes.status() === 201 && REF.test(st) && /notified/.test(st), (sentRes ? sentRes.status() : "no request") + " " + st);
-        await shot(page, { path: path.join(OUT, "vis-enquiry-phone.png"), fullPage: true });
-      }
-      // Delete it all again from the summary (this also tidies up the project the check created).
-      await page.waitForSelector("#btn-delete-project:not([hidden])", { timeout: 5000 }).catch(() => null);
-      const del = page.waitForResponse((r) => isPath(r, /\/delete$/), { timeout: 30000 }).catch(() => null);
-      await page.click("#btn-delete-project");
-      const delRes = await del;
-      await page.waitForSelector('[data-panel="photo"]:not([hidden])', { timeout: 10000 }).catch(() => null);
-      const kept = await page.evaluate(() => sessionStorage.getItem("wvr.project.v1"));
-      const gone = !/project=/.test(page.url());
-      ok("phone: 'Delete my photo and project' deletes it all and forgets it", !!delRes && delRes.status() === 200 && kept === null && gone, delRes ? String(delRes.status()) : "no delete");
     }
     ok("phone visualiser has no console errors", errors.length === 0, errors.join(" | "));
     await ctx.close();
@@ -704,12 +732,12 @@ try {
     ok("operator: logging out ends the session on the server and in the tab", after.status === 401 && cleared === null, String(after.status));
     ok("operator screen has no console errors", errors.length === 0, errors.join(" | "));
     await ctx.close();
-  }
+  } else skip("operator screen: login, enquiry, measurement and estimate, search, costs, delete, logout", "a live site: Matthew logs in himself");
 } finally {
   await browser.close();
 }
 
 const failed = results.filter((r) => !r.pass);
-console.log(`\n${results.length - failed.length}/${results.length} checks passed. Screenshots: ${OUT}`);
-fs.writeFileSync(path.join(OUT, "results.json"), JSON.stringify(results, null, 2));
+console.log(`\n${results.length - failed.length}/${results.length} checks passed${skipped.length ? ", " + skipped.length + " skipped (listed above)" : ""}. Screenshots: ${OUT}`);
+fs.writeFileSync(path.join(OUT, "results.json"), JSON.stringify({ results, skipped }, null, 2));
 process.exit(failed.length ? 1 : 0);
