@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Roof Cam | Eight roofs on your own house | WV Roofing (concept)</title>
+  <meta name="description" content="Photograph your house, tap the roof, and see eight roofs on it in sun, drizzle, storm and dusk. It all happens on your device: nothing is uploaded.">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="theme-color" content="#0b1220" id="theme-color">
+  <script>document.documentElement.classList.add("js");</script>
+  <script src="/WVROOFING/2/assets/js/calm-early.js"></script>
+  <link rel="icon" href="/WVROOFING/2/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&amp;family=Big+Shoulders+Display:wght@500;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap">
+  <link rel="stylesheet" href="/WVROOFING/2/assets/css/site.css?v=20260930a">
+  <link rel="stylesheet" href="/WVROOFING/2/assets/css/cam.css?v=20260930a">
+  <script type="module" src="/WVROOFING/2/assets/js/cam/app.js"></script>
+</head>
+<body class="page-cam">
+  <a class="skip-link" href="#main">Skip to the Roof Cam</a>
+
+  <header class="station">
+    <div class="station-inner">
+      <a class="ident" href="/WVROOFING/2/" aria-label="WV Roofing, the bulletin">
+        <svg class="ident-mark" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" fill="#1b2a4a"/><path d="M7 24 20 11l13 13" fill="none" stroke="#c9a84c" stroke-width="4.5" stroke-linecap="square"/><path d="M14 29l-2 5M21 29l-2 5M28 29l-2 5" fill="none" stroke="#8fd4f4" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span class="ident-name">WV Roofing</span>
+        <span class="pill">Concept</span>
+      </a>
+      <nav class="station-nav" id="station-nav" aria-label="Main">
+        <ul>
+          <li><a href="/WVROOFING/2/" data-slot="22:30">Bulletin</a></li>
+          <li><a href="/WVROOFING/2/roof-cam/" data-slot="22:35" aria-current="page">Roof Cam</a></li>
+          <li><a href="/WVROOFING/2/range/" data-slot="22:40">The Range</a></li>
+          <li><a href="/WVROOFING/2/about/" data-slot="22:45">About</a></li>
+        </ul>
+      </nav>
+      <div class="station-tools">
+        <div class="gauge" id="gauge" data-label="Roofs drawn so far"></div>
+        <button class="calm" id="calm-toggle" type="button" aria-pressed="true"><span class="calm-label">Weather</span></button>
+        <button class="menu-toggle" type="button" aria-controls="station-nav" aria-expanded="false" aria-label="Open menu"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="warning warning--slim" role="note" aria-label="About this site">
+    <details>
+      <summary><span class="warning-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18v.5"/></svg>Concept</span><span>Previews are approximate. Nothing is uploaded.</span></summary>
+      <p>WV Roofing is a hobby concept and isn't trading. Every roof you see here is drawn on your own device from numbers, keeping your photo's light and shadow, and is approximate. The weather is a mood, not a forecast. Your photo is never uploaded or stored, and it only leaves your device if you share or save a picture yourself.</p>
+    </details>
+  </div>
+
+  <main id="main" class="cam">
+    <p class="sr-only" id="cam-live" role="status" aria-live="polite"></p>
+    <noscript><div class="wrap" style="padding-block: 48px"><p class="lede">The Roof Cam and the range chart need JavaScript, because they draw the roofs on your own device.</p></div></noscript>
+
+    <!-- S0: on air -->
+    <section class="cam-screen cam-onair front front--sky" data-screen="onair" data-isobars="91" aria-labelledby="h-onair">
+      <canvas class="weather" id="onair-weather" aria-hidden="true"></canvas>
+      <div class="wrap onair-grid">
+        <div class="onair-copy">
+          <p class="eyebrow gust"><span class="live-dot" aria-hidden="true"></span>Live · Outside broadcast</p>
+          <h1 id="h-onair" class="hl-1 sway" tabindex="-1">Roof<br>cam<span class="dot">.</span></h1>
+          <p class="lede">Photograph your house. Tap the roof. See eight roofs on it, in the weather. <strong>Nothing leaves your phone unless you share it.</strong></p>
+          <div class="cam-actions">
+            <label class="btn btn--block file-btn">
+              <input type="file" accept="image/jpeg,image/png" capture="environment" id="file-camera" class="sr-only">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5a2 2 0 0 1 2-2h2.3l1.6-2.5h5.2l1.6 2.5h2.3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+              Photograph my house
+            </label>
+            <label class="btn btn--ghost btn--block file-btn">
+              <input type="file" accept="image/jpeg,image/png" id="file-library" class="sr-only">
+              Choose a photo
+            </label>
+          </div>
+          <p class="cam-error" id="photo-error" role="alert"></p>
+          <button type="button" class="btn btn--ghost btn--sm cam-retry" id="cam-retry" hidden>Try again</button>
+          <p class="cam-status mono" id="photo-status" role="status"></p>
+          <ul class="tips">
+            <li>Stand across the road, so the whole roof is in view.</li>
+            <li>Daylight is best. Hold the phone level.</li>
+            <li>JPG or PNG. It stays on this device.</li>
+          </ul>
+        </div>
+        <div class="onair-samples">
+          <h2 class="hl-3" id="h-samples">Or borrow a house</h2>
+          <p class="small muted">Three stock photographs, with the roof already marked.</p>
+          <div class="samples" id="samples" role="list" aria-labelledby="h-samples"><p class="mono muted">Loading the sample houses</p></div>
+        </div>
+      </div>
+      <pre class="selftest mono" id="selftest" hidden></pre>
+    </section>
+
+    <!-- S1: find the roof -->
+    <section class="cam-screen cam-split" data-screen="find" aria-labelledby="h-find" hidden>
+      <div class="cam-stagewrap">
+        <div class="cam-stage" id="find-stage">
+          <canvas class="stage-photo" id="find-photo"></canvas>
+          <canvas class="stage-overlay" id="find-overlay" tabindex="0" role="application" aria-label="Roof finder, on your photo. Tap your roof to find it. With a keyboard: press Enter for a cross, move it with the arrow keys, then press Enter to tap." aria-describedby="find-readout"></canvas>
+          <p class="stage-prompt mono" id="find-prompt" aria-hidden="true">Tap the roof</p>
+          <p class="stage-keys mono" aria-hidden="true">Arrow keys move the cross · Enter taps</p>
+        </div>
+      </div>
+      <div class="sheet">
+        <p class="eyebrow">Step 1 of 2</p>
+        <h2 id="h-find" class="hl-3" tabindex="-1">Find the roof</h2>
+        <p class="sheet-readout mono" id="find-readout" role="status">Tap the middle of a roof slope.</p>
+        <div class="sheet-row" role="group" aria-label="What a tap does">
+          <button type="button" class="chip" id="mode-add" aria-pressed="true">Add a slope</button>
+          <button type="button" class="chip" id="mode-remove" aria-pressed="false">Cut out</button>
+          <button type="button" class="chip" id="find-undo" disabled>Undo</button>
+        </div>
+        <div class="sheet-row tune" role="group" aria-label="How far the last tap spreads">
+          <button type="button" class="chip" id="tighter" disabled>Tighter</button>
+          <span class="tune-scale" id="tune-scale" aria-hidden="true"></span>
+          <button type="button" class="chip" id="looser" disabled>Looser</button>
+        </div>
+        <button type="button" class="btn btn--block" id="find-done" disabled>Looks right</button>
+        <div class="sheet-links">
+          <button type="button" class="link-btn" id="find-draw">Draw it myself</button>
+          <button type="button" class="link-btn" id="find-back">Change photo</button>
+        </div>
+        <p class="netlight mono" id="netlight-find" hidden></p>
+      </div>
+    </section>
+
+    <!-- S1b: draw it yourself -->
+    <section class="cam-screen cam-split" data-screen="draw" aria-labelledby="h-draw" hidden>
+      <div class="cam-stagewrap">
+        <div class="editor-stage" id="editor-stage"></div>
+      </div>
+      <div class="sheet">
+        <p class="eyebrow">Step 1 of 2</p>
+        <h2 id="h-draw" class="hl-3" tabindex="-1">Draw it yourself</h2>
+        <p class="sheet-note">Tap round the edge of each roof slope, then tap the first point again to close it. Cut out chimneys and roof windows so they stay as they are.</p>
+        <div class="sheet-row" role="toolbar" aria-label="Drawing tools">
+          <button type="button" class="chip tool" data-tool="outline" aria-pressed="true">Outline</button>
+          <button type="button" class="chip tool" data-tool="cutout" aria-pressed="false">Cut out</button>
+          <button type="button" class="chip tool" data-tool="brush" aria-pressed="false">Brush</button>
+          <button type="button" class="chip tool" data-tool="erase" aria-pressed="false">Erase</button>
+        </div>
+        <div class="sheet-row">
+          <button type="button" class="chip" id="draw-finish" disabled>Close shape</button>
+          <button type="button" class="chip" id="draw-undo" disabled>Undo</button>
+          <button type="button" class="chip" id="draw-redo" disabled>Redo</button>
+          <button type="button" class="chip" id="draw-clear">Clear</button>
+        </div>
+        <p class="sheet-readout mono" id="draw-readout" role="status">Roof marked: 0%</p>
+        <button type="button" class="btn btn--block" id="draw-done" disabled>Looks right</button>
+        <div class="sheet-links">
+          <button type="button" class="link-btn" id="draw-back">Back to tapping</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- S2: on your roof -->
+    <section class="cam-screen cam-split" data-screen="air" aria-labelledby="h-air" hidden>
+      <div class="cam-stagewrap">
+        <div class="cam-stage" id="air-stage">
+          <canvas class="stage-layer is-on" id="air-a" role="img" aria-label="Your house with its new roof"></canvas>
+          <canvas class="stage-layer" id="air-b" aria-hidden="true"></canvas>
+          <canvas class="stage-before" id="air-before" aria-hidden="true"></canvas>
+          <canvas class="weather" id="air-weather" aria-hidden="true"></canvas>
+          <canvas class="stage-torch" id="air-torch" aria-hidden="true" hidden></canvas>
+          <span class="stage-badge mono" id="air-badge">Approximate preview</span>
+          <p class="lower-third" id="air-caption"></p>
+        </div>
+        <div class="stage-tools">
+          <button type="button" class="chip" id="air-hold" aria-pressed="false">Show the old roof</button>
+          <span class="mono muted stage-hint" id="air-hint">Or press and hold the picture</span>
+        </div>
+      </div>
+      <div class="sheet">
+        <p class="eyebrow">Step 2 of 2 · On your roof</p>
+        <h2 id="h-air" class="hl-3 air-title" tabindex="-1"><span id="air-name">Your new roof</span><small id="air-colour"></small></h2>
+        <div>
+          <p class="picker-label" id="lbl-air-roofs">The roof <span id="air-progress"></span></p>
+          <div class="stations" id="air-stations" role="radiogroup" aria-labelledby="lbl-air-roofs"></div>
+        </div>
+        <div>
+          <p class="picker-label" id="lbl-air-weather">The weather</p>
+          <div class="deck" id="air-deck" role="radiogroup" aria-labelledby="lbl-air-weather"></div>
+        </div>
+        <div class="sheet-row sheet-row--actions">
+          <button type="button" class="btn" id="air-share">Share card</button>
+          <button type="button" class="btn btn--ghost" id="air-save">Save image</button>
+        </div>
+        <p class="cam-status mono" id="air-status" role="status"></p>
+        <details class="report" id="air-report">
+          <summary>Station report</summary>
+          <p class="report-summary" id="report-summary"></p>
+          <dl class="report-list" id="report-facts"></dl>
+          <p class="report-note small muted">Lifespans are typical figures, not guarantees. Makers are named only as comparable products.</p>
+          <p class="picker-label">From the engine room</p>
+          <dl class="report-list report-list--engine" id="report-engine"></dl>
+        </details>
+        <p class="netlight mono" id="netlight-air" hidden></p>
+        <div class="sheet-links">
+          <button type="button" class="link-btn" id="air-edit">Edit the roof outline</button>
+          <button type="button" class="link-btn" id="air-restart">Start again</button>
+        </div>
+        <p class="small muted">Drawn on this device from numbers, keeping your photo's own light and shadow. Approximate: screens show colour differently, and the weather is a mood, not a forecast.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer footer--slim">
+    <div class="wrap">
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="/WVROOFING/2/">Bulletin</a>
+        <a href="/WVROOFING/2/range/">The range</a>
+        <a href="/WVROOFING/2/about/">About &amp; privacy</a>
+        <a href="/WVROOFING/">Version 1</a>
+      </nav>
+      <div class="credits">
+        <p>Sample houses are stock photographs, with number plates and house numbers blurred: the <a href="https://unsplash.com/photos/yXBeuNhmbNY" rel="noopener noreferrer">1930s semi</a> and the <a href="https://unsplash.com/photos/WUEGFIcfwK4" rel="noopener noreferrer">1920s-30s detached house</a> are from Unsplash (Unsplash Licence); the <a href="https://www.pexels.com/photo/37943926/" rel="noopener noreferrer">modern detached house</a> is from Pexels (Pexels Licence).</p>
+      </div>
+      <p class="legal">Copyright &copy; <span data-year>2026</span> WV Roofing · Concept site, not trading · Wirral &amp; Liverpool</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Rain later | The WV Roofing weather report (concept)</title>
+  <meta name="description" content="A concept site. See your own house with eight different roofs, in sun, drizzle, storm and dusk, drawn on your phone. Nothing is uploaded.">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="theme-color" content="#0b1220">
+  <script>document.documentElement.classList.add("js");</script>
+  <script src="/WVROOFING/2/assets/js/calm-early.js"></script>
+  <link rel="icon" href="/WVROOFING/2/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&amp;family=Big+Shoulders+Display:wght@500;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap">
+  <link rel="stylesheet" href="/WVROOFING/2/assets/css/site.css?v=20260930a">
+  <link rel="preload" as="image" href="/WVROOFING/samples/semi-1930s.jpg" fetchpriority="high">
+  <script type="module" src="/WVROOFING/2/assets/js/home.js"></script>
+</head>
+<body class="page-home">
+  <a class="skip-link" href="#main">Skip to the bulletin</a>
+
+  <header class="station">
+    <div class="station-inner">
+      <a class="ident" href="/WVROOFING/2/" aria-label="WV Roofing, the bulletin" aria-current="page">
+        <svg class="ident-mark" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" fill="#1b2a4a"/><path d="M7 24 20 11l13 13" fill="none" stroke="#c9a84c" stroke-width="4.5" stroke-linecap="square"/><path d="M14 29l-2 5M21 29l-2 5M28 29l-2 5" fill="none" stroke="#8fd4f4" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span class="ident-name">WV Roofing</span>
+        <span class="pill">Concept</span>
+      </a>
+      <nav class="station-nav" id="station-nav" aria-label="Main">
+        <ul>
+          <li><a href="/WVROOFING/2/" data-slot="22:30" aria-current="page">Bulletin</a></li>
+          <li><a href="/WVROOFING/2/roof-cam/" data-slot="22:35">Roof Cam</a></li>
+          <li><a href="/WVROOFING/2/range/" data-slot="22:40">The Range</a></li>
+          <li><a href="/WVROOFING/2/about/" data-slot="22:45">About</a></li>
+        </ul>
+      </nav>
+      <div class="station-tools">
+        <div class="gauge" id="gauge" data-label="How far down the bulletin you are"></div>
+        <button class="calm" id="calm-toggle" type="button" aria-pressed="true"><span class="calm-label">Weather</span></button>
+        <a class="btn btn--sm station-cta" href="/WVROOFING/2/roof-cam/">Roof Cam</a>
+        <button class="menu-toggle" type="button" aria-controls="station-nav" aria-expanded="false" aria-label="Open menu"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="warning" role="note" aria-label="About this site">
+    <details>
+      <summary><span class="warning-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18v.5"/></svg>Yellow warning</span><span>Concept site. Not trading.<span class="w-more"> Contact details are placeholders.</span></span></summary>
+      <p>WV Roofing is a hobby concept and isn't trading. The phone number is a placeholder from Ofcom's drama range, the email address is a placeholder, and nothing on this site is a real offer. The weather you see here is theatre, drawn on your own device. It is not a forecast.</p>
+    </details>
+  </div>
+
+  <main id="main">
+    <!-- Front 01: tonight -->
+    <section class="front front--sky hero" id="top" data-isobars="11" aria-labelledby="hero-title">
+      <canvas class="weather" id="hero-weather" aria-hidden="true"></canvas>
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow gust">Front 01 · Tonight · Wirral &amp; Liverpool</p>
+          <h1 id="hero-title" class="hl-1 sway">Rain<br>later<span class="dot">.</span></h1>
+          <p class="lede">It always is. See your own house with a roof that's ready for it, drawn on your phone. <strong>Nothing is uploaded.</strong></p>
+          <div class="cta-row">
+            <a class="btn" href="/WVROOFING/2/roof-cam/">Try it on my roof</a>
+            <a class="more more--down" href="#range">Watch the forecast</a>
+          </div>
+          <p class="readout gust">Wind <b>W 6</b> · Rain <b>98%</b> · Outlook <b>New roof</b><span class="note">Not a real forecast.</span></p>
+        </div>
+        <figure class="hero-stage" id="hero-stage" data-sample="semi-1930s" data-finish="spanish-slate">
+          <div class="ba" style="--pos: 0%">
+            <img src="/WVROOFING/samples/semi-1930s.jpg" width="1600" height="1145" alt="A 1930s hipped semi-detached house with a weathered brown tiled roof" fetchpriority="high">
+            <canvas class="ba-after" width="1600" height="1145" aria-hidden="true"></canvas>
+            <input class="ba-range" type="range" min="0" max="100" value="0" aria-label="Drag to compare the old roof with the new one" hidden>
+            <span class="ba-handle" hidden></span>
+          </div>
+          <figcaption class="lower-third" id="hero-caption" aria-live="polite"><b>Before</b> · 1930s semi · Photo (stock): Unsplash</figcaption>
+        </figure>
+      </div>
+      <div class="ticker" role="group" aria-label="The small print">
+        <button class="ticker-pause" type="button" aria-pressed="false" aria-label="Pause the ticker">
+          <svg class="ic-pause" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><rect x="2" y="1" width="3.6" height="12"/><rect x="8.4" y="1" width="3.6" height="12"/></svg>
+          <svg class="ic-play" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M3 1l10 6-10 6z"/></svg>
+        </button>
+        <div class="ticker-view"><div class="ticker-track">
+          <span>Concept site</span><span>Not trading</span><span>Contact details are placeholders</span><span>Previews are approximate</span><span>Not a real forecast</span><span>Photos (stock): Unsplash, Pexels</span><span>Your photo is never uploaded</span><span>Rain later. Good</span>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- Front 02: the range -->
+    <section class="front front--ink" id="range" data-isobars="23" aria-labelledby="range-title">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow gust">Front 02 · The range</p>
+          <h2 id="range-title" class="hl-2">Eight roofs. One house. Any weather<span class="dot">.</span></h2>
+          <p class="lede">Pick a roof, then pick the weather. It's all worked out on your device while you watch.</p>
+        </div>
+        <div class="picker reveal" id="picker" data-sample="semi-1930s" data-finish="clay-plain-red">
+          <figure class="picker-stage" id="picker-stage">
+            <canvas class="picker-canvas" id="picker-canvas" width="1600" height="1145" role="img" aria-label="The sample house, waiting for its new roof"></canvas>
+            <canvas class="weather" id="picker-weather" aria-hidden="true"></canvas>
+            <figcaption class="lower-third" id="picker-caption">1930s semi · Photo (stock): Unsplash · Approximate preview</figcaption>
+          </figure>
+          <div class="picker-side">
+            <p class="picker-name" aria-live="polite"><span id="picker-name">Clay plain tile</span><small id="picker-colour">Classic red</small></p>
+            <div>
+              <p class="picker-label" id="lbl-roofs">The roof</p>
+              <div class="stations stations--grid" id="picker-stations" role="radiogroup" aria-labelledby="lbl-roofs"></div>
+            </div>
+            <div>
+              <p class="picker-label" id="lbl-weather">The weather</p>
+              <div class="deck" id="picker-deck" role="radiogroup" aria-labelledby="lbl-weather"></div>
+            </div>
+            <div class="cta-row">
+              <a class="btn" id="picker-link" href="/WVROOFING/2/roof-cam/?tile=clay-plain-red">Try it on my roof</a>
+              <a class="more" href="/WVROOFING/2/range/">The range chart</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Front 03: the Roof Cam -->
+    <section class="front front--paper" id="roof-cam" data-isobars="37" aria-labelledby="cam-title">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow gust">Front 03 · The Roof Cam</p>
+          <h2 id="cam-title" class="hl-2">Your house. Live from the pavement<span class="dot">.</span></h2>
+          <p class="lede">The old way was six steps and a postcode. The Roof Cam is a photo and a few taps.</p>
+        </div>
+        <ol class="bulletins reveal">
+          <li class="bulletin">
+            <span class="bulletin-no">01</span>
+            <h3>Snap</h3>
+            <p>Stand across the road and photograph your house. <strong>No photo to hand? There are three sample houses.</strong></p>
+          </li>
+          <li class="bulletin">
+            <span class="bulletin-no">02</span>
+            <h3>Tap</h3>
+            <p>Tap each slope of your roof. The Roof Cam finds its edges for you, and you can nudge it if it's wrong. <strong>You only draw round it if you'd like to.</strong></p>
+          </li>
+          <li class="bulletin">
+            <span class="bulletin-no">03</span>
+            <h3>Watch the weather</h3>
+            <p>Eight roofs appear on your own house. Then put them in sun, drizzle, a storm and dusk. <strong>Hold the picture to see the old roof again.</strong></p>
+          </li>
+        </ol>
+        <div class="numerals reveal">
+          <a class="numeral" href="/WVROOFING/2/roof-cam/"><b>1</b><span>tap per slope</span></a>
+          <a class="numeral" href="/WVROOFING/2/range/"><b>8</b><span>roofs to try on it</span></a>
+          <a class="numeral" href="/WVROOFING/2/about/#privacy"><b>0</b><span>uploads, ever</span></a>
+        </div>
+        <p class="promise reveal">Your photo stays on your phone.<small>It's opened by your browser, on your device. It isn't uploaded, stored or sent to anyone. It only leaves your phone if you share the card or send a saved image yourself.</small></p>
+        <div class="cta-row" style="margin-top: 28px">
+          <a class="btn" href="/WVROOFING/2/roof-cam/">Open the Roof Cam</a>
+          <a class="more" href="/WVROOFING/2/roof-cam/?sample=semi-1930s">Try a sample house</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Front 04: what a re-roof involves -->
+    <section class="front front--sky" id="re-roof" data-isobars="41" aria-labelledby="stages-title">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow gust">Front 04 · Under the tiles</p>
+          <h2 id="stages-title" class="hl-2">What a new roof involves<span class="dot">.</span></h2>
+          <p class="lede">A re-roof is more than the part you can see from the street. In order, from the scaffold to the skip:</p>
+        </div>
+        <ol class="frontline reveal">
+          <li class="stage"><h3>Scaffold</h3><p>Scaffolding goes up, and the garden, paths and windows below are covered.</p></li>
+          <li class="stage"><h3>Strip</h3><p>The old tiles or slates come off, then the battens and the old felt under them.</p></li>
+          <li class="stage"><h3>Timbers</h3><p>With the roof open, the rafters and the other timbers can be checked properly.</p></li>
+          <li class="stage"><h3>Membrane</h3><p>A breathable membrane goes over the rafters: the roof's second line of defence.</p></li>
+          <li class="stage"><h3>Battens</h3><p>New treated battens are fixed at the spacing the chosen tile or slate needs.</p></li>
+          <li class="stage"><h3>Tiles or slates</h3><p>The new covering is laid course by course, from the eaves up to the ridge.</p></li>
+          <li class="stage"><h3>Ridge and lead</h3><p>Ridge tiles and verges are fixed, and new lead is dressed where the roof meets chimneys and walls.</p></li>
+          <li class="stage"><h3>Tidy</h3><p>The scaffold comes down and the waste goes away. The rain can do what it likes.</p></li>
+        </ol>
+        <p class="notice">A general description of the trade. Not a programme, a price or a promise.</p>
+      </div>
+    </section>
+
+    <!-- Front 05: the shipping forecast -->
+    <section class="front front--paper front--alt" id="areas" data-isobars="53" aria-labelledby="areas-title">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow gust">Front 05 · And now the shipping forecast</p>
+          <h2 id="areas-title" class="hl-2">Wirral, Liverpool, Sefton<span class="dot">.</span></h2>
+          <p class="lede">The areas the concept covers, read the only proper way.</p>
+        </div>
+        <div class="shipping reveal">
+          <div>
+            <h3>Wirral</h3>
+            <dl>
+              <div class="area"><dt>Birkenhead</dt><dd>Westerly 5 to 7. Rain later. Good.</dd></div>
+              <div class="area"><dt>Wallasey</dt><dd>North-westerly 6. Showers. Moderate or good.</dd></div>
+              <div class="area"><dt>New Brighton</dt><dd>Westerly 7, occasionally gale 8. Squally showers. Moderate.</dd></div>
+              <div class="area"><dt>Moreton</dt><dd>Westerly 5. Rain at times. Good.</dd></div>
+              <div class="area"><dt>Leasowe</dt><dd>North-westerly 6. Showers. Good.</dd></div>
+              <div class="area"><dt>Hoylake</dt><dd>Westerly 6 to gale 8. Rain, then showers. Moderate, occasionally poor.</dd></div>
+              <div class="area"><dt>West Kirby</dt><dd>South-westerly 5 to 7. Rain later. Good.</dd></div>
+              <div class="area"><dt>Greasby</dt><dd>Westerly 4 or 5. Drizzle. Moderate or good.</dd></div>
+              <div class="area"><dt>Upton</dt><dd>Westerly 4 or 5. Rain at times. Good.</dd></div>
+              <div class="area"><dt>Prenton</dt><dd>South-westerly 4. Drizzle. Moderate.</dd></div>
+              <div class="area"><dt>Oxton</dt><dd>South-westerly 4 or 5. Showers. Good.</dd></div>
+              <div class="area"><dt>Bebington</dt><dd>Westerly 4. Rain later. Good.</dd></div>
+              <div class="area"><dt>Bromborough</dt><dd>Westerly 4 or 5. Occasional rain. Good.</dd></div>
+              <div class="area"><dt>Eastham</dt><dd>Southerly 3 or 4. Fair, then rain. Good.</dd></div>
+              <div class="area"><dt>Heswall</dt><dd>South-westerly 5 or 6. Showers. Moderate or good.</dd></div>
+              <div class="area"><dt>Neston</dt><dd>Southerly 4. Rain later. Good.</dd></div>
+            </dl>
+          </div>
+          <div>
+            <h3>Liverpool &amp; Sefton</h3>
+            <dl>
+              <div class="area"><dt>City Centre</dt><dd>Westerly 5. Rain. Moderate.</dd></div>
+              <div class="area"><dt>Aigburth</dt><dd>South-westerly 4 or 5. Showers. Good.</dd></div>
+              <div class="area"><dt>Allerton</dt><dd>Westerly 4. Drizzle. Moderate or good.</dd></div>
+              <div class="area"><dt>Mossley Hill</dt><dd>Westerly 4. Rain at times. Good.</dd></div>
+              <div class="area"><dt>Woolton</dt><dd>Westerly 4 or 5. Showers. Good.</dd></div>
+              <div class="area"><dt>Childwall</dt><dd>Westerly 4. Occasional rain. Good.</dd></div>
+              <div class="area"><dt>Wavertree</dt><dd>Westerly 4 or 5. Rain later. Good.</dd></div>
+              <div class="area"><dt>West Derby</dt><dd>North-westerly 4. Showers. Good.</dd></div>
+              <div class="area"><dt>Walton</dt><dd>North-westerly 5. Rain. Moderate.</dd></div>
+              <div class="area"><dt>Anfield</dt><dd>North-westerly 5. Showers. Moderate or good.</dd></div>
+              <div class="area"><dt>Garston</dt><dd>South-westerly 5. Rain at times. Good.</dd></div>
+              <div class="area"><dt>Crosby</dt><dd>Westerly 6 or 7. Squally showers. Moderate.</dd></div>
+              <div class="area"><dt>Formby</dt><dd>Westerly 6 to gale 8. Rain, then showers. Moderate, occasionally poor.</dd></div>
+              <div class="area"><dt>Maghull</dt><dd>Westerly 4 or 5. Drizzle. Good.</dd></div>
+            </dl>
+          </div>
+        </div>
+        <p class="notice">Not a real forecast. Just the areas.</p>
+      </div>
+    </section>
+
+    <!-- Front 06: questions -->
+    <section class="front front--ink" id="questions" data-isobars="67" aria-labelledby="faq-title">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow gust">Front 06 · Viewers' questions</p>
+          <h2 id="faq-title" class="hl-2">You asked<span class="dot">.</span></h2>
+        </div>
+        <div class="faq reveal">
+          <details>
+            <summary>What happens to my photo?</summary>
+            <div class="answer">
+              <p>Nothing. Your browser opens it on your own device and it stays there. It isn't uploaded, stored or sent to anyone, and it's gone when you close the tab. It only leaves your device if you share the card or send a saved image yourself.</p>
+              <p>You don't have to take that on trust: after you add a photo, the Roof Cam counts every request its own page makes from then on (normally none) and shows you the number.</p>
+            </div>
+          </details>
+          <details>
+            <summary>How accurate are the previews?</summary>
+            <div class="answer">
+              <p>They're a way to narrow down a choice, not a photograph of a finished roof. Each roof is drawn from numbers on your device, keeping your photo's own light and shadow, and it's approximate.</p>
+              <p>Screens show colour differently too. Nothing replaces holding a real tile or slate in your hand.</p>
+            </div>
+          </details>
+          <details>
+            <summary>Can I try it without a photo?</summary>
+            <div class="answer"><p>Yes. The Roof Cam has three sample houses with the roof already marked: a 1930s semi, a modern detached house and a 1920s-30s detached house. They're stock photographs, with number plates and house numbers blurred.</p></div>
+          </details>
+          <details>
+            <summary>Do I need planning permission for a new roof?</summary>
+            <div class="answer">
+              <p>Usually not for a like-for-like replacement in England. If your home is in a conservation area or is a listed building, or you'd like a noticeably different material, you may need consent.</p>
+              <p>This is general guidance for England, not legal advice. Always confirm with your local authority if you're unsure.</p>
+            </div>
+          </details>
+          <details>
+            <summary>Does a new roof need Building Regulations approval?</summary>
+            <div class="answer">
+              <p>A full re-roof normally does. It counts as renovating a "thermal element", which can mean upgrading the roof insulation at the same time.</p>
+              <p>This is general guidance for England, not legal advice. Always confirm with your local authority if you're unsure.</p>
+            </div>
+          </details>
+          <details>
+            <summary>Is the weather real?</summary>
+            <div class="answer"><p>No. The rain, the wind, the lightning and the forecast are all theatre, drawn on your device. If the moving weather is too much, press <strong>Weather</strong> in the bar at the top to still it, and press it again to bring it back. It starts still if your device asks for reduced motion or is saving data, unless you've switched the weather back on here.</p></div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- Front 07: end of bulletin -->
+    <section class="front front--sky" id="contact" data-isobars="79" aria-labelledby="end-title">
+      <div class="wrap signoff">
+        <div class="reveal">
+          <p class="eyebrow gust">Front 07 · End of bulletin</p>
+          <h2 id="end-title" class="hl-2">That's the forecast<span class="dot">.</span></h2>
+          <p class="lede" style="margin-top: 18px">Outlook for the next few days: a new roof, on your own house, in about a minute.</p>
+          <div class="cta-row" style="margin-top: 28px">
+            <a class="btn" href="/WVROOFING/2/roof-cam/">Try it on my roof</a>
+            <a class="more" href="/WVROOFING/2/range/">See the eight roofs</a>
+          </div>
+        </div>
+        <div class="reveal">
+          <ul class="contact-list">
+            <li><span class="k">Telephone</span><a class="v" href="tel:+441514960321">0151 496 0321</a><span class="tag">Placeholder. It can't ring anyone.</span></li>
+            <li><span class="k">Email</span><a class="v" href="mailto:hello@wvroofing.co.uk">hello@wvroofing.co.uk</a><span class="tag">Placeholder. It won't reach anyone yet.</span></li>
+            <li><span class="k">Address</span><span class="v">To be confirmed</span><span class="tag">WV Roofing isn't trading.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-view"><div class="ticker-track">
+        <span>Concept site</span><span>Not trading</span><span>No prices</span><span>No reviews</span><span>No uploads</span><span>Previews are approximate</span><span>Not a real forecast</span><span>Goodnight</span>
+      </div></div>
+    </div>
+    <div class="wrap">
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="/WVROOFING/2/">Bulletin</a>
+        <a href="/WVROOFING/2/roof-cam/">Roof Cam</a>
+        <a href="/WVROOFING/2/range/">The range</a>
+        <a href="/WVROOFING/2/about/">About &amp; privacy</a>
+        <a href="/WVROOFING/">Version 1</a>
+      </nav>
+      <div class="credits">
+        <p>Sample houses are stock photographs, with number plates and house numbers blurred: the <a href="https://unsplash.com/photos/yXBeuNhmbNY" rel="noopener noreferrer">1930s semi</a> and the <a href="https://unsplash.com/photos/WUEGFIcfwK4" rel="noopener noreferrer">1920s-30s detached house</a> are from Unsplash (Unsplash Licence); the <a href="https://www.pexels.com/photo/37943926/" rel="noopener noreferrer">modern detached house</a> is from Pexels (Pexels Licence).</p>
+        <p>No manufacturer's pictures are used: every tile and slate is drawn from numbers. Guarantees, insurance and trade accreditations aren't claimed anywhere on this site. The typefaces are Big Shoulders Display, Archivo and IBM Plex Mono.</p>
+      </div>
+      <p class="legal">Copyright &copy; <span data-year>2026</span> WV Roofing · Concept site, not trading · Wirral &amp; Liverpool</p>
+    </div>
+  </footer>
+
+  <div class="dock" id="dock" aria-hidden="true"><a class="btn btn--block" href="/WVROOFING/2/roof-cam/" tabindex="-1">Try it on my roof</a></div>
+</body>
+</html>

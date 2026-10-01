@@ -42,9 +42,24 @@ test("both hosts send the same CSP on every WV Roofing path", () => {
   assert.equal(all.size, 1, "one policy everywhere");
 });
 
+// Version 2 (served at /WVROOFING/2/) lives under the same policy.
+const V2 = path.join(repo, "public/WVROOFING/2");
+const V2_PAGES = ["2/index.html", "2/roof-cam/index.html", "2/range/index.html", "2/about/index.html"];
+
+/** Every file under a folder. */
+function walk(dir) {
+  const out = [];
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) out.push(...walk(p));
+    else out.push(p);
+  }
+  return out;
+}
+
 test("every inline script in the WV pages is allowed by its hash, and nothing else inline", () => {
   const policy = cloudflarePolicies()["/WVROOFING/*"];
-  const pages = ["index.html", "visualiser/index.html", "roof-replacement/index.html", "privacy/index.html", "operator/index.html"];
+  const pages = ["index.html", "visualiser/index.html", "roof-replacement/index.html", "privacy/index.html", "operator/index.html", ...V2_PAGES];
   for (const p of pages) {
     const html = fs.readFileSync(path.join(repo, "public/WVROOFING", p), "utf8");
     for (const m of html.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
@@ -54,6 +69,34 @@ test("every inline script in the WV pages is allowed by its hash, and nothing el
       assert.ok(policy.includes(hash), p + ": inline script not in the CSP: " + m[2].slice(0, 60));
     }
     assert.ok(!/\son[a-z]+=/i.test(html.replace(/<script[\s\S]*?<\/script>/g, "")), p + ": no inline event handlers");
+  }
+});
+
+test("version 2 runs only its own script files, and never builds code from a string", () => {
+  // script-src is 'self' plus that one hash, so a script from anywhere else,
+  // eval, new Function or a timer handed a string would all be blocked.
+  for (const p of V2_PAGES) {
+    const html = fs.readFileSync(path.join(repo, "public/WVROOFING", p), "utf8");
+    for (const m of html.matchAll(/<script\b([^>]*)>/g)) {
+      const src = /\bsrc="([^"]*)"/.exec(m[1]);
+      if (!src) continue;
+      assert.match(src[1], /^\/WVROOFING\/2\/[^:]*$/, p + ": a script from outside version 2: " + src[1]);
+      const file = path.join(repo, "public", src[1].split(/[?#]/)[0]);
+      assert.ok(fs.existsSync(file), p + ": the script " + src[1] + " doesn't exist");
+    }
+  }
+  const scripts = walk(V2).filter((f) => f.endsWith(".js"));
+  assert.ok(scripts.length > 5, "version 2's scripts were found");
+  for (const file of scripts) {
+    const code = fs.readFileSync(file, "utf8");
+    const name = path.relative(repo, file);
+    assert.doesNotMatch(code, /\beval\s*\(/, name + ": eval(");
+    assert.doesNotMatch(code, /\bnew\s+Function\s*\(/, name + ": new Function(");
+    assert.doesNotMatch(code, /\bset(?:Timeout|Interval)\s*\(\s*["'`]/, name + ": a timer handed a string of code");
+    // Workers must be same-origin files (no blob: or data: workers under this policy).
+    for (const w of code.matchAll(/\bnew\s+(?:Shared)?Worker\s*\(([^)]*)/g)) {
+      assert.match(w[1], /^\s*new URL\(\s*["']\.\.?\//, name + ": a worker that isn't a file next to it: " + w[0]);
+    }
   }
 });
 

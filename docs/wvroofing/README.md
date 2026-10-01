@@ -18,6 +18,7 @@ The overview of the concept site itself is in `docs/WVROOFING.md`.
 | `retention.md` | Every retention period (from `retention.js`), deletion on request, copies outside our control |
 | `cost-model.md` | Unit costs, the spending controls and their defaults, worst cases, typical costs |
 | `screens/` | Screenshots from the test environment (QA run) |
+| `version-2.md` | Version 2 at `/WVROOFING/2/` ("Rain Later", the weather report): an on-device Roof Cam with one-tap roof finding; version 1 is unchanged |
 
 Earlier handover versions are kept; a new version is a new file.
 

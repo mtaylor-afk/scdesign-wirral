@@ -1,0 +1,226 @@
+/* ==========================================================================
+   WV Roofing v2 — the Roof Cam (the visualiser as an outside broadcast).
+
+   Phones: the picture on top, every control in the sheet under it, within a
+   thumb's reach. The picture is never taller than leaves room for the sheet
+   (on short screens it scrolls away instead of sticking). Desktop: the
+   picture takes the left, the sheet sits beside it.
+   ========================================================================== */
+
+.cam { background: var(--ink); min-height: 70vh; }
+.cam-screen[hidden] { display: none !important; }
+.mono { font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; font-size: 14px; line-height: 1.5; font-weight: 500; }
+
+/* ---------- S0: on air ---------- */
+.cam-onair { padding-block: clamp(36px, 6vw, 80px) clamp(64px, 9vw, 120px); min-height: calc(100vh - var(--bar-h) - 48px); min-height: calc(100svh - var(--bar-h) - 48px); }
+.onair-grid { display: grid; gap: 48px; }
+.onair-copy .lede { margin-top: 18px; }
+.live-dot {
+  display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--front); margin-right: 10px; vertical-align: 0.05em;
+  animation: live 1.6s ease-in-out infinite;
+}
+@keyframes live { 50% { opacity: 0.25; } }
+.cam-actions { display: grid; gap: 12px; margin-top: 28px; max-width: 460px; }
+.file-btn { cursor: pointer; position: relative; }
+.file-btn:focus-within { outline: 3px solid var(--amber-2); outline-offset: 3px; }
+.file-btn.is-busy, .file-btn.is-waiting { opacity: 0.6; pointer-events: none; }
+.tips { margin-top: 22px; display: grid; gap: 6px; max-width: 460px; color: var(--muted); font-size: 16px; }
+.tips li { position: relative; padding-left: 22px; }
+.tips li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 10px; height: 2px; background: var(--rain); transform: rotate(-64deg); }
+.cam-error {
+  margin-top: 16px; max-width: 460px; padding: 12px 14px; border-left: 6px solid var(--front);
+  background: rgba(226, 80, 63, 0.14); color: var(--cream); font-size: 16px;
+}
+.cam-retry { margin-top: 12px; }
+.cam-status { margin-top: 14px; color: var(--rain); }
+/* Status lines stay in the page when they're empty (so screen readers hear the
+   next message), but take no room. */
+.cam-error:empty, .cam-status:empty { margin: 0; padding: 0; border: 0; background: none; }
+.sheet > .cam-status:empty { position: absolute; }
+.onair-samples .small { margin-top: 8px; }
+.samples { display: grid; gap: 12px; margin-top: 18px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.samples[aria-busy="true"] .sample-card { opacity: 0.7; }
+.sample-item { display: grid; min-width: 0; }
+.sample-card {
+  display: grid; gap: 0; width: 100%; padding: 0; text-align: left; background: rgba(11, 18, 32, 0.6); color: var(--cream);
+  border: 1px solid rgba(143, 212, 244, 0.3); min-width: 0; align-content: start;
+  transition: border-color 0.15s, transform 0.2s var(--ease), opacity 0.2s;
+}
+.sample-card:hover { border-color: var(--amber); transform: translateY(-2px); }
+.sample-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+.sample-card span { display: block; padding: 8px 10px 9px; font-family: var(--font-mono); font-size: 12px; line-height: 1.35; letter-spacing: 0.05em; text-transform: uppercase; overflow-wrap: anywhere; }
+.sample-card small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+@media (max-width: 420px) {
+  .samples { gap: 8px; }
+  .sample-card span { padding: 6px 7px 7px; font-size: 11px; }
+}
+@media (min-width: 1024px) {
+  .onair-grid { grid-template-columns: 1fr 1fr; gap: 80px; align-items: end; }
+}
+.selftest {
+  position: relative; z-index: 4; padding: 14px; overflow-x: auto;
+  margin: 32px max(var(--gutter), env(safe-area-inset-right, 0px)) 0 max(var(--gutter), env(safe-area-inset-left, 0px));
+  background: rgba(11, 18, 32, 0.9); border: 1px solid var(--rain); color: var(--rain); text-transform: none; letter-spacing: 0; font-size: 13px; white-space: pre;
+}
+
+/* ---------- The split screens: picture and sheet ---------- */
+.cam-split { display: grid; grid-template-columns: minmax(0, 1fr); background: var(--ink); }
+.cam-stagewrap {
+  background: #05080f; display: grid; justify-items: center; align-content: start; gap: 0;
+  position: sticky; top: var(--bar-h); z-index: 6;
+  padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+  border-bottom: 1px solid rgba(143, 212, 244, 0.25);
+}
+/* The picture's width follows its height cap (--ar is the photo's width / height,
+   set by the page): on a phone, at least a band of the sheet always shows under it. */
+.cam-stage {
+  position: relative; overflow: hidden; background: #05080f; aspect-ratio: 4 / 3; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  margin-inline: auto;
+  width: min(100%, calc(min(56vh, 100vh - var(--bar-h) - 220px) * var(--ar, 1.3333)));
+  width: min(100%, calc(min(56svh, 100svh - var(--bar-h) - 220px) * var(--ar, 1.3333)));
+}
+.editor-stage {
+  position: relative; display: flex; justify-content: center; background: #05080f; min-height: 200px; margin-inline: auto;
+  width: min(100%, calc(min(56vh, 100vh - var(--bar-h) - 220px) * var(--ar, 1.3333)));
+  width: min(100%, calc(min(56svh, 100svh - var(--bar-h) - 220px) * var(--ar, 1.3333)));
+}
+/* Short screens (a phone on its side): the picture scrolls with the page instead
+   of sticking, and fits the screen with the hold button under it. */
+@media (max-width: 1023px) and (max-height: 560px) {
+  .cam-stagewrap { position: static; }
+  .cam-stage, .editor-stage {
+    width: min(100%, calc(max(200px, 100vh - var(--bar-h) - 76px) * var(--ar, 1.3333)));
+    width: min(100%, calc(max(200px, 100svh - var(--bar-h) - 76px) * var(--ar, 1.3333)));
+  }
+}
+/* While the picture sticks, focus moving through the sheet is scrolled clear of
+   it as well as the bar (the page writes --cam-stick, the picture's height). */
+@media (max-width: 1023px) and (min-height: 561px) {
+  html { scroll-padding-top: calc(var(--bar-h) + var(--cam-stick, 0px) + 16px); }
+}
+.cam-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stage-overlay { cursor: crosshair; touch-action: manipulation; outline: none; }
+.stage-overlay:focus-visible { box-shadow: inset 0 0 0 3px var(--amber-2); }
+.stage-prompt {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; pointer-events: none;
+  padding: 10px 16px 8px; background: rgba(11, 18, 32, 0.86); color: var(--amber-2); border: 1px solid var(--amber);
+  font-size: 16px; font-weight: 600; white-space: nowrap;
+  animation: prompt 1.8s ease-in-out infinite;
+}
+@keyframes prompt { 50% { opacity: 0.45; } }
+/* How to use the roof finder from a keyboard: shown while it has keyboard focus. */
+.stage-keys {
+  display: none; position: absolute; left: 10px; top: 10px; z-index: 5; max-width: calc(100% - 20px); pointer-events: none;
+  padding: 6px 10px 5px; background: rgba(11, 18, 32, 0.9); color: var(--cream); border: 1px solid var(--amber);
+}
+.stage-overlay:focus-visible ~ .stage-keys { display: block; }
+.stage-layer { opacity: 0; transition: opacity 0.25s linear; }
+.stage-layer.is-on { opacity: 1; }
+.stage-before { opacity: 0; transition: opacity 0.12s linear; z-index: 2; }
+.stage-before.is-held { opacity: 1; }
+.cam-stage .weather { z-index: 3; }
+.stage-torch { z-index: 4; pointer-events: none; }
+/* At dusk a finger on the picture moves the torch, so it doesn't scroll the page. */
+.cam-stage.is-dusk { touch-action: none; }
+.stage-badge {
+  position: absolute; left: 10px; top: 10px; z-index: 5; padding: 4px 8px 3px; font-size: 11px;
+  background: rgba(11, 18, 32, 0.82); color: var(--muted); border: 1px solid rgba(169, 180, 200, 0.4);
+}
+/* The roof that was chosen is on its way (the caption names the one showing).
+   It sits under the "Approximate preview" badge, not beside it, so it never
+   covers the badge on a narrow portrait picture. */
+.cam-stage.is-busy::after {
+  content: "Drawing"; position: absolute; left: 10px; top: 42px; z-index: 5; padding: 4px 8px 3px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  background: var(--amber); color: var(--ink);
+}
+.cam-stage .lower-third { position: absolute; left: 10px; bottom: 10px; z-index: 5; max-width: calc(100% - 20px); font-size: 12px; }
+.cam-stage.is-before .lower-third b { color: var(--rain); }
+.stage-tools {
+  width: 100%; display: flex; align-items: center; gap: 12px; background: var(--ink);
+  padding: 8px max(var(--gutter), env(safe-area-inset-right, 0px)) 8px max(var(--gutter), env(safe-area-inset-left, 0px));
+}
+.stage-hint { font-size: 14px; }
+
+.sheet {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; min-width: 0;
+  padding: 22px max(var(--gutter), env(safe-area-inset-right, 0px)) calc(36px + env(safe-area-inset-bottom, 0px)) max(var(--gutter), env(safe-area-inset-left, 0px));
+  background: var(--navy); color: var(--cream);
+  border-top: 5px solid var(--finish);
+  transition: border-color 0.3s;
+}
+/* A row of roofs is wider than the sheet: it scrolls sideways inside it, never out of it. */
+.sheet > * { min-width: 0; }
+.sheet .eyebrow { margin-bottom: -8px; }
+.sheet h2:focus { outline: none; }
+.sheet-readout { color: var(--rain); min-height: 3em; font-size: 16px; }
+.sheet-readout.is-warn { color: var(--amber-2); }
+.sheet-note { font-size: 16px; line-height: 1.5; }
+.sheet-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sheet-row--actions .btn { flex: 1 1 160px; }
+.chip[disabled] { opacity: 0.4; cursor: default; }
+.tune { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; }
+.tune-scale { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; align-items: end; height: 28px; }
+.tune-scale i { display: block; background: rgba(143, 212, 244, 0.28); height: 40%; }
+.tune-scale i.is-on { background: var(--amber); height: 100%; }
+.sheet-links { display: flex; flex-wrap: wrap; gap: 4px 22px; }
+.link-btn {
+  min-height: 44px; padding: 0; background: none; border: 0; color: var(--rain);
+  font-family: var(--font-mono); font-size: 14px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+  text-decoration: underline; text-underline-offset: 0.2em;
+}
+.link-btn:hover { color: var(--cream); }
+.air-title small { display: block; margin-top: 6px; font-family: var(--font-mono); font-size: 14px; font-weight: 500; letter-spacing: 0.08em; color: var(--finish-2); }
+.sheet .picker-label span { color: var(--amber-2); }
+.sheet .stations { grid-auto-columns: 118px; }
+
+.report { border-top: 1px solid rgba(143, 212, 244, 0.28); border-bottom: 1px solid rgba(143, 212, 244, 0.28); }
+.report summary {
+  display: flex; align-items: center; justify-content: space-between; min-height: 52px; cursor: pointer; list-style: none;
+  font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1; text-transform: uppercase;
+}
+.report summary::-webkit-details-marker { display: none; }
+.report summary::after { content: "+"; font-family: var(--font-mono); font-size: 24px; font-weight: 400; color: var(--amber); transition: transform 0.25s var(--ease); width: 44px; text-align: center; }
+.report[open] summary::after { transform: rotate(45deg); }
+.report-summary { color: rgba(245, 240, 232, 0.86); padding-bottom: 14px; }
+.report-list { display: grid; grid-template-columns: minmax(96px, 34%) 1fr; gap: 0; margin-bottom: 18px; border-top: 1px solid rgba(143, 212, 244, 0.2); }
+.report-list dt, .report-list dd { padding: 9px 0 8px; border-bottom: 1px solid rgba(143, 212, 244, 0.2); font-size: 16px; }
+.report-list dt { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rain); padding-right: 12px; padding-top: 12px; }
+.report-list--engine dd { font-family: var(--font-mono); font-size: 16px; }
+.report-note { margin: -8px 0 18px; }
+
+.netlight { display: flex; align-items: flex-start; gap: 10px; color: var(--clear); font-size: 13px; }
+.netlight::before { content: ""; flex: none; width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: var(--clear); box-shadow: 0 0 0 3px rgba(63, 178, 127, 0.25); }
+.netlight.is-counting { color: var(--amber-2); }
+.netlight.is-counting::before { background: var(--amber-2); box-shadow: 0 0 0 3px rgba(233, 196, 98, 0.25); }
+.netlight details { display: inline; }
+.netlight ul { margin-top: 6px; text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 12px; word-break: break-all; }
+
+/* ---------- The drawing editor (mask-editor.js builds these) ---------- */
+.editor-canvas { display: block; height: auto; max-width: 100%; touch-action: none; cursor: crosshair; outline: none; }
+.editor-canvas:focus-visible { box-shadow: inset 0 0 0 3px var(--amber-2); }
+.editor-canvas[data-tool="brush"], .editor-canvas[data-tool="erase"] { cursor: none; }
+.editor-loupe {
+  position: absolute; width: 132px; height: 132px; border-radius: 50%; pointer-events: none; z-index: 8;
+  border: 3px solid var(--cream); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+@media (min-width: 1024px) {
+  .cam-split { grid-template-columns: minmax(0, 62fr) minmax(340px, 38fr); align-items: start; min-height: calc(100vh - var(--bar-h) - 44px); }
+  .cam-stagewrap {
+    top: calc(var(--bar-h)); border-bottom: 0; min-height: calc(100vh - var(--bar-h) - 44px); align-content: center;
+    padding: 24px max(24px, env(safe-area-inset-right, 0px)) 24px max(24px, env(safe-area-inset-left, 0px));
+  }
+  /* The whole picture and the hold button fit the screen beside the sheet. */
+  .cam-stage, .editor-stage {
+    width: min(100%, calc((100vh - var(--bar-h) - 150px) * var(--ar, 1.3333)));
+    width: min(100%, calc((100svh - var(--bar-h) - 150px) * var(--ar, 1.3333)));
+  }
+  .sheet { border-top: 0; border-left: 5px solid var(--finish); padding: 32px max(40px, env(safe-area-inset-right, 0px)) 48px 40px; min-height: calc(100vh - var(--bar-h) - 44px); }
+  .stage-tools { padding: 10px 0 0; background: none; }
+  .cam-stage .lower-third { font-size: 13px; left: 14px; bottom: 14px; }
+}
+
+.footer--slim .wrap { padding-block: 28px 40px; }
+
+html[data-calm] .stage-prompt, html[data-calm] .live-dot { animation: none; }

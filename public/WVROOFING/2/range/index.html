@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>The range chart | Eight roofs, in the weather | WV Roofing (concept)</title>
+  <meta name="description" content="Eight roof finishes, from natural slate to clay pantiles, drawn from numbers and shown in sun, drizzle, storm and dusk. A concept site.">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="theme-color" content="#0b1220">
+  <script>document.documentElement.classList.add("js");</script>
+  <script src="/WVROOFING/2/assets/js/calm-early.js"></script>
+  <link rel="icon" href="/WVROOFING/2/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&amp;family=Big+Shoulders+Display:wght@500;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap">
+  <link rel="stylesheet" href="/WVROOFING/2/assets/css/site.css?v=20260930a">
+  <script type="module" src="/WVROOFING/2/assets/js/range.js"></script>
+</head>
+<body class="page-range">
+  <a class="skip-link" href="#main">Skip to the range chart</a>
+
+  <header class="station">
+    <div class="station-inner">
+      <a class="ident" href="/WVROOFING/2/" aria-label="WV Roofing, the bulletin">
+        <svg class="ident-mark" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" fill="#1b2a4a"/><path d="M7 24 20 11l13 13" fill="none" stroke="#c9a84c" stroke-width="4.5" stroke-linecap="square"/><path d="M14 29l-2 5M21 29l-2 5M28 29l-2 5" fill="none" stroke="#8fd4f4" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span class="ident-name">WV Roofing</span>
+        <span class="pill">Concept</span>
+      </a>
+      <nav class="station-nav" id="station-nav" aria-label="Main">
+        <ul>
+          <li><a href="/WVROOFING/2/" data-slot="22:30">Bulletin</a></li>
+          <li><a href="/WVROOFING/2/roof-cam/" data-slot="22:35">Roof Cam</a></li>
+          <li><a href="/WVROOFING/2/range/" data-slot="22:40" aria-current="page">The Range</a></li>
+          <li><a href="/WVROOFING/2/about/" data-slot="22:45">About</a></li>
+        </ul>
+      </nav>
+      <div class="station-tools">
+        <div class="gauge" id="gauge" data-label="How far down the range chart you are"></div>
+        <button class="calm" id="calm-toggle" type="button" aria-pressed="true"><span class="calm-label">Weather</span></button>
+        <a class="btn btn--sm station-cta" href="/WVROOFING/2/roof-cam/">Roof Cam</a>
+        <button class="menu-toggle" type="button" aria-controls="station-nav" aria-expanded="false" aria-label="Open menu"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="warning" role="note" aria-label="About this site">
+    <details>
+      <summary><span class="warning-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18v.5"/></svg>Yellow warning</span><span>Concept site. Not trading.<span class="w-more"> No prices.</span></span></summary>
+      <p>WV Roofing is a hobby concept and isn't trading. The tiles and slates here are drawn from numbers, not photographed, and their colours are estimates: screens show colour differently, so nothing here replaces a real sample in your hand. The makers' names are given only as comparable products.</p>
+    </details>
+  </div>
+
+  <main id="main">
+    <section class="front front--sky page-head" data-isobars="113" aria-labelledby="range-title">
+      <div class="wrap">
+        <p class="eyebrow gust">Front · The range chart</p>
+        <h1 id="range-title" class="hl-1 sway">Eight<br>roofs<span class="dot">.</span></h1>
+        <p class="lede">Every one drawn from numbers on your device: no manufacturer's pictures. Tap one for its station report.</p>
+      </div>
+    </section>
+
+    <section class="front front--paper" data-isobars="127" aria-labelledby="chart-title">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">The chart</p>
+          <h2 id="chart-title" class="hl-2">From Spanish slate to clay pantile<span class="dot">.</span></h2>
+        </div>
+        <ol class="range-chart" id="range-chart"><li class="mono">Drawing the range</li></ol>
+      </div>
+    </section>
+
+    <section class="front front--ink" id="weather-test" data-isobars="131" aria-labelledby="test-title">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow gust">The weather test</p>
+          <h2 id="test-title" class="hl-2">How does it look wet<span class="dot">?</span></h2>
+          <p class="lede">A patch of each roof, about a metre and a half tall, under a colour grade for the weather. Every finish gets the same wet grade, so this can't show how a real material darkens in the rain: read it as a mood, not a test.</p>
+        </div>
+        <div class="weather-test reveal">
+          <figure class="test-stage" id="test-stage">
+            <canvas class="test-canvas" id="test-canvas" width="960" height="640" role="img" aria-label="A close-up of the chosen roof"></canvas>
+            <canvas class="weather" id="test-weather" aria-hidden="true"></canvas>
+            <figcaption class="lower-third" id="test-caption">Drawn from numbers · Approximate</figcaption>
+          </figure>
+          <div class="picker-side">
+            <div>
+              <p class="picker-label" id="lbl-test-roof">The roof</p>
+              <div class="stations" id="test-stations" role="radiogroup" aria-labelledby="lbl-test-roof"></div>
+            </div>
+            <div>
+              <p class="picker-label" id="lbl-test-weather">The weather</p>
+              <div class="deck" id="test-deck" role="radiogroup" aria-labelledby="lbl-test-weather"></div>
+            </div>
+            <p class="notice">A colour grade, not a forecast. Approximate.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="front front--paper front--alt" data-isobars="149" aria-labelledby="suits-title">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">Which roof suits which house</p>
+          <h2 id="suits-title" class="hl-2">Horses for courses<span class="dot">.</span></h2>
+          <p class="lede">A rough guide to what usually goes where. Conservation areas and listed buildings have their own rules. This is general guidance for England, not legal advice. Always confirm with your local authority if you're unsure.</p>
+        </div>
+        <div class="table-wrap reveal" tabindex="0" role="region" aria-labelledby="suits-caption">
+          <table class="chart-table">
+            <caption class="sr-only" id="suits-caption">The eight roofs and the houses they usually suit</caption>
+            <thead><tr><th scope="col">Roof</th><th scope="col">Usually suits</th><th scope="col">Lifespan</th></tr></thead>
+            <tbody id="suits-body"></tbody>
+          </table>
+        </div>
+        <div class="cta-row" style="margin-top: 32px">
+          <a class="btn" href="/WVROOFING/2/roof-cam/">Try them on my house</a>
+          <a class="more" href="/WVROOFING/2/roof-cam/?sample=semi-1930s">Try a sample house</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="/WVROOFING/2/">Bulletin</a>
+        <a href="/WVROOFING/2/roof-cam/">Roof Cam</a>
+        <a href="/WVROOFING/2/about/">About &amp; privacy</a>
+        <a href="/WVROOFING/">Version 1</a>
+      </nav>
+      <div class="credits">
+        <p>Every tile and slate on this page is drawn from numbers. The makers' names are there only to say what a finish is comparable to; no manufacturer's pictures are used. Lifespans are typical figures, not guarantees, and no prices are given anywhere.</p>
+      </div>
+      <p class="legal">Copyright &copy; <span data-year>2026</span> WV Roofing · Concept site, not trading · Wirral &amp; Liverpool</p>
+    </div>
+  </footer>
+</body>
+</html>
