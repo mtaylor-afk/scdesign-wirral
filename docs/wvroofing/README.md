@@ -9,7 +9,7 @@ The overview of the concept site itself is in `docs/WVROOFING.md`.
 | `decisions.md` | Decision record (D1–D17) with evidence |
 | `permissions-record.md` | Generated from `serverlib/wvroofing/permissions.js`: what each provider's terms allow |
 | `wvroofing.env.example` | Every environment variable, names only |
-| `operator-guide.md` | The operator screen: setting the password, enquiries, search, scope corrections, renders to check, costs, deleting |
+| `operator-guide.md` | The operator screen: setting the password, enquiries, every customer photo from both sites (Photos), search, scope corrections, renders to check, costs, deleting |
 | `handover-2026-09-28-v2.md` | **Current.** Where things stand after Release B's required increments, in the brief's status words; commits; owner actions; flags; the test record |
 | `handover-2026-09-28-v1.md` | The same at the end of Release A's A7 (kept) |
 | `supplier-enquiries.md` | Draft enquiries for Matthew to send: Bluesky, Getmapping, Vexcel, Google (Solar API); and what to do if one says yes |
@@ -18,7 +18,7 @@ The overview of the concept site itself is in `docs/WVROOFING.md`.
 | `retention.md` | Every retention period (from `retention.js`), deletion on request, copies outside our control |
 | `cost-model.md` | Unit costs, the spending controls and their defaults, worst cases, typical costs |
 | `screens/` | Screenshots from the test environment (QA run) |
-| `version-2.md` | Version 2 at `/WVROOFING/2/` ("Rain Later", the weather report): an on-device Roof Cam with one-tap roof finding; version 1 is unchanged |
+| `version-2.md` | Version 2 at `/WVROOFING/2/` ("Rain Later", the weather report): a Roof Cam with one-tap roof finding that draws the roofs on the device; since 2026-10-01 it saves the visitor's photo and enquiries to the same store as version 1, shown in the operator screen's Photos and Enquiries tabs |
 
 Earlier handover versions are kept; a new version is a new file.
 

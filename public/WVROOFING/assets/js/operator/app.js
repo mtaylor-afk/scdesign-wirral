@@ -7,6 +7,7 @@
 import { api, apiImage, getToken, setToken, whenSignedOut } from "./api.js";
 import { loadCatalogue } from "../catalogue.js";
 import { measurementCard, METHOD_WORDS } from "./measure.js";
+import { initPhotos, loadPhotos, openPhoto, photosShown, resetPhotos, refreshPhotos, mockupGallery } from "./photos.js";
 import {
   h,
   kv,
@@ -22,6 +23,7 @@ import {
   JOB_WORDS,
   ACTION_WORDS,
   SOURCE_WORDS,
+  SITE_WORDS,
   PROVIDER_WORDS,
   AERIAL_WORDS,
 } from "./dom.js";
@@ -29,9 +31,11 @@ import {
 const $ = (id) => document.getElementById(id);
 
 const FILTERS = [["", "All"]].concat(Object.entries(STATUS_WORDS));
+const SITE_FILTERS = [["", "Both sites"]].concat(Object.entries(SITE_WORDS));
 
 const S = {
   filter: "",
+  site: "",
   q: "",
   enquiries: [],
   jobs: [],
@@ -127,6 +131,7 @@ async function loadImage(slot, path, alt, enlarge) {
 
 function showLogin(msg) {
   revokeUrls();
+  resetPhotos();
   S.selected = null;
   S.enquiries = [];
   S.jobs = [];
@@ -187,6 +192,8 @@ function showApp(session) {
   $("op-env").hidden = session.environment !== "test";
   renderFilters();
   refreshAll(new URLSearchParams(location.search).get("enquiry"));
+  // The Photos tab's count (its pictures load only when it's opened).
+  loadPhotos({ reset: true });
 }
 
 async function refreshAll(selectId) {
@@ -199,23 +206,24 @@ async function refreshAll(selectId) {
 // the enquiry list
 
 function renderFilters() {
-  $("op-filters").replaceChildren(
-    ...FILTERS.map(([v, t]) =>
+  const chips = (list, key) =>
+    list.map(([v, t]) =>
       h("button", {
         class: "op-chip",
         type: "button",
-        "aria-pressed": String(S.filter === v),
+        "aria-pressed": String(S[key] === v),
         text: t,
         on: {
           click: () => {
-            S.filter = v;
+            S[key] = v;
             renderFilters();
             loadList();
           },
         },
       })
-    )
-  );
+    );
+  $("op-filters").replaceChildren(...chips(FILTERS, "filter"));
+  $("op-site-filters").replaceChildren(...chips(SITE_FILTERS, "site"));
 }
 
 async function loadList() {
@@ -226,7 +234,14 @@ async function loadList() {
     S.enquiries = r.enquiries;
     renderList();
     const n = r.enquiries.length;
-    status(n + (n === 1 ? " enquiry" : " enquiries") + (S.filter ? " marked " + STATUS_WORDS[S.filter].toLowerCase() : "") + (S.q ? " matching “" + S.q + "”" : "") + ".");
+    status(
+      n +
+        (n === 1 ? " enquiry" : " enquiries") +
+        (S.filter ? " marked " + STATUS_WORDS[S.filter].toLowerCase() : "") +
+        (S.site ? " from " + SITE_WORDS[S.site].toLowerCase() : "") +
+        (S.q ? " matching “" + S.q + "”" : "") +
+        "."
+    );
   } catch (ex) {
     if (ex.status !== 401) status(ex.message, true);
   }
@@ -235,6 +250,7 @@ async function loadList() {
 function listParams() {
   const params = new URLSearchParams();
   if (S.filter) params.set("status", S.filter);
+  if (S.site) params.set("site", S.site);
   if (S.q) params.set("q", S.q);
   return params.toString();
 }
@@ -268,7 +284,14 @@ function renderList() {
         h(
           "button",
           { class: "op-item", type: "button", "data-id": e.id, "aria-current": e.id === S.selected ? "true" : null, on: { click: () => openEnquiry(e.id) } },
-          h("span", { class: "op-item-top" }, h("span", { class: "op-ref", text: e.reference }), pill(STATUS_WORDS[e.status] || e.status, e.status), h("span", { class: "op-item-meta", text: shortDate(e.createdAt) })),
+          h(
+            "span",
+            { class: "op-item-top" },
+            h("span", { class: "op-ref", text: e.reference }),
+            pill(STATUS_WORDS[e.status] || e.status, e.status),
+            pill(e.site === "v2" ? "v2" : "v1", e.site === "v2" ? "v2" : "v1"),
+            h("span", { class: "op-item-meta", text: shortDate(e.createdAt) })
+          ),
           h("span", { class: "op-item-name", text: e.name }),
           h("span", { class: "op-item-meta", text: [e.address || e.postcode || "No address", e.roof].filter(Boolean).join(" · ") }),
           flags(e)
@@ -381,7 +404,7 @@ function headCard(e) {
     "section",
     { class: "op-head", "aria-labelledby": "op-ref-title" },
     h("h2", { id: "op-ref-title", tabindex: "-1" }, h("span", { class: "op-ref", text: e.reference }), pill(STATUS_WORDS[e.status] || e.status, e.status)),
-    h("p", { class: "op-muted op-small", text: "Saved " + when(e.createdAt) + " · " + (SOURCE_WORDS[e.source] || e.source) }),
+    h("p", { class: "op-muted op-small", text: "Saved " + when(e.createdAt) + " · " + (SOURCE_WORDS[e.source] || e.source) + " · " + (SITE_WORDS[e.site] || SITE_WORDS.v1) }),
     h(
       "div",
       { class: "op-actions" },
@@ -423,7 +446,8 @@ function propertyCard(e, p) {
   if (!p) {
     const snap = e.snapshot && e.snapshot.address;
     card.append(
-      h("p", { class: "op-muted op-small", text: e.source === "visualiser" ? "The customer has since deleted their photo and project." : "This enquiry came without a visualiser project." }),
+      // A project enquiry's snapshot names its project; an enquiry sent without one never had a saved photo.
+      h("p", { class: "op-muted op-small", text: e.snapshot && e.snapshot.project ? "The customer's photo has since been deleted." : "This enquiry came without a saved photo." }),
       snap ? kv([["Address when sent", addressText(snap)]]) : null
     );
     return card;
@@ -579,13 +603,25 @@ function photoCard(p) {
     h("p", { class: "op-caption", text: "Original " + ph.origW + " × " + ph.origH + " px; " + outline + "." + (ph.warnings.length ? " " + ph.warnings.join(" ") : "") }),
     h("div", { class: "op-actions" }, dl, link)
   );
+  const gallery = mockupGallery(p, productName, loadImage);
+  if (gallery) card.append(gallery);
   const jobs = p.jobs.slice().sort((a, b) => Number(b.current) - Number(a.current));
   if (!jobs.length) {
-    card.append(h("p", { class: "op-muted op-small", text: p.consentAi ? "No photo-real renders yet." : "The customer didn't ask for photo-real renders (OpenAI)." }));
+    // The Roof Cam (version 2) only draws previews on the customer's device: it never asks for renders.
+    if (p.site !== "v2") card.append(h("p", { class: "op-muted op-small", text: p.consentAi ? "No photo-real renders yet." : "The customer didn't ask for photo-real renders (OpenAI)." }));
   } else {
     card.append(h("h4", { text: "Photo-real renders" }), h("div", { class: "op-renders" }, jobs.map((j) => renderTile(j))));
   }
+  if (p.photos && p.photos.length > 1) {
+    card.append(h("p", { class: "op-muted op-small" }, p.photos.length - 1 + (p.photos.length === 2 ? " earlier photo" : " earlier photos") + " in this session: ", h("button", { class: "op-linklike", type: "button", text: "see them in Photos", on: { click: () => showProjectPhotos(p.id) } })));
+  }
   return card;
+}
+
+/** Show one photo session in the Photos tab (from an enquiry). */
+function showProjectPhotos(id) {
+  switchTab("photos");
+  openPhoto(id);
 }
 
 function renderTile(j) {
@@ -828,9 +864,11 @@ function renderJobs() {
 function switchTab(tab) {
   for (const b of document.querySelectorAll(".op-tab")) b.setAttribute("aria-selected", String(b.dataset.tab === tab));
   $("op-view-enquiries").hidden = tab !== "enquiries";
+  $("op-view-photos").hidden = tab !== "photos";
   $("op-view-jobs").hidden = tab !== "jobs";
   $("op-view-costs").hidden = tab !== "costs";
   if (tab === "costs") loadCosts();
+  if (tab === "photos") photosShown();
 }
 
 // ---------------------------------------------------------------------------
@@ -970,7 +1008,18 @@ async function boot() {
   $("op-logout").addEventListener("click", logout);
   $("op-refresh").addEventListener("click", () => {
     refreshAll();
+    refreshPhotos();
     if (!$("op-view-costs").hidden) loadCosts();
+  });
+  initPhotos({
+    productName,
+    confirmBox,
+    status,
+    renderTile,
+    openEnquiry: (id) => {
+      switchTab("enquiries");
+      openEnquiry(id);
+    },
   });
   $("op-q").addEventListener("input", onSearch);
   $("op-search").addEventListener("submit", (e) => {

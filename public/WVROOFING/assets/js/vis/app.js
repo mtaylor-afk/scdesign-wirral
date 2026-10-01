@@ -43,6 +43,8 @@ import {
   cancelRender,
   newKey,
   sendProjectEnquiry,
+  prepareForUpload,
+  sendMockup,
   ClientError,
   MAX_BYTES,
 } from "./client.js";
@@ -237,53 +239,118 @@ function renderSampleGrid() {
   grid.replaceChildren(frag);
 }
 
+/** The upload's progress, as words and a bar under the photo buttons. */
+function showProgress(fraction) {
+  const bar = $("#upload-progress");
+  if (!bar) return;
+  if (typeof fraction !== "number") {
+    bar.hidden = true;
+    return;
+  }
+  bar.hidden = false;
+  bar.firstElementChild.style.width = Math.round(Math.max(0.03, fraction) * 100) + "%";
+}
+
+/** A refusal about the photo itself (wrong kind, too big, too small): the customer needs to choose another. */
+function isPhotoRefusal(err) {
+  return err instanceof ClientError && (err.status === 400 || err.status === 413) && /^(invalid_image|too_large|heic|unreadable)$/.test(err.code);
+}
+
+/**
+ * Carry on with the photo on this device only: it can be marked and the quick
+ * previews drawn, but it isn't saved for the roofer and can't have photo-real
+ * renders. Used when saving isn't switched on, or the upload failed.
+ */
+async function openOnDevice(blob, file, why) {
+  const canvas = await blobToCanvas(blob);
+  startMarking({ canvas, w: canvas.width, h: canvas.height, name: file.name || "photo", originalW: canvas.width, originalH: canvas.height, uploaded: false, local: true }, null);
+  showStatus("");
+  showLocalNote(why);
+}
+
+function showLocalNote(why) {
+  const el = $("#local-note");
+  if (!el) return;
+  el.hidden = !why;
+  el.textContent =
+    why === "off"
+      ? "Saving photos isn't switched on yet on this concept site, so your photo stays on this device. You can mark your roof and see all eight roofs; photo-real renders need it saved."
+      : why
+      ? "Your photo couldn't be saved just now (the connection or the photo store didn't answer), so it stays on this device. You can mark your roof and see all eight roofs, or choose Change photo to try the upload again."
+      : "";
+}
+
 async function handleFile(file) {
   showError("");
   showStatus("");
+  showProgress(null);
+  showLocalNote("");
   if (!file || S.uploading) return;
-  const kind = await sniffFile(file).catch(() => "other");
-  if (kind === "heic") {
-    showError('This photo is in the iPhone HEIC format. Choose it again from your photo library (your phone converts it to JPEG), or set the camera to "Most Compatible".');
-    return;
-  }
-  if (kind !== "jpeg" && kind !== "png") {
-    showError("Please choose a JPG or PNG photo.");
-    return;
-  }
-  if (file.size > MAX_BYTES) {
-    showError("That photo is over 20 MB. Please choose a smaller copy.");
-    return;
-  }
-  if (!storageReady()) {
-    showError("Uploading your own photo isn't available right now. You can still try a sample house below.");
-    return;
-  }
   S.uploading = true;
   $("#dropzone").classList.add("is-busy");
+  const kind = await sniffFile(file).catch(() => "other");
+  let up = null;
   try {
+    // What's sent: the camera's own JPEG or PNG when the store can take it; otherwise
+    // (an iPhone HEIC, a very large photo, another format) a JPEG made on this device.
+    if (!((kind === "jpeg" || kind === "png") && file.size <= MAX_BYTES)) showStatus("Getting your photo ready on this device…");
+    up = await prepareForUpload(file, kind);
+    if (!storageReady()) {
+      await openOnDevice(up.blob, file, "off");
+      return;
+    }
     showStatus("Uploading your photo…");
+    showProgress(0);
     announce("Uploading your photo.");
     const opts = { consentAi: $("#consent-ai").checked };
-    const progress = (f) => showStatus("Uploading your photo… " + Math.round(f * 100) + "%");
+    const progress = (f) => {
+      showStatus("Uploading your photo… " + Math.round(f * 100) + "%");
+      showProgress(f);
+    };
     await projectReady(opts);
+    const send = async () => {
+      try {
+        return await uploadPhoto(up.blob, up.kind, progress, { clientResized: up.clientResized });
+      } catch (err) {
+        // Too many pixels for the store (some phones' 108 or 200 MP modes): send a copy made here instead.
+        if (err instanceof ClientError && err.code === "invalid_image" && /megapixels/i.test(err.message) && !up.clientResized) {
+          showStatus("That photo is very large, so a copy is being made on this device…");
+          up = await prepareForUpload(file, kind, { force: true });
+          return uploadPhoto(up.blob, up.kind, progress, { clientResized: true });
+        }
+        throw err;
+      }
+    };
     let photo;
     try {
-      photo = await uploadPhoto(file, kind, progress);
+      photo = await send();
     } catch (err) {
       // The project this tab remembered has gone: start a new one and try once more.
       if (!(err instanceof ClientError) || err.code !== "project_not_found") throw err;
       resetProperty();
       await projectReady(opts);
-      photo = await uploadPhoto(file, kind, progress);
+      photo = await send();
     }
+    showProgress(1);
     showStatus("Preparing your photo…");
     const canvas = await blobToCanvas(await fetchDisplay());
     if (canvas.width !== photo.w || canvas.height !== photo.h) throw new ClientError(0, "size_mismatch", "Your photo couldn't be prepared. Please try again.");
     showStatus("");
+    showProgress(null);
     startMarking({ canvas, w: photo.w, h: photo.h, name: file.name || "photo", originalW: photo.origW, originalH: photo.origH, warnings: photo.warnings, uploaded: true }, null);
   } catch (err) {
     showStatus("");
-    showError(err instanceof ClientError ? err.message : "Sorry, that photo couldn't be added. Please try a JPG or PNG.");
+    showProgress(null);
+    if (!up || isPhotoRefusal(err)) {
+      showError(err instanceof ClientError ? err.message : "Sorry, that photo couldn't be added. Please try a JPG or PNG.");
+      return;
+    }
+    // The connection or the store let us down, not the photo: carry on with it on this device.
+    try {
+      await openOnDevice(up.blob, file, "failed");
+    } catch (e2) {
+      showError("Sorry, that photo couldn't be added. Please try a JPG or PNG.");
+    }
   } finally {
     S.uploading = false;
     $("#dropzone").classList.remove("is-busy");
@@ -682,6 +749,11 @@ async function startAiIfPossible(gen) {
     else setRenderStatus("Showing quick previews. Photo-real renders are made from your own photo: upload one to see your house.");
     return;
   }
+  // A photo kept on this device only (saving wasn't available): quick previews only.
+  if (!S.photo.uploaded) {
+    setRenderStatus("Showing quick previews. Photo-real renders are made from a saved photo, and yours is on this device only.");
+    return;
+  }
   const h = S.health || (await getHealth());
   if (gen !== S.gen) return;
   if (!h.renders.live) {
@@ -991,11 +1063,35 @@ function openQuote(productId, message) {
   showStep("enquiry");
 }
 
+/**
+ * With the enquiry, keep the quick preview of the chosen roof with the photo,
+ * so the roofer sees the roof the customer means (a photo-real render of it,
+ * if there is one, is attached instead).
+ */
+async function sendChosenPreview(product) {
+  const id = S.cat && S.cat.byId.has(product) ? product : S.chosen || firstChoice();
+  if (!id || S.ai.has(id)) return;
+  const pv = S.previews.get(id);
+  if (!pv) return;
+  const img = new Image();
+  img.src = pv.url;
+  await img.decode();
+  const canvas = watermarked(img, "Quick preview, approximate");
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  canvas.width = 0;
+  canvas.height = 0;
+  if (blob) await sendMockup(blob, id);
+}
+
 function wireEnquiry() {
   const form = $("#quote-form");
   wireEnquiryForm(form, {
     getContext: () => (aboutMyPhoto() ? { includeImages: $("#v-images").checked } : { source: S.sample ? "visualiser-sample" : "visualiser" }),
-    send: (payload) => (aboutMyPhoto() ? sendProjectEnquiry(payload) : sendEnquiry(payload)),
+    send: async (payload) => {
+      if (!aboutMyPhoto()) return sendEnquiry(payload);
+      if (payload.includeImages) await sendChosenPreview(payload.product).catch(() => undefined);
+      return sendProjectEnquiry(payload);
+    },
     onSent: (json) => {
       if (aboutMyPhoto() && json.reference) S.enquiry = { reference: json.reference };
       showEnquiryDone({ text: form.querySelector(".form-status").textContent });

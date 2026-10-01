@@ -433,11 +433,12 @@ try {
     ok("phone: a HEIC photo gets a clear message", /HEIC/.test((await page.textContent("#photo-error")) || ""));
     const photo = path.resolve(here, "../../public/WVROOFING/samples/detached-modern.jpg");
     if (!STORAGE) {
-      // Without storage nothing is uploaded: a clear message, and the sample houses still work.
+      // Without storage the photo isn't refused: it opens on this device (mark it, see the
+      // quick previews), and the page says plainly that it isn't saved.
       await page.setInputFiles("#file-library", photo);
-      await page.waitForSelector("#photo-error:not([hidden])", { timeout: 5000 }).catch(() => null);
-      const msg = (await page.textContent("#photo-error")) || "";
-      ok("phone: without storage, choosing a photo says uploading isn't available and points to the samples", /isn't available right now/.test(msg) && /sample/.test(msg), msg);
+      await page.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 15000 }).catch(() => null);
+      const note = (await page.isVisible("#local-note")) ? (await page.textContent("#local-note")) || "" : "";
+      ok("phone: without storage, a chosen photo opens on this device and the page says it isn't saved", /isn't switched on/.test(note) && /this device/.test(note), note);
       skip("phone: upload, outline saved to the project, previews from it, delete", "storage isn't switched on for this copy (enquiry_storage: " + capState("enquiry_storage") + ")");
     } else {
       const committed = page.waitForResponse((r) => isPath(r, /\/photo\/commit$/), { timeout: 60000 }).catch(() => null);

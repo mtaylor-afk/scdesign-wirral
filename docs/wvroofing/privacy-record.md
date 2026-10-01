@@ -9,7 +9,8 @@ reviewed, with a legal and privacy review, before launch.
 
 | Data | From | Why | Stored |
 |---|---|---|---|
-| **House photo** | The customer, uploaded | To show roof options on it, and to prepare a quote if they ask | The original with its metadata (GPS, camera details, comments) removed, and a working copy. Private Vercel Blob, London |
+| **House photo** | The customer, uploaded: from the visualiser (version 1), or saved in the background from the Roof Cam (version 2, since 2026-10-01) | To show roof options on it, and to prepare a quote if they ask | The original with its metadata (GPS, camera details, comments) removed, and a working copy. A photo the browser had to convert first (HEIC, WebP, very large) is a JPEG made on the device, marked as such. Private Vercel Blob, London |
+| **Previews from the customer's device** | The Roof Cam's chosen roof, or the visualiser's chosen quick preview, sent with an enquiry | So the roofer sees the roof the customer means | A re-encoded JPEG with the photo. Private Vercel Blob, London; goes with the project |
 | **Roof outline** | Drawn by the customer | To limit the change to the roof | Neon, London |
 | **Photo-real renders** | OpenAI, from the photo and outline, only with consent | To show the finish | Private Vercel Blob |
 | **Address** | The customer chooses one (Ideal Postcodes) or types it | So the roofer can prepare a quote or survey | Only the chosen address is kept: lines, UPRN, coordinates and where they came from. Neon |
@@ -30,6 +31,7 @@ No special category data is asked for.
 | Processing | Basis | Notes |
 |---|---|---|
 | The visualiser: the photo, outline, address and answers, kept for 30 days | Legitimate interests (section 3) | The customer starts it, and can delete it at any time |
+| The Roof Cam (version 2): the photo, kept for 30 days | Legitimate interests (section 3) | The roofs are drawn on the device; the photo is saved so the roofer can see it. A notice above the photo buttons says so before a photo is chosen, and a status line offers "Delete it" once saved. Sample houses are never saved |
 | Photo-real renders: sending the photo and outline to OpenAI | Consent | An off-by-default switch. Withdrawing it cancels renders not yet sent. Recorded as `consent_ai_at` |
 | Enquiries: storing them, emailing the roofer, preparing a quote | Steps taken at the customer's request before entering into a contract | `lawful_basis = steps_before_contract` on every enquiry |
 | Security: rate limits, abuse controls, operator login records | Legitimate interests (security of the service) | Keyed hashes only |

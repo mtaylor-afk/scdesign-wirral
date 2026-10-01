@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Roof Cam | Eight roofs on your own house | WV Roofing (concept)</title>
-  <meta name="description" content="Photograph your house, tap the roof, and see eight roofs on it in sun, drizzle, storm and dusk. It all happens on your device: nothing is uploaded.">
+  <meta name="description" content="Photograph your house, tap the roof, and see eight roofs on it in sun, drizzle, storm and dusk. The roofs are drawn on your device; your photo is kept privately so the roofer can see it.">
   <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
   <meta name="theme-color" content="#0b1220" id="theme-color">
   <script>document.documentElement.classList.add("js");</script>
@@ -13,8 +13,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&amp;family=Big+Shoulders+Display:wght@500;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap">
-  <link rel="stylesheet" href="/WVROOFING/2/assets/css/site.css?v=20260930a">
-  <link rel="stylesheet" href="/WVROOFING/2/assets/css/cam.css?v=20260930a">
+  <link rel="stylesheet" href="/WVROOFING/2/assets/css/site.css?v=20261001a">
+  <link rel="stylesheet" href="/WVROOFING/2/assets/css/cam.css?v=20261001a">
   <script type="module" src="/WVROOFING/2/assets/js/cam/app.js"></script>
 </head>
 <body class="page-cam">
@@ -45,8 +45,8 @@
 
   <div class="warning warning--slim" role="note" aria-label="About this site">
     <details>
-      <summary><span class="warning-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18v.5"/></svg>Concept</span><span>Previews are approximate. Nothing is uploaded.</span></summary>
-      <p>WV Roofing is a hobby concept and isn't trading. Every roof you see here is drawn on your own device from numbers, keeping your photo's light and shadow, and is approximate. The weather is a mood, not a forecast. Your photo is never uploaded or stored, and it only leaves your device if you share or save a picture yourself.</p>
+      <summary><span class="warning-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18v.5"/></svg>Concept</span><span>Previews are approximate. Your photo is kept privately.</span></summary>
+      <p>WV Roofing is a hobby concept and isn't trading. Every roof you see here is drawn on your own device from numbers, keeping your photo's light and shadow, and is approximate. The weather is a mood, not a forecast. The photo you add is saved to WV Roofing's private store so the roofer can see it: it's kept for 30 days unless you send them an enquiry, and you can delete it while it's on screen, or ask the roofer later. Sample houses are never saved. <a href="/WVROOFING/2/about/#privacy">What's kept, and for how long</a>.</p>
     </details>
   </div>
 
@@ -61,7 +61,7 @@
         <div class="onair-copy">
           <p class="eyebrow gust"><span class="live-dot" aria-hidden="true"></span>Live · Outside broadcast</p>
           <h1 id="h-onair" class="hl-1 sway" tabindex="-1">Roof<br>cam<span class="dot">.</span></h1>
-          <p class="lede">Photograph your house. Tap the roof. See eight roofs on it, in the weather. <strong>Nothing leaves your phone unless you share it.</strong></p>
+          <p class="lede">Photograph your house. Tap the roof. See eight roofs on it, in the weather. <strong>Then send the one you like to the roofer.</strong></p>
           <div class="cam-actions">
             <label class="btn btn--block file-btn">
               <input type="file" accept="image/jpeg,image/png" capture="environment" id="file-camera" class="sr-only">
@@ -79,8 +79,9 @@
           <ul class="tips">
             <li>Stand across the road, so the whole roof is in view.</li>
             <li>Daylight is best. Hold the phone level.</li>
-            <li>JPG or PNG. It stays on this device.</li>
+            <li>On a phone, Photograph my house opens the camera. A photo from your library works too.</li>
           </ul>
+          <p class="cam-notice" id="save-notice"><strong>Your photo is saved for the roofer.</strong> The roofs are drawn here, on your device. The photo you add is also kept in WV Roofing's private store (where saving is switched on: a light under the controls tells you), so the roofer can see it: for 30 days, or with your enquiry if you send one. Location and camera details are removed when it arrives. Delete it from the light while it's on screen, or ask the roofer later. <a href="/WVROOFING/2/about/#privacy">More about this</a></p>
         </div>
         <div class="onair-samples">
           <h2 class="hl-3" id="h-samples">Or borrow a house</h2>
@@ -120,7 +121,7 @@
           <button type="button" class="link-btn" id="find-draw">Draw it myself</button>
           <button type="button" class="link-btn" id="find-back">Change photo</button>
         </div>
-        <p class="netlight mono" id="netlight-find" hidden></p>
+        <p class="savelight mono" id="save-find" hidden></p>
       </div>
     </section>
 
@@ -181,8 +182,9 @@
           <p class="picker-label" id="lbl-air-weather">The weather</p>
           <div class="deck" id="air-deck" role="radiogroup" aria-labelledby="lbl-air-weather"></div>
         </div>
+        <button type="button" class="btn btn--block" id="air-ask">Send it to the roofer</button>
         <div class="sheet-row sheet-row--actions">
-          <button type="button" class="btn" id="air-share">Share card</button>
+          <button type="button" class="btn btn--ghost" id="air-share">Share card</button>
           <button type="button" class="btn btn--ghost" id="air-save">Save image</button>
         </div>
         <p class="cam-status mono" id="air-status" role="status"></p>
@@ -194,7 +196,7 @@
           <p class="picker-label">From the engine room</p>
           <dl class="report-list report-list--engine" id="report-engine"></dl>
         </details>
-        <p class="netlight mono" id="netlight-air" hidden></p>
+        <p class="savelight mono" id="save-air" hidden></p>
         <div class="sheet-links">
           <button type="button" class="link-btn" id="air-edit">Edit the roof outline</button>
           <button type="button" class="link-btn" id="air-restart">Start again</button>
@@ -203,6 +205,65 @@
       </div>
     </section>
   </main>
+
+  <dialog class="ask" id="ask" aria-labelledby="ask-title" aria-describedby="ask-what">
+    <div class="ask-head">
+      <p class="eyebrow">Send it to the roofer</p>
+      <h2 class="hl-3" id="ask-title" tabindex="-1">Like this roof?</h2>
+      <p class="ask-what mono" id="ask-what"></p>
+      <button class="ask-close" type="button" id="ask-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <form class="ask-form" id="ask-form" data-source="roof-cam" novalidate>
+      <div class="ask-field">
+        <label for="ask-name">Your name</label>
+        <input class="ask-input" id="ask-name" name="name" type="text" autocomplete="name" required aria-describedby="ask-name-err">
+        <p class="ask-error" id="ask-name-err" data-error-for="name" hidden></p>
+      </div>
+      <div class="ask-pair">
+        <div class="ask-field">
+          <label for="ask-phone">Phone</label>
+          <input class="ask-input" id="ask-phone" name="phone" type="tel" autocomplete="tel" aria-describedby="ask-contact-hint ask-phone-err">
+          <p class="ask-error" id="ask-phone-err" data-error-for="phone" hidden></p>
+        </div>
+        <div class="ask-field">
+          <label for="ask-email">Email</label>
+          <input class="ask-input" id="ask-email" name="email" type="email" autocomplete="email" aria-describedby="ask-contact-hint ask-email-err">
+          <p class="ask-error" id="ask-email-err" data-error-for="email" hidden></p>
+        </div>
+      </div>
+      <p class="ask-hint" id="ask-contact-hint">A phone number or an email address is fine.</p>
+      <div class="ask-field">
+        <label for="ask-postcode">Postcode <span class="opt">(optional)</span></label>
+        <input class="ask-input ask-input--short" id="ask-postcode" name="postcode" type="text" autocomplete="postal-code" autocapitalize="characters" aria-describedby="ask-postcode-err">
+        <p class="ask-error" id="ask-postcode-err" data-error-for="postcode" hidden></p>
+      </div>
+      <div class="ask-field">
+        <label for="ask-message">Anything else? <span class="opt">(optional)</span></label>
+        <textarea class="ask-input" id="ask-message" name="message" rows="3" placeholder="For example: 1930s semi, a few slipped tiles"></textarea>
+      </div>
+      <div class="hp-field" aria-hidden="true">
+        <label for="ask-company">Company</label>
+        <input id="ask-company" name="company" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      <label class="ask-check" for="ask-images" id="ask-images-row">
+        <input id="ask-images" name="includeImages" type="checkbox" checked>
+        <span>Include my photo and this preview, so the roofer can see the roof I mean.</span>
+      </label>
+      <p class="ask-hint" id="ask-nophoto" hidden>Your photo isn't saved, so it can't go with this enquiry. The roof you chose still does.</p>
+      <label class="ask-check" for="ask-consent">
+        <input id="ask-consent" name="consent" type="checkbox" aria-describedby="ask-consent-err">
+        <span>I'm happy for WV Roofing to contact me about this enquiry. See <a href="/WVROOFING/2/about/#privacy">what's kept, and for how long</a>.</span>
+      </label>
+      <p class="ask-error" id="ask-consent-err" data-error-for="consent" hidden></p>
+      <button class="btn btn--block" type="submit">Send to the roofer</button>
+      <p class="form-status ask-status" role="status" aria-live="polite" hidden></p>
+      <p class="ask-small">It's saved first, with a reference, before anyone is told. WV Roofing is a concept and isn't trading yet.</p>
+    </form>
+    <div class="ask-done" id="ask-done" hidden>
+      <p class="ask-done-text" id="ask-done-text" tabindex="-1"></p>
+      <button class="btn btn--ghost btn--block" type="button" id="ask-done-close">Back to the roofs</button>
+    </div>
+  </dialog>
 
   <footer class="footer footer--slim">
     <div class="wrap">

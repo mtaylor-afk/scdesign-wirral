@@ -71,6 +71,15 @@ test("the privacy notice, the photo notice and the retention record state the pe
   assert.match(privacy, new RegExp("for " + RETENTION.enquiryMonths + " months, then delete them automatically"));
   const vis = fs.readFileSync(path.join(repo, "public/WVROOFING/visualiser/index.html"), "utf8");
   assert.match(vis, new RegExp(RETENTION.projectDays + " days"), "the photo notice");
+  // Version 2 keeps photos in the same store, so its pages state the same periods.
+  const about2 = fs.readFileSync(path.join(repo, "public/WVROOFING/2/about/index.html"), "utf8");
+  assert.match(about2, new RegExp("deleted automatically after " + RETENTION.projectDays + " days"), "v2 About");
+  assert.match(about2, new RegExp("kept with your enquiry for " + RETENTION.enquiryMonths + " months"), "v2 About");
+  assert.match(about2, new RegExp("kept for " + RETENTION.enquiryMonths + " months, then deleted automatically"), "v2 About: enquiries");
+  const cam = fs.readFileSync(path.join(repo, "public/WVROOFING/2/roof-cam/index.html"), "utf8");
+  assert.match(cam, new RegExp("for " + RETENTION.projectDays + " days, or with your enquiry"), "the Roof Cam's photo notice");
+  const home2 = fs.readFileSync(path.join(repo, "public/WVROOFING/2/index.html"), "utf8");
+  assert.match(home2, new RegExp("kept for " + RETENTION.projectDays + " days, or for " + RETENTION.enquiryMonths + " months with your enquiry"), "v2 bulletin FAQ");
   const record = fs.readFileSync(path.join(repo, "docs/wvroofing/retention.md"), "utf8");
   const units = { Days: "days", Months: "months", Hours: "hours" };
   for (const [name, value] of Object.entries(RETENTION)) {

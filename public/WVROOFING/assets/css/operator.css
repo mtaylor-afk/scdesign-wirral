@@ -52,6 +52,8 @@ body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
   min-width: 20px; padding: 0 6px; border-radius: var(--r-pill); background: var(--err); color: #fff;
   font-size: 12px; font-weight: 600; line-height: 20px; text-align: center;
 }
+/* A plain count (photos), not something waiting to be dealt with. */
+.op-count--quiet { background: var(--text-2); }
 #op-refresh { margin-left: auto; }
 
 /* ---------- List and detail ---------- */
@@ -203,6 +205,33 @@ body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
 .op-check { display: flex; gap: 8px; align-items: center; }
 .op-evidence { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 14px; }
 
+/* Which site: version 1 (the Roof Visualiser) and version 2 (the Roof Cam) */
+.op-pill--v1 { background: rgba(27, 42, 74, 0.1); color: var(--text); }
+.op-pill--v2 { background: rgba(201, 168, 76, 0.22); color: var(--text); }
+
+/* Photos: every customer photo from both sites */
+.op-photos-view { display: grid; gap: 12px; }
+.op-photos-view[data-show="grid"] .op-photo-detail-pane { display: none; }
+.op-photos-view[data-show="detail"] .op-photos-grid-pane { display: none; }
+.op-photos-grid-pane { display: grid; gap: 10px; }
+.op-photo-grid { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
+.op-photo-card {
+  width: 100%; height: 100%; text-align: left; border: 1px solid transparent; background: var(--bg-elev); color: var(--text);
+  border-radius: 14px; padding: 0; overflow: hidden; cursor: pointer; display: grid; grid-template-rows: auto 1fr;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.op-photo-card:hover { border-color: var(--hairline); }
+.op-photo-card[aria-current="true"] { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+.op-photo-thumb {
+  position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; background: var(--bg-alt);
+  color: var(--text-3); font-size: 12px; overflow: hidden;
+}
+.op-photo-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.op-photo-card-body { display: grid; gap: 4px; padding: 10px 12px 12px; align-content: start; }
+.op-more { display: flex; justify-content: center; }
+.op-photo-back { justify-self: start; }
+.op-photo-detail-pane .op-photo { max-width: 860px; }
+
 /* Costs */
 .op-costs-view { display: grid; gap: 14px; }
 #op-costs { display: grid; gap: 14px; }
@@ -219,5 +248,5 @@ body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
 .op-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .op-item { transition: none; }
+  .op-item, .op-photo-card { transition: none; }
 }

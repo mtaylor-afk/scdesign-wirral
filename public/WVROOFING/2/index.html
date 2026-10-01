@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Rain later | The WV Roofing weather report (concept)</title>
-  <meta name="description" content="A concept site. See your own house with eight different roofs, in sun, drizzle, storm and dusk, drawn on your phone. Nothing is uploaded.">
+  <meta name="description" content="A concept site. See your own house with eight different roofs, in sun, drizzle, storm and dusk, drawn on your phone, then send the one you like to the roofer.">
   <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
   <meta name="theme-color" content="#0b1220">
   <script>document.documentElement.classList.add("js");</script>
@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&amp;family=Big+Shoulders+Display:wght@500;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap">
-  <link rel="stylesheet" href="/WVROOFING/2/assets/css/site.css?v=20260930a">
+  <link rel="stylesheet" href="/WVROOFING/2/assets/css/site.css?v=20261001a">
   <link rel="preload" as="image" href="/WVROOFING/samples/semi-1930s.jpg" fetchpriority="high">
   <script type="module" src="/WVROOFING/2/assets/js/home.js"></script>
 </head>
@@ -59,7 +59,7 @@
         <div class="hero-copy">
           <p class="eyebrow gust">Front 01 · Tonight · Wirral &amp; Liverpool</p>
           <h1 id="hero-title" class="hl-1 sway">Rain<br>later<span class="dot">.</span></h1>
-          <p class="lede">It always is. See your own house with a roof that's ready for it, drawn on your phone. <strong>Nothing is uploaded.</strong></p>
+          <p class="lede">It always is. See your own house with a roof that's ready for it, drawn on your phone. <strong>Then send it to the roofer.</strong></p>
           <div class="cta-row">
             <a class="btn" href="/WVROOFING/2/roof-cam/">Try it on my roof</a>
             <a class="more more--down" href="#range">Watch the forecast</a>
@@ -82,7 +82,7 @@
           <svg class="ic-play" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M3 1l10 6-10 6z"/></svg>
         </button>
         <div class="ticker-view"><div class="ticker-track">
-          <span>Concept site</span><span>Not trading</span><span>Contact details are placeholders</span><span>Previews are approximate</span><span>Not a real forecast</span><span>Photos (stock): Unsplash, Pexels</span><span>Your photo is never uploaded</span><span>Rain later. Good</span>
+          <span>Concept site</span><span>Not trading</span><span>Contact details are placeholders</span><span>Previews are approximate</span><span>Not a real forecast</span><span>Photos (stock): Unsplash, Pexels</span><span>Your photo is kept privately</span><span>Rain later. Good</span>
         </div></div>
       </div>
     </section>
@@ -148,9 +148,9 @@
         <div class="numerals reveal">
           <a class="numeral" href="/WVROOFING/2/roof-cam/"><b>1</b><span>tap per slope</span></a>
           <a class="numeral" href="/WVROOFING/2/range/"><b>8</b><span>roofs to try on it</span></a>
-          <a class="numeral" href="/WVROOFING/2/about/#privacy"><b>0</b><span>uploads, ever</span></a>
+          <a class="numeral" href="/WVROOFING/2/about/#privacy"><b>30</b><span>days your photo is kept</span></a>
         </div>
-        <p class="promise reveal">Your photo stays on your phone.<small>It's opened by your browser, on your device. It isn't uploaded, stored or sent to anyone. It only leaves your phone if you share the card or send a saved image yourself.</small></p>
+        <p class="promise reveal">The roofs are drawn on your phone.<small>Your browser opens your photo and draws every roof on it, on your device, so they appear straight away. The photo is also saved to WV Roofing's private store so the roofer can see it: for 30 days, or with your enquiry if you send one. You can delete it at any time.</small></p>
         <div class="cta-row" style="margin-top: 28px">
           <a class="btn" href="/WVROOFING/2/roof-cam/">Open the Roof Cam</a>
           <a class="more" href="/WVROOFING/2/roof-cam/?sample=semi-1930s">Try a sample house</a>
@@ -245,8 +245,8 @@
           <details>
             <summary>What happens to my photo?</summary>
             <div class="answer">
-              <p>Nothing. Your browser opens it on your own device and it stays there. It isn't uploaded, stored or sent to anyone, and it's gone when you close the tab. It only leaves your device if you share the card or send a saved image yourself.</p>
-              <p>You don't have to take that on trust: after you add a photo, the Roof Cam counts every request its own page makes from then on (normally none) and shows you the number.</p>
+              <p>Your browser opens it and draws the roofs on it, on your own device. It's also saved to WV Roofing's private store, so the roofer can see the house you mean: location and camera details are removed when it arrives, and only the roofer can open it.</p>
+              <p>It's kept for 30 days, or for 12 months with your enquiry if you send one. Under the Roof Cam's controls a light shows when it's saved, with a button to delete it straight away. Sample houses are never saved.</p>
             </div>
           </details>
           <details>
@@ -300,6 +300,48 @@
             <li><span class="k">Email</span><a class="v" href="mailto:hello@wvroofing.co.uk">hello@wvroofing.co.uk</a><span class="tag">Placeholder. It won't reach anyone yet.</span></li>
             <li><span class="k">Address</span><span class="v">To be confirmed</span><span class="tag">WV Roofing isn't trading.</span></li>
           </ul>
+          <form class="ask-form signoff-form" id="bulletin-form" data-source="bulletin" data-ask novalidate aria-labelledby="bulletin-form-title">
+            <h3 class="hl-3" id="bulletin-form-title">Or leave your details</h3>
+            <div class="ask-field">
+              <label for="b-name">Your name</label>
+              <input class="ask-input" id="b-name" name="name" type="text" autocomplete="name" required aria-describedby="b-name-err">
+              <p class="ask-error" id="b-name-err" data-error-for="name" hidden></p>
+            </div>
+            <div class="ask-pair">
+              <div class="ask-field">
+                <label for="b-phone">Phone</label>
+                <input class="ask-input" id="b-phone" name="phone" type="tel" autocomplete="tel" aria-describedby="b-contact-hint b-phone-err">
+                <p class="ask-error" id="b-phone-err" data-error-for="phone" hidden></p>
+              </div>
+              <div class="ask-field">
+                <label for="b-email">Email</label>
+                <input class="ask-input" id="b-email" name="email" type="email" autocomplete="email" aria-describedby="b-contact-hint b-email-err">
+                <p class="ask-error" id="b-email-err" data-error-for="email" hidden></p>
+              </div>
+            </div>
+            <p class="ask-hint" id="b-contact-hint">A phone number or an email address is fine.</p>
+            <div class="ask-field">
+              <label for="b-postcode">Postcode <span class="opt">(optional)</span></label>
+              <input class="ask-input ask-input--short" id="b-postcode" name="postcode" type="text" autocomplete="postal-code" autocapitalize="characters" aria-describedby="b-postcode-err">
+              <p class="ask-error" id="b-postcode-err" data-error-for="postcode" hidden></p>
+            </div>
+            <div class="ask-field">
+              <label for="b-message">What's the roof like? <span class="opt">(optional)</span></label>
+              <textarea class="ask-input" id="b-message" name="message" rows="3" placeholder="For example: 1930s semi, damp in the back bedroom"></textarea>
+            </div>
+            <div class="hp-field" aria-hidden="true">
+              <label for="b-company">Company</label>
+              <input id="b-company" name="company" type="text" tabindex="-1" autocomplete="off">
+            </div>
+            <label class="ask-check" for="b-consent">
+              <input id="b-consent" name="consent" type="checkbox" aria-describedby="b-consent-err">
+              <span>I'm happy for WV Roofing to contact me about this. See <a href="/WVROOFING/2/about/#privacy">what's kept, and for how long</a>.</span>
+            </label>
+            <p class="ask-error" id="b-consent-err" data-error-for="consent" hidden></p>
+            <button class="btn btn--block" type="submit">Send</button>
+            <p class="form-status ask-status" role="status" aria-live="polite" hidden></p>
+            <p class="ask-small">Saved first, with a reference, before anyone is told. WV Roofing is a concept and isn't trading yet.</p>
+          </form>
         </div>
       </div>
     </section>
@@ -308,7 +350,7 @@
   <footer class="footer">
     <div class="ticker" aria-hidden="true">
       <div class="ticker-view"><div class="ticker-track">
-        <span>Concept site</span><span>Not trading</span><span>No prices</span><span>No reviews</span><span>No uploads</span><span>Previews are approximate</span><span>Not a real forecast</span><span>Goodnight</span>
+        <span>Concept site</span><span>Not trading</span><span>No prices</span><span>No reviews</span><span>Photos kept privately</span><span>Previews are approximate</span><span>Not a real forecast</span><span>Goodnight</span>
       </div></div>
     </div>
     <div class="wrap">

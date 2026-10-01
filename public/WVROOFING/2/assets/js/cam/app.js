@@ -8,10 +8,12 @@
 //   On air     the eight roofs on your house, in sun, drizzle, storm and dusk,
 //              with rain that lands on your roof. Hold to see the old one.
 //
-// Everything happens on this device. The photo is opened by the browser, drawn
-// on canvases and never sent anywhere: there is no upload code on this page,
-// and the "network light" counts every request this page makes after the photo
-// arrives, and names where they went.
+// The roofs are drawn on this device: the photo is opened by the browser and
+// drawn on canvases, straight away. At the same time the visitor's own photo
+// (never a sample) is saved in the background to WV Roofing's private store
+// (store.js), so the roofer can see it; the "save light" under the controls
+// says how that is going, with Try again or Delete. "Send it to the roofer"
+// sends their details, and the preview of the roof they chose, as an enquiry.
 import { flash, getGauge, holdGauge } from "../site.js";
 import { isCalm, onCalmChange, probeQuality } from "../quality.js";
 import { Weather } from "../weather.js";
@@ -19,12 +21,16 @@ import { Engine, isStale } from "../engine/engine.js";
 import { suggestRoof, TOLERANCES } from "../engine/auto-roof.js";
 import { buildMask, maskStats, erode, iou } from "../engine/mask-ops.js";
 import { MaskEditor } from "../engine/mask-editor.js";
-import { blobToCanvas, loadSample, photoWarnings, PhotoError } from "../engine/photo.js";
+import { blobToCanvas, headerSize, loadSample, photoWarnings, PhotoError } from "../engine/photo.js";
 import { watermarked, downloadCanvas } from "../engine/watermark.js";
 import { conditionById } from "../engine/grade.js";
 import { loadCatalogue, loadSamples, loadImage, SHARED } from "../data.js";
 import { buildStations, buildDeck, putImage, wearRoof } from "../ui.js";
 import { buildShareCard, canShareFile, shareFile, downloadBlob } from "./share.js";
+import * as store from "./store.js";
+// The enquiry form's checks, request key and messages are version 1's, so both
+// versions send exactly the same enquiry.
+import { wireEnquiryForm } from "/WVROOFING/assets/js/enquiry.js";
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
@@ -71,7 +77,6 @@ const S = {
   held: false,
   weather: { onair: null, air: null },
   card: emptyCard(),
-  net: { since: 0, list: [] },
 };
 
 // ---------------------------------------------------------------------------
@@ -197,7 +202,7 @@ function show(screen, opts) {
   else releaseFind();
   torch(); // on air at dusk only; anywhere else it stops and lets go
   if (screen === "onair") gauge(0, "Waiting for a photo");
-  netlight();
+  saveLight();
   stickHeight();
 }
 
@@ -240,57 +245,68 @@ function wireStick() {
 }
 
 // ---------------------------------------------------------------------------
-// the network light: every request this page makes after a photo arrives
+// the save light: how saving the visitor's photo for the roofer is going
 
-function startNetlight() {
-  S.net.since = performance.now();
-  S.net.list = [];
-  netlight();
-}
+const SAVE_WORDS = {
+  saving: "Saving your photo for the roofer",
+  saved: "Saved for the roofer. Kept privately for 30 days, or with your enquiry.",
+  off: "Not saved: WV Roofing's photo store isn't switched on yet, so your photo stays on this device. The roofs work just the same.",
+  deleted: "Deleted from WV Roofing. It's still on this screen until you start again.",
+};
 
-function netlight() {
-  const els = [$("#netlight-find"), $("#netlight-air")];
-  if (!S.photo || !S.net.since) {
-    els.forEach((el) => el && (el.hidden = true));
-    return;
-  }
-  const n = S.net.list.length;
-  // This site is named as "this site", never by its address.
-  const where = (h) => (h === window.location.host ? "this site" : h);
-  const hosts = Array.from(new Set(S.net.list.map((u) => where(u.host))));
-  const since = S.photo.sample ? "the sample house arrived" : "you added your photo";
-  const text =
-    n === 0
-      ? "Network: 0 requests since " + since + "." + (S.photo.sample ? "" : " Your photo is staying here.")
-      : "Network: " + n + " request" + (n === 1 ? "" : "s") + " since " + since + ", fetching files for this page from " + hosts.join(", ") + ". This page has no upload code.";
-  els.forEach((el) => {
-    if (!el) return;
-    el.hidden = false;
-    el.textContent = text;
-    el.classList.toggle("is-counting", n > 0);
-  });
-}
+let lastSave = "";
 
-function watchNetwork() {
-  if (typeof PerformanceObserver === "undefined") return;
-  try {
-    const po = new PerformanceObserver((list) => {
-      for (const e of list.getEntries()) {
-        if (!S.net.since || e.startTime < S.net.since) continue;
-        if (/^(blob|data):/.test(e.name)) continue; // made on this device, not a request
-        let host = "";
-        try {
-          host = new URL(e.name).host;
-        } catch (err) {
-          host = "unknown";
-        }
-        S.net.list.push({ host, name: e.name });
+function saveLight() {
+  const s = store.status();
+  const own = !!(S.photo && !S.photo.sample);
+  const show = own && s.state !== "idle";
+  const text = s.state === "failed" ? "Your photo couldn't be saved for the roofer: " + (s.message || "please try again.") + " The roofs still work." : SAVE_WORDS[s.state] || "";
+  // The words change (and are read out) only when the state does; the percentage just moves.
+  const words = s.state + "|" + text;
+  for (const el of [$("#save-find"), $("#save-air")]) {
+    if (!el) continue;
+    el.hidden = !show;
+    if (!show) continue;
+    el.dataset.state = s.state;
+    el.style.setProperty("--save", String(s.state === "saving" ? s.progress : 1));
+    if (el.dataset.words !== words) {
+      el.dataset.words = words;
+      const msg = document.createElement("span");
+      msg.className = "savelight-text";
+      msg.textContent = text;
+      const parts = [msg];
+      if (s.state === "saving") {
+        const pct = document.createElement("span");
+        pct.className = "savelight-pct";
+        pct.setAttribute("aria-hidden", "true");
+        parts.push(pct);
       }
-      netlight();
-    });
-    po.observe({ type: "resource", buffered: false });
+      if (s.state === "saved") parts.push(saveAction("Delete it", deleteSaved));
+      if (s.state === "failed") parts.push(saveAction("Try again", () => store.retry()));
+      el.replaceChildren(...parts);
+    }
+    const pct = el.querySelector(".savelight-pct");
+    if (pct) pct.textContent = Math.round(s.progress * 100) + "%";
+  }
+  if (show && words !== lastSave && (s.state === "saved" || s.state === "failed" || s.state === "off")) announce(text);
+  lastSave = words;
+}
+
+function saveAction(label, fn) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "link-btn savelight-btn";
+  b.textContent = label;
+  b.addEventListener("click", fn);
+  return b;
+}
+
+async function deleteSaved() {
+  if (!window.confirm("Delete your photo from WV Roofing's store? If you've sent it to the roofer, it's taken out of your enquiry too (an email that has already reached them stays in their inbox).")) return;
+  try {
+    await store.deletePhoto();
   } catch (err) {
-    /* no resource timing: the light stays off */
+    announce("Your photo couldn't be deleted just now. Please try again.");
   }
 }
 
@@ -326,7 +342,7 @@ async function handleFile(file) {
   const labels = $$(".file-btn");
   labels.forEach((l) => l.classList.add("is-busy"));
   S.loading = true;
-  setStatus("#photo-status", "Opening your photo on this device");
+  setStatus("#photo-status", "Opening your photo");
   try {
     const kind = await sniff(file).catch(() => "other");
     let canvas;
@@ -337,10 +353,13 @@ async function handleFile(file) {
       if (err instanceof PhotoError && err.message) throw err;
       throw new Error("This photo couldn't be opened. Please try a JPG or PNG.");
     }
+    const head = await headerSize(file);
     if (ticket !== S.loadTicket) {
       release(canvas); // something newer was chosen meanwhile
       return;
     }
+    // Saved for the roofer in the background, while the roof is being found.
+    store.keepPhoto(file, canvas, head);
     await openPhoto(canvas, null);
   } catch (err) {
     if (ticket === S.loadTicket) setStatus("#photo-error", (err && err.message) || "This photo couldn't be opened.");
@@ -401,7 +420,9 @@ async function openPhoto(canvas, sample, shapes) {
   // The last house's drawings are no longer wanted anywhere.
   S.engine.drop("full");
   S.engine.drop("quick");
-  startNetlight();
+  // A sample house is never saved: the light is for the visitor's own photo.
+  if (sample) store.clearSave();
+  saveLight();
   if (sample && shapes) {
     await goAir();
     return;
@@ -1694,6 +1715,100 @@ function wireShare() {
   });
 }
 
+// ---- send it to the roofer: the visitor's details, the roof they chose and (for their own photo) the photo and a preview
+
+function openAsk() {
+  if (!S.photo || !S.cat) return;
+  const dlg = $("#ask");
+  const own = !S.photo.sample;
+  const id = S.shown.finish || S.finish;
+  const p = S.cat.byId.get(id);
+  $("#ask-what").textContent = (p ? p.name + ", " + p.colourName.toLowerCase() : "Your new roof") + " · on " + whose(true);
+  // The photo can only go with the enquiry if it's saved (or still being saved).
+  const st = store.status().state;
+  const canInclude = own && (st === "saving" || st === "saved");
+  $("#ask-images-row").hidden = !canInclude;
+  $("#ask-nophoto").hidden = !own || canInclude;
+  $("#ask-form").hidden = false;
+  $("#ask-done").hidden = true;
+  if (typeof dlg.showModal === "function") dlg.showModal();
+  else dlg.setAttribute("open", "");
+  const first = $("#ask-name");
+  if (first) first.focus();
+}
+
+function closeAsk() {
+  const dlg = $("#ask");
+  if (typeof dlg.close === "function" && dlg.open) dlg.close();
+  else dlg.removeAttribute("open");
+}
+
+/** The preview the roofer is sent: what the stage shows now, labelled as a concept. */
+function previewForRoofer() {
+  if (!S.photo || !S.cat || !S.shown.finish) return null;
+  const c = conditionById(S.shown.condition);
+  const label = "Approximate concept preview · " + S.cat.byId.get(S.shown.finish).name + (c.id === "noon" ? "" : " · " + c.name);
+  return { canvas: watermarked(currentLayer(), label, S.photo.credit || undefined), finish: S.shown.finish, condition: S.shown.condition };
+}
+
+function wireAsk() {
+  const dlg = $("#ask");
+  const form = $("#ask-form");
+  $("#air-ask").addEventListener("click", openAsk);
+  $("#ask-close").addEventListener("click", closeAsk);
+  $("#ask-done-close").addEventListener("click", closeAsk);
+  // A tap on the dimmed page outside the form closes it, like the close button.
+  dlg.addEventListener("click", (e) => {
+    if (e.target === dlg) closeAsk();
+  });
+  // Whether the photo was meant to go with the enquiry, and whether it did.
+  let sent = { wanted: false, withPhoto: false };
+  wireEnquiryForm(form, {
+    getContext: () => {
+      const own = !!(S.photo && !S.photo.sample);
+      return {
+        source: own ? "roof-cam" : "roof-cam-sample",
+        product: S.shown.finish || S.finish || "",
+        includeImages: own && !$("#ask-images-row").hidden ? $("#ask-images").checked : undefined,
+      };
+    },
+    send: async (payload) => {
+      const own = !!(S.photo && !S.photo.sample);
+      sent = { wanted: own && payload.includeImages === true, withPhoto: false };
+      // Copied now, before anything is awaited: a roof chosen meanwhile can't get into it.
+      const shot = sent.wanted ? previewForRoofer() : null;
+      try {
+        if (own) {
+          // A photo still uploading is waited for (a little), so the enquiry can carry it.
+          await store.whenSettled(25000);
+          if (shot && store.photoSaved()) {
+            try {
+              await store.sendPreview(shot.canvas, shot.finish, shot.condition);
+            } catch (err) {
+              /* the enquiry still goes, with the photo */
+            }
+          }
+        }
+        const r = await store.sendEnquiry(payload);
+        sent.withPhoto = !!r.withPhoto;
+        return r;
+      } finally {
+        if (shot) release(shot.canvas);
+      }
+    },
+    onSent: () => {
+      // Said plainly when the photo they asked to include couldn't go with it.
+      const without = sent.wanted && !sent.withPhoto ? " Your photo couldn't go with it, because it isn't saved; the roof you chose is in your enquiry." : "";
+      const msg = form.querySelector(".form-status").textContent + without;
+      $("#ask-done-text").textContent = msg;
+      form.hidden = true;
+      $("#ask-done").hidden = false;
+      $("#ask-done-text").focus();
+      setStatus("#air-status", msg);
+    },
+  });
+}
+
 function restart() {
   S.photo = null;
   S.scene = null;
@@ -1707,7 +1822,8 @@ function restart() {
   S.loading = false;
   $$(".file-btn").forEach((l) => l.classList.remove("is-busy"));
   setStatus("#photo-status", "");
-  S.net.since = 0;
+  // The photo stays saved (it can be deleted from the next one's light, or by asking); the light goes.
+  store.clearSave();
   S.shown = { finish: "", condition: "" };
   S.card = emptyCard();
   clearTimeout(cardTimer);
@@ -1790,7 +1906,7 @@ async function boot() {
   history.replaceState({ screen: "onair" }, "", window.location.href);
   holdGauge(true);
   gauge(0, "Waiting for a photo");
-  watchNetwork();
+  store.onSave(saveLight);
   S.engine = new Engine();
   // Fetch the typefaces this page uses now, so none arrives after a photo does.
   if (document.fonts && document.fonts.load) {
@@ -1803,6 +1919,7 @@ async function boot() {
   wireFind();
   wireDraw();
   wireAir();
+  wireAsk();
   wireStick();
   onCalmChange(() => {
     kickOverlay();

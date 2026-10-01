@@ -140,6 +140,37 @@ customer's plans and drawings**.
 - **Open** gives a link that works for 5 minutes. Opening a file is recorded.
 - When you measure from one, tick it in the form.
 
+## Photos (both versions of the site)
+
+Added 2026-10-01. Every photo a customer has added, on either site, newest first, whether or not they
+sent an enquiry:
+
+- **Version 1 · Visualiser**: photos uploaded in the Roof Visualiser (`/WVROOFING/visualiser/`).
+- **Version 2 · Roof Cam**: photos added in the Roof Cam (`/WVROOFING/2/roof-cam/`), saved in the
+  background while the customer finds their roof.
+
+Filter by site, and by **With an enquiry** or **No enquiry yet**. Each card shows when the photo arrived,
+the enquiry it led to (reference and name), how many previews it has, and how long it's kept.
+**Show more** loads the next 48.
+
+Open a card to see:
+
+- the photo, full size (click it to open it in a new tab), and **Get the original file** (a 5-minute link);
+  a photo turned into a JPEG on the customer's phone first (an iPhone HEIC, a WebP or a very large photo)
+  says so;
+- any **earlier photos** from the same session (a customer who changed photo);
+- **Previews from the customer's device**: the roof they chose, drawn on their phone or computer and sent
+  with their enquiry. They're approximate, not renders;
+- photo-real renders, if there are any;
+- the **enquiry**, with **Open the enquiry**, or a note that there isn't one (there are then no contact
+  details: only the photo);
+- **Delete this photo session**: the photos, previews, renders and anything else in the session. An
+  enquiry and its contact details stay.
+
+Photos without an enquiry are deleted automatically after 30 days; with an enquiry they're kept with it
+for 12 months. The Enquiries tab can also be filtered by site, and each enquiry says which site it came
+from.
+
 ## Renders to check
 
 This tab lists photo-real renders from the last 30 days that **failed**, or that are **uncertain**.

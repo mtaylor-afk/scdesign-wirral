@@ -11,9 +11,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap">
-  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20260928d">
-  <link rel="stylesheet" href="/WVROOFING/assets/css/operator.css?v=20260928d">
-  <script type="module" src="/WVROOFING/assets/js/operator/app.js?v=20260928d"></script>
+  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20261001a">
+  <link rel="stylesheet" href="/WVROOFING/assets/css/operator.css?v=20261001a">
+  <script type="module" src="/WVROOFING/assets/js/operator/app.js?v=20261001a"></script>
 </head>
 <body class="op">
   <a class="skip-link" href="#main">Skip to content</a>
@@ -34,7 +34,7 @@
 
     <section id="op-login" class="op-login" aria-labelledby="op-login-title" hidden>
       <h1 id="op-login-title" class="op-login-title">Operator login</h1>
-      <p class="op-muted">For the roofer only: enquiries, photos and renders from the Roof Visualiser.</p>
+      <p class="op-muted">For the roofer only: enquiries, photos and previews from both versions of the site (the Roof Visualiser and the Roof Cam).</p>
       <form id="op-login-form" class="form op-login-form" method="post" novalidate>
         <div class="field">
           <input class="input" id="op-password" name="password" type="password" autocomplete="current-password" placeholder="Password" required>
@@ -50,6 +50,7 @@
       <div class="op-toolbar">
         <div class="op-tabs" role="tablist" aria-label="Views">
           <button class="op-tab" id="tab-enquiries" type="button" role="tab" aria-selected="true" aria-controls="op-view-enquiries" data-tab="enquiries">Enquiries</button>
+          <button class="op-tab" id="tab-photos" type="button" role="tab" aria-selected="false" aria-controls="op-view-photos" data-tab="photos">Photos <span class="op-count op-count--quiet" id="op-photos-count" hidden></span></button>
           <button class="op-tab" id="tab-jobs" type="button" role="tab" aria-selected="false" aria-controls="op-view-jobs" data-tab="jobs">Renders to check <span class="op-count" id="op-jobs-count" hidden></span></button>
           <button class="op-tab" id="tab-costs" type="button" role="tab" aria-selected="false" aria-controls="op-view-costs" data-tab="costs">Costs</button>
         </div>
@@ -64,12 +65,25 @@
             <input class="op-search-input" id="op-q" name="q" type="search" maxlength="100" autocomplete="off" placeholder="Find a customer or reference">
           </form>
           <div class="op-filters" id="op-filters" role="group" aria-label="Show enquiries"></div>
+          <div class="op-filters" id="op-site-filters" role="group" aria-label="Which site"></div>
           <ul class="op-list" id="op-list" aria-label="Enquiries"></ul>
           <p class="op-empty op-muted" id="op-list-empty" hidden>No enquiries here yet.</p>
         </div>
         <div class="op-detail-pane" id="op-detail" aria-live="polite">
           <p class="op-empty op-muted">Choose an enquiry to see everything about it.</p>
         </div>
+      </div>
+
+      <div id="op-view-photos" class="op-photos-view" role="tabpanel" aria-labelledby="tab-photos" data-show="grid" hidden>
+        <div class="op-photos-grid-pane">
+          <p class="op-muted op-intro">Every photo customers have added, on either site: the Roof Visualiser (version 1) and the Roof Cam (version 2). Photos without an enquiry are deleted after 30 days; with an enquiry, they're kept with it.</p>
+          <div class="op-filters" id="op-photo-site" role="group" aria-label="Which site"></div>
+          <div class="op-filters" id="op-photo-enquiry" role="group" aria-label="With or without an enquiry"></div>
+          <ul class="op-photo-grid" id="op-photo-grid" aria-label="Customer photos"></ul>
+          <p class="op-empty op-muted" id="op-photo-empty" hidden>No photos here yet.</p>
+          <div class="op-more"><button class="btn btn-neutral btn-sm" id="op-photo-more" type="button" hidden>Show more</button></div>
+        </div>
+        <div class="op-photo-detail-pane" id="op-photo-detail" aria-live="polite"></div>
       </div>
 
       <div id="op-view-jobs" class="op-jobs-view" role="tabpanel" aria-labelledby="tab-jobs" hidden>

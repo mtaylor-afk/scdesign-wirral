@@ -41,6 +41,8 @@ const ROUTES = [
   { path: "projects/:id/photo/display", methods: ["GET"], auth: "project", handler: (ctx) => require("./projects.js").display(/** @type {any} */ (ctx)) },
   { path: "projects/:id/mask", methods: ["POST"], auth: "project", handler: (ctx) => require("./projects.js").mask(/** @type {any} */ (ctx)) },
   { path: "projects/:id/delete", methods: ["POST"], auth: "project", handler: (ctx) => require("./projects.js").remove(/** @type {any} */ (ctx)) },
+  // A preview drawn on the customer's device, kept with the photo for the roofer.
+  { path: "projects/:id/mockups", methods: ["POST"], auth: "project", handler: (ctx) => require("./mockups.js").add(/** @type {any} */ (ctx)) },
   // Photo-real renders (A3): durable jobs, polled by the customer.
   { path: "projects/:id/renders", methods: ["POST"], auth: "project", handler: (ctx) => require("./renders.js").submit(/** @type {any} */ (ctx)) },
   { path: "projects/:id/renders", methods: ["GET"], auth: "project", handler: (ctx) => require("./renders.js").list(/** @type {any} */ (ctx)) },
@@ -77,7 +79,11 @@ const ROUTES = [
   { path: "operator/enquiries/:id/request-survey", methods: ["POST"], auth: "operator", handler: (ctx) => op().requestSurvey(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id/resend", methods: ["POST"], auth: "operator", handler: (ctx) => op().resend(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id/delete", methods: ["POST"], auth: "operator", handler: (ctx) => op().deleteEnquiry(/** @type {any} */ (ctx)) },
+  // Every customer photo from both sites, with or without an enquiry.
+  { path: "operator/projects", methods: ["GET"], auth: "operator", handler: (ctx) => op().listProjects(/** @type {any} */ (ctx)) },
+  { path: "operator/projects/:id", methods: ["GET"], auth: "operator", handler: (ctx) => op().projectView(/** @type {any} */ (ctx)) },
   { path: "operator/projects/:id/photo", methods: ["GET"], auth: "operator", handler: (ctx) => op().projectPhoto(/** @type {any} */ (ctx)) },
+  { path: "operator/mockups/:id/image", methods: ["GET"], auth: "operator", handler: (ctx) => op().mockupImage(/** @type {any} */ (ctx)) },
   { path: "operator/projects/:id/original", methods: ["GET"], auth: "operator", handler: (ctx) => op().projectOriginal(/** @type {any} */ (ctx)) },
   { path: "operator/projects/:id/delete", methods: ["POST"], auth: "operator", handler: (ctx) => op().deleteProjectRoute(/** @type {any} */ (ctx)) },
   { path: "operator/jobs", methods: ["GET"], auth: "operator", handler: (ctx) => op().listJobs(/** @type {any} */ (ctx)) },

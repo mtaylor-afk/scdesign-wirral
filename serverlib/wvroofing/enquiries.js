@@ -33,7 +33,23 @@ const MAX_ATTEMPTS = 3;
 const INLINE_WAIT_MS = 8000;
 const QUICK_RETRY_MS = 11000;
 const ATTACHMENT_MAX_BYTES = 450 * 1024;
-const SOURCES = ["roof-replacement", "visualiser", "visualiser-sample"];
+// Version 1: the roof-replacement form and the Roof Visualiser. Version 2 (/WVROOFING/2/):
+// the Roof Cam (with the customer's own photo, or a sample house) and the bulletin's form.
+const V2_SOURCES = ["roof-cam", "roof-cam-sample", "bulletin"];
+const SOURCES = ["roof-replacement", "visualiser", "visualiser-sample"].concat(V2_SOURCES);
+const SOURCE_WORDS = /** @type {Record<string, string>} */ ({
+  "roof-replacement": "Roof replacement form (version 1)",
+  visualiser: "Roof Visualiser, own photo (version 1)",
+  "visualiser-sample": "Roof Visualiser, sample house (version 1)",
+  "roof-cam": "Roof Cam, own photo (version 2)",
+  "roof-cam-sample": "Roof Cam, sample house (version 2)",
+  bulletin: "Bulletin contact form (version 2)",
+});
+
+/** Which site an enquiry came from. @param {string} source @returns {"v1" | "v2"} */
+function siteOf(source) {
+  return V2_SOURCES.includes(source) ? "v2" : "v1";
+}
 
 /**
  * @typedef {import("./router.js").Ctx} Ctx
@@ -208,6 +224,10 @@ async function snapshotFor(p, visualId) {
     const mk = await db.query("SELECT id, coverage FROM wvr_masks WHERE id = $1 AND project_id = $2", [p.mask_id, p.id]);
     if (mk.rows[0]) snap.mask = { id: mk.rows[0].id, coverage: Math.round(Number(mk.rows[0].coverage) * 1000) / 1000 };
   }
+  // Previews the customer's device drew (the Roof Cam's roofs, the visualiser's quick previews).
+  const mk = await db.query("SELECT id, visual_id, condition, photo_id FROM wvr_mockups WHERE project_id = $1 ORDER BY created_at, id", [p.id]);
+  snap.mockups = mk.rows.map((m) => ({ id: m.id, visualId: m.visual_id, condition: m.condition, current: m.photo_id === p.photo_id }));
+  snap.site = p.site || "v1";
   if (p.photo_id && p.mask_id) {
     const js = await db.query(
       "SELECT id, visual_id, model, quality, prompt_version, catalogue_version FROM wvr_jobs WHERE project_id = $1 AND photo_id = $2 AND mask_id = $3 AND status = 'succeeded' AND NOT quarantined ORDER BY finished_at",
@@ -304,7 +324,7 @@ async function createForProject(ctx) {
   const body = await readJson(ctx.req, 64 * 1024);
   const bot = botSignal(body);
   if (bot === "honeypot") return json(ctx.res, 200, { ok: true });
-  const { d, problems } = validate(Object.assign({}, body, { source: "visualiser" }));
+  const { d, problems } = validate(Object.assign({}, body, { source: ctx.project.site === "v2" ? "roof-cam" : "visualiser" }));
   if (problems.length) throw new HttpError(400, "invalid_fields", "Please check the form and try again.", { fields: problems });
   const key = requestKey(body);
   const p = ctx.project;
@@ -459,7 +479,19 @@ async function attachmentsFor(e) {
   if (render) {
     const j = await db.query("SELECT composite_path FROM wvr_jobs WHERE id = $1 AND project_id = $2 AND status = 'succeeded' AND NOT quarantined", [render.id, e.project_id]);
     const jpg = j.rows[0] && j.rows[0].composite_path ? await st.getBuffer(j.rows[0].composite_path) : null;
-    if (jpg) out.push({ filename: "after-" + e.visual_id + "-ai-concept.jpg", content: await smallJpeg(jpg), contentType: "image/jpeg" });
+    if (jpg) {
+      out.push({ filename: "after-" + e.visual_id + "-ai-concept.jpg", content: await smallJpeg(jpg), contentType: "image/jpeg" });
+      return out;
+    }
+  }
+  // No photo-real render: the preview their device drew of the roof they chose
+  // (the latest one for the current photo; any roof if they didn't choose one).
+  const list = (snap.mockups || []).filter((/** @type {any} */ m) => m.current);
+  const pick = list.filter((/** @type {any} */ m) => m.visualId === e.visual_id).pop() || (e.visual_id && e.visual_id !== "not-sure" ? null : list[list.length - 1]);
+  if (pick) {
+    const m = await db.query("SELECT pathname, visual_id FROM wvr_mockups WHERE id = $1 AND project_id = $2", [pick.id, e.project_id]);
+    const jpg = m.rows[0] ? await st.getBuffer(m.rows[0].pathname) : null;
+    if (jpg) out.push({ filename: "after-" + m.rows[0].visual_id + "-preview.jpg", content: await smallJpeg(jpg), contentType: "image/jpeg" });
   }
   return out;
 }
@@ -485,7 +517,7 @@ async function buildMessage(e) {
     ["Postcode", e.postcode || "-"],
     ["Roof choice", product ? product.name + " - " + product.colourName : e.visual_id === "not-sure" ? "Not sure yet" : "-"],
     ["Message", e.notes || "-"],
-    ["From page", e.source],
+    ["From page", SOURCE_WORDS[e.source] || e.source],
   ];
   if (snap.address) {
     const a = snap.address;
@@ -499,10 +531,12 @@ async function buildMessage(e) {
   if (snap.photo) {
     rows.push(["Their photo", snap.photo.origW + " x " + snap.photo.origH + " px" + (snap.mask ? ", roof outline covers " + Math.round(snap.mask.coverage * 100) + "% of it" : ", roof not marked")]);
     rows.push(["Photo-real renders", renderNames.length ? renderNames.join(", ") : "none"]);
+    const previewNames = Array.from(new Set((snap.mockups || []).filter((/** @type {any} */ m) => m.current).map((/** @type {any} */ m) => VISUALS.get(m.visualId)).filter(Boolean).map((/** @type {any} */ p) => p.name)));
+    if (previewNames.length) rows.push(["Previews from their device", previewNames.join(", ")]);
   }
   const attachments = await attachmentsFor(e);
   const saved = new Date(e.created_at).toISOString().replace("T", " ").slice(0, 16) + " UTC";
-  const foot = "Saved in the WV Roofing enquiry store at " + saved + ", before this email was sent. Visualiser images are AI concept illustrations, not photographs of finished work.";
+  const foot = "Saved in the WV Roofing enquiry store at " + saved + ", before this email was sent. Visualiser images are concept illustrations (AI renders, or approximate previews drawn on the customer's device), not photographs of finished work.";
   const text =
     "New roof survey request from the WV Roofing concept site\n\n" +
     rows.map(([k, v]) => k + ": " + v).join("\n") +
@@ -567,4 +601,4 @@ async function sweep() {
   return { enquiriesUncertain: stuck.rowCount, enquiriesDelivered: delivered, enquiriesDeleted: old.rowCount };
 }
 
-module.exports = { createFree, createForProject, getForProject, deliver, sweep, newReference, validate, buildMessage, MAX_ATTEMPTS };
+module.exports = { createFree, createForProject, getForProject, deliver, sweep, newReference, validate, buildMessage, siteOf, MAX_ATTEMPTS, SOURCES, V2_SOURCES, SOURCE_WORDS };

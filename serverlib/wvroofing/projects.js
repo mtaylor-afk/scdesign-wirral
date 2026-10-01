@@ -1,11 +1,11 @@
 // WV Roofing — customer project routes (A2): create a project, upload and commit
 // the photo, stream it back, save the roof outline, delete everything.
 //
-//   POST projects                          -> { id, token, expiresAt, capabilities }
+//   POST projects { site?: "v1"|"v2" }     -> { id, token, expiresAt, capabilities }
 //   GET  projects/:id                      -> project state (never contact details)
 //   POST projects/:id/consent  { ai }      -> record or withdraw the OpenAI opt-in
 //   POST projects/:id/photo/presign { contentType, bytes } -> { uploadId, url, method, headers }
-//   POST projects/:id/photo/commit  { uploadId }           -> { photo }
+//   POST projects/:id/photo/commit  { uploadId, clientResized? } -> { photo }
 //   GET  projects/:id/photo/display        -> JPEG of the working copy (bearer only)
 //   POST projects/:id/mask { png, shapes, displayW, displayH } -> { mask }
 //   POST projects/:id/delete               -> photos, outlines and the project, gone
@@ -65,6 +65,8 @@ async function create(ctx) {
     uaFamily: auth.uaFamily(ctx.req),
     noticeShown: body.noticeShown === true,
     consentAi: body.consentAi === true,
+    // Which site the photo comes from: the Roof Visualiser (v1, the default) or the Roof Cam (v2).
+    site: body.site === "v2" ? "v2" : "v1",
   });
   return json(ctx.res, 201, { ok: true, id: p.id, token: p.token, expiresAt: p.expiresAt, capabilities: capabilities(process.env) });
 }
@@ -88,7 +90,7 @@ async function get(ctx) {
   const enquiry = eq.rows[0] ? { reference: eq.rows[0].reference, savedAt: new Date(eq.rows[0].created_at).toISOString() } : null;
   return json(ctx.res, 200, {
     ok: true,
-    project: { id: p.id, createdAt: p.created_at, expiresAt: p.expires_at, consentAi: !!p.consent_ai_at, address, property, photo, mask, enquiry },
+    project: { id: p.id, site: p.site, createdAt: p.created_at, expiresAt: p.expires_at, consentAi: !!p.consent_ai_at, address, property, photo, mask, enquiry },
   });
 }
 
@@ -163,11 +165,14 @@ async function commit(ctx) {
     await st.put(originalPath, out.original, out.mime);
     await st.put(workingPath, out.working, "image/png");
     const sha = crypto.createHash("sha256").update(out.original).digest("hex");
+    // The browser says when it sent a copy it made itself (a HEIC or very large
+    // photo turned into a JPEG on the phone), so the roofer knows it isn't the camera's file.
+    const clientResized = body.clientResized === true;
     await db.tx(async (t) => {
       await t.query(
-        "INSERT INTO wvr_photos (id, project_id, original_path, original_sha256, original_mime, original_bytes, orig_w, orig_h, exif_orientation, working_path, work_w, work_h, quality) " +
-          "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
-        [photoId, ctx.project.id, originalPath, sha, out.mime, out.original.length, out.origW, out.origH, out.orientation, workingPath, out.workW, out.workH, JSON.stringify(out.quality)]
+        "INSERT INTO wvr_photos (id, project_id, original_path, original_sha256, original_mime, original_bytes, orig_w, orig_h, exif_orientation, working_path, work_w, work_h, quality, original_is_client_resized) " +
+          "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+        [photoId, ctx.project.id, originalPath, sha, out.mime, out.original.length, out.origW, out.origH, out.orientation, workingPath, out.workW, out.workH, JSON.stringify(out.quality), clientResized]
       );
       // A new photo never reuses the old outline or its renders (brief §15).
       await t.query("UPDATE wvr_projects SET photo_id = $2, mask_id = NULL, updated_at = now() WHERE id = $1", [ctx.project.id, photoId]);

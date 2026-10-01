@@ -301,6 +301,39 @@ function initYear() {
   });
 }
 
+/**
+ * Enquiry forms on the page (the bulletin's sign-off). They use version 1's
+ * form code, so both versions save exactly the same enquiry; it's only fetched
+ * when a page has a form.
+ */
+function initForms() {
+  const forms = $$("form[data-ask]");
+  if (!forms.length) return;
+  import("/WVROOFING/assets/js/enquiry.js")
+    .then((m) =>
+      forms.forEach((f) =>
+        m.wireEnquiryForm(f, {
+          onSent: () => {
+            // The form has been cleared: keep the reader on the message with the reference.
+            const box = f.querySelector(".form-status");
+            if (!box) return;
+            box.setAttribute("tabindex", "-1");
+            box.focus();
+          },
+        })
+      )
+    )
+    .catch(() => {
+      forms.forEach((f) => {
+        const box = f.querySelector(".form-status");
+        if (box) {
+          box.hidden = false;
+          box.textContent = "The form couldn't start. Please refresh the page and try again.";
+        }
+      });
+    });
+}
+
 function boot() {
   initMenu();
   initCalmToggle();
@@ -308,6 +341,7 @@ function boot() {
   initTickers();
   initGust();
   initYear();
+  initForms();
   try {
     initCharts();
   } catch (err) {

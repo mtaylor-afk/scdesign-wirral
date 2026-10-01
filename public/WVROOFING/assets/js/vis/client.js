@@ -104,7 +104,7 @@ export { MAX_BYTES };
 export async function ensureProject(opts) {
   const have = currentProject();
   if (have) return have;
-  const j = await call("POST", "projects", { body: { noticeShown: true, consentAi: !!(opts && opts.consentAi) } });
+  const j = await call("POST", "projects", { body: { noticeShown: true, consentAi: !!(opts && opts.consentAi), site: "v1" } });
   const p = { id: j.id, token: j.token, expiresAt: j.expiresAt };
   writeStore(p);
   return p;
@@ -128,28 +128,141 @@ function putWithProgress(url, file, headers, onProgress) {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", url);
     for (const k of Object.keys(headers || {})) xhr.setRequestHeader(k, headers[k]);
+    // A phone on a weak signal can stall for minutes: give up, so the page can say so.
+    xhr.timeout = 180000;
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
     };
     xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new ClientError(xhr.status, "upload_failed", "The photo didn't upload. Please try again.")));
     xhr.onerror = () => reject(new ClientError(0, "network", "The photo didn't upload. Check your connection and try again."));
+    xhr.ontimeout = () => reject(new ClientError(0, "network", "The photo took too long to upload. Check your connection and try again."));
     xhr.send(file);
   });
 }
 
+/** Is this a slow or data-saving connection (where a big photo would take minutes to send)? */
+function slowLink() {
+  const c = navigator.connection;
+  return !!(c && (c.saveData || /^(slow-2g|2g|3g)$/.test(String(c.effectiveType || ""))));
+}
+
+const SEND_EDGE = 4096;
+
+/**
+ * A JPEG made on this device from a photo the store can't take as it is (an
+ * iPhone HEIC the browser can open, a WebP, a photo over 20 MB or over 60
+ * megapixels), at most 4096 px on its long edge and turned the right way up.
+ * @param {Blob} file
+ * @returns {Promise<Blob>}
+ */
+async function convertOnDevice(file) {
+  let src;
+  try {
+    src = typeof createImageBitmap === "function" ? await createImageBitmap(file, { imageOrientation: "from-image" }) : null;
+  } catch (err) {
+    src = null;
+  }
+  if (!src) {
+    src = await new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("decode failed"));
+      };
+      img.src = url;
+    });
+  }
+  const w = src.naturalWidth || src.width;
+  const h = src.naturalHeight || src.height;
+  const k = Math.min(1, SEND_EDGE / Math.max(w, h));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(w * k));
+  c.height = Math.max(1, Math.round(h * k));
+  const ctx = c.getContext("2d");
+  ctx.imageSmoothingQuality = "high";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.drawImage(src, 0, 0, c.width, c.height);
+  if (src.close) src.close();
+  const blob = await new Promise((resolve) => c.toBlob(resolve, "image/jpeg", 0.9));
+  c.width = 0;
+  c.height = 0;
+  if (!blob) throw new Error("encode failed");
+  return blob;
+}
+
+/**
+ * What to send for a chosen photo: the camera's own JPEG or PNG when the store
+ * can take it, otherwise a JPEG made on this device. Resolves with
+ * { blob, kind: "jpeg"|"png", clientResized }.
+ * @param {Blob} file
+ * @param {"jpeg"|"png"|"heic"|"other"} kind  from sniffFile
+ * @param {{ force?: boolean }} [opts]  force: always make a copy (the store said the photo has too many pixels)
+ */
+export async function prepareForUpload(file, kind, opts) {
+  const usable = (kind === "jpeg" || kind === "png") && file.size <= MAX_BYTES;
+  const tooSlow = slowLink() && file.size > 4 * 1024 * 1024;
+  if (usable && !tooSlow && !(opts && opts.force)) return { blob: file, kind, clientResized: false };
+  try {
+    return { blob: await convertOnDevice(file), kind: "jpeg", clientResized: true };
+  } catch (err) {
+    if (kind === "heic") {
+      throw new ClientError(0, "heic", 'This photo is in the iPhone HEIC format, which this browser can\'t open. Choose it again from your photo library (your phone turns it into a JPEG), or set the camera to "Most Compatible".');
+    }
+    throw new ClientError(0, "unreadable", "This photo couldn't be opened. Please try a JPG or PNG.");
+  }
+}
+
 /**
  * Upload a photo straight to private storage, then have the server check and
- * prepare it. Resolves with { id, w, h, origW, origH, warnings }.
+ * prepare it. A connection that drops is tried once more on its own.
+ * Resolves with { id, w, h, origW, origH, warnings }.
+ * @param {Blob} blob
+ * @param {"jpeg"|"png"} kind
+ * @param {(fraction: number) => void} [onProgress]
+ * @param {{ clientResized?: boolean }} [opts]
  */
-export async function uploadPhoto(file, kind, onProgress) {
+export async function uploadPhoto(blob, kind, onProgress, opts) {
   const p = currentProject();
   if (!p) throw new ClientError(0, "no_project", "Please choose your photo again.");
   const contentType = kind === "png" ? "image/png" : "image/jpeg";
-  const pre = await call("POST", "projects/" + p.id + "/photo/presign", { body: { contentType, bytes: file.size }, project: p });
-  const url = /^https?:/i.test(pre.url) ? pre.url : API_BASE + pre.url;
-  await putWithProgress(url, file, pre.headers, onProgress);
-  const c = await call("POST", "projects/" + p.id + "/photo/commit", { body: { uploadId: pre.uploadId }, project: p });
-  return c.photo;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const pre = await call("POST", "projects/" + p.id + "/photo/presign", { body: { contentType, bytes: blob.size }, project: p });
+      const url = /^https?:/i.test(pre.url) ? pre.url : API_BASE + pre.url;
+      await putWithProgress(url, blob, pre.headers, onProgress);
+      const c = await call("POST", "projects/" + p.id + "/photo/commit", { body: { uploadId: pre.uploadId, clientResized: !!(opts && opts.clientResized) }, project: p });
+      return c.photo;
+    } catch (err) {
+      const blip = err instanceof ClientError && (err.code === "network" || (err.status >= 500 && err.code !== "not_configured"));
+      if (!blip || attempt > 0) throw err;
+      if (onProgress) onProgress(0);
+      await new Promise((res) => setTimeout(res, 2500));
+    }
+  }
+}
+
+/**
+ * Keep a preview drawn on this device (the roof the customer chose) with
+ * their photo, so the roofer sees it with the enquiry.
+ * @param {Blob} jpeg
+ * @param {string} visualId
+ */
+export async function sendMockup(jpeg, visualId) {
+  const p = requireProject();
+  const dataUrl = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result));
+    fr.onerror = () => reject(fr.error);
+    fr.readAsDataURL(jpeg);
+  });
+  const j = await call("POST", "projects/" + p.id + "/mockups", { body: { visualId, jpeg: dataUrl }, project: p });
+  return j.mockup;
 }
 
 /** The prepared photo (the working copy as a JPEG), for the editor. */

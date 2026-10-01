@@ -2,11 +2,14 @@
 //
 //   POST operator/login { password }                 -> { token, expiresAt }   (lockouts in auth.js)
 //   POST operator/logout, GET operator/session
-//   GET  operator/enquiries?status=&q=               -> the list (q finds a name, email, phone, postcode, address or reference)
+//   GET  operator/enquiries?status=&q=&site=         -> the list (q finds a name, email, phone, postcode, address or reference)
 //   GET  operator/enquiries/:id                      -> everything about one enquiry and its project
 //   GET  operator/enquiries/:id/aerial               -> the satellite view of its address
 //   POST operator/enquiries/:id/scope | status | request-survey | resend | delete
-//   GET  operator/projects/:id/photo | original, POST operator/projects/:id/delete
+//   GET  operator/projects?site=&enquiry=&page=      -> every customer photo, from both sites (v1 visualiser, v2 Roof Cam)
+//   GET  operator/projects/:id                       -> one photo session in full, with or without an enquiry
+//   GET  operator/projects/:id/photo[?size=thumb&photo=] | original, POST operator/projects/:id/delete
+//   GET  operator/mockups/:id/image                  -> a preview drawn on the customer's device
 //   GET  operator/jobs?status=failed|uncertain, GET operator/jobs/:id/image, POST operator/jobs/:id/retry
 //   GET  operator/costs                              -> paid calls by month, today's budget, the last daily tidy-up
 //
@@ -26,6 +29,7 @@ const openai = require("./openai.js");
 const compose = require("./compose.js");
 const property = require("./property.js");
 const projects = require("./projects.js");
+const mockups = require("./mockups.js");
 const measurements = require("./measurements.js");
 const geometry = require("./measure/geometry.js");
 const quantities = require("./quantities.js");
@@ -136,6 +140,8 @@ async function session(ctx) {
 async function listEnquiries(ctx) {
   const status = String(ctx.url.searchParams.get("status") || "");
   const filter = STATUSES.includes(status) ? status : null;
+  const siteParam = ctx.url.searchParams.get("site");
+  const site = siteParam === "v1" || siteParam === "v2" ? siteParam : null;
   const q = String(ctx.url.searchParams.get("q") || "")
     .trim()
     .slice(0, 100);
@@ -147,8 +153,9 @@ async function listEnquiries(ctx) {
       "FROM wvr_enquiries e WHERE ($1::text IS NULL OR e.status = $1) " +
       "AND ($2::text IS NULL OR e.reference ILIKE $2 OR e.contact_name ILIKE $2 OR e.contact_email ILIKE $2 OR e.postcode ILIKE $2 OR (e.snapshot -> 'address')::text ILIKE $2 " +
       "OR ($3::text IS NOT NULL AND regexp_replace(coalesce(e.contact_phone, ''), '\\D', '', 'g') LIKE $3)) " +
+      "AND ($4::text IS NULL OR (e.source = ANY($5::text[])) = ($4 = 'v2')) " +
       "ORDER BY e.created_at DESC LIMIT 200",
-    [filter, like, phone]
+    [filter, like, phone, site, enquiries.V2_SOURCES]
   );
   const list = rows.map((e) => {
     const snap = parsed(e.snapshot) || {};
@@ -164,6 +171,7 @@ async function listEnquiries(ctx) {
       status: e.status,
       delivery: e.delivery_status,
       source: e.source,
+      site: enquiries.siteOf(e.source),
       hasProject: !!e.project_id,
       renders: e.renders,
       checkFirst: !!(snap.property && snap.property.ambiguous),
@@ -184,15 +192,40 @@ async function projectDetail(p, visualId) {
   const ev = await db.query("SELECT * FROM wvr_evidence WHERE project_id = $1 ORDER BY created_at", [p.id]);
   const addresses = await db.query("SELECT * FROM wvr_addresses WHERE project_id = $1 ORDER BY created_at", [p.id]);
   const confirmations = await db.query("SELECT * FROM wvr_property_confirmations WHERE project_id = $1 ORDER BY confirmed_at", [p.id]);
-  const photo = p.photo_id ? (await db.query("SELECT id, orig_w, orig_h, work_w, work_h, original_mime, original_bytes, quality, created_at FROM wvr_photos WHERE id = $1", [p.photo_id])).rows[0] : null;
+  const photos = (
+    await db.query(
+      "SELECT id, orig_w, orig_h, work_w, work_h, original_mime, original_bytes, original_is_client_resized, quality, created_at FROM wvr_photos WHERE project_id = $1 ORDER BY created_at DESC, id",
+      [p.id]
+    )
+  ).rows;
+  const photo = photos.find((x) => x.id === p.photo_id) || null;
   const mask = p.mask_id ? (await db.query("SELECT id, coverage, created_at FROM wvr_masks WHERE id = $1", [p.mask_id])).rows[0] : null;
   const js = await db.query("SELECT * FROM wvr_jobs WHERE project_id = $1 ORDER BY created_at", [p.id]);
   const costs = await db.query("SELECT provider, currency, count(*)::int AS calls, coalesce(sum(cost), 0)::float AS cost FROM wvr_provider_calls WHERE project_id = $1 GROUP BY provider, currency ORDER BY provider", [p.id]);
+  /** @param {Row} x */
+  const photoView = (x) => ({
+    id: x.id,
+    current: x.id === p.photo_id,
+    origW: x.orig_w,
+    origH: x.orig_h,
+    w: x.work_w,
+    h: x.work_h,
+    mime: x.original_mime,
+    bytes: x.original_bytes,
+    clientResized: !!x.original_is_client_resized,
+    warnings: (parsed(x.quality) || {}).warnings || [],
+    at: iso(x.created_at),
+  });
   return {
     id: p.id,
+    site: p.site || "v1",
     createdAt: iso(p.created_at),
     expiresAt: iso(p.expires_at),
     consentAi: !!p.consent_ai_at,
+    // Every photo uploaded in this session, newest first (the current one is marked).
+    photos: photos.map(photoView),
+    // Previews the customer's device drew and sent with their enquiry.
+    mockups: await mockups.forProject(p.id),
     addresses: addresses.rows.map((a) => ({
       id: a.id,
       current: a.id === p.address_id,
@@ -222,9 +255,7 @@ async function projectDetail(p, visualId) {
       at: iso(c.confirmed_at),
       supersededAt: iso(c.superseded_at),
     })),
-    photo: photo
-      ? { id: photo.id, origW: photo.orig_w, origH: photo.orig_h, w: photo.work_w, h: photo.work_h, mime: photo.original_mime, bytes: photo.original_bytes, warnings: (parsed(photo.quality) || {}).warnings || [], at: iso(photo.created_at) }
-      : null,
+    photo: photo ? photoView(photo) : null,
     mask: mask ? { id: mask.id, coverage: Number(mask.coverage), at: iso(mask.created_at) } : null,
     jobs: js.rows.map((j) => ({
       id: j.id,
@@ -277,6 +308,7 @@ async function enquiryDetail(ctx) {
       reference: e.reference,
       createdAt: iso(e.created_at),
       source: e.source,
+      site: enquiries.siteOf(e.source),
       name: e.contact_name,
       email: e.contact_email,
       phone: e.contact_phone,
@@ -394,13 +426,94 @@ async function deleteEnquiry(ctx) {
 // ---------------------------------------------------------------------------
 // projects and files
 
-/** @param {OperatorCtx} ctx */
+const PAGE = 48;
+const THUMB_EDGE = 420;
+
+/**
+ * Every customer photo, from both sites, newest first: the project's current
+ * photo, with its site, its enquiry (if any) and how many previews it has.
+ *   ?site=v1|v2  ?enquiry=with|without  ?page=0,1,...
+ * @param {OperatorCtx} ctx
+ */
+async function listProjects(ctx) {
+  const sp = ctx.url.searchParams;
+  const site = sp.get("site") === "v1" || sp.get("site") === "v2" ? sp.get("site") : null;
+  const withEnquiry = sp.get("enquiry") === "with" || sp.get("enquiry") === "without" ? sp.get("enquiry") : null;
+  const page = Math.max(0, Math.min(1000, Math.floor(Number(sp.get("page")) || 0)));
+  const where =
+    "FROM wvr_projects p JOIN wvr_photos ph ON ph.id = p.photo_id LEFT JOIN wvr_enquiries e ON e.project_id = p.id " +
+    "WHERE ($1::text IS NULL OR p.site = $1) AND ($2::text IS NULL OR ($2 = 'with' AND e.id IS NOT NULL) OR ($2 = 'without' AND e.id IS NULL)) ";
+  const total = (await db.query("SELECT count(*)::int AS n " + where, [site, withEnquiry])).rows[0].n;
+  const { rows } = await db.query(
+    "SELECT p.id, p.site, p.created_at, p.expires_at, p.consent_ai_at, p.address_id, " +
+      "ph.id AS photo_id, ph.work_w, ph.work_h, ph.orig_w, ph.orig_h, ph.original_bytes, ph.original_is_client_resized, ph.created_at AS photo_at, " +
+      "(SELECT count(*)::int FROM wvr_photos x WHERE x.project_id = p.id) AS photo_count, " +
+      "(SELECT count(*)::int FROM wvr_mockups m WHERE m.project_id = p.id) AS mockups, " +
+      "(SELECT count(*)::int FROM wvr_jobs j WHERE j.project_id = p.id AND j.status = 'succeeded' AND NOT j.quarantined) AS renders, " +
+      "e.id AS enquiry_id, e.reference, e.contact_name, e.status AS enquiry_status, " +
+      "(SELECT a.postcode FROM wvr_addresses a WHERE a.id = p.address_id) AS postcode " +
+      where +
+      "ORDER BY ph.created_at DESC, p.id LIMIT $3 OFFSET $4",
+    [site, withEnquiry, PAGE, page * PAGE]
+  );
+  return json(ctx.res, 200, {
+    ok: true,
+    total,
+    page,
+    pageSize: PAGE,
+    projects: rows.map((r) => ({
+      id: r.id,
+      site: r.site || "v1",
+      createdAt: iso(r.created_at),
+      expiresAt: iso(r.expires_at),
+      photo: { id: r.photo_id, w: r.work_w, h: r.work_h, origW: r.orig_w, origH: r.orig_h, bytes: r.original_bytes, clientResized: !!r.original_is_client_resized, at: iso(r.photo_at) },
+      photos: r.photo_count,
+      mockups: r.mockups,
+      renders: r.renders,
+      consentAi: !!r.consent_ai_at,
+      postcode: r.postcode || null,
+      enquiry: r.enquiry_id ? { id: r.enquiry_id, reference: r.reference, name: r.contact_name, status: r.enquiry_status } : null,
+    })),
+  });
+}
+
+/** Everything about one customer's photo session, with or without an enquiry. @param {OperatorCtx} ctx */
+async function projectView(ctx) {
+  const p = await projectRow(ctx);
+  const e = (await db.query("SELECT id, reference, contact_name, status, visual_id, created_at FROM wvr_enquiries WHERE project_id = $1", [p.id])).rows[0] || null;
+  const project = await projectDetail(p, e ? e.visual_id : null);
+  return json(ctx.res, 200, {
+    ok: true,
+    project,
+    enquiry: e ? { id: e.id, reference: e.reference, name: e.contact_name, status: e.status, roof: e.visual_id, createdAt: iso(e.created_at) } : null,
+  });
+}
+
+/**
+ * The project's photo as a JPEG (?size=thumb for a small one; ?photo=<id> for
+ * an earlier photo of the same project).
+ * @param {OperatorCtx} ctx
+ */
 async function projectPhoto(ctx) {
   const p = await projectRow(ctx);
-  const ph = p.photo_id ? (await db.query("SELECT working_path FROM wvr_photos WHERE id = $1", [p.photo_id])).rows[0] : null;
+  const want = String(ctx.url.searchParams.get("photo") || "");
+  const photoId = UUID_RE.test(want) ? want : p.photo_id;
+  const ph = photoId ? (await db.query("SELECT working_path FROM wvr_photos WHERE id = $1 AND project_id = $2", [photoId, p.id])).rows[0] : null;
   const png = ph ? await storage().getBuffer(ph.working_path) : null;
   if (!png) throw new HttpError(404, "not_found", "This project has no photo.");
+  if (ctx.url.searchParams.get("size") === "thumb") {
+    const thumb = await images.sharp()(png).resize({ width: THUMB_EDGE, height: THUMB_EDGE, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 78, mozjpeg: false }).toBuffer();
+    return sendImage(ctx, thumb, "image/jpeg");
+  }
   return sendImage(ctx, await images.displayJpeg(png), "image/jpeg");
+}
+
+/** A preview the customer's device drew. @param {OperatorCtx} ctx */
+async function mockupImage(ctx) {
+  const { rows } = await db.query("SELECT pathname FROM wvr_mockups WHERE id = $1", [idParam(ctx, "id")]);
+  const buf = rows[0] ? await storage().getBuffer(rows[0].pathname) : null;
+  if (!buf) throw new HttpError(404, "not_found", "That preview doesn't exist.");
+  return sendImage(ctx, buf, "image/jpeg");
 }
 
 /** A five-minute link to download the customer's original file. @param {OperatorCtx} ctx */
@@ -757,7 +870,10 @@ module.exports = {
   requestSurvey,
   resend,
   deleteEnquiry,
+  listProjects,
+  projectView,
   projectPhoto,
+  mockupImage,
   projectOriginal,
   deleteProjectRoute,
   listJobs,

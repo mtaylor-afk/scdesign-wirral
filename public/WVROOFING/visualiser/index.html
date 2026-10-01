@@ -13,10 +13,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap">
-  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20260928d">
-  <link rel="stylesheet" href="/WVROOFING/assets/css/visualiser.css?v=20260928d">
-  <script type="module" src="/WVROOFING/assets/js/site.js?v=20260928d"></script>
-  <script type="module" src="/WVROOFING/assets/js/vis/app.js?v=20260928d"></script>
+  <link rel="stylesheet" href="/WVROOFING/assets/css/site.css?v=20261001a">
+  <link rel="stylesheet" href="/WVROOFING/assets/css/visualiser.css?v=20261001a">
+  <script type="module" src="/WVROOFING/assets/js/site.js?v=20261001a"></script>
+  <script type="module" src="/WVROOFING/assets/js/vis/app.js?v=20261001a"></script>
 </head>
 <body class="has-lnav page-visualiser">
   <a class="skip-link" href="#main">Skip to content</a>
@@ -183,7 +183,7 @@
                   Choose a photo
                 </label>
               </div>
-              <p class="caption dropzone-hint">JPG or PNG, up to 20 MB.</p>
+              <p class="caption dropzone-hint">On a phone, Take a photo opens your camera. Very large photos are made smaller on your device before they're sent.</p>
             </div>
             <aside class="photo-tips" aria-labelledby="tips-title">
               <h3 id="tips-title">For the best result</h3>
@@ -215,6 +215,7 @@
           </div>
 
           <p class="caption photo-status" id="photo-status" role="status" hidden></p>
+          <div class="render-progress upload-progress" id="upload-progress" aria-hidden="true" hidden><span></span></div>
           <p class="field-error photo-error" id="photo-error" role="alert" hidden></p>
 
           <div class="samples">
@@ -229,6 +230,7 @@
             <div class="mark-main">
               <h2 id="h-mark" class="vis-h">Mark your roof.</h2>
               <p class="mark-lede" id="mark-lede">Tap round the edge of each roof slope, then tap the first point again to close the shape. Cut out chimneys and roof windows so they stay as they are.</p>
+              <p class="notice notice--warn local-note" id="local-note" role="status" hidden></p>
               <div class="editor-stage" id="editor-stage"></div>
             </div>
             <div class="mark-side inspector">

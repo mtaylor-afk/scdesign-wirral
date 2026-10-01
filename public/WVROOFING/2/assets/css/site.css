@@ -436,6 +436,42 @@ html.nav-open, html.nav-open body { overflow: hidden; }
 .front--paper .chip[aria-pressed="true"], .front--paper .chip[aria-checked="true"] { background: var(--paper-text); border-color: var(--paper-text); color: var(--paper-bg); }
 .deck { display: flex; flex-wrap: wrap; gap: 8px; }
 
+/* ---------- Enquiry forms (the Roof Cam's "Send it to the roofer", the bulletin's sign-off) ---------- */
+.ask-form, .ask-done { display: grid; gap: 14px; }
+.ask-field { display: grid; gap: 6px; min-width: 0; }
+.ask-field label {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rain);
+}
+.ask-field .opt { color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.ask-pair { display: grid; gap: 14px; }
+@media (min-width: 520px) { .ask-pair { grid-template-columns: 1fr 1fr; } }
+/* 16px or more, so iOS doesn't zoom the page when a field is tapped. */
+.ask-input {
+  width: 100%; min-height: 48px; padding: 10px 12px; font-size: 17px; line-height: 1.4;
+  background: var(--ink); color: var(--cream); border: 1px solid rgba(143, 212, 244, 0.4); border-radius: 0;
+  -webkit-appearance: none; appearance: none;
+}
+textarea.ask-input { min-height: 88px; resize: vertical; }
+.ask-input::placeholder { color: rgba(169, 180, 200, 0.75); }
+.ask-input:focus { outline: none; border-color: var(--amber-2); box-shadow: 0 0 0 3px rgba(233, 196, 98, 0.35); }
+.ask-input[aria-invalid="true"] { border-color: var(--front); }
+.ask-input--short { max-width: 12ch; text-transform: uppercase; }
+.ask-hint { margin-top: -6px; font-size: 14px; color: var(--muted); }
+.ask-error { color: #ff9b8f; font-size: 14px; }
+.ask-check { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; font-size: 15px; line-height: 1.45; cursor: pointer; }
+.ask-check input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--amber); }
+.ask-check[hidden] { display: none; }
+.ask-status { padding: 10px 12px; font-size: 15px; border-left: 4px solid var(--rain); background: rgba(11, 18, 32, 0.55); }
+.ask-status[data-kind="ok"] { border-color: var(--clear); }
+.ask-status[data-kind="warn"] { border-color: var(--amber-2); }
+.ask-status[data-kind="err"] { border-color: var(--front); }
+.ask-small { font-size: 13px; color: var(--muted); }
+.ask-done-text { font-size: 18px; line-height: 1.5; padding: 12px 14px; border-left: 4px solid var(--clear); background: rgba(11, 18, 32, 0.55); }
+.ask-done-text:focus { outline: none; }
+.hp-field { position: absolute !important; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.signoff-form { margin-top: 40px; padding-top: 28px; border-top: 2px solid var(--cream); }
+.signoff-form .hl-3 { margin-bottom: 4px; }
+
 /* ---------- Lower-third (broadcast caption) ---------- */
 .lower-third {
   display: inline-block; max-width: 100%;

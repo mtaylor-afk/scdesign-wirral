@@ -53,16 +53,16 @@ function uaFamily(req) {
 
 /**
  * Create a project and its token.
- * @param {{ ipHash: string | null, uaFamily: string, noticeShown: boolean, consentAi: boolean }} o
+ * @param {{ ipHash: string | null, uaFamily: string, noticeShown: boolean, consentAi: boolean, site?: "v1" | "v2" }} o
  */
 async function createProject(o) {
   const id = crypto.randomUUID();
   const token = crypto.randomBytes(32).toString("base64url");
   const expires = new Date(Date.now() + PROJECT_TTL_DAYS * 24 * 3600 * 1000);
   await db.query(
-    "INSERT INTO wvr_projects (id, token_hash, token_expires_at, expires_at, ip_hash, ua_family, storage_notice_shown_at, consent_ai_at) " +
-      "VALUES ($1, $2, $3, $3, $4, $5, CASE WHEN $6 THEN now() END, CASE WHEN $7 THEN now() END)",
-    [id, hashToken(token), expires.toISOString(), o.ipHash, o.uaFamily, o.noticeShown, o.consentAi]
+    "INSERT INTO wvr_projects (id, token_hash, token_expires_at, expires_at, ip_hash, ua_family, storage_notice_shown_at, consent_ai_at, site) " +
+      "VALUES ($1, $2, $3, $3, $4, $5, CASE WHEN $6 THEN now() END, CASE WHEN $7 THEN now() END, $8)",
+    [id, hashToken(token), expires.toISOString(), o.ipHash, o.uaFamily, o.noticeShown, o.consentAi, o.site === "v2" ? "v2" : "v1"]
   );
   return { id, token, expiresAt: expires.toISOString() };
 }

@@ -122,6 +122,13 @@ export const ACTION_WORDS = {
   evidence_downloaded: "Customer's file opened",
 };
 
+/** File sizes in words: "3.4 MB", "820 KB". */
+export function bytes(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v <= 0) return "";
+  return v >= 1024 * 1024 ? (v / (1024 * 1024)).toFixed(1) + " MB" : Math.max(1, Math.round(v / 1024)) + " KB";
+}
+
 export const PROVIDER_WORDS = {
   openai: "OpenAI (photo-real renders)",
   ideal_postcodes: "Ideal Postcodes (address search)",
@@ -138,4 +145,22 @@ export const SOURCE_WORDS = {
   visualiser: "Roof Visualiser (own photo)",
   "visualiser-sample": "Roof Visualiser (sample house)",
   "roof-replacement": "Roof replacement form",
+  "roof-cam": "Roof Cam (own photo)",
+  "roof-cam-sample": "Roof Cam (sample house)",
+  bulletin: "Bulletin contact form",
+};
+
+/** The two versions of the site, which share one store and this screen. */
+export const SITE_WORDS = {
+  v1: "Version 1 · Visualiser",
+  v2: "Version 2 · Roof Cam",
+};
+
+/** The Roof Cam's weather, for its previews. */
+export const CONDITION_WORDS = {
+  noon: "As shot",
+  sun: "Sun",
+  drizzle: "Drizzle",
+  storm: "Storm",
+  dusk: "Dusk",
 };
