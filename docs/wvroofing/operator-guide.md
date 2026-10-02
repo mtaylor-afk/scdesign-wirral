@@ -1,12 +1,32 @@
-# WV Roofing: operator guide (v1, 2026-09-28)
+# WV Roofing: the admin screen (operator guide v2, 2026-10-01; v1 2026-09-28)
 
-This guide is for the roofer, or Matthew, using the operator screen. The screen shows every enquiry with
-the customer's photo, renders and property details, and records everything done to them.
+This guide is for the roofer, or Matthew, using the admin screen (called the operator screen until
+2026-10-01). It shows every enquiry and every customer photo from both versions of the site, with the
+contact details, renders and property details, and records everything done to them.
 
-**Address:** `https://scdesignwirral.co.uk/WVROOFING/operator/`. It isn't linked from anywhere and search
-engines are told not to index it, so bookmark it.
+## The addresses
 
-## Setting the password (Matthew, once)
+There is one admin screen with one password. It has three addresses, each starting on a different site:
+
+| Address | Starts on | Looks like |
+|---|---|---|
+| `https://scdesignwirral.co.uk/WVROOFING/admin/` | Version 1 (the Visualiser) | Version 1 |
+| `https://scdesignwirral.co.uk/WVROOFING/2/admin/` | Version 2 (the Roof Cam) | Version 2's weather report |
+| `https://scdesignwirral.co.uk/WVROOFING/operator/` | Both sites | Version 1. Kept so old bookmarks still work |
+
+- Every public page has a small **Admin** link at the end of its footer: version 1's pages link to
+  `/WVROOFING/admin/`, version 2's to `/WVROOFING/2/admin/`. It is never in the main menu.
+- Search engines are told not to index the admin pages.
+- The **site switch** at the top (see below) changes the site at any time, whichever address you used.
+- Each admin page has a link back to its own site in the header.
+
+## Setting it up (Matthew, once)
+
+**The quick way.** Double-click **SET UP WV ROOFING ADMIN** on the Desktop. It connects the database and
+the photo store, makes the secrets, asks for the admin password at a hidden prompt and redeploys. See
+"The quick way" in `setup-and-deploy.md`.
+
+**By hand**, for the password only:
 
 1. On your own computer, in the repository folder, run:
    `node scripts/wvroofing/operator-hash.mjs`
@@ -16,20 +36,57 @@ engines are told not to index it, so bookmark it.
 3. In Vercel, go to project **scdesign-wirral**, then **Settings**, then **Environment Variables**.
 4. Set `WVR_OPERATOR_PASSWORD_HASH` to that line for **Production**, then **Redeploy**.
 
-To change the password, do the same again. Everyone logged in with the old password is logged out.
+To change the password, run the Desktop file again and answer **y** to "Change it?", or do the steps above
+again. Everyone logged in with the old password is logged out.
 
-Until a hash is set, the login says "The operator login isn't set up yet."
+**What's still missing.** The login screen says so in one or two plain sentences: when the admin password
+hasn't been set, and when saving isn't fully set up (the database, the photo store or one of the two
+secrets is missing), in which case nothing is being saved. After logging in, the **Set-up** card on the
+Overview shows each item, yes or no, never a value. Enquiry emails are optional: without them everything
+is still saved here. Until a hash is set, the login says "The operator login isn't set up yet."
 
 ## Logging in
 
 - **Session length.** You stay logged in for up to 12 hours, in that browser tab only. Closing the tab logs
   you out. **Log out** also ends the session on the server.
 - **Lockout.** Five wrong passwords from one connection, or twenty from anywhere, within 15 minutes lock the
-  login for 15 minutes. Even the right password waits.
+  login for 15 minutes. Even the right password waits. Each attempt is counted before the password is
+  checked, so many sent at once can't get round the limit.
+
+## The site switch
+
+Three buttons at the top choose which site you're looking at:
+
+- **Both sites**;
+- **Version 1 · Visualiser**: enquiries and photos from `/WVROOFING/` (the Roof Visualiser and the enquiry
+  forms);
+- **Version 2 · Roof Cam**: enquiries and photos from `/WVROOFING/2/` (the Roof Cam, its "send it to the
+  roofer" form and the bulletin's contact form).
+
+The switch applies to **Overview**, **Enquiries**, **Contacts** and **Photos**. **Renders to check** and
+**Costs** always cover both sites. The button that's pressed is the one in use.
+
+## Overview
+
+The first tab. A summary of the site chosen with the switch:
+
+- **Enquiries**: the total, and how many came in the last 7 and 30 days.
+  - **Awaiting contact**: enquiries still marked **New**. A button lists just those.
+  - **Email problems**: enquiries whose email to the roofer failed or may not have arrived. Open each one
+    and send the email again.
+  - How many are at each status, and which page they came from.
+- **Photos saved**: how many customer photo sessions are held, how many led to an enquiry and how many
+  haven't (yet), how many are new in the last 7 days, and how many previews were drawn.
+- **Set-up**: what's set up on the live site, yes or no for each. Nothing is saved until the database,
+  the photo store and both secrets are all set up. Enquiry emails are marked optional.
+- **Latest enquiries**: the 8 newest, with the status, the site, the postcode, the roof chosen and whether
+  there's a photo. Click one to open it.
+- **Latest photos**: the newest customer photos as thumbnails. Click one to open that photo session.
 
 ## Enquiries
 
-- **The list** shows the newest first, up to 200. The buttons at the top filter it by status.
+- **The list** shows the newest first, up to 200, for the site chosen with the switch. Each enquiry says
+  which site it came from. The buttons at the top filter it by status.
 - **Find** searches by name, email, phone (digits only; spaces don't matter), postcode, address or
   reference. Use it when someone asks to see or delete their data: it finds every enquiry from them.
 - **"Check scope first"** means the customer's answers leave the roof's extent unclear. One of these applies:
@@ -40,6 +97,33 @@ Until a hash is set, the login says "The operator login isn't set up yet."
   - the kind of property is unclear.
 - **"Email failed" or "Email may not have arrived"** means the notification to the roofer may not have got
   through. The enquiry itself is always saved first.
+
+## Contacts
+
+Everyone who sent an enquiry, as one table, newest first, for the site chosen with the switch.
+
+- **The columns**: when it was saved, the reference, name, phone, email, postcode, the roof they chose, the
+  site, the status, whether there's a photo (and how many previews), and their message. Tap a phone number
+  to call or an email address to write. Click the reference to open the enquiry.
+- **Find** searches the same way as on the Enquiries tab: name, email, phone, postcode, address or
+  reference.
+- **The status buttons** show only enquiries at one status, for example **New** for people still waiting
+  to hear back.
+- The table shows up to the newest 1,000. The spreadsheet can hold more.
+
+**Download spreadsheet (CSV)** saves the same list (same site, status and search, up to the newest 5,000)
+as a file called `wv-roofing-enquiries-` plus the date, with `-v1` or `-v2` on the end when one site is
+chosen. It opens in Excel. One row per enquiry, with these columns:
+
+Reference, Saved (UK time), Site, From page, Status, Name, Phone, Email, Postcode, Address, Roof choice,
+Message, Photo (Yes/No), Previews, Email to roofer (whether it was delivered), Marketing (Yes/No).
+
+- **It holds personal data.** Keep it on your own computer. Don't email it or put it in a shared folder.
+  Delete it, and any copies, when you've finished with it.
+- **Each download is recorded** in the admin history: when, how many rows and which filters. The history is
+  kept for 12 months.
+- A cell that starts with `=`, `+`, `-` or `@` gets a `'` in front, so a spreadsheet shows it as text and
+  never runs it as a formula.
 
 ## Inside an enquiry
 
@@ -149,9 +233,9 @@ sent an enquiry:
 - **Version 2 · Roof Cam**: photos added in the Roof Cam (`/WVROOFING/2/roof-cam/`), saved in the
   background while the customer finds their roof.
 
-Filter by site, and by **With an enquiry** or **No enquiry yet**. Each card shows when the photo arrived,
-the enquiry it led to (reference and name), how many previews it has, and how long it's kept.
-**Show more** loads the next 48.
+The list follows the site switch at the top (it replaced the tab's own site buttons on 2026-10-01). Filter
+it by **With an enquiry** or **No enquiry yet**. Each card shows when the photo arrived, the enquiry it led
+to (reference and name), how many previews it has, and how long it's kept. **Show more** loads the next 48.
 
 Open a card to see:
 
@@ -168,8 +252,8 @@ Open a card to see:
   enquiry and its contact details stay.
 
 Photos without an enquiry are deleted automatically after 30 days; with an enquiry they're kept with it
-for 12 months. The Enquiries tab can also be filtered by site, and each enquiry says which site it came
-from.
+for 12 months. The Enquiries and Contacts tabs follow the same site switch, and each enquiry says which
+site it came from.
 
 ## Renders to check
 
@@ -221,8 +305,11 @@ This tab lists photo-real renders from the last 30 days that **failed**, or that
 
 ## The local test environment
 
-`node scripts/wvroofing/dev-server.mjs` serves the screen at `http://localhost:8772/WVROOFING/operator/`.
+`node scripts/wvroofing/dev-server.mjs` serves the screen at `http://localhost:8772/WVROOFING/admin/`,
+`http://localhost:8772/WVROOFING/2/admin/` and `http://localhost:8772/WVROOFING/operator/`.
 
+- The three pages are made from one template by `node scripts/wvroofing/gen-admin.mjs`. Edit the
+  template, not the pages; `--check` (run by the tests) fails if a page is out of date.
 - Its login uses the throwaway `TEST_OPERATOR_PASSWORD` in `serverlib/wvroofing/auth.js`.
 - That password is refused everywhere outside the test environment.
 - Its enquiries, photos and emails are stand-ins that go nowhere.

@@ -54,7 +54,11 @@ test("health: capabilities, environment and schema, with CORS for the site", asy
   assert.ok(r.json.schema.version >= 1);
   assert.equal(r.json.capabilities.auto_measurement.state, "disabled");
   assert.equal(r.headers["access-control-allow-origin"], SITE);
-  assert.ok(!JSON.stringify(r.json).match(/sk-|secret|password/i), "health must not leak secrets");
+  // The set-up checklist names its settings (sessionSecret, adminPassword...) but only ever says yes or no.
+  const { setup, ...rest } = r.json;
+  assert.ok(setup && Object.keys(setup).length >= 6, "the set-up checklist is there");
+  assert.ok(Object.values(setup).every((v) => typeof v === "boolean"), "the set-up checklist holds only true/false");
+  assert.ok(!JSON.stringify(rest).match(/sk-|secret|password/i), "health must not leak secrets");
 });
 
 test("health refuses other methods with 405 and an Allow header", async () => {

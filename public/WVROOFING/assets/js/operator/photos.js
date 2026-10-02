@@ -1,15 +1,15 @@
-// WV Roofing operator screen — the Photos tab: every photo customers have added
-// on either site (version 1's Roof Visualiser, version 2's Roof Cam), with or
-// without an enquiry, newest first; and everything about one photo session: the
-// photo (and any earlier ones), the previews the customer's device drew, any
-// photo-real renders, the enquiry it led to, and deleting it.
+// WV Roofing admin — the Photos tab: every photo customers have added on the
+// site chosen at the top (version 1's Roof Visualiser, version 2's Roof Cam, or
+// both), with or without an enquiry, newest first; and everything about one photo
+// session: the photo (and any earlier ones), the previews the customer's device
+// drew, any photo-real renders, the enquiry it led to, and deleting it.
 import { api, apiImage } from "./api.js";
-import { h, kv, pill, when, bytes, SITE_WORDS, CONDITION_WORDS, STATUS_WORDS } from "./dom.js";
+import { h, kv, when, bytes, sitePill, dateWithYear, cleanSite, keepFocus, SITE_WORDS, CONDITION_WORDS, STATUS_WORDS } from "./dom.js";
 
 const $ = (id) => document.getElementById(id);
 
 const P = {
-  site: "",
+  site: "", // set by the site switch at the top (setSite)
   enquiry: "",
   page: 0,
   total: 0,
@@ -23,11 +23,6 @@ const P = {
   hooks: null,
 };
 
-const SITE_FILTERS = [
-  ["", "Both sites"],
-  ["v1", SITE_WORDS.v1],
-  ["v2", SITE_WORDS.v2],
-];
 const ENQUIRY_FILTERS = [
   ["", "All"],
   ["with", "With an enquiry"],
@@ -92,16 +87,6 @@ function lazy(slot, path, alt) {
   else fill(slot, path, alt, false);
 }
 
-function sitePill(site) {
-  return pill(SITE_WORDS[site] || site, site === "v2" ? "v2" : "v1");
-}
-
-const DAY_YEAR = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London" });
-
-function dateWithYear(iso) {
-  return iso ? DAY_YEAR.format(new Date(iso)) : "";
-}
-
 function daysLeft(iso) {
   const ms = new Date(iso).getTime() - Date.now();
   return Math.max(0, Math.ceil(ms / 86400000));
@@ -116,27 +101,25 @@ function keptText(x) {
 // ---------------------------------------------------------------------------
 // the grid
 
+// Which site is chosen with the switch at the top of the admin (not here).
 function renderFilters() {
-  const row = (el, list, key) =>
-    el.replaceChildren(
-      ...list.map(([v, t]) =>
-        h("button", {
-          class: "op-chip",
-          type: "button",
-          "aria-pressed": String(P[key] === v),
-          text: t,
-          on: {
-            click: () => {
-              P[key] = v;
-              renderFilters();
-              loadPhotos({ reset: true });
-            },
+  keepFocus($("op-photo-enquiry"), (box) => box.replaceChildren(
+    ...ENQUIRY_FILTERS.map(([v, t]) =>
+      h("button", {
+        class: "op-chip",
+        type: "button",
+        "aria-pressed": String(P.enquiry === v),
+        text: t,
+        on: {
+          click: () => {
+            P.enquiry = v;
+            renderFilters();
+            loadPhotos({ reset: true });
           },
-        })
-      )
-    );
-  row($("op-photo-site"), SITE_FILTERS, "site");
-  row($("op-photo-enquiry"), ENQUIRY_FILTERS, "enquiry");
+        },
+      })
+    )
+  ));
 }
 
 function params(page) {
@@ -167,8 +150,9 @@ export async function loadPhotos(opts) {
     P.items = P.items.concat(r.projects);
     P.loaded = true;
     renderGrid(reset ? null : r.projects);
+    // The tab's count: photos on the chosen site (not shown while "with/without an enquiry" narrows it).
     const count = $("op-photos-count");
-    count.hidden = !(P.total > 0) || !!(P.site || P.enquiry);
+    count.hidden = !(P.total > 0) || !!P.enquiry;
     count.textContent = String(P.total);
     // Only said when the Photos tab is open (the count is also loaded behind the Enquiries tab).
     if (P.hooks && !$("op-view-photos").hidden) P.hooks.status(P.total + (P.total === 1 ? " photo" : " photos") + (P.site ? " from " + SITE_WORDS[P.site].toLowerCase() : "") + (P.enquiry === "with" ? " with an enquiry" : P.enquiry === "without" ? " with no enquiry yet" : "") + ".");
@@ -194,7 +178,7 @@ function card(x) {
       h(
         "span",
         { class: "op-photo-card-body" },
-        h("span", { class: "op-item-top" }, sitePill(x.site), h("span", { class: "op-item-meta", text: when(x.photo.at) })),
+        h("span", { class: "op-item-top" }, sitePill(x.site, true), h("span", { class: "op-item-meta", text: when(x.photo.at) })),
         e
           ? h("span", { class: "op-item-name" }, h("span", { class: "op-ref", text: e.reference }), " " + e.name)
           : h("span", { class: "op-item-meta", text: "No enquiry yet" }),
@@ -364,7 +348,7 @@ function renderDetail(d) {
       h(
         "section",
         { class: "op-head", "aria-labelledby": "op-photo-title" },
-        h("h2", { id: "op-photo-title", tabindex: "-1" }, "Photo from " + dateWithYear(cur ? cur.at : p.createdAt), sitePill(p.site)),
+        h("h2", { id: "op-photo-title", tabindex: "-1" }, "Photo from " + dateWithYear(cur ? cur.at : p.createdAt), sitePill(p.site, true)),
         h("p", { class: "op-muted op-small", text: keptText({ enquiry: e, expiresAt: p.expiresAt }) + (address ? " · " + (address.lines || []).concat(address.postcode ? [address.postcode] : []).join(", ") : "") })
       ),
       h(
@@ -417,6 +401,24 @@ export function initPhotos(hooks) {
   $("op-photo-more").addEventListener("click", () => loadPhotos({ reset: false }));
 }
 
+/**
+ * The site switch at the top of the admin changed: forget this site's grid (and
+ * any photo session left open). The caller loads the photos again.
+ * @param {string} site  "v1", "v2" or "" (both sites)
+ */
+export function setSite(site) {
+  const next = cleanSite(site);
+  if (next === P.site) return;
+  P.site = next;
+  if (P.open) {
+    P.open = null;
+    P.detailFor = null;
+    revoke(P.detailUrls);
+    $("op-view-photos").dataset.show = "grid";
+    $("op-photo-detail").replaceChildren();
+  }
+}
+
 /** The tab was opened: load the photos the first time, and refresh after that. */
 export function photosShown() {
   loadPhotos({ reset: true });
@@ -441,11 +443,4 @@ export function resetPhotos() {
   if (v) v.dataset.show = "grid";
   const count = $("op-photos-count");
   if (count) count.hidden = true;
-}
-
-/** Refresh the list (and the open photo) if the tab has been used. */
-export function refreshPhotos() {
-  if (!P.loaded) return;
-  loadPhotos({ reset: true });
-  if (P.open) openPhoto(P.open);
 }

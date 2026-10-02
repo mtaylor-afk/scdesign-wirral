@@ -45,6 +45,9 @@ test("both hosts send the same CSP on every WV Roofing path", () => {
 // Version 2 (served at /WVROOFING/2/) lives under the same policy.
 const V2 = path.join(repo, "public/WVROOFING/2");
 const V2_PAGES = ["2/index.html", "2/roof-cam/index.html", "2/range/index.html", "2/about/index.html"];
+// The admin: one script for three pages (version 1's, version 2's and the old /operator/ address).
+const ADMIN_PAGES = ["admin/index.html", "2/admin/index.html", "operator/index.html"];
+const ADMIN_JS = path.join(repo, "public/WVROOFING/assets/js/operator");
 
 /** Every file under a folder. */
 function walk(dir) {
@@ -59,7 +62,7 @@ function walk(dir) {
 
 test("every inline script in the WV pages is allowed by its hash, and nothing else inline", () => {
   const policy = cloudflarePolicies()["/WVROOFING/*"];
-  const pages = ["index.html", "visualiser/index.html", "roof-replacement/index.html", "privacy/index.html", "operator/index.html", ...V2_PAGES];
+  const pages = ["index.html", "visualiser/index.html", "roof-replacement/index.html", "privacy/index.html", ...ADMIN_PAGES, ...V2_PAGES];
   for (const p of pages) {
     const html = fs.readFileSync(path.join(repo, "public/WVROOFING", p), "utf8");
     for (const m of html.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
@@ -97,6 +100,29 @@ test("version 2 runs only its own script files, and never builds code from a str
     for (const w of code.matchAll(/\bnew\s+(?:Shared)?Worker\s*\(([^)]*)/g)) {
       assert.match(w[1], /^\s*new URL\(\s*["']\.\.?\//, name + ": a worker that isn't a file next to it: " + w[0]);
     }
+  }
+});
+
+test("the admin pages run only the admin's own script files, which never build code from a string", () => {
+  for (const p of ADMIN_PAGES) {
+    const html = fs.readFileSync(path.join(repo, "public/WVROOFING", p), "utf8");
+    const srcs = [...html.matchAll(/<script\b([^>]*)>/g)].map((m) => (/\bsrc="([^"]*)"/.exec(m[1]) || [])[1]);
+    assert.ok(srcs.length >= 1, p + ": the admin script");
+    for (const src of srcs) {
+      assert.ok(src, p + ": an inline script");
+      assert.match(src, /^\/WVROOFING\/assets\/js\/operator\/[^:]*$/, p + ": a script from outside the admin: " + src);
+      assert.ok(fs.existsSync(path.join(repo, "public", src.split(/[?#]/)[0])), p + ": the script " + src + " doesn't exist");
+    }
+  }
+  const scripts = walk(ADMIN_JS).filter((f) => f.endsWith(".js"));
+  assert.ok(scripts.length >= 6, "the admin's scripts were found");
+  for (const file of scripts) {
+    const code = fs.readFileSync(file, "utf8");
+    const name = path.relative(repo, file);
+    assert.doesNotMatch(code, /\beval\s*\(/, name + ": eval(");
+    assert.doesNotMatch(code, /\bnew\s+Function\s*\(/, name + ": new Function(");
+    assert.doesNotMatch(code, /\bset(?:Timeout|Interval)\s*\(\s*["'`]/, name + ": a timer handed a string of code");
+    assert.doesNotMatch(code, /\.innerHTML\s*=|insertAdjacentHTML/, name + ": HTML from a string (customers' words go in as text)");
   }
 });
 

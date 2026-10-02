@@ -1,13 +1,22 @@
-// WV Roofing — the operator screen (A6; brief §14). Linked from nowhere and never
-// indexed. After logging in: the enquiries (newest first, by status), everything
-// about one (customer, property and what was confirmed, satellite view, photo,
-// renders, paid calls, history), and what can be done with it (status, request a
-// survey, correct the scope, send the email again, delete); plus the renders that
-// failed or never came back, which can be tried again only when confirmed.
+// WV Roofing — the admin (the operator screen; A6, brief §14). Never indexed; the
+// public pages link to it only from a small "Admin" in their footers. One script
+// for three pages: /WVROOFING/admin/ (version 1), /WVROOFING/2/admin/ (version 2,
+// the Roof Cam) and /WVROOFING/operator/ (both sites, kept for bookmarks); the
+// page's <body data-site> says which site it starts on, and the switch at the top
+// changes it for every tab. After logging in: the overview (counts, set-up, the
+// newest enquiries and photos); the enquiries (newest first, by status),
+// everything about one (customer, property and what was confirmed, satellite
+// view, photo, renders, paid calls, history), and what can be done with it
+// (status, request a survey, correct the scope, send the email again, delete);
+// the contact details as a table and a spreadsheet; every customer photo; the
+// renders that failed or never came back, which can be tried again only when
+// confirmed; and the costs.
 import { api, apiImage, getToken, setToken, whenSignedOut } from "./api.js";
 import { loadCatalogue } from "../catalogue.js";
 import { measurementCard, METHOD_WORDS } from "./measure.js";
-import { initPhotos, loadPhotos, openPhoto, photosShown, resetPhotos, refreshPhotos, mockupGallery } from "./photos.js";
+import { initPhotos, loadPhotos, openPhoto, photosShown, resetPhotos, mockupGallery, setSite as setPhotosSite } from "./photos.js";
+import { initOverview, loadOverview, resetOverview, getSetup } from "./overview.js";
+import { initContacts, loadContacts, resetContacts } from "./contacts.js";
 import {
   h,
   kv,
@@ -15,6 +24,10 @@ import {
   when,
   shortDate,
   money,
+  sitePill,
+  cleanSite,
+  keepFocus,
+  mailto,
   STATUS_WORDS,
   DELIVERY_WORDS,
   PROPERTY_WORDS,
@@ -24,6 +37,8 @@ import {
   ACTION_WORDS,
   SOURCE_WORDS,
   SITE_WORDS,
+  SITE_CHOICES,
+  STORAGE_SETUP,
   PROVIDER_WORDS,
   AERIAL_WORDS,
 } from "./dom.js";
@@ -31,11 +46,14 @@ import {
 const $ = (id) => document.getElementById(id);
 
 const FILTERS = [["", "All"]].concat(Object.entries(STATUS_WORDS));
-const SITE_FILTERS = [["", "Both sites"]].concat(Object.entries(SITE_WORDS));
+const TABS = ["overview", "enquiries", "contacts", "photos", "jobs", "costs"];
 
 const S = {
+  tab: "overview",
   filter: "",
-  site: "",
+  // Which site every tab shows: "v1", "v2" or "" (both). The page says where it starts.
+  site: cleanSite(document.body.dataset.site),
+  setup: null, // the live site's set-up checklist (from GET health), for the login screen
   q: "",
   enquiries: [],
   jobs: [],
@@ -63,6 +81,11 @@ function loginError(msg) {
 
 function setParam(id) {
   history.replaceState(null, "", id ? "?enquiry=" + encodeURIComponent(id) : location.pathname);
+}
+
+/** Is this tab the one showing? */
+function showing(tab) {
+  return S.tab === tab && !$("op-app").hidden;
 }
 
 function revokeUrls() {
@@ -132,6 +155,8 @@ async function loadImage(slot, path, alt, enlarge) {
 function showLogin(msg) {
   revokeUrls();
   resetPhotos();
+  resetOverview();
+  resetContacts();
   S.selected = null;
   S.enquiries = [];
   S.jobs = [];
@@ -144,10 +169,25 @@ function showLogin(msg) {
   $("op-login").hidden = false;
   $("op-detail").replaceChildren();
   $("op-list").replaceChildren();
+  status("");
   loginError(msg);
   const pw = $("op-password");
   pw.value = "";
   pw.focus();
+}
+
+/**
+ * On the login screen, say plainly when the admin can't work yet: no password
+ * set, or no database (so nothing is being saved). Yes or no only, from GET health.
+ * @param {Record<string, boolean> | null} setup
+ */
+function renderLoginSetup(setup) {
+  const box = $("op-setup");
+  const lines = [];
+  if (setup && setup.adminPassword === false) lines.push("The admin password hasn't been set yet. The site owner sets it once, with the SET UP WV ROOFING ADMIN script.");
+  if (setup && STORAGE_SETUP.some((k) => setup[k] === false)) lines.push("Saving isn't fully set up on this site yet, so nothing is being saved.");
+  box.replaceChildren(...lines.map((t) => h("p", { text: t })));
+  box.hidden = lines.length === 0;
 }
 
 async function onLogin(e) {
@@ -167,6 +207,15 @@ async function onLogin(e) {
     setToken(r.token);
     showApp(await api("GET", "operator/session"));
   } catch (ex) {
+    // Something isn't set up (the password, or the database behind it): say what, from health.
+    if (ex.code === "not_configured") {
+      getSetup()
+        .then((setup) => {
+          S.setup = setup;
+          renderLoginSetup(setup);
+        })
+        .catch(() => undefined);
+    }
     loginError(ex.message);
     pw.select();
   } finally {
@@ -191,57 +240,96 @@ function showApp(session) {
   $("op-logout").hidden = false;
   $("op-env").hidden = session.environment !== "test";
   renderFilters();
-  refreshAll(new URLSearchParams(location.search).get("enquiry"));
+  renderSiteSwitch();
+  loadJobs();
   // The Photos tab's count (its pictures load only when it's opened).
   loadPhotos({ reset: true });
+  // A link to one enquiry (?enquiry=<id>, kept in the address while it's open) opens it.
+  const deep = new URLSearchParams(location.search).get("enquiry");
+  if (deep) {
+    switchTab("enquiries");
+    openEnquiry(deep);
+  } else {
+    switchTab("overview");
+  }
 }
 
-async function refreshAll(selectId) {
-  await Promise.all([loadList(), loadJobs()]);
-  const id = selectId || S.selected;
-  if (id) await openEnquiry(id, { quiet: !selectId });
+// ---------------------------------------------------------------------------
+// which site: the switch at the top, for every tab
+
+function renderSiteSwitch() {
+  keepFocus($("op-site"), (box) =>
+    box.replaceChildren(
+      ...SITE_CHOICES.map(([v, t]) =>
+        h("button", {
+          class: "op-site-btn",
+          type: "button",
+          "aria-pressed": String(S.site === v),
+          "data-site": v || "both",
+          text: t,
+          on: { click: () => setSite(v) },
+        })
+      )
+    )
+  );
+  const sub = $("op-brand-sub");
+  if (sub) sub.textContent = S.site ? SITE_WORDS[S.site] : "Both sites";
+}
+
+function setSite(v) {
+  const next = cleanSite(v);
+  if (next === S.site) return;
+  S.site = next;
+  renderSiteSwitch();
+  setPhotosSite(next);
+  // The Photos tab's count follows the site too (and its grid, when it's open).
+  loadPhotos({ reset: true });
+  if (S.tab === "overview" || S.tab === "enquiries" || S.tab === "contacts") loadTab(S.tab);
 }
 
 // ---------------------------------------------------------------------------
 // the enquiry list
 
 function renderFilters() {
-  const chips = (list, key) =>
-    list.map(([v, t]) =>
-      h("button", {
-        class: "op-chip",
-        type: "button",
-        "aria-pressed": String(S[key] === v),
-        text: t,
-        on: {
-          click: () => {
-            S[key] = v;
-            renderFilters();
-            loadList();
+  keepFocus($("op-filters"), (box) =>
+    box.replaceChildren(
+      ...FILTERS.map(([v, t]) =>
+        h("button", {
+          class: "op-chip",
+          type: "button",
+          "aria-pressed": String(S.filter === v),
+          text: t,
+          on: {
+            click: () => {
+              S.filter = v;
+              renderFilters();
+              loadList();
+            },
           },
-        },
-      })
-    );
-  $("op-filters").replaceChildren(...chips(FILTERS, "filter"));
-  $("op-site-filters").replaceChildren(...chips(SITE_FILTERS, "site"));
+        })
+      )
+    )
+  );
 }
 
 async function loadList() {
   const asked = listParams();
   try {
     const r = await api("GET", "operator/enquiries" + (asked ? "?" + asked : ""));
-    if (asked !== listParams()) return; // the filter or search changed while this was loading
+    if (asked !== listParams()) return; // the filter, search or site changed while this was loading
     S.enquiries = r.enquiries;
     renderList();
     const n = r.enquiries.length;
-    status(
-      n +
-        (n === 1 ? " enquiry" : " enquiries") +
-        (S.filter ? " marked " + STATUS_WORDS[S.filter].toLowerCase() : "") +
-        (S.site ? " from " + SITE_WORDS[S.site].toLowerCase() : "") +
-        (S.q ? " matching “" + S.q + "”" : "") +
-        "."
-    );
+    if (showing("enquiries")) {
+      status(
+        n +
+          (n === 1 ? " enquiry" : " enquiries") +
+          (S.filter ? " marked " + STATUS_WORDS[S.filter].toLowerCase() : "") +
+          (S.site ? " from " + SITE_WORDS[S.site] : " from both sites") +
+          (S.q ? " matching “" + S.q + "”" : "") +
+          "."
+      );
+    }
   } catch (ex) {
     if (ex.status !== 401) status(ex.message, true);
   }
@@ -289,7 +377,7 @@ function renderList() {
             { class: "op-item-top" },
             h("span", { class: "op-ref", text: e.reference }),
             pill(STATUS_WORDS[e.status] || e.status, e.status),
-            pill(e.site === "v2" ? "v2" : "v1", e.site === "v2" ? "v2" : "v1"),
+            sitePill(e.site),
             h("span", { class: "op-item-meta", text: shortDate(e.createdAt) })
           ),
           h("span", { class: "op-item-name", text: e.name }),
@@ -430,7 +518,7 @@ function customerCard(e) {
     kv([
       ["Name", e.name],
       ["Phone", e.phone ? h("a", { href: "tel:" + e.phone.replace(/[^\d+]/g, ""), text: e.phone }) : null],
-      ["Email", e.email ? h("a", { href: "mailto:" + e.email, text: e.email }) : null],
+      ["Email", e.email ? h("a", { href: mailto(e.email), text: e.email }) : null],
       ["Postcode", e.postcode],
       ["Roof choice", productName(e.roof)],
       ["Message", e.notes],
@@ -861,14 +949,64 @@ function renderJobs() {
   $("op-jobs-empty").hidden = n > 0;
 }
 
-function switchTab(tab) {
-  for (const b of document.querySelectorAll(".op-tab")) b.setAttribute("aria-selected", String(b.dataset.tab === tab));
-  $("op-view-enquiries").hidden = tab !== "enquiries";
-  $("op-view-photos").hidden = tab !== "photos";
-  $("op-view-jobs").hidden = tab !== "jobs";
-  $("op-view-costs").hidden = tab !== "costs";
-  if (tab === "costs") loadCosts();
-  if (tab === "photos") photosShown();
+// ---------------------------------------------------------------------------
+// tabs
+
+const PANELS = {
+  overview: "op-view-overview",
+  enquiries: "op-view-enquiries",
+  contacts: "op-view-contacts",
+  photos: "op-view-photos",
+  jobs: "op-view-jobs",
+  costs: "op-view-costs",
+};
+
+/** Load (or reload) what a tab shows, for the chosen site. */
+function loadTab(tab) {
+  if (tab === "overview") loadOverview();
+  else if (tab === "enquiries") {
+    loadList();
+    if (S.selected) openEnquiry(S.selected, { quiet: true });
+  } else if (tab === "contacts") loadContacts();
+  else if (tab === "photos") photosShown();
+  else if (tab === "jobs") loadJobs();
+  else if (tab === "costs") loadCosts();
+}
+
+/**
+ * @param {string} tab
+ * @param {{ focus?: boolean }} [opts]  focus: put the keyboard on the new tab (when a
+ *   button inside the old panel opened it, that button has just been hidden)
+ */
+function switchTab(tab, opts) {
+  if (!TABS.includes(tab)) tab = "overview";
+  S.tab = tab;
+  let chosen = null;
+  for (const b of document.querySelectorAll(".op-tab")) {
+    const on = b.dataset.tab === tab;
+    b.setAttribute("aria-selected", String(on));
+    b.tabIndex = on ? 0 : -1;
+    if (on) chosen = b;
+  }
+  for (const [name, id] of Object.entries(PANELS)) $(id).hidden = name !== tab;
+  // The open enquiry stays in the address only while its tab is showing.
+  setParam(tab === "enquiries" ? S.selected : "");
+  status("");
+  loadTab(tab);
+  if (opts && opts.focus && chosen) chosen.focus();
+}
+
+/** Tabs: arrow keys move between them (Home and End to the ends), as in any tab list. */
+function onTabKey(e) {
+  const keys = { ArrowRight: 1, ArrowLeft: -1, Home: "first", End: "last" };
+  if (!(e.key in keys)) return;
+  e.preventDefault();
+  const tabs = [...document.querySelectorAll(".op-tab")];
+  const i = tabs.indexOf(document.activeElement);
+  const k = keys[e.key];
+  const next = k === "first" ? tabs[0] : k === "last" ? tabs[tabs.length - 1] : tabs[(i + k + tabs.length) % tabs.length];
+  next.focus();
+  switchTab(next.dataset.tab);
 }
 
 // ---------------------------------------------------------------------------
@@ -994,32 +1132,58 @@ function sweepCard(s, r) {
   return card;
 }
 
+/** Open one enquiry in the Enquiries tab (from the overview, contacts, photos or renders). */
 function showJobEnquiry(id) {
+  S.selected = null; // the tab opens this one, not the one open before
   switchTab("enquiries");
   openEnquiry(id);
+}
+
+/** The Enquiries tab, with a status filter ("" for all). */
+function showEnquiries(statusFilter) {
+  S.filter = statusFilter && STATUS_WORDS[statusFilter] ? statusFilter : "";
+  renderFilters();
+  switchTab("enquiries", { focus: true });
 }
 
 // ---------------------------------------------------------------------------
 // start
 
+/** Refresh: the tab that's showing, and the counts on the tabs. */
+function refresh() {
+  loadTab(S.tab);
+  if (S.tab !== "jobs") loadJobs();
+  if (S.tab !== "photos") loadPhotos({ reset: true });
+}
+
 async function boot() {
   whenSignedOut((msg) => showLogin(msg));
   $("op-login-form").addEventListener("submit", onLogin);
   $("op-logout").addEventListener("click", logout);
-  $("op-refresh").addEventListener("click", () => {
-    refreshAll();
-    refreshPhotos();
-    if (!$("op-view-costs").hidden) loadCosts();
-  });
+  $("op-refresh").addEventListener("click", refresh);
+  setPhotosSite(S.site);
   initPhotos({
     productName,
     confirmBox,
     status,
     renderTile,
-    openEnquiry: (id) => {
-      switchTab("enquiries");
-      openEnquiry(id);
+    openEnquiry: showJobEnquiry,
+  });
+  initOverview({
+    site: () => S.site,
+    status: (msg, isError) => {
+      if (showing("overview")) status(msg, isError);
     },
+    productName,
+    openEnquiry: showJobEnquiry,
+    openPhoto: showProjectPhotos,
+    showEnquiries,
+    showTab: (tab) => switchTab(tab, { focus: true }),
+  });
+  initContacts({
+    site: () => S.site,
+    status,
+    openEnquiry: showJobEnquiry,
   });
   $("op-q").addEventListener("input", onSearch);
   $("op-search").addEventListener("submit", (e) => {
@@ -1028,13 +1192,21 @@ async function boot() {
     S.q = $("op-q").value.trim();
     loadList();
   });
-  for (const b of document.querySelectorAll(".op-tab")) b.addEventListener("click", () => switchTab(b.dataset.tab));
+  for (const b of document.querySelectorAll(".op-tab")) {
+    b.addEventListener("click", () => switchTab(b.dataset.tab));
+    b.addEventListener("keydown", onTabKey);
+  }
   loadCatalogue()
     .then((c) => {
       S.products = c.byId;
       if (S.enquiries.length) renderList();
     })
     .catch(() => {});
+  // Is the live site set up? Said on the login screen when it isn't (no login needed to ask).
+  getSetup().then((setup) => {
+    S.setup = setup;
+    renderLoginSetup(setup);
+  });
   if (!getToken()) {
     showLogin("");
     return;

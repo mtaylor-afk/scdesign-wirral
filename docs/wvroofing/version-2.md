@@ -52,13 +52,22 @@ admin screen for both versions. Version 2 now uses version 1's store and operato
   enquiry about the project (source `roof-cam`); the roofer's email attaches the photo and that preview.
   For a sample house it sends a plain enquiry (source `roof-cam-sample`).
 - **The bulletin** has a contact form in its sign-off (source `bulletin`).
-- **The operator screen** (`/WVROOFING/operator/`) has a **Photos** tab listing every photo from both
-  sites, and the Enquiries tab can be filtered by site. See `operator-guide.md`.
+- **The admin screen** has a **Photos** tab listing every photo from both sites, and a site switch at the
+  top for every list. See `operator-guide.md`.
+- **Version 2's own admin page** (added later on 2026-10-01) is at `/WVROOFING/2/admin/`. It is the same
+  admin screen and password as version 1's, dressed in the weather report's look
+  (`assets/css/admin.css`, the same three typefaces), and starts on **Version 2 · Roof Cam**. Its Overview
+  and Contacts tabs show version 2's enquiries, photos and contact details, and the Contacts tab downloads
+  them as a spreadsheet. Version 1's page is `/WVROOFING/admin/`; `/WVROOFING/operator/` still works and
+  shows both.
+- Every version 2 page has a small **Admin** link at the end of its footer, pointing to
+  `/WVROOFING/2/admin/`. It is never in the main menu.
 - The copy that promised "nothing is uploaded" (the bulletin, the Roof Cam, About) was rewritten, and the
   privacy notice at `/WVROOFING/privacy/` now covers the Roof Cam too.
 - On the live site nothing is saved until the owner's storage steps in `setup-and-deploy.md` (Neon, Blob,
   `WVR_SESSION_SECRET`, `CRON_SECRET`) are done; until then the save light says "Not saved" and the forms
-  say enquiries aren't being collected yet.
+  say enquiries aren't being collected yet. The Desktop **SET UP WV ROOFING ADMIN** does those steps (and
+  the admin password) in one go.
 
 ## How it's built
 

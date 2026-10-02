@@ -98,6 +98,8 @@ const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 64 };
 // The TEST ENVIRONMENT's throwaway operator password (dev server, QA and tests).
 // Refused everywhere else, even if a hash of it were ever set in production.
 const TEST_OPERATOR_PASSWORD = "wvr-test-operator-only";
+// Advisory lock for counting and recording login attempts (an arbitrary constant, like db.js's migration lock).
+const LOGIN_LOCK = 7273770002;
 
 /**
  * "scrypt:N:r:p:salt:hash" (base64url) for a password. Colons, not "$", so no
@@ -146,17 +148,26 @@ async function operatorLogin(req, password) {
   const stored = process.env.WVR_OPERATOR_PASSWORD_HASH;
   if (!stored) throw new HttpError(503, "not_configured", "The operator login isn't set up yet.");
   const ip = require("./limits.js").ipHash(req);
-  const { rows } = await db.query(
-    "SELECT count(*) FILTER (WHERE ip_hash = $1)::int AS mine, count(*)::int AS total FROM wvr_login_attempts WHERE NOT ok AND created_at > now() - interval '15 minutes'",
-    [ip]
-  );
-  if (rows[0].mine >= 5 || rows[0].total >= 20) {
+  // The attempt is counted and recorded (as a failure) BEFORE the password is
+  // checked, under a lock, so many logins sent at once can't all slip in under
+  // the limit. A right password turns its own record into a success.
+  const attemptId = await db.tx(async (t) => {
+    await t.query("SELECT pg_advisory_xact_lock($1)", [LOGIN_LOCK]);
+    const { rows } = await t.query(
+      "SELECT count(*) FILTER (WHERE ip_hash = $1)::int AS mine, count(*)::int AS total FROM wvr_login_attempts WHERE NOT ok AND created_at > now() - interval '15 minutes'",
+      [ip]
+    );
+    if (rows[0].mine >= 5 || rows[0].total >= 20) return null;
+    const ins = await t.query("INSERT INTO wvr_login_attempts (ip_hash, ok) VALUES ($1, false) RETURNING id", [ip]);
+    return ins.rows[0].id;
+  });
+  if (attemptId === null) {
     throw new HttpError(429, "locked", "Too many wrong passwords. Please wait 15 minutes and try again.", { retryAfter: 900 });
   }
   const allowed = typeof password === "string" && password.length <= 200 && (isTest(process.env) || password !== TEST_OPERATOR_PASSWORD);
   const ok = allowed && (await verifyPassword(/** @type {string} */ (password), stored));
-  await db.query("INSERT INTO wvr_login_attempts (ip_hash, ok) VALUES ($1, $2)", [ip, ok]);
   if (!ok) throw new HttpError(401, "unauthorised", "That password isn't right.");
+  await db.query("UPDATE wvr_login_attempts SET ok = true WHERE id = $1", [attemptId]);
   const token = crypto.randomBytes(32).toString("base64url");
   const expires = new Date(Date.now() + OPERATOR_TTL_HOURS * 3600 * 1000);
   const id = crypto.randomUUID();

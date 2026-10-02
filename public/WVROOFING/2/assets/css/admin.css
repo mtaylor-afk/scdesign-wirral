@@ -1,0 +1,334 @@
+/* ==========================================================================
+   WV Roofing, version 2: the admin screen in "Rain Later" dress.
+
+   The admin screen is one screen for both sites. Its layout and controls come
+   from version 1's stylesheets (/WVROOFING/assets/css/site.css for the tokens,
+   type and form controls, then operator.css for the op-* layout). This file
+   loads last on /WVROOFING/2/admin/, after the version 2 fonts, and only
+   re-dresses it: it never moves anything around.
+
+   How it works: version 1 keeps every colour, font, corner and shadow in CSS
+   custom properties on the html element (:root), and swaps them for dark mode
+   there. Everything below is declared on body.op--v2 instead. A property set
+   on the body beats the one set on :root for everything inside the body, so
+   the late-night bulletin wins whether the device is in light or dark mode:
+   version 2 is always dark. A handful of targeted rules then add what tokens
+   can't: the condensed headline type, the monospaced broadcast captions,
+   square corners, amber for "selected" and rain blue for links.
+
+   Contrast (WCAG 2.2, checked for every text and background pair used here):
+     cream #f5f0e8 on ink #0b1220 16.5:1, on card #16223d 13.9:1, on navy-2 #24365e 10.5:1
+     muted #a9b4c8 on ink 9.0:1, on card 7.6:1, on navy-2 5.7:1
+     dim #97a3bb on ink 7.4:1, on card 6.2:1, on navy-2 4.7:1
+     rain #8fd4f4 on ink 11.5:1, on card 9.7:1
+     amber-2 #e9c462 on ink 11.2:1, on card 9.4:1 (amber #c9a84c is used as a
+       background, never as small text)
+     ink on amber 8.2:1, on amber-2 11.2:1, on rain 11.5:1
+     red text #ff8a7a on card 6.9:1, on its tinted pill 5.6:1
+     green text #5fd39a on card 8.5:1, on its tinted pill 6.5:1
+     cream on the danger button #b3362a 5.3:1 (hover #9e2f24 6.4:1)
+     field and control edges (#6f7f9e, #5f7299) at least 3.2:1 against what's behind them
+     focus: a 3px amber-2 ring, 9.4:1 or more against the page and the cards
+   ========================================================================== */
+
+/* ---------- Tokens: the bulletin's palette poured into version 1's names ---------- */
+body.op--v2 {
+  /* Version 2's own names, for the rules below. */
+  --ink: #0b1220;
+  --navy: #1b2a4a;
+  --navy-2: #24365e;
+  --card: #16223d;
+  --cream: #f5f0e8;
+  --amber: #c9a84c;
+  --amber-2: #e9c462;
+  --rain: #8fd4f4;
+  --front: #e2503f;
+  --clear: #3fb27f;
+  --muted: #a9b4c8;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  /* Surfaces: the page is the night sky, cards are the night chart. */
+  --bg: var(--ink);
+  --bg-alt: var(--ink);
+  --bg-elev: var(--card);
+  --tile: var(--card);
+  --neutral: var(--navy-2);
+  --neutral-hover: #2c4170;
+
+  /* Text: cream, then the muted sky blue-grey, then a dimmer one (still 4.7:1 on navy-2). */
+  --text: var(--cream);
+  --text-2: var(--muted);
+  --text-3: #97a3bb;
+
+  /* Rules. hairline outlines controls (the search box), so it keeps 3:1;
+     hairline-2 only separates rows. */
+  --hairline: #5f7299;
+  --hairline-2: var(--navy-2);
+
+  /* Version 1's "blue" means "this is the one you're on / this has focus":
+     here that's amber. Links are rain blue. */
+  --blue: var(--amber-2);
+  --blue-hover: #f0d27e;
+  --link: var(--rain);
+  --focus-ring: var(--amber-2);
+  --eyebrow: var(--amber-2);
+  --gold: var(--amber);
+
+  /* States. Tinted backgrounds are see-through, so they work on the page and on cards. */
+  --ok: #5fd39a;
+  --ok-bg: rgba(63, 178, 127, 0.16);
+  --warn-bg: rgba(233, 196, 98, 0.14);
+  --warn-line: rgba(233, 196, 98, 0.55);
+  --err: #ff8a7a;
+  --err-bg: rgba(226, 80, 63, 0.2);
+  --switch-off: var(--navy-2);
+  --switch-on: var(--clear);
+
+  /* The bar along the top, and the fields. */
+  --nav-bg: rgba(11, 18, 32, 0.94);
+  --nav-solid: var(--ink);
+  --nav-line: rgba(143, 212, 244, 0.22);
+  --field-bg: var(--ink);
+  --field-line: #6f7f9e;
+
+  /* Flat broadcast graphics: an edge, not a soft shadow. */
+  --shadow-card: 0 0 0 1px rgba(143, 212, 244, 0.12);
+  --shadow-lift: 0 0 0 1px rgba(143, 212, 244, 0.2), 0 24px 64px rgba(0, 0, 0, 0.6);
+  --grad-num: linear-gradient(100deg, var(--rain) 8%, var(--amber-2) 92%);
+  --dark-band: var(--ink);
+  --dark-tile: var(--card);
+  --on-dark: var(--cream);
+  --on-dark-2: var(--muted);
+  --on-dark-link: var(--rain);
+
+  /* Type: Archivo to read, Big Shoulders Display for headlines. */
+  --font-text: "Archivo", Arial, "Helvetica Neue", sans-serif;
+  --font-display: "Big Shoulders Display", Impact, "Arial Narrow", sans-serif;
+
+  /* Square corners, near enough. --r-pill is every pill, chip, tab and button. */
+  --r-tile: 4px;
+  --r-card: 4px;
+  --r-field: 2px;
+  --r-pill: 2px;
+
+  color-scheme: dark;
+  background: var(--ink);
+  color: var(--cream);
+  letter-spacing: 0;
+}
+/* The page behind the body (overscroll, and the scrollbars) is dark too, even
+   when the device is in light mode. Browsers without :has() just keep the body's colour. */
+:root:has(> body.op--v2) { color-scheme: dark; background: #0b1220; }
+
+.op--v2 ::selection { background: var(--amber); color: var(--ink); }
+.op--v2 .op-list-pane { scrollbar-color: var(--hairline) transparent; }
+
+/* Skip link: an amber caption, like version 2's. */
+.op--v2 .skip-link {
+  background: var(--amber); color: var(--ink); border-radius: 0;
+  font-family: var(--font-mono); font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+/* ---------- Type ---------- */
+.op--v2 :is(h1, h2, h3) {
+  font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1;
+}
+.op--v2 .op-login-title { font-size: 44px; font-weight: 900; line-height: 0.92; letter-spacing: 0.01em; }
+.op--v2 .op-head h2 { font-size: 30px; line-height: 1; letter-spacing: 0.02em; }
+.op--v2 .op-card h3 { font-size: 22px; line-height: 1.05; letter-spacing: 0.03em; }
+.op--v2 .op-dialog-title { font-size: 26px; line-height: 1.05; }
+.op--v2 .op-big { font-family: var(--font-display); font-size: 40px; font-weight: 900; line-height: 0.95; letter-spacing: 0.01em; color: var(--amber-2); }
+
+/* Broadcast captions: IBM Plex Mono, upper case, spaced out. Used for every
+   small label: tabs, chips, pills, counts, field labels and table headings. */
+.op--v2 :is(.op-tab, .op-chip, .op-pill, .op-env, .op-label, .op-card h4, .op-kv dt, .op-table th, .op-m-evidence legend, .op-site button, .btn) {
+  font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
+}
+.op--v2 .op-count { font-family: var(--font-mono); letter-spacing: 0.02em; }
+.op--v2 :is(.op-label, .op-card h4, .op-kv dt, .op-m-evidence legend) { font-size: 12px; font-weight: 600; color: var(--rain); }
+.op--v2 .op-kv dt { padding-top: 2px; }
+.op--v2 .op-ref { font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.04em; color: var(--amber-2); }
+.op--v2 .op-audit time, .op--v2 .op-caption { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; }
+
+/* ---------- The station bar along the top ---------- */
+.op--v2 .op-bar { background: var(--ink); border-top: 3px solid var(--amber); border-bottom: 1px solid var(--nav-line); }
+.op--v2 .op-bar-inner { flex-wrap: wrap; row-gap: 6px; }
+.op--v2 .op-brand {
+  min-width: 0; color: var(--cream);
+  font-family: var(--font-display); font-size: 24px; font-weight: 700; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase;
+}
+.op--v2 .op-brand:hover { text-decoration: none; }
+/* The sub-title sits under the name, a two-line station ident, so a long
+   "Admin · Roof Cam (version 2)" never pushes the bar sideways on a phone. */
+.op--v2 .op-brand-sub {
+  display: block; margin-top: 3px; color: var(--amber-2);
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500; line-height: 1.3; letter-spacing: 0.08em;
+}
+/* Any plain link in the bar (back to the site, say) reads as a caption. */
+.op--v2 .op-bar a:not(.btn):not(.op-brand) {
+  display: inline-flex; align-items: center; min-height: 44px; color: var(--rain);
+  font-family: var(--font-mono); font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.op--v2 .op-bar a:not(.btn):not(.op-brand):hover { color: var(--cream); }
+/* "Test environment": the yellow warning. */
+.op--v2 .op-env {
+  background: var(--amber); color: var(--ink); border: 0; border-radius: 0;
+  font-size: 12px; font-weight: 600; padding: 3px 8px 2px;
+}
+
+/* ---------- Buttons ---------- */
+.op--v2 .btn { font-size: 14px; font-weight: 600; line-height: 1.2; padding: 10px 18px 9px; }
+.op--v2 .btn-sm { font-size: 13px; padding: 8px 14px 7px; }
+.op--v2 .btn-xs { font-size: 12px; padding: 4px 10px 3px; }
+/* The main action: amber with ink type, lit from above like version 2's buttons. */
+.op--v2 .btn-primary {
+  background: var(--amber); color: var(--ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -2px 0 rgba(11, 18, 32, 0.22);
+}
+.op--v2 .btn-primary:not([disabled]):hover { background: var(--amber-2); color: var(--ink); }
+.op--v2 .btn-secondary { background: transparent; color: var(--rain); border-color: var(--rain); }
+.op--v2 .btn-secondary:not([disabled]):hover { background: var(--rain); color: var(--ink); }
+/* Everything else is a ghost: cream type in a cream outline. */
+.op--v2 .btn-neutral { background: transparent; color: var(--cream); box-shadow: inset 0 0 0 1px rgba(245, 240, 232, 0.55); }
+.op--v2 .btn-neutral:not([disabled]):hover { background: rgba(245, 240, 232, 0.12); color: var(--cream); }
+.op--v2 .btn-danger { background: #b3362a; color: var(--cream); }
+.op--v2 .btn-danger:not([disabled]):hover { background: #9e2f24; filter: none; }
+.op--v2 .op-login-form .btn { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: 0.04em; min-height: 52px; }
+.op--v2 .op-linklike { color: var(--rain); }
+.op--v2 .op-linklike:hover { color: var(--cream); }
+
+/* ---------- Login ---------- */
+.op--v2 .op-login { border-top: 3px solid var(--amber); box-shadow: var(--shadow-card); }
+.op--v2 .op-login .op-muted { color: var(--muted); }
+/* What still needs setting up (filled in only when something's missing): a
+   warning caption with its own padding, whatever operator.css gives it. */
+.op--v2 .op-setup {
+  border-radius: 0; border: 0; border-left: 4px solid var(--amber-2);
+  padding: 10px 12px; background: var(--warn-bg); color: var(--cream); font-size: 14px; line-height: 1.45;
+}
+.op--v2 .op-setup p + p { margin-top: 6px; }
+
+/* ---------- Fields ---------- */
+/* Their edges already come from --field-line and --hairline above; focus is
+   an amber edge with a soft amber glow, as on version 2's own forms. */
+.op--v2 :is(.input, .select, .textarea, .op-input, .op-search-input):focus {
+  border-color: var(--amber-2); box-shadow: 0 0 0 3px rgba(233, 196, 98, 0.35);
+}
+.op--v2 .op-input { border-radius: var(--r-field); }
+
+/* ---------- Tabs, the site switch and chips ---------- */
+/* Six tabs wrap onto a second line on a phone rather than scroll sideways. */
+.op--v2 .op-tabs {
+  flex-wrap: wrap; max-width: 100%; padding: 3px; gap: 3px;
+  background: var(--card); border: 1px solid var(--navy-2);
+}
+.op--v2 .op-tab { font-size: 13px; font-weight: 500; color: var(--cream); padding: 8px 12px 7px; }
+.op--v2 .op-tab:hover { background: rgba(143, 212, 244, 0.1); }
+.op--v2 .op-tab[aria-selected="true"] { background: var(--amber); color: var(--ink); box-shadow: none; font-weight: 600; }
+.op--v2 .op-count { background: var(--amber-2); color: var(--ink); }
+.op--v2 .op-count--quiet { background: var(--navy-2); color: var(--cream); }
+.op--v2 .op-tab[aria-selected="true"] .op-count { background: var(--ink); color: var(--amber-2); }
+.op--v2 .op-tab[aria-selected="true"] .op-count--quiet { color: var(--cream); }
+
+/* The site switch (Both sites / Version 1 / Version 2): a segmented row. */
+.op--v2 .op-site { display: inline-flex; flex-wrap: wrap; max-width: 100%; gap: 3px; padding: 3px; background: var(--card); border: 1px solid var(--navy-2); }
+.op--v2 .op-site button {
+  min-height: 36px; padding: 6px 12px 5px; border: 1px solid transparent; border-radius: var(--r-pill);
+  background: transparent; color: var(--cream); font-size: 12px; font-weight: 500; cursor: pointer;
+}
+.op--v2 .op-site button:hover { border-color: var(--rain); }
+.op--v2 .op-site button[aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: var(--ink); font-weight: 600; }
+
+.op--v2 .op-chip {
+  background: transparent; color: var(--cream); border-color: rgba(143, 212, 244, 0.5);
+  font-size: 12px; font-weight: 500; padding: 6px 12px 5px; min-height: 36px;
+}
+.op--v2 .op-chip:hover { border-color: var(--rain); }
+.op--v2 .op-chip[aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: var(--ink); font-weight: 600; }
+
+/* ---------- Lists, cards and detail ---------- */
+.op--v2 :is(.op-item, .op-photo-card, .op-job) { border-radius: var(--r-card); }
+.op--v2 :is(.op-item, .op-photo-card)[aria-current="true"] {
+  border-color: var(--amber-2); box-shadow: 0 0 0 1px var(--amber-2), inset 5px 0 0 var(--amber);
+}
+.op--v2 :is(.op-head, .op-card) { box-shadow: var(--shadow-card); }
+/* The detail's headline gets the amber rule a lower-third has. */
+.op--v2 .op-head { border-left: 6px solid var(--amber); }
+.op--v2 :is(.op-photo, .op-aerial, .op-render, .op-render-img, .op-m-evidence, .op-photo-thumb) { border-radius: 2px; }
+.op--v2 .op-render { border-color: var(--navy-2); }
+.op--v2 .op-danger { border-color: rgba(226, 80, 63, 0.55); }
+.op--v2 .op-measure-entry summary { color: var(--rain); }
+
+/* Overview: each figure reads like a weather station's reading, an amber rule
+   over a big condensed number, with its name as a caption. A problem figure
+   (.is-bad: emails that failed, say) turns the rule and the number red; the
+   page says it in words too, so colour is never the only sign. */
+.op--v2 .op-stat { border-top: 3px solid var(--amber); }
+.op--v2 .op-stat dt {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rain);
+}
+.op--v2 :is(.op-stat dd, .op-ov-num) {
+  font-family: var(--font-display); font-weight: 900; line-height: 1; letter-spacing: 0.01em; color: var(--amber-2);
+}
+.op--v2 .op-stat dd { font-size: 34px; }
+.op--v2 .op-ov-num { font-size: 52px; line-height: 0.9; }
+.op--v2 .op-stat.is-bad { border-top-color: var(--front); }
+.op--v2 .op-stat.is-bad dd { color: var(--err); }
+.op--v2 :is(.op-ov-item, .op-ov-photo) { border-radius: var(--r-card); }
+.op--v2 .op-setup-list li { border-color: var(--navy-2); }
+
+/* The Contacts table (and every other table) through the shared .op-table. */
+.op--v2 .op-table th { font-size: 11px; font-weight: 600; color: var(--muted); }
+.op--v2 .op-table thead th { border-bottom: 2px solid var(--cream); }
+.op--v2 .op-table tbody tr:hover td { background: rgba(143, 212, 244, 0.06); }
+.op--v2 .op-table a { color: var(--rain); }
+.op--v2 .op-table a:hover { color: var(--cream); }
+
+/* ---------- Pills: what state an enquiry, photo or render is in ---------- */
+.op--v2 .op-pill {
+  border-radius: 0; border: 1px solid transparent; padding: 2px 7px 1px;
+  font-size: 11px; font-weight: 600; line-height: 1.5;
+  background: var(--navy-2); color: var(--cream);
+}
+.op--v2 .op-pill--new { background: rgba(143, 212, 244, 0.14); border-color: rgba(143, 212, 244, 0.5); color: var(--rain); }
+.op--v2 :is(.op-pill--survey_requested, .op-pill--quoted) { background: var(--warn-bg); color: var(--cream); }
+.op--v2 .op-pill--closed { background: var(--navy-2); color: var(--muted); }
+.op--v2 :is(.op-pill--spam_suspected, .op-pill--bad) { background: var(--err-bg); color: var(--err); }
+.op--v2 .op-pill--good { background: var(--ok-bg); color: var(--ok); }
+.op--v2 .op-pill--warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--cream); }
+/* Which site: version 1 in rain blue, version 2 (this one) in amber. */
+.op--v2 .op-pill--v1 { background: rgba(143, 212, 244, 0.1); border-color: rgba(143, 212, 244, 0.45); color: var(--cream); }
+.op--v2 .op-pill--v2 { background: rgba(201, 168, 76, 0.2); border-color: rgba(201, 168, 76, 0.6); color: var(--amber-2); }
+
+/* ---------- Notices and the confirm dialog ---------- */
+.op--v2 .notice { border-radius: 0; border-left: 4px solid var(--rain); }
+.op--v2 .notice--warn { border-left-color: var(--amber-2); }
+.op--v2 .op-dialog { border-radius: 0; border-top: 3px solid var(--amber); }
+.op--v2 .op-dialog::backdrop { background: rgba(11, 18, 32, 0.78); }
+
+/* ---------- Phones: every control a full 44px to tap ---------- */
+@media (max-width: 733px) {
+  .op--v2 :is(.op-tab, .op-chip, .op-site button, .btn-sm, .op-search-input) { min-height: 44px; }
+  .op--v2 .op-actions .select { height: 44px; }
+  .op--v2 .op-login-title { font-size: 38px; }
+  .op--v2 .op-head h2 { font-size: 26px; }
+}
+
+/* ---------- Still: no movement for anyone who asks for less ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .op--v2 :is(.btn, .op-tab, .op-chip, .op-site button, .op-item, .op-photo-card, .input, .select, .textarea) { transition: none; }
+}
+
+/* ---------- Print: dark ink on white paper (browsers drop dark backgrounds) ---------- */
+@media print {
+  body.op--v2 {
+    --bg: #fff; --bg-alt: #fff; --bg-elev: #fff; --card: #fff; --neutral: #eee;
+    --text: #000; --text-2: #333; --text-3: #555; --cream: #000; --muted: #333;
+    --rain: #1d5c88; --link: #1d5c88; --amber-2: #6b4f00;
+    --hairline: #999; --hairline-2: #ccc; --navy-2: #ccc;
+    --ok: #1a7f37; --err: #b3261e;
+    color-scheme: light; background: #fff; color: #000;
+  }
+  :root:has(> body.op--v2) { background: #fff; color-scheme: light; }
+  .op--v2 .op-bar { position: static; background: #fff; }
+}

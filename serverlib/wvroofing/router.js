@@ -67,10 +67,15 @@ const ROUTES = [
   { path: "enquiry", methods: ["POST"], auth: "none", handler: (ctx) => require("./enquiries.js").createFree(ctx) },
   { path: "projects/:id/enquiry", methods: ["POST"], auth: "project", handler: (ctx) => require("./enquiries.js").createForProject(/** @type {any} */ (ctx)) },
   { path: "projects/:id/enquiry", methods: ["GET"], auth: "project", handler: (ctx) => require("./enquiries.js").getForProject(/** @type {any} */ (ctx)) },
-  // The operator screen (A6). Every route but login needs the operator's session key.
+  // The operator screen (A6) and the admin pages built on it (/WVROOFING/admin/,
+  // /WVROOFING/2/admin/). Every route but login needs the operator's session key.
   { path: "operator/login", methods: ["POST"], auth: "none", handler: (ctx) => op().login(ctx) },
   { path: "operator/logout", methods: ["POST"], auth: "operator", handler: (ctx) => op().logout(/** @type {any} */ (ctx)) },
   { path: "operator/session", methods: ["GET"], auth: "operator", handler: (ctx) => op().session(/** @type {any} */ (ctx)) },
+  // The admin pages' home (counts for one site or both) and the enquiries as a
+  // spreadsheet (no ".csv" in the path: routes are plain words, see SAFE_ROUTE).
+  { path: "operator/overview", methods: ["GET"], auth: "operator", handler: (ctx) => op().overview(/** @type {any} */ (ctx)) },
+  { path: "operator/export/enquiries", methods: ["GET"], auth: "operator", handler: (ctx) => op().exportEnquiries(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries", methods: ["GET"], auth: "operator", handler: (ctx) => op().listEnquiries(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id", methods: ["GET"], auth: "operator", handler: (ctx) => op().enquiryDetail(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id/aerial", methods: ["GET"], auth: "operator", handler: (ctx) => op().enquiryAerial(/** @type {any} */ (ctx)) },

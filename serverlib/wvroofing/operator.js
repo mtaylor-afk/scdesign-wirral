@@ -2,7 +2,9 @@
 //
 //   POST operator/login { password }                 -> { token, expiresAt }   (lockouts in auth.js)
 //   POST operator/logout, GET operator/session
-//   GET  operator/enquiries?status=&q=&site=         -> the list (q finds a name, email, phone, postcode, address or reference)
+//   GET  operator/overview?site=v1|v2                -> the admin home page's counts and newest enquiries (one site, or both)
+//   GET  operator/enquiries?status=&q=&site=&limit=  -> the list with contact details (q finds a name, email, phone, postcode, address or reference)
+//   GET  operator/export/enquiries?status=&q=&site=  -> the same list as a spreadsheet (CSV download, audited)
 //   GET  operator/enquiries/:id                      -> everything about one enquiry and its project
 //   GET  operator/enquiries/:id/aerial               -> the satellite view of its address
 //   POST operator/enquiries/:id/scope | status | request-survey | resend | delete
@@ -131,32 +133,85 @@ async function session(ctx) {
 // ---------------------------------------------------------------------------
 // enquiries
 
+const LIST_DEFAULT = 200;
+const LIST_MAX = 1000;
+const EXPORT_MAX = 5000;
+const EXPORT_MAX_BYTES = 4 * 1000 * 1000;
+const RECENT = 8;
+
+/** "v1" or "v2" for one site; null for both. @param {string | null} v @returns {"v1" | "v2" | null} */
+function siteParam(v) {
+  return v === "v1" || v === "v2" ? v : null;
+}
+
 /**
- * The enquiries, newest first: by status, and/or found by name, email, phone,
- * postcode, address or reference (for a customer asking for their data or for
- * it to be deleted).
- * @param {OperatorCtx} ctx
+ * The filters the enquiry list and the spreadsheet export share, so the two can
+ * never disagree: by status; by site (version 2's sources, or any other for
+ * version 1); and found by name, email, phone, postcode, address or reference
+ * (for a customer asking for their data or for it to be deleted). The SQL uses
+ * the parameters $1 to $5, in the order given.
+ * @param {URLSearchParams} sp
  */
-async function listEnquiries(ctx) {
-  const status = String(ctx.url.searchParams.get("status") || "");
-  const filter = STATUSES.includes(status) ? status : null;
-  const siteParam = ctx.url.searchParams.get("site");
-  const site = siteParam === "v1" || siteParam === "v2" ? siteParam : null;
-  const q = String(ctx.url.searchParams.get("q") || "")
+function enquiryFilter(sp) {
+  const want = String(sp.get("status") || "");
+  const status = STATUSES.includes(want) ? want : null;
+  const site = siteParam(sp.get("site"));
+  const q = String(sp.get("q") || "")
     .trim()
     .slice(0, 100);
   const like = q.length >= 2 ? "%" + q.replace(/[\\%_]/g, (c) => "\\" + c) + "%" : null;
   const digits = q.replace(/\D/g, "");
   const phone = digits.length >= 4 ? "%" + digits + "%" : null;
-  const { rows } = await db.query(
-    "SELECT e.*, (SELECT count(*)::int FROM wvr_jobs j WHERE j.project_id = e.project_id AND j.status = 'succeeded' AND NOT j.quarantined) AS renders " +
-      "FROM wvr_enquiries e WHERE ($1::text IS NULL OR e.status = $1) " +
+  return {
+    status,
+    site,
+    q,
+    where:
+      "WHERE ($1::text IS NULL OR e.status = $1) " +
       "AND ($2::text IS NULL OR e.reference ILIKE $2 OR e.contact_name ILIKE $2 OR e.contact_email ILIKE $2 OR e.postcode ILIKE $2 OR (e.snapshot -> 'address')::text ILIKE $2 " +
       "OR ($3::text IS NOT NULL AND regexp_replace(coalesce(e.contact_phone, ''), '\\D', '', 'g') LIKE $3)) " +
-      "AND ($4::text IS NULL OR (e.source = ANY($5::text[])) = ($4 = 'v2')) " +
-      "ORDER BY e.created_at DESC LIMIT 200",
-    [filter, like, phone, site, enquiries.V2_SOURCES]
+      "AND ($4::text IS NULL OR (e.source = ANY($5::text[])) = ($4 = 'v2')) ",
+    /** @type {unknown[]} */
+    params: [status, like, phone, site, enquiries.V2_SOURCES],
+  };
+}
+
+/**
+ * The enquiries that match, newest first, with what the admin pages show beside
+ * each one: its renders, the previews the customer's device drew, and whether
+ * its project (if it still has one) holds a photo.
+ * @param {ReturnType<typeof enquiryFilter>} f
+ * @param {number} limit
+ * @returns {Promise<Row[]>}
+ */
+async function enquiryRows(f, limit) {
+  const { rows } = await db.query(
+    "SELECT e.*, " +
+      "(SELECT count(*)::int FROM wvr_jobs j WHERE j.project_id = e.project_id AND j.status = 'succeeded' AND NOT j.quarantined) AS renders, " +
+      "(SELECT count(*)::int FROM wvr_mockups m WHERE m.project_id = e.project_id) AS previews, " +
+      "EXISTS (SELECT 1 FROM wvr_projects p WHERE p.id = e.project_id AND p.photo_id IS NOT NULL) AS has_photo " +
+      "FROM wvr_enquiries e " +
+      f.where +
+      "ORDER BY e.created_at DESC, e.id LIMIT $6",
+    f.params.concat([limit])
   );
+  return rows;
+}
+
+/** The postcode typed in, or else the one from the address they chose. @param {Row} e @param {Record<string, any>} snap */
+function postcodeOf(e, snap) {
+  return e.postcode || (snap.address && snap.address.postcode) || null;
+}
+
+/**
+ * The enquiries, newest first, with each customer's contact details and message
+ * (filters in enquiryFilter). ?limit= up to 1000 (200 if not given).
+ * @param {OperatorCtx} ctx
+ */
+async function listEnquiries(ctx) {
+  const sp = ctx.url.searchParams;
+  const limit = Math.max(1, Math.min(LIST_MAX, Math.floor(Number(sp.get("limit"))) || LIST_DEFAULT));
+  const rows = await enquiryRows(enquiryFilter(sp), limit);
   const list = rows.map((e) => {
     const snap = parsed(e.snapshot) || {};
     const p = e.visual_id && VISUALS.get(e.visual_id);
@@ -165,7 +220,10 @@ async function listEnquiries(ctx) {
       reference: e.reference,
       createdAt: iso(e.created_at),
       name: e.contact_name,
-      postcode: e.postcode || (snap.address && snap.address.postcode) || null,
+      email: e.contact_email || null,
+      phone: e.contact_phone || null,
+      message: e.notes || null,
+      postcode: postcodeOf(e, snap),
       address: snap.address ? snap.address.lines.join(", ") : null,
       roof: p ? p.name : e.visual_id === "not-sure" ? "Not sure" : null,
       status: e.status,
@@ -173,11 +231,223 @@ async function listEnquiries(ctx) {
       source: e.source,
       site: enquiries.siteOf(e.source),
       hasProject: !!e.project_id,
+      hasPhoto: !!e.has_photo,
       renders: e.renders,
+      previews: e.previews,
+      marketing: !!e.marketing_opt_in,
       checkFirst: !!(snap.property && snap.property.ambiguous),
     };
   });
   return json(ctx.res, 200, { ok: true, enquiries: list });
+}
+
+/**
+ * The admin home page: how many enquiries and customer photos there are, what
+ * needs doing, and the newest enquiries, for one site or both. An enquiry
+ * belongs to a site by where it was sent from (its source); a photo by its
+ * project's site.
+ *   ?site=v1|v2 (anything else: both sites)
+ * "photos.held" counts the photos the Photos tab lists (each project's current
+ * photo), and "photos.last7Days" those of them taken in the last 7 days.
+ * @param {OperatorCtx} ctx
+ */
+async function overview(ctx) {
+  const site = siteParam(ctx.url.searchParams.get("site"));
+  const bySite = "($1::text IS NULL OR (e.source = ANY($2::text[])) = ($1 = 'v2'))";
+  /** @type {unknown[]} */
+  const p = [site, enquiries.V2_SOURCES];
+  const [counts, groups, held, previews, recent] = await Promise.all([
+    db.query(
+      "SELECT count(*)::int AS total, " +
+        "count(*) FILTER (WHERE e.created_at > now() - interval '7 days')::int AS last7, " +
+        "count(*) FILTER (WHERE e.created_at > now() - interval '30 days')::int AS last30, " +
+        "count(*) FILTER (WHERE e.status = 'new')::int AS awaiting, " +
+        "count(*) FILTER (WHERE e.delivery_status IN ('failed', 'uncertain'))::int AS email_problems " +
+        "FROM wvr_enquiries e WHERE " +
+        bySite,
+      p
+    ),
+    db.query(
+      "SELECT 'status' AS kind, e.status AS k, count(*)::int AS n FROM wvr_enquiries e WHERE " +
+        bySite +
+        " GROUP BY e.status " +
+        "UNION ALL SELECT 'source' AS kind, e.source AS k, count(*)::int AS n FROM wvr_enquiries e WHERE " +
+        bySite +
+        " GROUP BY e.source",
+      p
+    ),
+    db.query(
+      "SELECT count(*)::int AS held, " +
+        "count(*) FILTER (WHERE EXISTS (SELECT 1 FROM wvr_enquiries e WHERE e.project_id = pr.id))::int AS with_enquiry, " +
+        "count(*) FILTER (WHERE ph.created_at > now() - interval '7 days')::int AS last7 " +
+        "FROM wvr_projects pr JOIN wvr_photos ph ON ph.id = pr.photo_id WHERE ($1::text IS NULL OR pr.site = $1)",
+      [site]
+    ),
+    db.query("SELECT count(*)::int AS n FROM wvr_mockups m JOIN wvr_projects pr ON pr.id = m.project_id WHERE ($1::text IS NULL OR pr.site = $1)", [site]),
+    db.query(
+      "SELECT e.id, e.reference, e.created_at, e.contact_name, e.source, e.status, e.visual_id, e.postcode, e.snapshot -> 'address' ->> 'postcode' AS address_postcode, " +
+        "EXISTS (SELECT 1 FROM wvr_projects pr WHERE pr.id = e.project_id AND pr.photo_id IS NOT NULL) AS has_photo " +
+        "FROM wvr_enquiries e WHERE " +
+        bySite +
+        " ORDER BY e.created_at DESC, e.id LIMIT $3",
+      p.concat([RECENT])
+    ),
+  ]);
+  // Every status, and every source on the chosen site(s), is listed, even at 0.
+  const v1Sources = enquiries.SOURCES.filter((s) => !enquiries.V2_SOURCES.includes(s));
+  /** @type {Record<string, number>} */
+  const byStatus = Object.fromEntries(STATUSES.map((s) => [s, 0]));
+  /** @type {Record<string, number>} */
+  const bySource = Object.fromEntries((site === "v2" ? enquiries.V2_SOURCES : site === "v1" ? v1Sources : enquiries.SOURCES).map((s) => [s, 0]));
+  for (const g of groups.rows) (g.kind === "status" ? byStatus : bySource)[g.k] = g.n;
+  const c = counts.rows[0];
+  const h = held.rows[0];
+  return json(ctx.res, 200, {
+    ok: true,
+    site,
+    generatedAt: new Date().toISOString(),
+    enquiries: {
+      total: c.total,
+      last7Days: c.last7,
+      last30Days: c.last30,
+      awaitingContact: c.awaiting,
+      emailProblems: c.email_problems,
+      byStatus,
+      bySource,
+    },
+    photos: {
+      held: h.held,
+      withEnquiry: h.with_enquiry,
+      withoutEnquiry: h.held - h.with_enquiry,
+      last7Days: h.last7,
+      previews: previews.rows[0].n,
+    },
+    recent: recent.rows.map((e) => ({
+      id: e.id,
+      reference: e.reference,
+      createdAt: iso(e.created_at),
+      name: e.contact_name,
+      site: enquiries.siteOf(e.source),
+      source: e.source,
+      status: e.status,
+      roof: e.visual_id || null,
+      postcode: e.postcode || e.address_postcode || null,
+      hasPhoto: !!e.has_photo,
+    })),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// the enquiries as a spreadsheet (CSV)
+
+const EXPORT_COLUMNS = ["Reference", "Saved", "Site", "From page", "Status", "Name", "Phone", "Email", "Postcode", "Address", "Roof choice", "Message", "Photo", "Previews", "Email to roofer", "Marketing"];
+// The same words as the admin pages (public/WVROOFING/assets/js/operator/dom.js).
+const STATUS_WORDS = /** @type {Record<string, string>} */ ({
+  new: "New",
+  contacted: "Contacted",
+  survey_requested: "Survey requested",
+  quoted: "Quoted",
+  closed: "Closed",
+  spam_suspected: "Spam suspected",
+});
+const DELIVERY_WORDS = /** @type {Record<string, string>} */ ({
+  pending: "Not sent yet",
+  sending: "Sending",
+  sent: "Sent",
+  failed: "Failed",
+  uncertain: "May not have arrived",
+});
+const LONDON = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+/**
+ * A moment in UK time (GMT or BST, whichever applied then) as "YYYY-MM-DD HH:mm".
+ * @param {unknown} v
+ */
+function londonTime(v) {
+  const d = v ? new Date(/** @type {any} */ (v)) : null;
+  if (!d || isNaN(d.getTime())) return "";
+  /** @type {Record<string, string>} */
+  const at = {};
+  for (const x of LONDON.formatToParts(d)) at[x.type] = x.value;
+  return at.year + "-" + at.month + "-" + at.day + " " + at.hour + ":" + at.minute;
+}
+
+/**
+ * One spreadsheet cell: always in double quotes, with any quote inside doubled.
+ * A value a spreadsheet would run as a formula (one starting with an equals,
+ * plus, minus or at sign, a tab or a carriage return) gets an apostrophe in
+ * front, so it is shown as text.
+ * @param {unknown} v
+ */
+function csvCell(v) {
+  let s = v == null ? "" : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
+/** One spreadsheet line, ending CRLF. @param {unknown[]} cells */
+function csvRow(cells) {
+  return cells.map(csvCell).join(",") + "\r\n";
+}
+
+/** One enquiry's cells, in EXPORT_COLUMNS order. @param {Row} e */
+function exportCells(e) {
+  const snap = parsed(e.snapshot) || {};
+  const a = snap.address;
+  const address = a && Array.isArray(a.lines) ? a.lines.concat(a.postTown ? [a.postTown] : [], a.postcode ? [a.postcode] : []).join(", ") : "";
+  const p = e.visual_id && VISUALS.get(e.visual_id);
+  return [
+    e.reference,
+    londonTime(e.created_at),
+    enquiries.siteOf(e.source) === "v2" ? "Version 2" : "Version 1",
+    enquiries.SOURCE_WORDS[e.source] || e.source,
+    STATUS_WORDS[e.status] || e.status,
+    e.contact_name,
+    e.contact_phone,
+    e.contact_email,
+    postcodeOf(e, snap),
+    address,
+    p ? p.name + " - " + p.colourName : e.visual_id === "not-sure" ? "Not sure yet" : "",
+    e.notes,
+    e.has_photo ? "Yes" : "No",
+    e.previews,
+    DELIVERY_WORDS[e.delivery_status] || e.delivery_status,
+    e.marketing_opt_in ? "Yes" : "No",
+  ];
+}
+
+/**
+ * The enquiries (the same filters as the list; at most 5000, newest first) as a
+ * CSV file that opens in Excel or Numbers: UTF-8 with a byte-order mark, CRLF
+ * lines. Taking a copy of customers' details is recorded in the history first.
+ * @param {OperatorCtx} ctx
+ */
+async function exportEnquiries(ctx) {
+  const f = enquiryFilter(ctx.url.searchParams);
+  const rows = await enquiryRows(f, EXPORT_MAX);
+  // A function's reply can't be much over 4 MB on Vercel: a very large export stops
+  // short and says so in its last line, rather than failing altogether.
+  let text = "﻿" + csvRow(EXPORT_COLUMNS);
+  let count = 0;
+  for (const e of rows) {
+    const line = csvRow(exportCells(e));
+    if (Buffer.byteLength(text, "utf8") + Buffer.byteLength(line, "utf8") > EXPORT_MAX_BYTES) {
+      text += csvRow(["This spreadsheet stops after " + count + " enquiries (the most one download can hold). Choose a site, a status or a search to get the rest."]);
+      break;
+    }
+    text += line;
+    count++;
+  }
+  const body = Buffer.from(text, "utf8");
+  // The history notes that a copy was taken, and of what, but never the search text (it can be a customer's details).
+  await audit(db, ctx, "enquiry", "export", "exported", null, { count, site: f.site, status: f.status, searched: !!f.q, truncated: count < rows.length });
+  const name = "wv-roofing-enquiries-" + londonTime(new Date()).slice(0, 10) + (f.site ? "-" + f.site : "") + ".csv";
+  ctx.res.statusCode = 200;
+  ctx.res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  ctx.res.setHeader("Content-Disposition", 'attachment; filename="' + name + '"');
+  ctx.res.setHeader("Content-Length", String(body.length));
+  ctx.res.setHeader("Cache-Control", "private, no-store");
+  ctx.res.end(body);
 }
 
 /**
@@ -862,7 +1132,9 @@ module.exports = {
   login,
   logout,
   session,
+  overview,
   listEnquiries,
+  exportEnquiries,
   enquiryDetail,
   enquiryAerial,
   scope,
@@ -880,4 +1152,9 @@ module.exports = {
   jobImage,
   retryJob,
   STATUSES,
+  // the spreadsheet helpers, for tests
+  csvCell,
+  csvRow,
+  londonTime,
+  EXPORT_COLUMNS,
 };

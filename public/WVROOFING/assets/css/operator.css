@@ -1,5 +1,8 @@
-/* WV Roofing — the operator screen (A6). Builds on site.css's tokens, type and
-   controls (so dark mode comes for free); a denser, tool-like layout. */
+/* WV Roofing — the admin (the operator screen, A6). Builds on site.css's tokens,
+   type and controls (so dark mode comes for free); a denser, tool-like layout.
+   The same page, three ways: /WVROOFING/admin/ and /WVROOFING/operator/ in
+   version 1's look, /WVROOFING/2/admin/ with version 2's admin.css on top.
+   Everything here uses the tokens, so a theme that sets them follows. */
 
 body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
 
@@ -10,16 +13,27 @@ body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
 }
 .op-bar-inner {
   max-width: 1320px; margin-inline: auto; padding: 8px 16px;
-  display: flex; align-items: center; gap: 12px; min-height: 52px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 52px;
 }
 .op-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.01em; }
 .op-brand .brand-mark { width: 28px; height: 28px; flex: none; }
-.op-brand-sub { color: var(--text-2); font-weight: 400; }
+.op-brand-text { display: grid; line-height: 1.2; }
+.op-brand-name { font-weight: 600; }
+.op-brand-sub { color: var(--text-2); font-weight: 400; font-size: 13px; }
 .op-env {
   font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: var(--r-pill);
   background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--text);
 }
-.op-logout { margin-left: auto; }
+/* Back to the public site this admin belongs to. */
+.op-backlink {
+  margin-left: auto; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
+  font-size: 14px; color: var(--link);
+}
+.op-logout { flex: none; }
+/* On a phone the bar can take two lines, so it scrolls away rather than staying on top. */
+@media (max-width: 719px) {
+  .op-bar { position: static; }
+}
 
 /* ---------- Page ---------- */
 .op-main { max-width: 1320px; margin-inline: auto; padding: 16px 16px 64px; }
@@ -37,24 +51,60 @@ body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
 }
 .op-login-title { font-size: 28px; line-height: 1.14; letter-spacing: -0.015em; }
 .op-login-form .btn { width: 100%; }
+/* What isn't set up yet (from GET health), said before anyone tries to log in. */
+.op-setup {
+  background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 12px;
+  padding: 12px 14px; display: grid; gap: 6px; font-size: 14px; color: var(--text);
+}
 
-/* ---------- Toolbar and tabs ---------- */
-.op-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* ---------- Toolbar: which site, the tabs, refresh ---------- */
+.op-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 12px; }
+.op-site { grid-column: 1; grid-row: 1; justify-self: start; max-width: 100%; }
+#op-refresh { grid-column: 2; grid-row: 1; justify-self: end; }
+.op-tabs { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
+
+/* The site switch: one site, or both, for every tab. */
+.op-site {
+  display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px;
+  border-radius: min(22px, var(--r-pill)); border: 1px solid var(--hairline); background: var(--bg-elev);
+}
+.op-site-btn {
+  border: 0; background: transparent; color: var(--text); border-radius: var(--r-pill);
+  padding: 7px 14px; min-height: 36px; font-size: 14px; line-height: 1.2; cursor: pointer;
+}
+.op-site-btn:hover { background: var(--neutral); }
+.op-site-btn[aria-pressed="true"] { background: var(--navy); color: #fff; font-weight: 600; box-shadow: inset 0 0 0 1px var(--gold); }
+
+/* The tabs wrap onto a second line on a narrow screen: every tab stays in view. */
 .op-tabs {
-  display: inline-flex; padding: 3px; border-radius: var(--r-pill); background: var(--neutral); gap: 2px;
+  display: inline-flex; flex-wrap: wrap; padding: 3px; border-radius: min(22px, var(--r-pill)); background: var(--neutral); gap: 2px;
+  max-width: 100%;
 }
 .op-tab {
   border: 0; background: transparent; border-radius: var(--r-pill); padding: 7px 14px; min-height: 36px;
   font-size: 14px; cursor: pointer; color: var(--text); display: inline-flex; align-items: center; gap: 6px;
+  flex: none; white-space: nowrap;
 }
 .op-tab[aria-selected="true"] { background: var(--bg-elev); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); font-weight: 600; }
+
+@media (max-width: 719px) {
+  .op-site {
+    grid-column: 1 / -1; width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-radius: min(16px, var(--r-pill));
+  }
+  .op-site-btn { border-radius: min(12px, var(--r-pill)); padding: 6px 8px; font-size: 13px; }
+  #op-refresh { grid-row: 2; }
+  .op-tabs { grid-column: 1; grid-row: 2; border-radius: min(16px, var(--r-pill)); }
+  /* Fingers, not pointers: 44px to tap (body.op beats the plainer rules further down). */
+  body.op .op-site-btn, body.op .op-tab, body.op .op-chip, body.op .btn-sm, body.op .op-search-input { min-height: 44px; }
+}
 .op-count {
-  min-width: 20px; padding: 0 6px; border-radius: var(--r-pill); background: var(--err); color: #fff;
+  min-width: 20px; padding: 0 6px; border-radius: var(--r-pill); background: #c4291c; color: #fff;
   font-size: 12px; font-weight: 600; line-height: 20px; text-align: center;
 }
-/* A plain count (photos), not something waiting to be dealt with. */
-.op-count--quiet { background: var(--text-2); }
-#op-refresh { margin-left: auto; }
+/* A plain count (photos), not something waiting to be dealt with. Fixed colours, so
+   both light and dark mode keep white on a dark enough background (4.5:1 or more). */
+.op-count--quiet { background: #5c5c62; }
 
 /* ---------- List and detail ---------- */
 .op-split { display: grid; gap: 16px; }
@@ -130,7 +180,8 @@ body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
 .op-kv dt { color: var(--text-2); }
 .op-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 
-.op-table-wrap { overflow-x: auto; }
+/* position: relative keeps hidden screen-reader text (position: absolute) inside the scrolling box too. */
+.op-table-wrap { overflow-x: auto; position: relative; }
 .op-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .op-table th, .op-table td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--hairline-2); vertical-align: top; }
 .op-table th { color: var(--text-2); font-weight: 600; white-space: nowrap; }
@@ -237,6 +288,63 @@ body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
 #op-costs { display: grid; gap: 14px; }
 .op-big { font-family: var(--font-display); font-size: 28px; line-height: 1.14; font-weight: 600; letter-spacing: -0.015em; }
 
+/* Overview: the first tab after logging in */
+.op-overview-view, #op-overview { display: grid; gap: 14px; min-width: 0; }
+.op-ov-head { display: grid; gap: 4px; }
+.op-ov-title { font-size: 24px; line-height: 1.17; letter-spacing: -0.012em; }
+.op-ov-links a { display: inline-block; padding: 4px 0; }
+.op-ov-grid {
+  display: grid; gap: 14px; align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+}
+.op-ov-wide { grid-column: 1 / -1; }
+.op-ov-total { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
+.op-ov-num { font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 600; letter-spacing: -0.02em; }
+.op-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.op-stat { background: var(--bg-alt); border-radius: min(12px, var(--r-card)); padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.op-stat dt { font-size: 13px; color: var(--text-2); }
+.op-stat dd { margin: 0; font-size: 22px; line-height: 1.2; font-weight: 600; }
+.op-stat.is-bad dd { color: var(--err); }
+.op-ov-card .notice { padding: 12px 14px; border-radius: min(12px, var(--r-card)); }
+.op-setup-list { list-style: none; padding: 0; margin: 0; display: grid; }
+.op-setup-list li {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--hairline-2); font-size: 14px;
+}
+.op-ov-list {
+  list-style: none; padding: 0; margin: 0; display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+}
+.op-ov-item, .op-ov-photo {
+  width: 100%; height: 100%; text-align: left; border: 1px solid var(--hairline-2); background: var(--bg-elev); color: var(--text);
+  border-radius: min(14px, var(--r-card)); cursor: pointer; transition: border-color 0.15s ease;
+}
+.op-ov-item { padding: 12px 14px; display: grid; gap: 4px; align-content: start; }
+.op-ov-item:hover, .op-ov-photo:hover { border-color: var(--hairline); }
+.op-ov-photos {
+  list-style: none; padding: 0; margin: 0; display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+}
+.op-ov-photo { padding: 0; overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
+.op-ov-photo-body { display: grid; gap: 4px; padding: 8px 10px 10px; align-content: start; }
+
+/* Contacts: one table of everyone who sent an enquiry, and the spreadsheet */
+.op-contacts-view { display: grid; gap: 12px; min-width: 0; }
+.op-contacts-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+.op-contacts-tools .op-search { flex: 1 1 260px; max-width: 520px; margin: 0; }
+.op-contacts-view .op-filters { margin-bottom: 0; }
+.op-contacts-card { padding: 6px 0 6px 16px; }
+/* Wide enough to read; it scrolls sideways inside its card on a phone. */
+.op-contacts { min-width: 1080px; }
+.op-contacts th, .op-contacts td { padding-right: 14px; }
+.op-contacts tbody tr:hover td { background: var(--bg-alt); }
+.op-contacts .op-ref { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; font-weight: 600; min-height: 32px; text-align: left; }
+.op-nowrap { white-space: nowrap; }
+.op-msg-cell { min-width: 220px; max-width: 380px; }
+.op-msg { overflow-wrap: anywhere; }
+.op-msg summary { cursor: pointer; color: var(--text); }
+.op-msg p { margin-top: 6px; white-space: pre-wrap; }
+
 /* Confirm dialog */
 .op-dialog {
   border: 0; border-radius: var(--r-card); padding: 22px 22px 18px; width: min(460px, calc(100vw - 32px));
@@ -248,5 +356,5 @@ body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
 .op-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .op-item, .op-photo-card { transition: none; }
+  .op-item, .op-photo-card, .op-ov-item, .op-ov-photo { transition: none; }
 }

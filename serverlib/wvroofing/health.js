@@ -1,11 +1,14 @@
 // WV Roofing — GET /api/wvroofing/health: what is switched on, and why not.
 // Public by design: it reports states and reasons only, never secrets or figures.
+// "setup" is the owner's checklist for the admin login screen: yes or no for
+// each setting, never a value (not even part of one).
 "use strict";
 
 const core = require("./core.js");
 const db = require("./db.js");
 const openai = require("./openai.js");
-const { capabilities, isTest } = require("./capabilities.js");
+const storage = require("./storage.js");
+const { capabilities, capability, isTest } = require("./capabilities.js");
 
 /** @type {{ at: number, value: { ok: boolean, version?: number } | null }} */
 let schemaCache = { at: 0, value: null };
@@ -37,6 +40,40 @@ async function budgetState(cfg) {
   }
 }
 
+/**
+ * Does the admin password setting look like a hash made by
+ * scripts/wvroofing/operator-hash.mjs ("scrypt:N:r:p:salt:hash")? A value pasted
+ * wrongly can never open a session, so it counts as not set.
+ * @param {string | undefined} stored
+ */
+function passwordHashSet(stored) {
+  const parts = String(stored || "").trim().split(":");
+  return parts.length === 6 && parts[0] === "scrypt" && parts.every((x) => x.length > 0);
+}
+
+/**
+ * What the owner has set up: one yes or no per setting, for the admin login
+ * screen. In the test environment the database, photo store and the two secrets
+ * are stand-ins, so they always count as set; the admin password never does
+ * until a hash is set, and enquiry emails follow their capability (after the
+ * needs_storage check below).
+ * @param {Record<string, string | undefined>} env
+ * @param {Record<string, import("./capabilities.js").Capability>} caps
+ */
+function setupState(env, caps) {
+  const test = isTest(env);
+  return {
+    database: db.configured(env),
+    photoStore: storage.configured(env),
+    sessionSecret: test || !!env.WVR_SESSION_SECRET,
+    cronSecret: test || !!env.CRON_SECRET,
+    adminPassword: passwordHashSet(env.WVR_OPERATOR_PASSWORD_HASH),
+    // Its own settings (inbox, email login, switch), not whether storage is there
+    // yet: missing storage has its own lines above.
+    enquiryEmail: capability("enquiry_delivery", env).state === "enabled" || caps.enquiry_delivery.state === "enabled",
+  };
+}
+
 /** @param {import("./router.js").Ctx} ctx */
 async function health(ctx) {
   const env = process.env;
@@ -64,6 +101,7 @@ async function health(ctx) {
     region: env.VERCEL_REGION || null,
     schema,
     capabilities: caps,
+    setup: setupState(env, caps),
     imageModel: cfg.model,
     renders: {
       model: cfg.model,
@@ -75,4 +113,4 @@ async function health(ctx) {
   });
 }
 
-module.exports = { health };
+module.exports = { health, setupState };

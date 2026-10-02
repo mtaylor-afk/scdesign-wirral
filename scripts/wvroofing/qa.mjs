@@ -15,9 +15,12 @@
 // others on tap; the served composite is compared with the photo outside the
 // roof), a refresh that brings everything back without rendering twice, an
 // enquiry with a reference, and "Delete my photo". Then the operator screen
-// (local test environment only, with its throwaway password): log in, find a
-// customer's enquiry, photo, render and satellite view, correct the scope,
-// change the status, the phone layout, delete after confirming, log out.
+// (local test environment only, with its throwaway password): log in to the
+// overview (counts, set-up), the contacts table and its spreadsheet (CSV), the
+// site switch, find a customer's enquiry, photo, render and satellite view,
+// correct the scope, change the status, the phone layout, delete after
+// confirming, log out; then version 2's admin on a phone. The admin pages for
+// each version (/WVROOFING/admin/, /WVROOFING/2/admin/) load cleanly anywhere.
 // Pages are served with their real headers (incl. CSP), so a CSP violation
 // shows up as a console error. With --live (a deployed copy) nothing is sent
 // that could reach the roofer or cost money: the enquiry forms are filled in but
@@ -113,6 +116,9 @@ function outlinePng(w, h) {
   return "data:image/png;base64," + Buffer.concat([Buffer.from("89504e470d0a1a0a", "hex"), chunk("IHDR", ihdr), chunk("IDAT", zlib.deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]).toString("base64");
 }
 
+// The QA customer's contact details, looked for in the admin's Contacts tab and spreadsheet.
+const QA_CONTACT = { phone: "0151 496 0000", dial: "01514960000", email: "qa.operator@example.com", message: "QA: please ring after 5pm." };
+
 /** 1 Test Road (a semi, pin confirmed), a sample photo, an outline, one render, then an enquiry. */
 async function customerEnquiry() {
   const run = "qa-op-" + Date.now();
@@ -137,7 +143,17 @@ async function customerEnquiry() {
   }
   const e = await apiCall("POST", "projects/" + p.id + "/enquiry", {
     token: p.token,
-    body: { name: "QA Operator Check", phone: "0151 496 0000", consent: true, elapsedMs: 9000, idempotencyKey: run + "-e", product: "welsh-slate", includeImages: true },
+    body: {
+      name: "QA Operator Check",
+      phone: QA_CONTACT.phone,
+      email: QA_CONTACT.email,
+      message: QA_CONTACT.message,
+      consent: true,
+      elapsedMs: 9000,
+      idempotencyKey: run + "-e",
+      product: "welsh-slate",
+      includeImages: true,
+    },
   });
   return { ref: e.json && e.json.reference, status: e.status, project: p };
 }
@@ -603,6 +619,67 @@ try {
     const inApp = await page.waitForSelector("#op-app:not([hidden])", { timeout: 15000 }).then(() => true).catch(() => false);
     const kept = await page.evaluate(() => [Object.keys(localStorage).length, !!sessionStorage.getItem("wvr.operator.session")]);
     ok("operator: logged in; the key is kept for this tab only", inApp && kept[0] === 0 && kept[1], JSON.stringify(kept));
+    // The overview comes first: the counts, whether the site is set up, and the newest enquiries.
+    const overview = await page.waitForSelector("#op-overview .op-stat", { timeout: 15000 }).then(() => true).catch(() => false);
+    const ovText = overview ? ((await page.textContent("#op-overview")) || "").replace(/\s+/g, " ") : "";
+    const ovFirst = (await page.getAttribute("#tab-overview", "aria-selected")) === "true" && (await page.isVisible("#op-view-overview"));
+    ok(
+      "operator: the overview shows first, with the counts and the set-up card",
+      overview && ovFirst && /Enquiries\s*\d+\s*enquir/.test(ovText) && /Awaiting contact/.test(ovText) && /Photos saved\s*\d+/.test(ovText) && /Set-up/.test(ovText) && /Database \(Neon\)/.test(ovText),
+      ovText.slice(0, 160)
+    );
+    const setupTicks = await page.locator("#op-overview .op-setup-list li").count();
+    ok("operator: the set-up card lists all six settings", setupTicks === 6, String(setupTicks));
+    const latest = await page.locator(".op-ov-item", { hasText: made.ref || "none" }).count();
+    ok("operator: the overview's latest enquiries include the new one", latest === 1, String(latest));
+    const sites = await page.$$eval("#op-site button", (bs) => bs.map((b) => b.textContent + "=" + b.getAttribute("aria-pressed")));
+    ok("operator: the site switch offers both sites and each version, 'Both sites' chosen here", sites.join("|") === "Both sites=true|Version 1 · Visualiser=false|Version 2 · Roof Cam=false", sites.join(" | "));
+    await shot(page, { path: path.join(OUT, "operator-overview-desktop.png"), fullPage: true });
+
+    // Contacts: the QA customer's phone and email, as links; then the spreadsheet.
+    await page.click("#tab-contacts");
+    const contactRow = page.locator("#op-contacts-list tbody tr", { hasText: made.ref || "none" });
+    const inContacts = await contactRow.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+    const rowText = inContacts ? ((await contactRow.textContent()) || "").replace(/\s+/g, " ") : "";
+    const hrefs = inContacts ? await contactRow.evaluate((tr) => [...tr.querySelectorAll("a")].map((a) => a.getAttribute("href"))) : [];
+    ok(
+      "operator: the contacts table lists the new enquiry with its email and phone",
+      inContacts && rowText.includes(QA_CONTACT.email) && rowText.includes(QA_CONTACT.phone) && hrefs.includes("mailto:" + QA_CONTACT.email) && hrefs.includes("tel:" + QA_CONTACT.dial),
+      rowText.slice(0, 160)
+    );
+    const csv = await page.evaluate(async () => {
+      const r = await fetch("/api/wvroofing/operator/export/enquiries", { headers: { Authorization: "Bearer " + sessionStorage.getItem("wvr.operator.session") }, cache: "no-store" });
+      const buf = new Uint8Array(await r.arrayBuffer());
+      const text = new TextDecoder("utf-8").decode(buf);
+      return {
+        status: r.status,
+        type: r.headers.get("Content-Type") || "",
+        disposition: r.headers.get("Content-Disposition") || "",
+        bom: buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf,
+        head: text.split("\r\n")[0],
+        text,
+      };
+    });
+    ok(
+      "operator: the spreadsheet (CSV) answers 200 text/csv with the header row and the new enquiry",
+      csv.status === 200 && /^text\/csv/.test(csv.type) && /attachment; filename="wv-roofing-enquiries-\d{4}-\d{2}-\d{2}\.csv"/.test(csv.disposition) && csv.bom && csv.head.startsWith('"Reference","Saved","Site","From page","Status","Name","Phone","Email"') && csv.text.includes(made.ref) && csv.text.includes(QA_CONTACT.email),
+      csv.status + " " + csv.type + " " + csv.head.slice(0, 80)
+    );
+    const download = page.waitForEvent("download", { timeout: 15000 }).catch(() => null);
+    await page.click("#op-contacts-csv");
+    const saved = await download;
+    const savedName = saved ? saved.suggestedFilename() : "";
+    const dlStatus = await page.waitForFunction(() => /Downloaded \d+ enquir/.test(document.querySelector("#op-status").textContent), null, { timeout: 10000 }).then(() => true).catch(() => false);
+    ok("operator: 'Download spreadsheet (CSV)' saves the file and says how many rows", !!saved && /^wv-roofing-enquiries-\d{4}-\d{2}-\d{2}\.csv$/.test(savedName) && dlStatus, savedName || "no download");
+    // The switch at the top narrows every tab: the QA enquiry is from version 1.
+    await page.click('#op-site button[data-site="v2"]');
+    const narrowed = await contactRow.waitFor({ state: "detached", timeout: 10000 }).then(() => true).catch(() => false);
+    ok("operator: choosing version 2 at the top hides the version 1 enquiry from the contacts", narrowed && (await page.getAttribute('#op-site button[data-site="v2"]', "aria-pressed")) === "true");
+    await page.click('#op-site button[data-site="both"]');
+    await contactRow.waitFor({ timeout: 10000 }).catch(() => null);
+    await shot(page, { path: path.join(OUT, "operator-contacts-desktop.png"), fullPage: true });
+
+    await page.click("#tab-enquiries");
     const item = page.locator(".op-item", { hasText: made.ref || "none" });
     const listed = await item.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
     ok("operator: the new enquiry is in the list", listed);
@@ -715,6 +792,24 @@ try {
       await page.click(".op-back");
       const listBack = await page.isVisible(".op-list-pane");
       ok("operator (phone width): one pane at a time, back to the list, no overflow", listHidden && listBack && phoneOverflow <= 0, "overflow " + phoneOverflow + "px");
+      // The contacts table is wider than a phone: it scrolls inside its card, never the page.
+      await page.click("#tab-contacts");
+      await page.waitForSelector("#op-contacts-list table", { timeout: 10000 }).catch(() => null);
+      await page.waitForTimeout(300);
+      const contactsOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      const tableScrolls = await page.evaluate(() => {
+        const w = document.querySelector("#op-contacts-list");
+        return !!w && w.scrollWidth > w.clientWidth;
+      });
+      ok("operator (phone width): the contacts table scrolls inside its card, not the page", contactsOverflow <= 0 && tableScrolls, "overflow " + contactsOverflow + "px");
+      await shot(page, { path: path.join(OUT, "operator-contacts-phone.png"), fullPage: true });
+      await page.click("#tab-overview");
+      await page.waitForSelector("#op-overview .op-stat", { timeout: 10000 }).catch(() => null);
+      await page.waitForTimeout(300);
+      const overviewOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      ok("operator (phone width): the overview fits, with no sideways scroll", overviewOverflow <= 0, "overflow " + overviewOverflow + "px");
+      await shot(page, { path: path.join(OUT, "operator-overview-phone.png"), fullPage: true });
+      await page.click("#tab-enquiries");
       await page.setViewportSize({ width: 1280, height: 900 });
       // Delete it (after confirming), which also tidies up what this check made.
       await item.click();
@@ -733,7 +828,59 @@ try {
     ok("operator: logging out ends the session on the server and in the tab", after.status === 401 && cleared === null, String(after.status));
     ok("operator screen has no console errors", errors.length === 0, errors.join(" | "));
     await ctx.close();
-  } else skip("operator screen: login, enquiry, measurement and estimate, search, costs, delete, logout", "a live site: Matthew logs in himself");
+
+    // Version 2's admin: the same screen in the Roof Cam's look, starting on version 2.
+    const v2ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const v2page = await v2ctx.newPage();
+    const v2errors = watch(v2page);
+    await v2page.goto(BASE + "/WVROOFING/2/admin/", { waitUntil: "load", timeout: 45000 });
+    await v2page.waitForSelector("#op-login:not([hidden])", { timeout: 10000 }).catch(() => null);
+    await v2page.fill("#op-password", require("../../serverlib/wvroofing/auth.js").TEST_OPERATOR_PASSWORD);
+    await v2page.click("#op-login-btn");
+    const v2overview = await v2page.waitForSelector("#op-overview .op-stat", { timeout: 15000 }).then(() => true).catch(() => false);
+    const v2chosen = await v2page.getAttribute('#op-site button[data-site="v2"]', "aria-pressed").catch(() => null);
+    const v2title = ((await v2page.textContent("#op-overview .op-ov-title").catch(() => "")) || "").replace(/\s+/g, " ");
+    const v2overflow = await v2page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    ok("version 2 admin (phone): logs in to the overview of version 2, with no sideways scroll", v2overview && v2chosen === "true" && /Roof Cam/.test(v2title) && v2overflow <= 0, v2title + ", overflow " + v2overflow + "px");
+    await shot(v2page, { path: path.join(OUT, "admin-v2-overview-phone.png"), fullPage: true });
+    await v2page.click("#tab-contacts");
+    const v2contacts = await v2page.waitForFunction(() => /contacts? from Version 2/.test(document.querySelector("#op-status").textContent), null, { timeout: 10000 }).then(() => true).catch(() => false);
+    ok("version 2 admin: the contacts follow the site switch (version 2)", v2contacts, (await v2page.textContent("#op-status")) || "");
+    await v2page.click("#op-logout");
+    await v2page.waitForSelector("#op-login:not([hidden])", { timeout: 10000 }).catch(() => null);
+    ok("version 2 admin has no console errors", v2errors.length === 0, v2errors.join(" | "));
+    await v2ctx.close();
+  } else skip("operator screen: login, enquiry, measurement and estimate, search, contacts and the spreadsheet, costs, delete, logout", "a live site: Matthew logs in himself");
+
+  // ---- the admin pages for each version: the login screen loads cleanly (any copy, no login) ----
+  for (const vp of VIEWPORTS) {
+    const actx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: vp.isMobile, hasTouch: vp.hasTouch });
+    for (const [p, site] of [
+      ["/WVROOFING/admin/", "v1"],
+      ["/WVROOFING/2/admin/", "v2"],
+    ]) {
+      const apage = await actx.newPage();
+      const aerrors = watch(apage);
+      await apage.goto(BASE + p, { waitUntil: "load", timeout: 45000 });
+      const login = await apage.waitForSelector("#op-login:not([hidden])", { timeout: 10000 }).then(() => true).catch(() => false);
+      await apage.waitForTimeout(600);
+      const facts = await apage.evaluate(() => ({
+        site: document.body.dataset.site,
+        robots: (document.querySelector('meta[name="robots"]') || {}).content || "",
+        h1: document.querySelectorAll("h1").length,
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+        back: document.querySelector(".op-backlink")?.getAttribute("href") || "",
+      }));
+      ok(
+        `${vp.name} ${p} admin login loads cleanly (no console errors, noindex, one h1, no sideways scroll)`,
+        login && aerrors.length === 0 && facts.site === site && /noindex/.test(facts.robots) && facts.h1 === 1 && facts.overflow <= 0 && facts.back === (site === "v2" ? "/WVROOFING/2/" : "/WVROOFING/"),
+        aerrors.join(" | ") || JSON.stringify(facts)
+      );
+      await shot(apage, { path: path.join(OUT, `${vp.name}-admin-${site}-login.png`), fullPage: true });
+      await apage.close();
+    }
+    await actx.close();
+  }
 } finally {
   await browser.close();
 }
