@@ -29,6 +29,16 @@
 /before-and-after    /projects/   301
 /before-and-after/   /projects/   301
 
+# >>> MTCW preview >>>
+# MTCW design preview: Cloudflare Pages paths are case-sensitive, so the
+# lowercase URL reaches the uppercase folder. Bare and trailing-slash forms,
+# as above. Written by the MTCW project's scripts/deploy-preview.mjs, which
+# replaces everything between these markers on each run.
+/mtcw      /MTCW/         301
+/mtcw/     /MTCW/         301
+/mtcw/*    /MTCW/:splat   301
+# <<< MTCW preview <<<
+
 # --- WV Roofing v2 (Sep 2026): Cloudflare Pages paths are case-sensitive, so the
 # lowercase URL reaches the uppercase folder. Both forms, as above.
 /wvroofing/2      /WVROOFING/2/        301

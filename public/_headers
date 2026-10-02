@@ -43,6 +43,25 @@
   X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
   Cache-Control: no-store, max-age=0
 
+# >>> MTCW preview >>>
+# /MTCW - design preview of a separate concept site, parked on this host for
+# review (same arrangement as /WVROOFING). Unlisted and never indexed: this
+# X-Robots-Tag plus every page's own <meta name="robots">; no robots.txt entry,
+# sitemap, llms.txt line or link on this site points to it. Security headers
+# come from /* above and are NOT repeated (Cloudflare Pages appends matching
+# rules). Content-Security-Policy is the one name shared with /*: browsers
+# enforce every CSP they receive, so /*'s frame-ancestors policy and this
+# stricter preview policy (same-origin only, no inline script) both apply.
+# Written by the MTCW project's scripts/deploy-preview.mjs, which replaces
+# everything between these markers on each run: change it there, not here.
+/MTCW
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+/MTCW/*
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+# <<< MTCW preview <<<
+
 # /WVROOFING — a separate concept project (WV Roofing) parked on this host for
 # testing. Must never be indexed and is deliberately NOT listed anywhere public
 # (no robots.txt entry, sitemap, llms.txt or links) — this header plus each
