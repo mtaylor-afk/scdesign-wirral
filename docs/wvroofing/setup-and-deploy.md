@@ -56,13 +56,19 @@ Vercel.
 
 ### The quick way: SET UP WV ROOFING ADMIN
 
-Added 2026-10-01. **SET UP WV ROOFING ADMIN.cmd** on the Desktop does steps 1 and 2 below, and the enquiry
-email part of step 4, in one go. It runs `scripts/wvroofing/setup-vercel.mjs` in its own window. Only
-Matthew runs it; Claude never sees the token or the password.
+Added 2026-10-01. The set-up wizard (`scripts/wvroofing/setup-vercel.mjs`) does steps 1 and 2 below, and
+the enquiry email part of step 4, in one go. Only Matthew runs it; Claude never sees the token or the
+password.
+
+**How it runs.** Since 2026-10-02, **PUSH WV ROOFING.cmd** on the Desktop runs it straight after a
+successful push, in the same window, until it has finished once (the last line of
+`C:\dev\_wvroofing-src\setup-result.log` says `RESULT=OK`); after that, pushes skip it. Typing **S** at its
+first question skips it for that push. **SET UP WV ROOFING ADMIN.cmd** runs the wizard on its own, without
+pushing, for a re-run later (for example to change the admin password).
 
 **Before you start**
 
-- Push the latest work with **PUSH WV ROOFING.cmd**, so the admin pages exist and the redeploy picks up
+- The push comes first (PUSH WV ROOFING does that), so the admin pages exist and the redeploy picks up
   the newest code.
 - Make a Vercel token at `https://vercel.com/account/tokens`: **Create Token**, Scope = the team that owns
   scdesign-wirral, Expiration = 1 day. You can delete it afterwards.
