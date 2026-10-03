@@ -5,6 +5,22 @@ lawful basis, by whom and where, for how long, and how requests are handled. It 
 Roofing isn't trading, the controller's name and address are still placeholders, and the record must be
 reviewed, with a legal and privacy review, before launch.
 
+**Update 2026-10-03: where things are stored now.** Until WV Roofing has a database and Blob store of its
+own, nothing is in Neon or Vercel Blob. Everything listed below as "Neon" or "Vercel Blob" is instead held
+by **Supabase**:
+
+- **Where.** WV Roofing's own private bucket, `wvroofing`, in the Supabase project SC Design already has
+  (`yxapzkiodjecladjziom`).
+- **Files.** Photos, previews, renders, plans and drawings are files in that bucket.
+- **Rows.** The database rows are saved there as one compressed snapshot. Each function instance also
+  keeps a copy in memory while it runs.
+- **Region.** Not recorded here; check it in Supabase's dashboard before launch.
+- **Who can open it.** Only WV Roofing's server, with the service key. SC Design's server has the same
+  key, so the separation is by convention and code: WV Roofing never reads SC Design's data, and SC
+  Design's code never touches this bucket.
+
+The public privacy notices (version 1's privacy page and version 2's about page) name Supabase.
+
 ## 1. What is processed
 
 | Data | From | Why | Stored |
@@ -76,7 +92,8 @@ launch, and if the measurement features (Release B) change what is collected.
 | Recipient | Role | What they receive | Where | Basis for any transfer | Status |
 |---|---|---|---|---|---|
 | **Vercel** (functions, Blob) | Processor | Everything the API handles; the stored files | Blob: London. Functions: Washington DC (`iad1`) unless the region pin to London is accepted | Vercel's DPA. Processing in the US is a restricted transfer | Check Vercel's DPA and its transfer mechanism (Data Privacy Framework / UK Extension or IDTA) before launch |
-| **Neon** (via the Vercel Marketplace) | Processor | The database rows | London (`aws-eu-west-2`) | Neon's DPA | Review the DPA before launch |
+| **Neon** (via the Vercel Marketplace) | Processor | The database rows, once WV Roofing has its own database (not yet, 2026-10-03) | London (`aws-eu-west-2`) | Neon's DPA | Review the DPA before launch |
+| **Supabase** (SC Design's project, WV Roofing's own private bucket) | Processor | Since 2026-10-03: the stored files and the saved database rows | The project's region (check in the Supabase dashboard) | Supabase's DPA (supabase.com/legal/dpa) | Confirm the region and review the DPA before launch, or move to WV Roofing's own store |
 | **OpenAI** | Processor | The photo, outline and a fixed prompt; only with consent | Processed in the US | OpenAI's DPA with its UK Addendum, plus a short transfer risk assessment. The UK Addendum was seen only in search results; read the DPA before launch | API data isn't used for training by default. Abuse-monitoring copies are kept up to 30 days |
 | **Ideal Postcodes** | Processor | The postcode | UK | none | Review its terms |
 | **Google Maps Platform** | Provides the satellite image, which the customer's browser loads directly | The location of the address and the viewer's IP address | Google | Google's terms; the notice says so | Display only. Nothing is stored, traced or sent on |
@@ -93,7 +110,9 @@ See `retention.md`. In short:
 - Operator history: 12 months.
 - Security records: 7 days to 48 hours.
 - Cost records, with no personal data once the project is gone: 13 months.
-- Provider copies: Neon history 6 hours; Blob cache 60 seconds; OpenAI up to 30 days.
+- Provider copies: Neon history 6 hours; Blob cache 60 seconds; OpenAI up to 30 days. In snapshot mode
+  (since 2026-10-03), deleted rows remain in the previous ("spare") snapshot until the next save replaces
+  it, normally within minutes of activity.
 
 ## 6. Requests from customers
 

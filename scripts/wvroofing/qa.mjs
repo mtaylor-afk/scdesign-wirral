@@ -604,7 +604,7 @@ try {
     await ctx.close();
   }
 
-  // ---- operator screen (local test environment only: its throwaway password) -----------
+  // ---- operator screen (local test environment only, with the built-in login) -----------
   if (!LIVE) {
     const made = await customerEnquiry();
     ok("operator: a customer's enquiry to look at was made", made.status === 201 && REF.test(made.ref || ""), made.status + " " + made.ref);
@@ -614,7 +614,8 @@ try {
     await page.goto(BASE + "/WVROOFING/operator/", { waitUntil: "load", timeout: 45000 });
     const loginShown = await page.waitForSelector("#op-login:not([hidden])", { timeout: 10000 }).then(() => true).catch(() => false);
     ok("operator: the login shows first", loginShown);
-    await page.fill("#op-password", require("../../serverlib/wvroofing/auth.js").TEST_OPERATOR_PASSWORD);
+    await page.fill("#op-username", require("../../serverlib/wvroofing/auth.js").DEFAULT_OPERATOR_USER);
+    await page.fill("#op-password", require("../../serverlib/wvroofing/auth.js").DEFAULT_OPERATOR_PASSWORD);
     await page.click("#op-login-btn");
     const inApp = await page.waitForSelector("#op-app:not([hidden])", { timeout: 15000 }).then(() => true).catch(() => false);
     const kept = await page.evaluate(() => [Object.keys(localStorage).length, !!sessionStorage.getItem("wvr.operator.session")]);
@@ -625,7 +626,7 @@ try {
     const ovFirst = (await page.getAttribute("#tab-overview", "aria-selected")) === "true" && (await page.isVisible("#op-view-overview"));
     ok(
       "operator: the overview shows first, with the counts and the set-up card",
-      overview && ovFirst && /Enquiries\s*\d+\s*enquir/.test(ovText) && /Awaiting contact/.test(ovText) && /Photos saved\s*\d+/.test(ovText) && /Set-up/.test(ovText) && /Database \(Neon\)/.test(ovText),
+      overview && ovFirst && /Enquiries\s*\d+\s*enquir/.test(ovText) && /Awaiting contact/.test(ovText) && /Photos saved\s*\d+/.test(ovText) && /Set-up/.test(ovText) && /Database\s*✓ Set up/.test(ovText) && /Admin login\s*✓ Set up/.test(ovText),
       ovText.slice(0, 160)
     );
     const setupTicks = await page.locator("#op-overview .op-setup-list li").count();
@@ -835,7 +836,8 @@ try {
     const v2errors = watch(v2page);
     await v2page.goto(BASE + "/WVROOFING/2/admin/", { waitUntil: "load", timeout: 45000 });
     await v2page.waitForSelector("#op-login:not([hidden])", { timeout: 10000 }).catch(() => null);
-    await v2page.fill("#op-password", require("../../serverlib/wvroofing/auth.js").TEST_OPERATOR_PASSWORD);
+    await v2page.fill("#op-username", require("../../serverlib/wvroofing/auth.js").DEFAULT_OPERATOR_USER);
+    await v2page.fill("#op-password", require("../../serverlib/wvroofing/auth.js").DEFAULT_OPERATOR_PASSWORD);
     await v2page.click("#op-login-btn");
     const v2overview = await v2page.waitForSelector("#op-overview .op-stat", { timeout: 15000 }).then(() => true).catch(() => false);
     const v2chosen = await v2page.getAttribute('#op-site button[data-site="v2"]', "aria-pressed").catch(() => null);

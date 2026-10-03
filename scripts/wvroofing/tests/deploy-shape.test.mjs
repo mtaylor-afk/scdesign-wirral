@@ -53,6 +53,16 @@ test("the cron path resolves to the cron route", () => {
   assert.equal(router.match(r.path).route.auth, "cron");
 });
 
+test("snapshot mode can run on Vercel: PGlite is a runtime dependency and its WebAssembly files are bundled", () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(repo, "vercel.json"), "utf8"));
+  const include = cfg.functions["api/wvroofing/app.js"].includeFiles;
+  assert.equal(include, "{db/wvroofing/**,node_modules/@electric-sql/pglite/dist/**}");
+  for (const f of ["pglite.wasm", "pglite.data", "initdb.wasm"]) assert.ok(fs.existsSync(path.join(repo, "node_modules/@electric-sql/pglite/dist", f)), f);
+  const pkg = JSON.parse(fs.readFileSync(path.join(repo, "package.json"), "utf8"));
+  assert.ok(pkg.dependencies["@electric-sql/pglite"], "a dependency, not only a dev one");
+  assert.match(fs.readFileSync(path.join(repo, "serverlib/wvroofing/db.js"), "utf8"), /import\("@electric-sql\/pglite"\)/, "a literal import Vercel can trace");
+});
+
 test("the migration folder that vercel.json bundles exists and is well formed", () => {
   const dir = path.join(repo, "db", "wvroofing");
   const files = fs.readdirSync(dir);

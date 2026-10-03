@@ -49,7 +49,7 @@ const ok = (r, want) => {
 };
 
 async function login() {
-  return ok(await api("POST", "operator/login", { body: { password: auth.TEST_OPERATOR_PASSWORD }, ip: nextIp() }), 200).token;
+  return ok(await api("POST", "operator/login", { body: { username: "222", password: auth.TEST_OPERATOR_PASSWORD }, ip: nextIp() }), 200).token;
 }
 
 async function jpeg(w, h, shade = 120) {
@@ -198,7 +198,7 @@ test("health: the set-up checklist is yes or no for each setting, never a value"
 
   try {
     delete process.env.WVR_OPERATOR_PASSWORD_HASH;
-    assert.equal(ok(await api("GET", "health"), 200).setup.adminPassword, false, "no admin password yet");
+    assert.equal(ok(await api("GET", "health"), 200).setup.adminPassword, true, "no hash of the owner's own: the built-in login works");
     process.env.WVR_OPERATOR_PASSWORD_HASH = "pasted the password itself";
     assert.equal(ok(await api("GET", "health"), 200).setup.adminPassword, false, "a value that isn't a hash can never log in, so it isn't set");
     delete process.env.WVR_CAP_ENQUIRY_DELIVERY;
@@ -211,7 +211,14 @@ test("health: the set-up checklist is yes or no for each setting, never a value"
 
 test("the set-up checklist outside the test environment follows each setting", () => {
   const bare = {};
-  assert.deepEqual(health.setupState(bare, capabilities(bare)), { database: false, photoStore: false, sessionSecret: false, cronSecret: false, adminPassword: false, enquiryEmail: false });
+  assert.deepEqual(health.setupState(bare, capabilities(bare)), { database: false, photoStore: false, sessionSecret: false, cronSecret: false, adminPassword: true, enquiryEmail: false });
+  // SC Design's Supabase project already on the Vercel project: everything but email, with nothing to set.
+  const sc = { SC_SUPABASE_URL: "https://abcdefghijklmnop.supabase.co", SC_SUPABASE_SERVICE_ROLE_KEY: "k".repeat(40), SC_ADMIN_SESSION_SECRET: "s".repeat(40) };
+  assert.deepEqual(health.setupState(sc, capabilities(sc)), { database: true, photoStore: true, sessionSecret: true, cronSecret: true, adminPassword: true, enquiryEmail: false });
+  assert.equal(capabilities(sc).enquiry_storage.state, "enabled");
+  // ... but a database of the owner's own always wins (and then needs the full set-up).
+  const both = Object.assign({}, sc, { WVR_DATABASE_URL: "postgres://user@db.example/wvr" });
+  assert.equal(capabilities(both).enquiry_storage.state, "implemented");
   const full = {
     WVR_DATABASE_URL: "postgres://user@db.example/wvr",
     BLOB_READ_WRITE_TOKEN: "x",
@@ -235,7 +242,7 @@ test("the set-up checklist outside the test environment follows each setting", (
 test("logins sent all at once can't get round the lockout", async () => {
   await db.query("DELETE FROM wvr_login_attempts");
   const ip = nextIp();
-  const answers = await Promise.all(Array.from({ length: 30 }, (_, i) => api("POST", "operator/login", { body: { password: "wrong guess " + i }, ip })));
+  const answers = await Promise.all(Array.from({ length: 30 }, (_, i) => api("POST", "operator/login", { body: { username: "222", password: "wrong guess " + i }, ip })));
   const wrong = answers.filter((r) => r.status === 401).length;
   const locked = answers.filter((r) => r.status === 429).length;
   assert.ok(wrong <= 5, wrong + " passwords were checked (the limit is 5)");

@@ -429,3 +429,61 @@ Vercel hands over a rewritten request.
   Getmapping, Vexcel, and Google (Solar API). It also covers what to do if one says yes: the permissions
   record, a real adapter, a 20–30 property pilot, then a switch.
 - **Handover v2** is `handover-2026-09-28-v2.md`; v1 is kept.
+
+## Decisions made 2026-10-03: an admin with nothing to set up
+
+Matthew's request (2026-10-03): the best admin he can have with **no keys, accounts or set-up steps of his
+own**, small trade-offs accepted, SC Design's existing Supabase access allowed, and the admin login
+**username 222, password 333**. These replace D2 and D17 for now (D2 remains as the optional route).
+
+| # | Decision | Why |
+|---|---|---|
+| D18 | Without a database URL, WV Roofing runs on the Supabase project already on the Vercel project (`SC_SUPABASE_URL`, `SC_SUPABASE_SERVICE_ROLE_KEY`). It uses a private bucket of its own, `wvroofing`, for photos, renders and the saved rows, and never reads or writes SC Design's tables or buckets. | The only store on the project that needs no new account, key or click. Matthew allowed it explicitly. |
+| D19 | **Snapshot mode.** The database is PGlite in each function's memory. WV Roofing's rows (every `wvr_` table, COPY text, gzipped) are saved to the bucket after any request that changed them. Writes take turns with a lock object; reads use the instance's copy for up to 2 seconds. | Supabase's Postgres would need its connection string, which isn't on the project, or SQL access, which needs a token Matthew would have to make. Storage is reachable with the service key that's already there. |
+| D20 | The admin login is a username and a password, with the built-in default 222 / 333. The password is held as a fixed-salt scrypt hash computed at start-up. `WVR_OPERATOR_USER` / `WVR_OPERATOR_PASSWORD_HASH` replace them. | Matthew's request. It is weak and public in the repository, which is flagged to him; the lockouts still apply. |
+
+- **Measured first.** Saving PGlite's whole data directory was 4.7 MB and about 5 seconds per save, so
+  it was rejected. Rows only: about 300 bytes empty, about 70 ms to export and about 100 ms to load. A
+  reload (another instance saved first) empties the tables and copies the rows back in, with foreign-key
+  triggers off (`session_replication_role = replica`). A table or column a newer or older version doesn't
+  have is skipped, and a new column takes its default.
+- **Never "saved" when it wasn't.** In snapshot mode the router holds back the reply until the save has
+  worked. If it fails, the reply is `503 busy` and the instance reloads the last saved rows.
+  - If the saved rows can't be read, every request answers 503 rather than starting empty, which would
+    overwrite them.
+  - The previous snapshot is kept as a spare.
+- **The lock.** `db/lock.json` is made with `x-upsert: false`, so only one instance can make it.
+  - Others wait, up to 25 seconds, then answer `503 busy` with `Retry-After`.
+  - A lock older than 90 seconds was left by a crash and is cleared.
+  - If the upload worked but its reply was lost, the lock is recognised as the instance's own.
+  - Every Storage call is retried twice on a dropped connection.
+- **Reads.** A GET takes no lock. If it did change something (a rate-limit count, an audit row), it saves
+  under the lock afterwards, unless another instance saved first; that change is then dropped and logged.
+- **Secrets without setting any.**
+  - The session secret (visitor hashes, address tokens) is HMAC-SHA256 of `SC_ADMIN_SESSION_SECRET`
+    with the label "wvroofing session secret v1". It is one-way, so it can't be turned back into SC's
+    secret.
+  - The daily tidy-up runs inside the first request after 23 hours, checked at most every 6 hours per
+    instance, so `CRON_SECRET` isn't needed.
+- **Uploads go straight to Supabase.** A signed upload link is used once, its path is chosen by the
+  server, and the file is checked on commit as before. The CSP's `connect-src` adds
+  `https://yxapzkiodjecladjziom.supabase.co`.
+- **The trade-offs, told to Matthew.**
+  - Slower: a few tenths of a second a request, about a second for one that saves, and about 3 seconds on
+    a new instance's first request.
+  - It shares SC's Supabase free-tier allowances (1 GB of storage).
+  - No emails to the roofer until `WVR_LEAD_TO` is set; SC Design's mailboxes are never used.
+  - Renders, address search and the satellite view stay off without their keys.
+  - Moving to a database of its own later means copying the rows across.
+- **PGlite is now a runtime dependency**, and `vercel.json` bundles its `dist/` files with the migrations.
+- **Tests.** `snapshot.test.mjs` runs the production code against a pretend Supabase, with a second
+  instance in a separate process. It covers:
+  - concurrent writes from both instances losing nothing;
+  - a restart finding everything;
+  - the lock waiting, crash recovery and `busy`;
+  - a failed save never reported as saved;
+  - missing saved rows stopping rather than starting empty;
+  - reads never saving;
+  - 222 / 333 working and the test password refused;
+  - a photo going phone → bucket → admin;
+  - the daily tidy-up.

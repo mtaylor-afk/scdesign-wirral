@@ -210,19 +210,20 @@ export function mailto(email) {
 
 /** The set-up checklist the admin shows (from GET health -> setup: yes or no, never a value). */
 export const SETUP_WORDS = [
-  ["database", "Database (Neon)"],
-  ["photoStore", "Photo store (Vercel Blob)"],
+  ["database", "Database"],
+  ["photoStore", "Photo store"],
   ["sessionSecret", "Session secret"],
-  ["cronSecret", "Daily tidy-up secret (CRON_SECRET)"],
-  ["adminPassword", "Admin password"],
+  ["cronSecret", "Daily tidy-up"],
+  ["adminPassword", "Admin login"],
   ["enquiryEmail", "Enquiry emails to the roofer"],
 ];
 
 /** Without these, nothing a customer sends is saved. */
 export const STORAGE_SETUP = ["database", "photoStore", "sessionSecret", "cronSecret"];
 
-/** Where the site owner sets everything up. */
-export const SETUP_HELP = "The site owner sets this up with the SET UP WV ROOFING ADMIN script.";
+/** What to do when something isn't there. */
+export const SETUP_HELP =
+  "These switch on by themselves (the site uses the database already on its Vercel project). If one stays off, the page /api/wvroofing/health on the API says which.";
 
 /** The Roof Cam's weather, for its previews. */
 export const CONDITION_WORDS = {

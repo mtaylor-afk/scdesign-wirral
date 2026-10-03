@@ -1,6 +1,8 @@
 // WV Roofing — private object storage.
 //
-// Production: a private Vercel Blob store (London). Every read needs
+// Production: a private Vercel Blob store (London) when one is connected;
+// otherwise (since 2026-10-03, Matthew's choice) WV Roofing's own private bucket
+// in the Supabase project SC Design already has (supabase.js). Every read needs
 // authentication; customers never receive storage links (images are streamed
 // through the WV function), and the operator only gets short-lived presigned
 // GET links for downloads.
@@ -29,7 +31,7 @@ function checkPath(p) {
 
 /** @param {Record<string, string | undefined>} env */
 function configured(env) {
-  return !!(env.BLOB_STORE_ID || env.BLOB_READ_WRITE_TOKEN) || isTest(env);
+  return !!(env.BLOB_STORE_ID || env.BLOB_READ_WRITE_TOKEN) || isTest(env) || require("./supabase.js").configured(env);
 }
 
 /**
@@ -40,7 +42,7 @@ function configured(env) {
  */
 /**
  * @typedef {object} StorageDriver
- * @property {"blob" | "fs"} kind
+ * @property {"blob" | "fs" | "supabase"} kind
  * @property {(pathname: string, body: Buffer, contentType: string) => Promise<void>} put
  * @property {(pathname: string) => Promise<StoredObject | null>} get
  * @property {(pathname: string) => Promise<Buffer | null>} getBuffer
@@ -128,6 +130,47 @@ function blobDriver() {
 }
 
 /**
+ * Supabase Storage (WV Roofing's own private bucket in the Supabase project SC
+ * Design already has; see supabase.js). The browser uploads straight to Supabase
+ * with a one-off signed link, as it does to Vercel Blob.
+ * @returns {StorageDriver}
+ */
+function supabaseDriver() {
+  const sb = require("./supabase.js");
+  const { Readable } = require("stream");
+  return {
+    kind: "supabase",
+    async put(pathname, body, contentType) {
+      const r = await sb.upload(checkPath(pathname), body, contentType, { upsert: false });
+      if (!r.ok) throw new HttpError(409, "conflict", "That object already exists.");
+    },
+    async get(pathname) {
+      const r = await sb.download(checkPath(pathname));
+      if (!r) return null;
+      return { stream: Readable.from([r.buf]), contentType: r.contentType, size: r.buf.length };
+    },
+    async getBuffer(pathname) {
+      const r = await sb.download(checkPath(pathname));
+      return r ? r.buf : null;
+    },
+    async del(pathnames) {
+      await sb.remove(pathnames.map(checkPath));
+    },
+    async list(prefix) {
+      return sb.list(checkPath(prefix));
+    },
+    // Supabase's upload links can't carry a type or size limit; the commit step
+    // checks both (and the file's real type) before anything is kept.
+    async presignPut(pathname) {
+      return sb.signUpload(checkPath(pathname));
+    },
+    async presignGet(pathname, ttlSeconds) {
+      return sb.signDownload(checkPath(pathname), ttlSeconds);
+    },
+  };
+}
+
+/**
  * Local-folder driver (test environment only). Presigned URLs point at the dev
  * server's /__dev/blob endpoint, which reads the same folder.
  * @param {string} root
@@ -200,6 +243,7 @@ function storage() {
   const env = process.env;
   if (env.BLOB_STORE_ID || env.BLOB_READ_WRITE_TOKEN) current = blobDriver();
   else if (isTest(env)) current = fsDriver(env.WVR_FS_STORAGE_DIR || path.join(os.tmpdir(), "wvroofing-test-storage"));
+  else if (require("./supabase.js").configured(env)) current = supabaseDriver();
   else throw new HttpError(503, "not_configured", "Project storage isn't set up yet.");
   return current;
 }

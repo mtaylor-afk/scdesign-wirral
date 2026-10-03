@@ -179,6 +179,8 @@ function lookup(postcode) {
 function secret() {
   if (process.env.WVR_SESSION_SECRET) return process.env.WVR_SESSION_SECRET;
   if (isTest(process.env)) return "wvroofing-test-secret";
+  const derived = require("./capabilities.js").sessionSecret(process.env);
+  if (derived) return derived;
   throw new Error("WVR_SESSION_SECRET is not set.");
 }
 

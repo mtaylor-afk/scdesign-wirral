@@ -28,15 +28,50 @@ function databaseUrl(env) {
 }
 
 /**
- * Storage needs the database, the private Blob store, the session secret AND
- * the cron secret: without the daily job nothing would be deleted after 30
- * days, so uploads stay off until it can run.
+ * Is the Supabase project SC Design already has on this Vercel project (or one
+ * named for WV Roofing) available? Then WV Roofing runs on it with nothing to
+ * set up (db.js snapshot mode, storage.js Supabase driver). Same check as
+ * supabase.js, kept here so this file stays free of requires.
+ * @param {Env} env
+ */
+function supabaseReady(env) {
+  const url = String(env.WVR_SUPABASE_URL || env.SC_SUPABASE_URL || "")
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/rest\/v1$/, "");
+  const key = String(env.WVR_SUPABASE_SERVICE_ROLE_KEY || env.SC_SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  return /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) && key.length > 20;
+}
+
+/**
+ * Storage needs somewhere for the records and the files, a session secret, and
+ * the daily tidy-up (without it nothing would be deleted after 30 days):
+ * - the full set-up: a database URL, the private Blob store, WVR_SESSION_SECRET
+ *   and CRON_SECRET; or
+ * - the Supabase project already on Vercel (snapshot mode), where the secret is
+ *   derived from a secret already there and the tidy-up runs inside requests.
  * @param {Env} env
  */
 function storageCredentials(env) {
   if (isTest(env)) return true; // PGlite + local file storage
   const blob = !!(env.BLOB_STORE_ID || env.BLOB_READ_WRITE_TOKEN);
-  return !!databaseUrl(env) && blob && !!env.WVR_SESSION_SECRET && !!env.CRON_SECRET;
+  if (!!databaseUrl(env) && blob && !!env.WVR_SESSION_SECRET && !!env.CRON_SECRET) return true;
+  return !databaseUrl(env) && supabaseReady(env) && !!sessionSecret(env);
+}
+
+/**
+ * The secret behind visitor hashes and address tokens: WVR_SESSION_SECRET, or
+ * (when it isn't set) one derived from a secret already on this Vercel project,
+ * so nothing new has to be set. The derivation is one-way, and labelled for WV
+ * Roofing, so it can't be turned back into the secret it came from.
+ * @param {Env} env
+ * @returns {string}
+ */
+function sessionSecret(env) {
+  if (env.WVR_SESSION_SECRET) return env.WVR_SESSION_SECRET;
+  const base = env.SC_ADMIN_SESSION_SECRET || env.WVR_SUPABASE_SERVICE_ROLE_KEY || env.SC_SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!base) return "";
+  return require("crypto").createHmac("sha256", base).update("wvroofing session secret v1").digest("hex");
 }
 
 /** @param {Env} env */
@@ -136,4 +171,4 @@ function isEnabled(name, env) {
   return capability(name, env).state === "enabled";
 }
 
-module.exports = { NAMES, capability, capabilities, isEnabled, databaseUrl, isTest };
+module.exports = { NAMES, capability, capabilities, isEnabled, databaseUrl, isTest, supabaseReady, sessionSecret };

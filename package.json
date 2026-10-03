@@ -21,6 +21,7 @@
     "wvr:qa": "node scripts/wvroofing/qa.mjs"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@supabase/supabase-js": "^2.45.0",
     "@vercel/blob": "^2.8.0",
     "@vercel/functions": "^3.9.9",
@@ -34,7 +35,6 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8",
     "@eslint/eslintrc": "^3.1.0",
     "@playwright/test": "^1.48.0",
     "@tailwindcss/postcss": "^4.0.0",

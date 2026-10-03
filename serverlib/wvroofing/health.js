@@ -8,7 +8,7 @@ const core = require("./core.js");
 const db = require("./db.js");
 const openai = require("./openai.js");
 const storage = require("./storage.js");
-const { capabilities, capability, isTest } = require("./capabilities.js");
+const { capabilities, capability, isTest, sessionSecret } = require("./capabilities.js");
 
 /** @type {{ at: number, value: { ok: boolean, version?: number } | null }} */
 let schemaCache = { at: 0, value: null };
@@ -65,9 +65,12 @@ function setupState(env, caps) {
   return {
     database: db.configured(env),
     photoStore: storage.configured(env),
-    sessionSecret: test || !!env.WVR_SESSION_SECRET,
-    cronSecret: test || !!env.CRON_SECRET,
-    adminPassword: passwordHashSet(env.WVR_OPERATOR_PASSWORD_HASH),
+    // WVR_SESSION_SECRET, or one derived from a secret already on the project.
+    sessionSecret: test || !!sessionSecret(env),
+    // CRON_SECRET for Vercel's cron; in snapshot mode the tidy-up runs inside requests instead.
+    cronSecret: test || !!env.CRON_SECRET || db.snapshotMode(env),
+    // A hash set by the owner, or the built-in login (auth.js) when none is.
+    adminPassword: passwordHashSet(env.WVR_OPERATOR_PASSWORD_HASH) || !env.WVR_OPERATOR_PASSWORD_HASH,
     // Its own settings (inbox, email login, switch), not whether storage is there
     // yet: missing storage has its own lines above.
     enquiryEmail: capability("enquiry_delivery", env).state === "enabled" || caps.enquiry_delivery.state === "enabled",
@@ -100,6 +103,8 @@ async function health(ctx) {
     environment: isTest(env) ? "test" : "production",
     region: env.VERCEL_REGION || null,
     schema,
+    // Where the records live: "pg" (a Postgres database), "snapshot" (Supabase, db.js), "pglite" (tests).
+    store: db.mode(),
     capabilities: caps,
     setup: setupState(env, caps),
     imageModel: cfg.model,

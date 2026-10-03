@@ -4,7 +4,7 @@
   "outputDirectory": "public",
   "functions": {
     "api/*.js": { "maxDuration": 30 },
-    "api/wvroofing/app.js": { "maxDuration": 300, "includeFiles": "db/wvroofing/**" }
+    "api/wvroofing/app.js": { "maxDuration": 300, "includeFiles": "{db/wvroofing/**,node_modules/@electric-sql/pglite/dist/**}" }
   },
   "rewrites": [
     { "source": "/api/wvroofing/:path*", "destination": "/api/wvroofing/app?path=:path*" }
@@ -31,14 +31,14 @@
       "source": "/WVROOFING/(.*)",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive, nosnippet, noimageindex" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'sha256-WZRJfWvsnNCPcxzZwvyhovnZGqhZaC+8gPGPRbx6wTk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://maps.googleapis.com; connect-src 'self' https://scdesign-wirral.vercel.app https://vercel.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'sha256-WZRJfWvsnNCPcxzZwvyhovnZGqhZaC+8gPGPRbx6wTk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://maps.googleapis.com; connect-src 'self' https://scdesign-wirral.vercel.app https://vercel.com https://yxapzkiodjecladjziom.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" }
       ]
     },
     {
       "source": "/WVROOFING",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive, nosnippet, noimageindex" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'sha256-WZRJfWvsnNCPcxzZwvyhovnZGqhZaC+8gPGPRbx6wTk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://maps.googleapis.com; connect-src 'self' https://scdesign-wirral.vercel.app https://vercel.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'sha256-WZRJfWvsnNCPcxzZwvyhovnZGqhZaC+8gPGPRbx6wTk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://maps.googleapis.com; connect-src 'self' https://scdesign-wirral.vercel.app https://vercel.com https://yxapzkiodjecladjziom.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" }
       ]
     }
   ]

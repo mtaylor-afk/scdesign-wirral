@@ -1,4 +1,4 @@
-# WV Roofing: the admin screen (operator guide v2, 2026-10-01; v1 2026-09-28)
+# WV Roofing: the admin screen (operator guide v3, 2026-10-03; v2 2026-10-01; v1 2026-09-28)
 
 This guide is for the roofer, or Matthew, using the admin screen (called the operator screen until
 2026-10-01). It shows every enquiry and every customer photo from both versions of the site, with the
@@ -6,7 +6,7 @@ contact details, renders and property details, and records everything done to th
 
 ## The addresses
 
-There is one admin screen with one password. It has three addresses, each starting on a different site:
+There is one admin screen with one login. It has three addresses, each starting on a different site:
 
 | Address | Starts on | Looks like |
 |---|---|---|
@@ -20,38 +20,36 @@ There is one admin screen with one password. It has three addresses, each starti
 - The **site switch** at the top (see below) changes the site at any time, whichever address you used.
 - Each admin page has a link back to its own site in the header.
 
-## Setting it up (Matthew, once)
+## Setting it up
 
-**The quick way.** Double-click **SET UP WV ROOFING ADMIN** on the Desktop. It connects the database and
-the photo store, makes the secrets, asks for the admin password at a hidden prompt and redeploys. See
-"The quick way" in `setup-and-deploy.md`.
-
-**By hand**, for the password only:
-
-1. On your own computer, in the repository folder, run:
-   `node scripts/wvroofing/operator-hash.mjs`
-2. Type the password twice. Nothing shows while you type.
-   - It needs at least 12 characters; a few unrelated words work well.
-   - It prints one line starting `scrypt:`. That line is a hash, not the password.
-3. In Vercel, go to project **scdesign-wirral**, then **Settings**, then **Environment Variables**.
-4. Set `WVR_OPERATOR_PASSWORD_HASH` to that line for **Production**, then **Redeploy**.
-
-To change the password, run the Desktop file again and answer **y** to "Change it?", or do the steps above
-again. Everyone logged in with the old password is logged out.
-
-**What's still missing.** The login screen says so in one or two plain sentences: when the admin password
-hasn't been set, and when saving isn't fully set up (the database, the photo store or one of the two
-secrets is missing), in which case nothing is being saved. After logging in, the **Set-up** card on the
-Overview shows each item, yes or no, never a value. Enquiry emails are optional: without them everything
-is still saved here. Until a hash is set, the login says "The operator login isn't set up yet."
+**Nothing to set up (since 2026-10-03).** The admin and everything it shows are saved in a private bucket
+in the Supabase project SC Design already has on Vercel. See "Going live" in `setup-and-deploy.md`. The
+Desktop **SET UP WV ROOFING ADMIN** is only for moving WV Roofing to a database of its own later; ask
+Claude first, because the saved rows need copying across.
 
 ## Logging in
 
+- **Username 222, password 333.** This is the built-in login Matthew asked for on 2026-10-03. It is weak
+  and the code is on GitHub, so treat the admin as open to anyone who finds it.
+- **To change it.** Set these on the Vercel project (**scdesign-wirral**, **Settings**, **Environment
+  Variables**, Production), then **Redeploy**:
+  - `WVR_OPERATOR_USER`, for a different username;
+  - `WVR_OPERATOR_PASSWORD_HASH`, for a different password. Make the hash on your own computer, in the
+    repository folder, with `node scripts/wvroofing/operator-hash.mjs`: type the password twice (nothing
+    shows), and it prints one line starting `scrypt:`. That line is a hash, not the password.
+  - A new password logs out everyone who logged in with the old one.
+- **If no one can log in.** The login screen says so when `WVR_OPERATOR_PASSWORD_HASH` is set but isn't a
+  valid hash. Delete it on Vercel to go back to 222 / 333.
+- **If nothing is being saved.** The login screen also says so. After logging in, the **Set-up** card on the
+  Overview shows each item, yes or no, never a value. Enquiry emails are optional: without them, everything
+  is still saved here.
 - **Session length.** You stay logged in for up to 12 hours, in that browser tab only. Closing the tab logs
   you out. **Log out** also ends the session on the server.
-- **Lockout.** Five wrong passwords from one connection, or twenty from anywhere, within 15 minutes lock the
+- **Lockout.** Five wrong attempts from one connection, or twenty from anywhere, within 15 minutes lock the
   login for 15 minutes. Even the right password waits. Each attempt is counted before the password is
   checked, so many sent at once can't get round the limit.
+- **Speed.** The first page after a quiet spell can take a few seconds while the server loads the saved
+  data. After that, pages that change something take about a second.
 
 ## The site switch
 
@@ -310,6 +308,7 @@ This tab lists photo-real renders from the last 30 days that **failed**, or that
 
 - The three pages are made from one template by `node scripts/wvroofing/gen-admin.mjs`. Edit the
   template, not the pages; `--check` (run by the tests) fails if a page is out of date.
-- Its login uses the throwaway `TEST_OPERATOR_PASSWORD` in `serverlib/wvroofing/auth.js`.
-- That password is refused everywhere outside the test environment.
+- It logs in with the same built-in 222 / 333 as the live site.
+- The node tests also use the throwaway `TEST_OPERATOR_PASSWORD` in `serverlib/wvroofing/auth.js`. That
+  password is refused everywhere outside the test environment.
 - Its enquiries, photos and emails are stand-ins that go nowhere.

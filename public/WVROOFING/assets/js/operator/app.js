@@ -171,9 +171,10 @@ function showLogin(msg) {
   $("op-list").replaceChildren();
   status("");
   loginError(msg);
-  const pw = $("op-password");
-  pw.value = "";
-  pw.focus();
+  const user = $("op-username");
+  $("op-password").value = "";
+  if (user.value) $("op-password").focus();
+  else user.focus();
 }
 
 /**
@@ -184,15 +185,21 @@ function showLogin(msg) {
 function renderLoginSetup(setup) {
   const box = $("op-setup");
   const lines = [];
-  if (setup && setup.adminPassword === false) lines.push("The admin password hasn't been set yet. The site owner sets it once, with the SET UP WV ROOFING ADMIN script.");
-  if (setup && STORAGE_SETUP.some((k) => setup[k] === false)) lines.push("Saving isn't fully set up on this site yet, so nothing is being saved.");
+  if (setup && setup.adminPassword === false) lines.push("The admin password setting on Vercel isn't a valid hash, so nobody can log in. Delete WVR_OPERATOR_PASSWORD_HASH there to go back to the built-in login.");
+  if (setup && STORAGE_SETUP.some((k) => setup[k] === false)) lines.push("Saving isn't switched on for this site yet, so nothing is being saved.");
   box.replaceChildren(...lines.map((t) => h("p", { text: t })));
   box.hidden = lines.length === 0;
 }
 
 async function onLogin(e) {
   e.preventDefault();
+  const user = $("op-username");
   const pw = $("op-password");
+  if (!user.value.trim()) {
+    loginError("Please enter the username.");
+    user.focus();
+    return;
+  }
   if (!pw.value) {
     loginError("Please enter the password.");
     pw.focus();
@@ -202,7 +209,7 @@ async function onLogin(e) {
   btn.disabled = true;
   loginError("");
   try {
-    const r = await api("POST", "operator/login", { password: pw.value });
+    const r = await api("POST", "operator/login", { username: user.value.trim(), password: pw.value });
     pw.value = "";
     setToken(r.token);
     showApp(await api("GET", "operator/session"));

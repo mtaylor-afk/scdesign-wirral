@@ -6,14 +6,14 @@ The overview of the concept site itself is in `docs/WVROOFING.md`.
 
 | File | What |
 |---|---|
-| `decisions.md` | Decision record (D1–D17) with evidence |
+| `decisions.md` | Decision record (D1–D20) with evidence; D18–D20 (2026-10-03) are the no-set-up admin on SC Design's Supabase and the 222 / 333 login |
 | `permissions-record.md` | Generated from `serverlib/wvroofing/permissions.js`: what each provider's terms allow |
 | `wvroofing.env.example` | Every environment variable, names only |
 | `operator-guide.md` | The admin screen (formerly "the operator screen"): its three addresses, the site switch, Overview, Enquiries, Contacts and the spreadsheet download, every customer photo from both sites (Photos), search, scope corrections, renders to check, costs, deleting |
 | `handover-2026-09-28-v2.md` | **Current.** Where things stand after Release B's required increments, in the brief's status words; commits; owner actions; flags; the test record |
 | `handover-2026-09-28-v1.md` | The same at the end of Release A's A7 (kept) |
 | `supplier-enquiries.md` | Draft enquiries for Matthew to send: Bluesky, Getmapping, Vexcel, Google (Solar API); and what to do if one says yes |
-| `setup-and-deploy.md` | Running it locally; the owner's go-live steps, starting with the Desktop **SET UP WV ROOFING ADMIN** (database, photo store, secrets, admin password, redeploy) and its result codes, with the steps by hand as the fallback; pushing, live checks, switching off and rolling back |
+| `setup-and-deploy.md` | Running it locally; the two storage modes; going live with nothing to set up (since 2026-10-03: push, then log in with 222 / 333); the optional route to a database of its own (the Desktop **SET UP WV ROOFING ADMIN**, its result codes, and the steps by hand); live checks, switching off and rolling back |
 | `privacy-record.md` | What is processed, lawful bases, the legitimate interests assessment, processors and transfers, requests |
 | `retention.md` | Every retention period (from `retention.js`), deletion on request, copies outside our control |
 | `cost-model.md` | Unit costs, the spending controls and their defaults, worst cases, typical costs |
@@ -23,6 +23,11 @@ The overview of the concept site itself is in `docs/WVROOFING.md`.
 Earlier handover versions are kept; a new version is a new file.
 
 ## Status by increment
+
+**2026-10-03: storage no longer waits for anyone.** Where a row below says "waiting for storage", that wait
+ends with the push of the 2026-10-03 commit. The live site then runs in snapshot mode on SC Design's
+Supabase project (decisions D18–D20), with nothing to set up, and the admin login is 222 / 333. The keys
+and switches each row mentions are still needed for emails, renders, address search and the satellite view.
 
 | Increment | State |
 |---|---|
@@ -42,7 +47,8 @@ Earlier handover versions are kept; a new version is a new file.
 
 ## The admin pages (2026-10-01)
 
-One admin screen, one password, three addresses (see `operator-guide.md`):
+One admin screen, one login (username 222, password 333 since 2026-10-03), three addresses (see
+`operator-guide.md`):
 
 | Address | Starts on | Look |
 |---|---|---|
@@ -63,8 +69,8 @@ npm run wvr:selftest                       # maths, compositing and handler self
 npm run wvr:qa                             # headless browser pass (needs the dev server running)
 node scripts/wvroofing/gen-docs.mjs        # regenerate permissions-record.md
 node scripts/wvroofing/gen-admin.mjs       # regenerate the three admin pages (--check: fail if out of date)
-node scripts/wvroofing/setup-vercel.mjs    # Matthew only: connect storage, secrets and the admin password
-                                           # on Vercel, then redeploy (Desktop: SET UP WV ROOFING ADMIN.cmd;
-                                           # --dry-run changes nothing, --rotate replaces the two secrets)
+node scripts/wvroofing/setup-vercel.mjs    # NOT NEEDED since 2026-10-03 (snapshot mode). Matthew only, and
+                                           # only to move to a database of its own (ask Claude first: the
+                                           # saved rows need copying). Desktop: SET UP WV ROOFING ADMIN.cmd
 node scripts/wvroofing/operator-hash.mjs   # Matthew only: print the admin password's hash (the manual way)
 ```

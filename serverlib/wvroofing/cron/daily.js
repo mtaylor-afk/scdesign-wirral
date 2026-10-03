@@ -55,21 +55,29 @@ async function sweepUploads() {
   return { staleUploadsRemoved: rows.length, uploadRecordsPurged: used.rowCount };
 }
 
-/** @param {import("../router.js").Ctx} ctx */
-async function daily(ctx) {
-  if (!db.configured(process.env)) return core.json(ctx.res, 200, { ok: true, skipped: "database_not_configured" });
-  const out = await db.withLease("cron_daily", 600, async () => {
+/**
+ * The whole tidy-up, once (a lease stops two at the same time).
+ * @param {number} startedAt  when the request began (for the render queue's time limit)
+ */
+function runDaily(startedAt) {
+  return db.withLease("cron_daily", 600, async () => {
     const started = new Date().toISOString();
     const detail = Object.assign({}, await expireProjects(), await sweepUploads(), { rateLimitRowsPurged: await limits.purge() });
     Object.assign(detail, await enquiries.sweep());
     Object.assign(detail, await require("../auth.js").purgeOperatorRecords());
     Object.assign(detail, await retention.purgeRecords());
-    Object.assign(detail, await jobs.sweep(jobs.deadlineFrom(ctx.startedAt)));
+    Object.assign(detail, await jobs.sweep(jobs.deadlineFrom(startedAt)));
     await db.query("INSERT INTO wvr_retention_runs (kind, started_at, finished_at, detail) VALUES ($1, $2, now(), $3)", ["daily", started, JSON.stringify(detail)]);
     return detail;
   });
+}
+
+/** @param {import("../router.js").Ctx} ctx */
+async function daily(ctx) {
+  if (!db.configured(process.env)) return core.json(ctx.res, 200, { ok: true, skipped: "database_not_configured" });
+  const out = await runDaily(ctx.startedAt);
   if (!out.held) return core.json(ctx.res, 200, { ok: true, skipped: "already_running" });
   return core.json(ctx.res, 200, { ok: true, ran: true, detail: out.result });
 }
 
-module.exports = { daily, expireProjects, sweepUploads };
+module.exports = { daily, runDaily, expireProjects, sweepUploads };

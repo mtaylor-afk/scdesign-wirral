@@ -64,10 +64,10 @@ admin screen for both versions. Version 2 now uses version 1's store and operato
   `/WVROOFING/2/admin/`. It is never in the main menu.
 - The copy that promised "nothing is uploaded" (the bulletin, the Roof Cam, About) was rewritten, and the
   privacy notice at `/WVROOFING/privacy/` now covers the Roof Cam too.
-- On the live site nothing is saved until the owner's storage steps in `setup-and-deploy.md` (Neon, Blob,
-  `WVR_SESSION_SECRET`, `CRON_SECRET`) are done; until then the save light says "Not saved" and the forms
-  say enquiries aren't being collected yet. The Desktop **SET UP WV ROOFING ADMIN** does those steps (and
-  the admin password) in one go.
+- Until 2026-10-03, nothing was saved on the live site until the owner's storage steps were done. Until
+  then the save light said "Not saved" and the forms said enquiries weren't being collected yet.
+- Since the 2026-10-03 push, saving needs no set-up: it uses WV Roofing's private bucket in SC Design's
+  Supabase project ("snapshot mode", `setup-and-deploy.md`), and the admin login is 222 / 333.
 
 ## How it's built
 

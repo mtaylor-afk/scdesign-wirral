@@ -1,6 +1,6 @@
 // WV Roofing — the operator screen's API (A6; brief §14, plan D5).
 //
-//   POST operator/login { password }                 -> { token, expiresAt }   (lockouts in auth.js)
+//   POST operator/login { username, password }       -> { token, expiresAt }   (lockouts in auth.js)
 //   POST operator/logout, GET operator/session
 //   GET  operator/overview?site=v1|v2                -> the admin home page's counts and newest enquiries (one site, or both)
 //   GET  operator/enquiries?status=&q=&site=&limit=  -> the list with contact details (q finds a name, email, phone, postcode, address or reference)
@@ -115,7 +115,7 @@ function sendImage(ctx, buf, type) {
 /** @param {import("./router.js").Ctx} ctx */
 async function login(ctx) {
   const body = await readJson(ctx.req, 4 * 1024);
-  const s = await auth.operatorLogin(ctx.req, body.password);
+  const s = await auth.operatorLogin(ctx.req, body.username, body.password);
   return json(ctx.res, 200, { ok: true, token: s.token, expiresAt: s.expiresAt });
 }
 

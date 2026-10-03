@@ -18,6 +18,7 @@ Generated from `serverlib/wvroofing/permissions.js` (do not edit by hand). A cap
 | Hover (photo-based roof reports) | Roof reports the roofer may order and enter by hand (assisted route) | no | yes | yes | yes | no | n/a | no | 2026-09-27 |
 | Vercel (functions, Blob storage) | Runs the API and stores photos and renders (private store) | n/a | yes | n/a | yes | n/a | n/a | n/a | 2026-09-28 |
 | Neon Postgres (via the Vercel Marketplace) | The database for projects, jobs and enquiries | n/a | yes | n/a | yes | n/a | n/a | n/a | 2026-09-27 |
+| Supabase Storage (SC Design's project, WV Roofing's own private bucket) | Without a database and Blob store of WV Roofing's own: photos, renders and the saved rows (db.js snapshot mode) | n/a | yes | n/a | yes | n/a | n/a | n/a | 2026-10-03 |
 | Apple iCloud Mail (SMTP) | Sends the enquiry notification to the roofer | n/a | yes | n/a | n/a | n/a | n/a | n/a | 2026-09-27 |
 | Cloudflare Pages | Hosts the static pages (shared with SC Design until WV Roofing has its own domain) | n/a | yes | n/a | n/a | n/a | n/a | n/a | 2026-09-28 |
 | Google Fonts | Serves the Inter typeface to devices without Apple's system font | n/a | yes | n/a | n/a | n/a | n/a | n/a | 2026-09-28 |
@@ -51,6 +52,8 @@ Generated from `serverlib/wvroofing/permissions.js` (do not edit by hand). A cap
 **Vercel (functions, Blob storage).** Hobby plans are restricted to non-commercial personal use: a commercial launch needs Pro (or a separate Pro project). Sources: https://vercel.com/docs/vercel-blob/private-storage, https://vercel.com/docs/limits/fair-use-guidelines
 
 **Neon Postgres (via the Vercel Marketplace).** London region (aws-eu-west-2) chosen at creation. Sources: https://neon.com/docs/introduction/plans, https://neon.com/docs/introduction/regions
+
+**Supabase Storage (SC Design's project, WV Roofing's own private bucket).** Matthew's choice (2026-10-03): use the Supabase project already on the Vercel project so nothing has to be set up. WV Roofing keeps to its own private bucket "wvroofing" and never touches SC Design's tables or buckets. The project's region isn't recorded here (see the Supabase dashboard). Free projects pause after a week with no activity; SC Design's site keeps it active. Sources: https://supabase.com/docs/guides/storage, https://supabase.com/legal/dpa, https://supabase.com/pricing
 
 **Apple iCloud Mail (SMTP).** Existing SMTP account; sender name is always 'WV Roofing'. A business mailbox with a data processing agreement is recommended before launch (privacy-record.md).
 

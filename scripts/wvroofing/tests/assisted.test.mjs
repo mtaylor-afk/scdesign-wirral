@@ -38,7 +38,7 @@ after(async () => {
 
 let ipN = 0;
 async function login() {
-  const r = await api("POST", "operator/login", { body: { password: auth.TEST_OPERATOR_PASSWORD }, ip: "198.51.100." + ++ipN });
+  const r = await api("POST", "operator/login", { body: { username: "222", password: auth.TEST_OPERATOR_PASSWORD }, ip: "198.51.100." + ++ipN });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   return r.json.token;
 }

@@ -9,6 +9,9 @@ notice; that is why the periods aren't environment variables.
 Vercel once a day).
 
 - It needs `CRON_SECRET`.
+- **Since 2026-10-03 (snapshot mode, no set-up)**, the same tidy-up runs inside the first request after
+  23 hours instead, and doesn't need `CRON_SECRET`. "Neon" and "Vercel Blob" below then mean WV Roofing's
+  private bucket in SC Design's Supabase project (see `setup-and-deploy.md`).
 - Each run is recorded in `wvr_retention_runs`.
 - The operator screen's **Costs** tab shows the last run.
 - Each run deletes whatever is due, so a missed or repeated run does no harm.
@@ -59,6 +62,8 @@ so no copy is left on the customer's or operator's device.
 | Neon (Free plan) | Point-in-time restore history (the database's write-ahead log) | 6 hours. This is fixed on Free; Launch keeps up to 7 days and Scale up to 30 | neon.com/docs/introduction/plans |
 | Vercel Blob | A cached copy in Vercel's CDN, readable only with our store's credentials, so only by our own function, which checks the database first | "may take up to 60 seconds" after a delete | vercel.com/docs/vercel-blob (Caching) |
 | Vercel Blob | Backups of deleted files | Vercel's docs describe none. Storage is on Amazon S3 | vercel.com/docs/vercel-blob |
+| Supabase (snapshot mode, since 2026-10-03) | The previous saved snapshot of the rows, kept as a spare: rows deleted since are still in it | Until the next save replaces it (the next change anyone makes) | `serverlib/wvroofing/db.js` |
+| Supabase (snapshot mode) | Backups of the project | Free plan: none described for Storage objects; check the dashboard | supabase.com/pricing |
 | OpenAI | The render request (photo, outline, prompt), kept for abuse monitoring | Up to 30 days under OpenAI's current terms; zero data retention is available on request | OpenAI platform docs, "Your data" |
 | Apple iCloud Mail | The enquiry emails (and any attached images) in the roofer's mailbox | Until the roofer deletes them | n/a |
 | Ideal Postcodes | Its own records of our lookups (the postcode) | Not checked; see its terms | terms.ideal-postcodes.co.uk |

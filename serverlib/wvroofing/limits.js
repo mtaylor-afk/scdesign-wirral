@@ -8,13 +8,14 @@
 const crypto = require("crypto");
 const db = require("./db.js");
 const { clientIp } = require("./core.js");
-const { isTest } = require("./capabilities.js");
+const { isTest, sessionSecret } = require("./capabilities.js");
 
 /** @param {Record<string, string | undefined>} env */
 function secret(env) {
   if (env.WVR_SESSION_SECRET) return env.WVR_SESSION_SECRET;
   if (isTest(env)) return "wvroofing-test-secret";
-  return null;
+  // Derived from a secret already on the Vercel project when WVR_SESSION_SECRET isn't set.
+  return sessionSecret(env) || null;
 }
 
 /**

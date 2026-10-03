@@ -238,11 +238,51 @@ async function authorise(auth, ctx) {
 }
 
 /**
- * The function entry point.
+ * The function entry point. In snapshot mode (db.js) the whole request is one
+ * turn on the database (a read turn for a GET), and the reply is held back until
+ * any change it made is saved, so "saved" is never said about something that wasn't.
  * @param {Req} req
  * @param {Res} res
  */
 async function handle(req, res) {
+  const db = require("./db.js");
+  const method = String(req.method || "GET").toUpperCase();
+  if (!db.snapshotMode(process.env) || method === "OPTIONS") return route(req, res);
+  const realEnd = res.end.bind(res);
+  const pending = { args: /** @type {any[] | null} */ (null), done: false };
+  // @ts-ignore: hold the reply (status and headers are already set on res) until the save is done
+  res.end = (/** @type {any[]} */ ...args) => {
+    // @ts-ignore: passed on exactly as given
+    if (pending.done) return realEnd(...args);
+    pending.args = args;
+    return res;
+  };
+  try {
+    await db.session(() => route(req, res), { write: method !== "GET" && method !== "HEAD" });
+  } catch (err) {
+    pending.done = true;
+    // The turn couldn't be had, or the save failed: whatever the handler wrote is replaced by a 503.
+    res.end = realEnd;
+    pending.args = null;
+    if (res.headersSent) return;
+    for (const h of ["content-type", "content-length", "content-disposition", "cache-control"]) {
+      if (typeof res.removeHeader === "function") res.removeHeader(h);
+    }
+    const e = err instanceof HttpError ? err : new HttpError(503, "busy", "WV Roofing is busy for a moment. Please try again.");
+    const retry = e.extra && e.extra.retryAfter ? { "Retry-After": String(e.extra.retryAfter) } : undefined;
+    return json(res, e.status, { ok: false, error: e.code, message: e.message }, retry);
+  }
+  pending.done = true;
+  res.end = realEnd;
+  if (pending.args) realEnd(...pending.args);
+}
+
+/**
+ * One request, routed.
+ * @param {Req} req
+ * @param {Res} res
+ */
+async function route(req, res) {
   const startedAt = Date.now();
   try {
     const resolved = resolvePath(req);

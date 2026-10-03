@@ -98,7 +98,7 @@ test("measurement switched off: the customer sees nothing measured, and the roof
     assert.equal(pre.status, 503, "no plans and drawings either");
     const auth = load("serverlib/wvroofing/auth.js");
     process.env.WVR_OPERATOR_PASSWORD_HASH = auth.hashPassword(auth.TEST_OPERATOR_PASSWORD);
-    const login = await api("POST", "operator/login", { body: { password: auth.TEST_OPERATOR_PASSWORD }, ip: "192.0.2.10" });
+    const login = await api("POST", "operator/login", { body: { username: "222", password: auth.TEST_OPERATOR_PASSWORD }, ip: "192.0.2.10" });
     const add = await api("POST", "operator/enquiries/" + j.id + "/measurement", {
       token: login.json.token,
       body: { method: "site_survey", faces: [{ id: "a", plan_area_m2: 40, pitch_deg: 35 }] },
@@ -127,6 +127,7 @@ test("the permissions record covers every provider in the plan, each with source
     "hover",
     "vercel",
     "neon",
+    "supabase", // snapshot mode, 2026-10-03
     "apple_icloud_mail",
     "cloudflare",
     "google_fonts",

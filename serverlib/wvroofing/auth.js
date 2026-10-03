@@ -87,14 +87,42 @@ async function requireProject(req, id) {
 }
 
 // ---------------------------------------------------------------------------
-// The operator (A6): one password, held only as a scrypt hash in
-// WVR_OPERATOR_PASSWORD_HASH (made by scripts/wvroofing/operator-hash.mjs on the
-// owner's own machine). A login opens a 12-hour session whose key is stored
-// hashed and can be revoked; 5 failures from one visitor, or 20 in all, within
-// 15 minutes lock logins for a while.
+// The operator (A6): a username and a password. The password is held only as a
+// scrypt hash: WVR_OPERATOR_PASSWORD_HASH (made by scripts/wvroofing/operator-hash.mjs)
+// when the owner sets one, otherwise the built-in login Matthew asked for on
+// 2026-10-03 (username 222, password 333, the same as SC Design's admin was
+// documented with). WVR_OPERATOR_USER changes the username. A login opens a
+// 12-hour session whose key is stored hashed and can be revoked; 5 failures from
+// one visitor, or 20 in all, within 15 minutes lock logins for a while.
 
 const OPERATOR_TTL_HOURS = 12;
 const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 64 };
+const DEFAULT_OPERATOR_USER = "222";
+const DEFAULT_OPERATOR_PASSWORD = "333";
+/** @type {string | null} */
+let defaultHash = null;
+
+/** The password hash in force: the owner's, or the built-in login's. */
+function operatorHash() {
+  const set = process.env.WVR_OPERATOR_PASSWORD_HASH;
+  if (set) return set;
+  // Made once per instance, with a fixed salt so every instance (and every session's tag) agrees.
+  if (!defaultHash) defaultHash = hashPassword(DEFAULT_OPERATOR_PASSWORD, Buffer.from("wvroofing-built-in-login"));
+  return defaultHash;
+}
+
+/** The username in force. */
+function operatorUser() {
+  return String(process.env.WVR_OPERATOR_USER || DEFAULT_OPERATOR_USER).trim();
+}
+
+/** Constant-time comparison of two short strings. @param {unknown} a @param {string} b */
+function sameText(a, b) {
+  const x = crypto.createHash("sha256").update(String(a == null ? "" : a)).digest();
+  const y = crypto.createHash("sha256").update(String(b)).digest();
+  return crypto.timingSafeEqual(x, y);
+}
+
 // The TEST ENVIRONMENT's throwaway operator password (dev server, QA and tests).
 // Refused everywhere else, even if a hash of it were ever set in production.
 const TEST_OPERATOR_PASSWORD = "wvr-test-operator-only";
@@ -140,13 +168,13 @@ function hashTag(stored) {
 }
 
 /**
- * Check the operator password and open a session.
+ * Check the operator's username and password and open a session.
  * @param {import("http").IncomingMessage} req
+ * @param {unknown} username
  * @param {unknown} password
  */
-async function operatorLogin(req, password) {
-  const stored = process.env.WVR_OPERATOR_PASSWORD_HASH;
-  if (!stored) throw new HttpError(503, "not_configured", "The operator login isn't set up yet.");
+async function operatorLogin(req, username, password) {
+  const stored = operatorHash();
   const ip = require("./limits.js").ipHash(req);
   // The attempt is counted and recorded (as a failure) BEFORE the password is
   // checked, under a lock, so many logins sent at once can't all slip in under
@@ -164,9 +192,12 @@ async function operatorLogin(req, password) {
   if (attemptId === null) {
     throw new HttpError(429, "locked", "Too many wrong passwords. Please wait 15 minutes and try again.", { retryAfter: 900 });
   }
-  const allowed = typeof password === "string" && password.length <= 200 && (isTest(process.env) || password !== TEST_OPERATOR_PASSWORD);
-  const ok = allowed && (await verifyPassword(/** @type {string} */ (password), stored));
-  if (!ok) throw new HttpError(401, "unauthorised", "That password isn't right.");
+  const allowed =
+    typeof username === "string" && username.length <= 100 && typeof password === "string" && password.length <= 200 && (isTest(process.env) || password !== TEST_OPERATOR_PASSWORD);
+  // Both are always checked, so the time taken doesn't say which one was wrong.
+  const userOk = allowed && sameText(/** @type {string} */ (username).trim(), operatorUser());
+  const passOk = allowed && (await verifyPassword(/** @type {string} */ (password), stored));
+  if (!userOk || !passOk) throw new HttpError(401, "unauthorised", "That username or password isn't right.");
   await db.query("UPDATE wvr_login_attempts SET ok = true WHERE id = $1", [attemptId]);
   const token = crypto.randomBytes(32).toString("base64url");
   const expires = new Date(Date.now() + OPERATOR_TTL_HOURS * 3600 * 1000);
@@ -192,8 +223,7 @@ async function requireOperator(req) {
   if (!token) throw new HttpError(401, "unauthorised", "Please log in.");
   const { rows } = await db.query("SELECT * FROM wvr_operator_sessions WHERE token_hash = $1", [hashToken(token)]);
   const s = rows[0];
-  const stored = process.env.WVR_OPERATOR_PASSWORD_HASH;
-  if (!s || s.revoked_at || new Date(s.expires_at).getTime() <= Date.now() || !stored || s.hash_tag !== hashTag(stored)) {
+  if (!s || s.revoked_at || new Date(s.expires_at).getTime() <= Date.now() || s.hash_tag !== hashTag(operatorHash())) {
     throw new HttpError(401, "unauthorised", "Your session has ended. Please log in again.");
   }
   return s;
@@ -230,4 +260,6 @@ module.exports = {
   purgeOperatorRecords,
   OPERATOR_TTL_HOURS,
   TEST_OPERATOR_PASSWORD,
+  DEFAULT_OPERATOR_USER,
+  DEFAULT_OPERATOR_PASSWORD,
 };

@@ -171,7 +171,7 @@ function setupCard(setup) {
     card.append(
       h("p", {
         class: "op-muted op-small",
-        text: "Enquiries and photos are saved here. The roofer isn't emailed about new ones: that needs an inbox (the set-up script asks for one) and an email login (SMTP_USER and SMTP_PASS) on the Vercel project.",
+        text: "Enquiries and photos are saved here. The roofer isn't emailed about new ones: that needs the roofer's inbox (WVR_LEAD_TO) and the switch WVR_CAP_ENQUIRY_DELIVERY=on on the Vercel project.",
       })
     );
   } else {

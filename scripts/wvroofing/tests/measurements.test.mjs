@@ -249,7 +249,7 @@ test("the operator's scope correction sends the measurement back for review and 
   const { measurement: m } = await record(j.p.id);
   await approve(m.id);
   assert.equal((await estimate(j.p)).status, "indicative_available");
-  const login = await api("POST", "operator/login", { body: { password: auth.TEST_OPERATOR_PASSWORD }, ip: "203.0.113.200" });
+  const login = await api("POST", "operator/login", { body: { username: "222", password: auth.TEST_OPERATOR_PASSWORD }, ip: "203.0.113.200" });
   const r = await api("POST", "operator/enquiries/" + j.id + "/scope", { token: login.json.token, body: { propertyType: "end_terrace", notes: "Checked." } });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   const row = (await db.query("SELECT status, reasons, customer_visible FROM wvr_measurements WHERE id = $1", [m.id])).rows[0];

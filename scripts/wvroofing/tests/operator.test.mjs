@@ -57,7 +57,7 @@ let keyN = 0;
 const key = () => "opkey" + String(++keyN).padStart(8, "0");
 
 async function login() {
-  const r = await api("POST", "operator/login", { body: { password: PASSWORD }, ip: nextIp() });
+  const r = await api("POST", "operator/login", { body: { username: "222", password: PASSWORD }, ip: nextIp() });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   return r.json.token;
 }
@@ -94,21 +94,32 @@ test("password hashes are salted scrypt; malformed ones never match", async () =
   }
 });
 
-test("login: 503 until the hash is set, 401 for a wrong password, a 12-hour session for the right one", async () => {
+test("login: the built-in 222 / 333 until a hash is set, 401 for a wrong username or password, a 12-hour session for the right ones", async () => {
   const saved = process.env.WVR_OPERATOR_PASSWORD_HASH;
   delete process.env.WVR_OPERATOR_PASSWORD_HASH;
   try {
-    const r = await api("POST", "operator/login", { body: { password: PASSWORD }, ip: nextIp() });
-    assert.equal(r.status, 503);
-    assert.equal(r.json.error, "not_configured");
+    const login = (/** @type {Record<string, unknown>} */ body) => api("POST", "operator/login", { body, ip: nextIp() });
+    assert.equal((await login({ username: "222", password: PASSWORD })).status, 401, "the test password isn't the built-in one");
+    assert.equal((await login({ username: "221", password: "333" })).status, 401, "a wrong username");
+    assert.equal((await login({ password: "333" })).status, 401, "no username");
+    assert.equal((await login({ username: ["222"], password: "333" })).status, 401, "a username that isn't text");
+    const built = await login({ username: " 222 ", password: "333" });
+    assert.equal(built.status, 200, "the built-in login");
+    assert.equal((await api("GET", "operator/session", { token: built.json.token })).status, 200);
+    process.env.WVR_OPERATOR_USER = "boss";
+    assert.equal((await login({ username: "222", password: "333" })).status, 401, "WVR_OPERATOR_USER changes the username");
+    assert.equal((await login({ username: "boss", password: "333" })).status, 200);
   } finally {
+    delete process.env.WVR_OPERATOR_USER;
     process.env.WVR_OPERATOR_PASSWORD_HASH = saved;
   }
+  assert.equal((await api("POST", "operator/login", { body: { username: "222", password: "333" }, ip: nextIp() })).status, 401, "the owner's own hash replaces the built-in password");
+  await db.query("DELETE FROM wvr_login_attempts");
   const ip = nextIp();
-  const bad = await api("POST", "operator/login", { body: { password: "not the password" }, ip });
+  const bad = await api("POST", "operator/login", { body: { username: "222", password: "not the password" }, ip });
   assert.equal(bad.status, 401);
   assert.equal(bad.json.token, undefined);
-  const ok = await api("POST", "operator/login", { body: { password: PASSWORD }, ip });
+  const ok = await api("POST", "operator/login", { body: { username: "222", password: PASSWORD }, ip });
   assert.equal(ok.status, 200);
   assert.match(ok.json.token, /^[A-Za-z0-9_-]{43}$/);
   const hours = (new Date(ok.json.expiresAt).getTime() - Date.now()) / 3600000;
@@ -127,22 +138,22 @@ test("login: 503 until the hash is set, 401 for a wrong password, a 12-hour sess
 
 test("five wrong passwords lock that visitor out for 15 minutes; twenty in all lock every login", async () => {
   const ip = nextIp();
-  for (let i = 0; i < 5; i++) assert.equal((await api("POST", "operator/login", { body: { password: "wrong " + i }, ip })).status, 401);
-  const locked = await api("POST", "operator/login", { body: { password: PASSWORD }, ip });
+  for (let i = 0; i < 5; i++) assert.equal((await api("POST", "operator/login", { body: { username: "222", password: "wrong " + i }, ip })).status, 401);
+  const locked = await api("POST", "operator/login", { body: { username: "222", password: PASSWORD }, ip });
   assert.equal(locked.status, 429, "even the right password waits");
   assert.equal(locked.json.error, "locked");
   assert.equal(locked.headers["retry-after"], "900");
-  assert.equal((await api("POST", "operator/login", { body: { password: PASSWORD }, ip: nextIp() })).status, 200, "another visitor can still log in");
-  for (let i = 0; i < 15; i++) await api("POST", "operator/login", { body: { password: "wrong" }, ip: nextIp() });
-  assert.equal((await api("POST", "operator/login", { body: { password: PASSWORD }, ip: nextIp() })).status, 429, "twenty failures in all lock every login");
+  assert.equal((await api("POST", "operator/login", { body: { username: "222", password: PASSWORD }, ip: nextIp() })).status, 200, "another visitor can still log in");
+  for (let i = 0; i < 15; i++) await api("POST", "operator/login", { body: { username: "222", password: "wrong" }, ip: nextIp() });
+  assert.equal((await api("POST", "operator/login", { body: { username: "222", password: PASSWORD }, ip: nextIp() })).status, 429, "twenty failures in all lock every login");
   await db.query("UPDATE wvr_login_attempts SET created_at = now() - interval '16 minutes'");
-  assert.equal((await api("POST", "operator/login", { body: { password: PASSWORD }, ip })).status, 200, "and they lift after 15 minutes");
+  assert.equal((await api("POST", "operator/login", { body: { username: "222", password: PASSWORD }, ip })).status, 200, "and they lift after 15 minutes");
 });
 
 test("the test environment's password never works anywhere else", async () => {
   process.env.WVR_ENV = "production-check";
   try {
-    const r = await api("POST", "operator/login", { body: { password: PASSWORD }, ip: nextIp() });
+    const r = await api("POST", "operator/login", { body: { username: "222", password: PASSWORD }, ip: nextIp() });
     assert.equal(r.status, 401);
   } finally {
     process.env.WVR_ENV = "test";
@@ -169,7 +180,7 @@ test("a new password hash ends every session opened under the old one", async ()
     const t2 = await login();
     assert.equal((await api("GET", "operator/session", { token: t2 })).status, 200);
     delete process.env.WVR_OPERATOR_PASSWORD_HASH;
-    assert.equal((await api("GET", "operator/session", { token: t2 })).status, 401, "no password set: no session works");
+    assert.equal((await api("GET", "operator/session", { token: t2 })).status, 401, "back to the built-in login: sessions opened under the owner's hash end");
   } finally {
     process.env.WVR_OPERATOR_PASSWORD_HASH = saved;
   }

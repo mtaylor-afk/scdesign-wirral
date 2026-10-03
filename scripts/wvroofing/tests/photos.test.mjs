@@ -75,7 +75,7 @@ async function mockupUrl(w = 800, h = 533) {
 }
 
 async function login() {
-  return ok(await api("POST", "operator/login", { body: { password: auth.TEST_OPERATOR_PASSWORD }, ip: nextIp() }), 200).token;
+  return ok(await api("POST", "operator/login", { body: { username: "222", password: auth.TEST_OPERATOR_PASSWORD }, ip: nextIp() }), 200).token;
 }
 
 // ---------------------------------------------------------------------------
