@@ -1,0 +1,1437 @@
+{
+  "schemaVersion": "mtcw-brief/1",
+  "updated": "2026-10-03",
+  "_about": [
+    "MT Creative Works forms: the single source of truth for BOTH forms (the quick message and the website brief).",
+    "Read by the browser (src/lib/forms.ts imports this file) and by the Vercel function (functions/serverlib/mtcw/form-schema.json is a byte-identical copy made by `npm run sync:form-schema`; never edit the copy by hand).",
+    "The exact API, email formats and browser state machine are in docs/build/FORMS-CONTRACT.md. The owner's binding decisions are in docs/build/FORMS-DECISIONS.md.",
+    "Keys are stable camelCase and are also the native (no-JavaScript) form field names. Change a label freely; change a key or an option value only together with the browser code, the function and the contract.",
+    "labelSource says where each label came from: 'brief' = docs/brief/MTCW-website-brief-form-v01.md word for word, 'owner' = the owner's chat instruction (FORMS-DECISIONS section 1), 'existing-contact-form' = the current /contact/ form (src/content/copy/contact.ts), 'chosen' = plain wording chosen for this schema because the brief gives none.",
+    "Message templates: {max} is replaced with the number formatted with toLocaleString('en-GB') (4000 -> '4,000'); {n} is the 1-based position of a repeated item."
+  ],
+
+  "endpoint": {
+    "path": "/api/mtcw",
+    "actions": ["contact", "brief", "file"],
+    "actionParam": "action",
+    "buildOverrideEnv": "PUBLIC_MTCW_FORM_ENDPOINT",
+    "devDefault": "http://127.0.0.1:4390/api/mtcw",
+    "hostedDefault": "https://scdesign-wirral.vercel.app/api/mtcw",
+    "dataAttribute": "data-form-endpoint"
+  },
+
+  "origins": {
+    "allowed": ["https://scdesignwirral.co.uk", "https://mtcreativeworks.co.uk", "https://www.mtcreativeworks.co.uk"],
+    "sinkModeAlsoAllows": ["http://127.0.0.1:*", "http://localhost:*"],
+    "_rule": "Exact string match on the Origin header (scheme + host + optional port). 'Origin: null' and a missing Origin are refused for POST. The localhost patterns apply ONLY when MTCW_MAIL_MODE=sink."
+  },
+
+  "limits": {
+    "lengthUnit": "Unicode code points, counted AFTER sanitising (see text.singleLine / text.multiLine). Over-limit answers are rejected with a message, never truncated.",
+    "bodyBytes": {
+      "contactJson": 65536,
+      "contactUrlencoded": 65536,
+      "briefJson": 524288,
+      "briefUrlencoded": 786432,
+      "fileJson": 4194304
+    },
+    "_bodyBytesRationale": "Each cap is at least the worst case allowed by the field limits below (every field full of 4-byte characters; x12 for percent-encoding), checked by tests/unit/form-schema.test.ts. fileJson = 3,000,000 bytes as base64 (4,000,000) plus the text fields, and stays under Vercel's 4.5 MB request limit.",
+    "rateLimit": {
+      "_scope": "Per warm function instance, in memory, keyed by an HMAC of the client IP (never stored or logged raw). NOT sufficient on its own on a distributed host (FORMS-DECISIONS section 6).",
+      "windowSeconds": 600,
+      "contactPerClient": 5,
+      "briefPerClient": 3,
+      "filePerClient": 30,
+      "fileAttemptsPerIndex": 3,
+      "emailsPerInstance": 100
+    },
+    "dedupe": {
+      "_scope": "Per warm instance, in memory. Only successful responses are remembered. A repeat of the same attemptId (contact/brief) or the same ref+index+attemptId (file) returns the remembered response with duplicate:true and sends nothing.",
+      "ttlSeconds": 900,
+      "maxEntries": 500
+    },
+    "fileToken": {
+      "ttlSeconds": 7200,
+      "businessLabelMaxLength": 80
+    },
+    "clientTimeoutsMs": {
+      "contact": 30000,
+      "brief": 45000,
+      "file": 60000
+    },
+    "_lengthRationale": "Names and single-line answers match the existing contact form (name 100, email 254 = RFC 5321 path limit, phone 32, business 120, town 80, website 300). Long answers are sized for a few paragraphs typed on a phone (600-4,000). Sharing links get 500 because cloud-drive links are long. Captions are short (300); the owner's per-photo extra detail gets 2,000."
+  },
+
+  "text": {
+    "singleLine": "Unicode NFC; every line break (CRLF, CR, LF, VT, FF, NEL, U+2028, U+2029) and tab becomes a space; C0/C1 controls and DEL are removed; bidirectional embeddings/overrides/isolates (U+202A-U+202E, U+2066-U+2069), zero-width space U+200B, word joiner U+2060, BOM U+FEFF and soft hyphen U+00AD are removed (ZWJ/ZWNJ are kept); runs of whitespace collapse to one space; trimmed. Never contains CR or LF. Same as sanitiseSingleLine in src/server/enquiry-schema.ts.",
+    "multiLine": "Unicode NFC; all line breaks become LF; tabs become spaces; the same controls and invisible characters are removed; trailing spaces trimmed per line; 3+ consecutive line breaks collapse to 2; trimmed. Same as sanitiseMultiLine in src/server/enquiry-schema.ts.",
+    "email": "Single-line, then: at most 254 characters; exactly one '@'; local part a dot-atom of [A-Za-z0-9!#$%&'*+/=?^_`{|}~-] (max 64); domain of 2+ DNS labels (letters, digits, inner hyphens, each max 63), total max 253, the last label alphabetic (2-63) or punycode (xn--). No quoted local parts, comments, spaces, commas, angle brackets or IP literals. Same as isValidEmail in src/server/enquiry-schema.ts.",
+    "phone": "Single-line, then: only digits, spaces, '+', '(', ')', '.', '-'; '+' only as the first character; 7 to 15 digits in total. Same as isValidPhone in src/server/enquiry-schema.ts.",
+    "url": "Single-line, then normalised WITHOUT fetching: a bare domain gets https:// ('yourbusiness.co.uk' -> 'https://yourbusiness.co.uk/'); '//host' gets https:; only http and https schemes; no spaces, no user:password@, no IP addresses, no single-label hosts; every host label valid and an alphabetic or punycode top-level label; the normalised href must still fit maxLength. Same as normaliseWebsite in src/server/enquiry-schema.ts (whose length limit is LIMITS.website; here it is the field's own maxLength).",
+    "notSupplied": "Not supplied"
+  },
+
+  "honeypot": {
+    "field": "mtcw_extra",
+    "label": "Leave this field empty",
+    "_rule": "Off-screen, aria-hidden, tabindex -1, autocomplete off. Top-level key in JSON bodies; a form field in native posts. Any non-blank value: HTTP 400 {ok:false,error:'bad_request'}, nothing is sent, never a success."
+  },
+
+  "attemptId": {
+    "field": "attemptId",
+    "pattern": "^[A-Za-z0-9_-]{16,64}$",
+    "subjectTagLength": 6,
+    "_rule": "Made by the browser (crypto.randomUUID without hyphens) once per submission attempt and reused for every retry of that attempt. Its first 6 characters appear in the email subject as '#xxxxxx' so Matt can spot a repeat. Optional in native posts (static pages cannot make one): the subject tag is then '#no-js'."
+  },
+
+  "reference": {
+    "format": "MTCW-YYMMDD-XXXX",
+    "pattern": "^MTCW-[0-9]{6}-[2-9A-HJ-NP-Z]{4}$",
+    "alphabet": "23456789ABCDEFGHJKLMNPQRSTUVWXYZ",
+    "_rule": "Generated by the function (UTC date + 4 random characters from the alphabet, crypto-random). Never accepted from a client except as the 'ref' of a file post, where it must match the signed file token."
+  },
+
+  "attribution": {
+    "field": "attribution",
+    "params": {
+      "from": {
+        "options": ["home", "websites", "planning-meeting", "pricing", "contact", "wirral", "liverpool", "about", "work"]
+      },
+      "area": { "options": "businessArea" },
+      "interest": { "options": "interest" }
+    },
+    "_rule": "The page reads ONLY these query parameters (e.g. /website-brief/?from=planning-meeting, /contact/?area=wirral&interest=website), keeps a value only when it is in the allowlist, and sends {attribution:{...}} (JSON) or attr_from / attr_area / attr_interest hidden fields (native). The function drops anything else silently. Private metadata: it appears in the email only, never in the build pack. No other tracking."
+  },
+
+  "conditions": {
+    "_doc": [
+      "A condition is one of:",
+      "  { \"field\": \"<key>\", \"equals\": \"<value>\" }        single-choice answer equals the value",
+      "  { \"field\": \"<key>\", \"in\": [\"<v1>\", \"<v2>\"] }    single-choice answer is one of the values",
+      "  { \"field\": \"<key>\", \"includes\": \"<value>\" }      multiple-choice (checkboxes) answer contains the value",
+      "  { \"field\": \"<key>\", \"filled\": true }               text non-empty after sanitising / list has a kept item / checkbox ticked",
+      "  { \"sibling\": \"<itemKey>\", \"filled\": true }         inside a repeatable group: another field of the SAME item is filled",
+      "  { \"files\": \"any\" }                                  at least one file is declared in the brief's files manifest",
+      "  { \"anyOf\": [ <condition>, ... ] }   { \"allOf\": [ <condition>, ... ] }",
+      "showWhen: the browser shows the field only while the condition is true and sends only the values of fields that are shown (it makes any removal of an answered follow-up explicit to the customer). The function NEVER drops a value because of showWhen: a follow-up that arrives while its condition is false is kept and flagged as a conflict in the email and missing-information.txt (lossless for the no-JavaScript form, which shows every field).",
+      "requiredWhen: the field is required only while the condition is true. The function evaluates it on the values exactly as received (nothing stripped).",
+      "Order rule: a showWhen condition may name only fields that come EARLIER in the same form's field list (no forward references, so no cycles). The browser evaluates showWhen in field order and treats a hidden field as empty (it will not be sent), so e.g. materialPermission follows proofDetails, which follows proofAvailable."
+    ]
+  },
+
+  "messages": {
+    "generic": {
+      "required": "Answer this question.",
+      "tooLong": "This answer must be {max} characters or fewer.",
+      "invalid": "Check this answer.",
+      "invalidOption": "Choose one of the listed options.",
+      "tooMany": "You can add up to {max}."
+    },
+    "files": {
+      "tooMany": "You can send up to {max} photos or files.",
+      "type": "This file can't be sent. Choose a JPEG, PNG, WebP or HEIC photo, or a PDF.",
+      "mismatch": "This file's content does not match its type, so it can't be sent.",
+      "tooLarge": "This file is larger than 3 MB, so it can't be sent by email. Paste a sharing link for it instead, or send a smaller copy.",
+      "tooLargeAfterResize": "This photo is still larger than 3 MB after making it smaller, so it can't be sent. Paste a sharing link for it instead.",
+      "empty": "This file is empty.",
+      "name": "This file needs a name.",
+      "nameTooLong": "This file's name must be {max} characters or fewer.",
+      "captionTooLong": "What this file is and how to use it must be {max} characters or fewer.",
+      "extraContextTooLong": "The extra detail must be {max} characters or fewer.",
+      "role": "Choose one of the listed uses, or leave it blank.",
+      "sequence": "The list of files has changed. Please check your files and send again.",
+      "token": "This file can no longer be sent from this page. Reply to Matt's email and attach it instead."
+    }
+  },
+
+  "enums": {
+    "businessArea": {
+      "labelSource": "existing-contact-form",
+      "options": [
+        { "value": "wirral", "label": "Wirral" },
+        { "value": "liverpool", "label": "Liverpool" },
+        { "value": "both", "label": "Wirral and Liverpool" }
+      ]
+    },
+    "interest": {
+      "labelSource": "existing-contact-form",
+      "options": [
+        { "value": "not-sure", "label": "Not sure yet" },
+        { "value": "website", "label": "£250 website" },
+        { "value": "updates", "label": "Monthly changes" },
+        { "value": "website-and-updates", "label": "Website and monthly changes" }
+      ]
+    },
+    "contactMeeting": {
+      "labelSource": "existing-contact-form",
+      "options": [
+        { "value": "no-preference", "label": "No preference" },
+        { "value": "video", "label": "Video call" },
+        { "value": "in-person", "label": "In person" }
+      ]
+    },
+    "replyPreference": {
+      "labelSource": "brief",
+      "options": [
+        { "value": "email", "label": "Email" },
+        { "value": "phone", "label": "Phone" },
+        { "value": "either", "label": "Either is fine" }
+      ]
+    },
+    "briefMeeting": {
+      "labelSource": "brief",
+      "options": [
+        { "value": "video", "label": "Video call" },
+        { "value": "in-person", "label": "In person in Wirral or Liverpool" },
+        { "value": "no-preference", "label": "No preference yet" }
+      ]
+    },
+    "priorityOffering": {
+      "labelSource": "brief",
+      "dynamic": { "fromGroup": "offerings", "valuePrefix": "offering-", "labelFromItem": "name", "_rule": "One option per KEPT offering with a name, value 'offering-<position>' (1-5), label = that offering's name. If the chosen offering is renamed, the selection stays; if it is removed or its name cleared, the browser clears the selection and says so. The function rejects 'offering-N' when offering N is not a kept, named item." },
+      "options": [
+        { "value": "equal", "label": "Treat them equally" },
+        { "value": "help", "label": "Help me choose" }
+      ]
+    },
+    "mainAction": {
+      "labelSource": "brief",
+      "options": [
+        { "value": "quote", "label": "Ask for a quote" },
+        { "value": "call", "label": "Call the business" },
+        { "value": "enquiry", "label": "Send an enquiry" },
+        { "value": "appointment", "label": "Request an appointment" },
+        { "value": "visit", "label": "Visit the business" },
+        { "value": "browse", "label": "View products or services" },
+        { "value": "help", "label": "Help me choose" }
+      ]
+    },
+    "customersVisit": {
+      "labelSource": "brief",
+      "options": [
+        { "value": "yes", "label": "Yes" },
+        { "value": "no", "label": "No" },
+        { "value": "not-sure", "label": "Not sure" }
+      ]
+    },
+    "pricingPreference": {
+      "labelSource": "brief",
+      "options": [
+        { "value": "fixed", "label": "A fixed price or price list" },
+        { "value": "from", "label": "Prices starting from an amount" },
+        { "value": "quote", "label": "Ask us for a quote" },
+        { "value": "hide", "label": "Do not show prices" },
+        { "value": "undecided", "label": "I have not decided" }
+      ]
+    },
+    "proofAvailable": {
+      "labelSource": "brief",
+      "options": [
+        { "value": "yes", "label": "Yes" },
+        { "value": "not-yet", "label": "Not yet" },
+        { "value": "not-sure", "label": "I am not sure" }
+      ]
+    },
+    "contentWanted": {
+      "labelSource": "brief",
+      "options": [
+        { "value": "work-photos", "label": "Photos or examples of my work" },
+        { "value": "reviews", "label": "Customer reviews" },
+        { "value": "prices", "label": "Prices or a menu" },
+        { "value": "about", "label": "Information about the business" },
+        { "value": "faqs", "label": "Common questions and answers" },
+        { "value": "help", "label": "Help me choose" }
+      ]
+    },
+    "features": {
+      "labelSource": "brief",
+      "options": [
+        { "value": "none", "label": "No, a straightforward website is enough" },
+        { "value": "booking-link", "label": "Link to an existing booking service" },
+        { "value": "selling", "label": "Online selling or taking payments" },
+        { "value": "other", "label": "Another feature" },
+        { "value": "not-sure", "label": "I am not sure" }
+      ]
+    },
+    "referencePreferred": {
+      "labelSource": "brief",
+      "dynamic": { "fromGroup": "references", "valuePrefix": "reference-", "labelFromItem": "url", "_rule": "One option per KEPT reference with a valid address, value 'reference-<position>' (1-3), label = the address as the customer typed it (recognisable name/address). If that reference is removed or its address cleared, the browser clears the selection and says so. The function rejects 'reference-N' when reference N has no valid address." },
+      "options": [
+        { "value": "none", "label": "None of these" },
+        { "value": "matt-choose", "label": "I would like Matt to choose" }
+      ]
+    },
+    "imagePreference": {
+      "labelSource": "brief",
+      "options": [
+        { "value": "temporary", "label": "Use clearly identified temporary images where suitable" },
+        { "value": "own-photos", "label": "Leave space for my own photos" },
+        { "value": "advise", "label": "Let Matt advise" }
+      ]
+    },
+    "fileRole": {
+      "labelSource": "brief",
+      "options": [
+        { "value": "logo", "label": "Logo" },
+        { "value": "work-photo", "label": "Work photo" },
+        { "value": "product-photo", "label": "Product photo" },
+        { "value": "team-premises", "label": "Team or premises" },
+        { "value": "document", "label": "Wording or document" },
+        { "value": "other", "label": "Other" }
+      ]
+    }
+  },
+
+  "files": {
+    "field": "files",
+    "maxFiles": 8,
+    "maxBytes": 3000000,
+    "maxBytesLabel": "3 MB",
+    "nameMaxLength": 200,
+    "captionMaxLength": 300,
+    "extraContextMaxLength": 2000,
+    "sha256Pattern": "^[0-9a-f]{64}$",
+    "accept": "image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.hif,.pdf",
+    "chooseLabel": "Choose photos or files",
+    "chooseLabelSource": "brief",
+    "limitsNote": "Up to 8 photos or files, each up to 3 MB: JPEG, PNG, WebP or HEIC photos, or PDF documents. Larger JPEG, PNG and WebP photos are made smaller on your device before sending.",
+    "limitsNoteSource": "chosen",
+    "types": [
+      {
+        "mime": "image/jpeg",
+        "label": "JPEG photo",
+        "kind": "photo",
+        "family": "jpeg",
+        "extensions": [".jpg", ".jpeg"],
+        "canonicalExtension": ".jpg",
+        "preview": true,
+        "resizable": true,
+        "magic": [{ "offset": 0, "hex": "ffd8ff" }]
+      },
+      {
+        "mime": "image/png",
+        "label": "PNG image",
+        "kind": "photo",
+        "family": "png",
+        "extensions": [".png"],
+        "canonicalExtension": ".png",
+        "preview": true,
+        "resizable": true,
+        "magic": [{ "offset": 0, "hex": "89504e470d0a1a0a" }]
+      },
+      {
+        "mime": "image/webp",
+        "label": "WebP image",
+        "kind": "photo",
+        "family": "webp",
+        "extensions": [".webp"],
+        "canonicalExtension": ".webp",
+        "preview": true,
+        "resizable": true,
+        "magic": [{ "offset": 0, "ascii": "RIFF" }, { "offset": 8, "ascii": "WEBP" }]
+      },
+      {
+        "mime": "image/heic",
+        "label": "HEIC photo",
+        "kind": "photo",
+        "family": "heif",
+        "extensions": [".heic"],
+        "canonicalExtension": ".heic",
+        "preview": false,
+        "resizable": false,
+        "magic": [{ "offset": 4, "ascii": "ftyp" }],
+        "majorBrands": ["heic", "heix", "heim", "heis", "hevc", "hevx", "hevm", "hevs"]
+      },
+      {
+        "mime": "image/heif",
+        "label": "HEIF photo",
+        "kind": "photo",
+        "family": "heif",
+        "extensions": [".heif", ".hif"],
+        "canonicalExtension": ".heif",
+        "preview": false,
+        "resizable": false,
+        "magic": [{ "offset": 4, "ascii": "ftyp" }],
+        "majorBrands": ["mif1", "msf1"],
+        "rejectCompatibleBrands": ["avif", "avis"]
+      },
+      {
+        "mime": "application/pdf",
+        "label": "PDF document",
+        "kind": "document",
+        "family": "pdf",
+        "extensions": [".pdf"],
+        "canonicalExtension": ".pdf",
+        "preview": false,
+        "resizable": false,
+        "magic": [{ "offset": 0, "ascii": "%PDF-" }]
+      }
+    ],
+    "_sniffRule": "Content decides the type, never File.type. Try the types in the order listed; a type matches when EVERY entry in its magic list matches ('hex' = lower-case hex bytes, 'ascii' = the bytes of that ASCII string, at that byte offset). For the heif family the 4 ASCII bytes at offset 8 (the ftyp major brand) must also be in majorBrands, and no compatible brand in the ftyp box (4-byte entries from offset 16 to the box size read big-endian at offset 0, capped at 64 bytes) may be in rejectCompatibleBrands. Read at least the first 64 bytes.",
+    "_typeRule": "The declared type must equal the sniffed type, except inside the same family (image/heic and image/heif are interchangeable). The file NAME's extension (case-insensitive) must be one of the extensions of ANY accepted type (so a renamed 'photo.png' that is really a JPEG is accepted as a JPEG); the attachment is always named with the sniffed type's canonicalExtension.",
+    "resize": {
+      "appliesTo": ["image/jpeg", "image/png", "image/webp"],
+      "when": "size > maxBytes",
+      "longestEdgePx": 2560,
+      "outputMime": "image/jpeg",
+      "quality": 0.85,
+      "background": "#ffffff",
+      "neverUpscale": true,
+      "fallback": [{ "longestEdgePx": 2048, "quality": 0.8 }],
+      "_rule": "Only files over maxBytes are re-encoded, in the browser (canvas -> JPEG). Transparency is flattened onto white. Re-encoding drops embedded metadata such as location. If the result is still over maxBytes, try each fallback step in order; if still too large the file is refused with messages.files.tooLargeAfterResize. HEIC/HEIF and PDF are never re-encoded: over maxBytes they are refused with messages.files.tooLarge. Files at or under maxBytes are sent unchanged, including any embedded metadata (the build pack README tells Matt to strip metadata before publishing)."
+    },
+    "states": [
+      { "value": "checking", "label": "Checking…" },
+      { "value": "refused", "label": "Can't be sent" },
+      { "value": "ready", "label": "Ready to send" },
+      { "value": "sending", "label": "Sending…" },
+      { "value": "sent", "label": "Sent" },
+      { "value": "failed", "label": "Not sent" },
+      { "value": "skipped", "label": "Not sent — you chose to send without this file" }
+    ],
+    "actions": {
+      "remove": "Remove",
+      "retry": "Try again",
+      "skip": "Send without this file"
+    },
+    "fields": [
+      {
+        "key": "role",
+        "label": "Intended use",
+        "labelSource": "chosen",
+        "type": "select",
+        "options": "fileRole",
+        "required": false
+      },
+      {
+        "key": "caption",
+        "label": "What is this file, and how should we use it?",
+        "labelSource": "brief",
+        "type": "text",
+        "required": false,
+        "maxLength": 300
+      },
+      {
+        "key": "extraContext",
+        "label": "Add more detail about this photo",
+        "labelForDocument": "Add more detail about this file",
+        "labelSource": "owner",
+        "help": "Anything else about this photo: where or when it was taken, what it shows, or how you would like it used.",
+        "helpSource": "chosen",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 2000,
+        "_ui": "An expander per file row, closed until opened; opens itself when it has text or an error."
+      }
+    ]
+  },
+
+  "contact": {
+    "form": "contact",
+    "title": "Send a quick message",
+    "titleSource": "chosen",
+    "action": "contact",
+    "fields": [
+      {
+        "key": "name",
+        "form": "contact",
+        "label": "Your name",
+        "labelSource": "existing-contact-form",
+        "help": null,
+        "type": "text",
+        "required": true,
+        "maxLength": 100,
+        "autocomplete": "name",
+        "placement": "main",
+        "errors": {
+          "required": "Enter your name.",
+          "tooLong": "Your name must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "email",
+        "form": "contact",
+        "label": "Email address",
+        "labelSource": "existing-contact-form",
+        "help": "We will reply to this address.",
+        "type": "email",
+        "required": true,
+        "maxLength": 254,
+        "autocomplete": "email",
+        "placement": "main",
+        "errors": {
+          "required": "Enter your email address.",
+          "invalid": "Enter an email address in the correct format, like name@example.co.uk.",
+          "tooLong": "Your email address must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "phone",
+        "form": "contact",
+        "label": "Phone number",
+        "labelSource": "existing-contact-form",
+        "help": "Only if you would like a call.",
+        "type": "tel",
+        "required": false,
+        "maxLength": 32,
+        "autocomplete": "tel",
+        "placement": "main",
+        "errors": {
+          "invalid": "Enter a phone number using digits, spaces, brackets or +, or leave it blank.",
+          "tooLong": "The phone number must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "businessName",
+        "form": "contact",
+        "label": "Business name",
+        "labelSource": "existing-contact-form",
+        "help": null,
+        "type": "text",
+        "required": false,
+        "maxLength": 120,
+        "autocomplete": "organization",
+        "placement": "main",
+        "errors": {
+          "tooLong": "The business name must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "businessArea",
+        "form": "contact",
+        "label": "Business area",
+        "labelSource": "existing-contact-form",
+        "placeholder": "Choose an area",
+        "help": null,
+        "type": "select",
+        "options": "businessArea",
+        "required": true,
+        "placement": "main",
+        "queryParam": "area",
+        "errors": {
+          "required": "Choose your business area.",
+          "invalid": "Choose Wirral, Liverpool, or Wirral and Liverpool."
+        }
+      },
+      {
+        "key": "message",
+        "form": "contact",
+        "label": "What does your business do, and what would you like from the website?",
+        "labelSource": "existing-contact-form",
+        "help": "A few sentences is plenty: what you offer, who your customers are and what you would like visitors to do.",
+        "type": "textarea",
+        "required": true,
+        "maxLength": 4000,
+        "placement": "main",
+        "errors": {
+          "required": "Tell us what your business does and what you would like from the website.",
+          "tooLong": "Your message must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "interest",
+        "form": "contact",
+        "label": "What are you interested in?",
+        "labelSource": "existing-contact-form",
+        "help": "Asking about monthly changes does not start a subscription.",
+        "type": "select",
+        "options": "interest",
+        "required": false,
+        "default": "not-sure",
+        "placement": "main",
+        "queryParam": "interest",
+        "errors": {
+          "invalid": "Choose one of the listed options, or leave it as Not sure yet."
+        }
+      },
+      {
+        "key": "meetingPreference",
+        "form": "contact",
+        "label": "Preferred planning meeting",
+        "labelSource": "existing-contact-form",
+        "help": "A preference, not a booking. In-person meetings are in Wirral or Liverpool, and we arrange the time together.",
+        "type": "select",
+        "options": "contactMeeting",
+        "required": false,
+        "default": "no-preference",
+        "placement": "details",
+        "errors": {
+          "invalid": "Choose a meeting preference from the list."
+        }
+      },
+      {
+        "key": "town",
+        "form": "contact",
+        "label": "Town or district",
+        "labelSource": "existing-contact-form",
+        "help": null,
+        "type": "text",
+        "required": false,
+        "maxLength": 80,
+        "autocomplete": "address-level2",
+        "placement": "details",
+        "errors": {
+          "tooLong": "The town or district must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "website",
+        "form": "contact",
+        "label": "Existing website or social page",
+        "labelSource": "existing-contact-form",
+        "help": "For example yourbusiness.co.uk or a link to your Facebook page. You do not need to type https://.",
+        "type": "url",
+        "required": false,
+        "maxLength": 300,
+        "autocomplete": "url",
+        "inputMode": "url",
+        "placement": "details",
+        "errors": {
+          "invalid": "Enter a web address such as yourbusiness.co.uk, or leave it blank.",
+          "tooLong": "The web address must be {max} characters or fewer."
+        }
+      }
+    ]
+  },
+
+  "brief": {
+    "form": "brief",
+    "title": "Tell us about your new website",
+    "titleSource": "brief",
+    "action": "brief",
+    "stages": [
+      { "stage": 1, "id": "your-details", "name": "Your details", "nameSource": "brief" },
+      { "stage": 2, "id": "your-business", "name": "Your business", "nameSource": "brief" },
+      { "stage": 3, "id": "your-sample-website", "name": "Your sample website", "nameSource": "brief" },
+      {
+        "stage": 4,
+        "id": "photos-and-files",
+        "name": "Photos and files — optional",
+        "nameSource": "brief",
+        "intro": "Add anything you already have. Phone photos are fine. You can still send the form without files.",
+        "skipLabel": "Skip photos and files"
+      },
+      { "stage": 5, "id": "check-and-send", "name": "Check and send", "nameSource": "brief" }
+    ],
+    "private": ["name", "email", "phone", "replyPreference", "meetingPreference"],
+    "_private": "Private project contact: in the brief email's PRIVATE block and in private-contact.txt only. NEVER in the build pack (website-brief.json / website-brief.txt / claude-code-prompt.txt / asset-manifest.json / missing-information.txt / README.txt) or any public-data field. Public website contact details are the separate public* fields of stage 3.",
+    "fields": [
+      {
+        "key": "name",
+        "form": "brief",
+        "stage": 1,
+        "section": "S1-A",
+        "label": "Your name",
+        "labelSource": "brief",
+        "help": "So Matt knows who to reply to.",
+        "type": "text",
+        "required": true,
+        "maxLength": 100,
+        "autocomplete": "name",
+        "errors": {
+          "required": "Enter your name.",
+          "tooLong": "Your name must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "email",
+        "form": "brief",
+        "stage": 1,
+        "section": "S1-B",
+        "label": "Email address for Matt's reply",
+        "labelSource": "brief",
+        "help": "We will use this to contact you about this enquiry. It will not appear on your website unless you choose to use it there.",
+        "type": "email",
+        "required": true,
+        "maxLength": 254,
+        "autocomplete": "email",
+        "errors": {
+          "required": "Enter the email address for Matt's reply.",
+          "invalid": "Enter an email address in the correct format, like name@example.co.uk.",
+          "tooLong": "Your email address must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "phone",
+        "form": "brief",
+        "stage": 1,
+        "section": "S1-C",
+        "label": "Phone number",
+        "labelSource": "brief",
+        "help": "Needed only if you would like Matt to phone you.",
+        "helpSource": "chosen",
+        "type": "tel",
+        "required": false,
+        "requiredWhen": { "field": "replyPreference", "equals": "phone" },
+        "maxLength": 32,
+        "autocomplete": "tel",
+        "errors": {
+          "required": "Enter a phone number, or choose another way for Matt to reply.",
+          "invalid": "Enter a phone number using digits, spaces, brackets or +.",
+          "tooLong": "The phone number must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "replyPreference",
+        "form": "brief",
+        "stage": 1,
+        "section": "S1-D",
+        "label": "How would you prefer Matt to reply?",
+        "labelSource": "brief",
+        "help": null,
+        "type": "radio",
+        "options": "replyPreference",
+        "required": false,
+        "default": null,
+        "errors": {
+          "invalid": "Choose Email, Phone or Either is fine."
+        }
+      },
+      {
+        "key": "meetingPreference",
+        "form": "brief",
+        "stage": 1,
+        "section": "S1-E",
+        "label": "How would you prefer the planning meeting?",
+        "labelSource": "brief",
+        "help": "We will arrange this with you. Choosing an option does not book a meeting.",
+        "type": "radio",
+        "options": "briefMeeting",
+        "required": false,
+        "default": null,
+        "errors": {
+          "invalid": "Choose a meeting preference from the list."
+        }
+      },
+      {
+        "key": "businessName",
+        "form": "brief",
+        "stage": 2,
+        "section": "S2-A",
+        "label": "Business name",
+        "labelSource": "brief",
+        "help": "Use the name you want customers to see.",
+        "type": "text",
+        "required": true,
+        "maxLength": 120,
+        "autocomplete": "organization",
+        "errors": {
+          "required": "Enter your business name.",
+          "tooLong": "The business name must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "offerings",
+        "form": "brief",
+        "stage": 2,
+        "section": "S2-B",
+        "label": "What are your main services or products?",
+        "labelSource": "brief",
+        "help": "One or two sentences is enough. Describing your three main offerings is helpful, but you can give fewer.",
+        "type": "group",
+        "required": true,
+        "minItems": 1,
+        "maxItems": 5,
+        "initialItems": 1,
+        "itemLabel": "Service or product {n}",
+        "addLabel": "Add another service or product",
+        "removeLabel": "Remove this service or product",
+        "labelsSourceForItemControls": "chosen",
+        "items": [
+          {
+            "key": "name",
+            "label": "Service or product name",
+            "labelSource": "brief",
+            "type": "text",
+            "required": true,
+            "maxLength": 120,
+            "errors": {
+              "required": "Enter the name of service or product {n}, or remove it.",
+              "tooLong": "The name of service or product {n} must be {max} characters or fewer."
+            }
+          },
+          {
+            "key": "description",
+            "label": "What does it include, and how does it help the customer?",
+            "labelSource": "brief",
+            "type": "textarea",
+            "required": false,
+            "maxLength": 600,
+            "errors": {
+              "tooLong": "The description of service or product {n} must be {max} characters or fewer."
+            }
+          }
+        ],
+        "errors": {
+          "required": "Enter at least one service or product.",
+          "tooMany": "You can add up to {max} services or products here. Put any more in the box below."
+        }
+      },
+      {
+        "key": "moreOfferings",
+        "form": "brief",
+        "stage": 2,
+        "section": "S2-B",
+        "label": "Any other services or products",
+        "labelSource": "chosen",
+        "help": "If you have more, list them here.",
+        "helpSource": "chosen",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 1500,
+        "errors": {
+          "tooLong": "Other services or products must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "priorityOffering",
+        "form": "brief",
+        "stage": 2,
+        "section": "S2-C",
+        "label": "Which would you most like your website to promote?",
+        "labelSource": "brief",
+        "help": null,
+        "type": "radio",
+        "options": "priorityOffering",
+        "required": false,
+        "default": null,
+        "errors": {
+          "invalid": "The service or product you chose has changed. Choose again."
+        }
+      },
+      {
+        "key": "serviceArea",
+        "form": "brief",
+        "stage": 2,
+        "section": "S2-D",
+        "label": "Where do you serve your customers?",
+        "labelSource": "brief",
+        "help": "List your towns or areas, or tell us if you work nationwide, online or from one location.",
+        "type": "text",
+        "required": true,
+        "maxLength": 300,
+        "errors": {
+          "required": "Tell us where you serve your customers.",
+          "tooLong": "Where you serve customers must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "audience",
+        "form": "brief",
+        "stage": 2,
+        "section": "S2-E",
+        "label": "Who usually buys from you?",
+        "labelSource": "brief",
+        "help": "For example, homeowners, local businesses or people looking for a particular product.",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 1000,
+        "errors": {
+          "tooLong": "Who usually buys from you must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "aboutBusiness",
+        "form": "brief",
+        "stage": 2,
+        "section": "S2-F",
+        "label": "What should customers know about you and your business?",
+        "labelSource": "brief",
+        "help": "You could mention who runs the business, how it started, relevant experience and your connection to the area. Only include details you want used on the website.",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 2000,
+        "errors": {
+          "tooLong": "What customers should know must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "whyChooseYou",
+        "form": "brief",
+        "stage": 2,
+        "section": "S2-G",
+        "label": "Why do customers choose you?",
+        "labelSource": "brief",
+        "help": "Tell us anything that makes your service useful or different. Leave this blank if you are not sure.",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 1500,
+        "errors": {
+          "tooLong": "Why customers choose you must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "mainAction",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-A",
+        "label": "What is the main thing you want visitors to do?",
+        "labelSource": "brief",
+        "help": null,
+        "type": "radio",
+        "options": "mainAction",
+        "required": true,
+        "default": null,
+        "errors": {
+          "required": "Choose the main thing you want visitors to do. Help me choose is fine.",
+          "invalid": "Choose one of the listed options."
+        }
+      },
+      {
+        "key": "afterContact",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-B",
+        "label": "What happens after someone contacts you?",
+        "labelSource": "brief",
+        "help": "For example, you arrange a visit, ask for photos, give a quote or discuss what they need.",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 1000,
+        "errors": {
+          "tooLong": "What happens after someone contacts you must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "existingWebsites",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-C",
+        "label": "Do you already have a website or business social page?",
+        "labelSource": "brief",
+        "help": "For example yourbusiness.co.uk or a link to your Facebook page. You do not need to type https://.",
+        "helpSource": "existing-contact-form",
+        "type": "urlList",
+        "required": false,
+        "minItems": 0,
+        "maxItems": 3,
+        "initialItems": 1,
+        "itemMaxLength": 300,
+        "itemLabel": "Website or social page {n}",
+        "addLabel": "Add another website or social page",
+        "removeLabel": "Remove this address",
+        "labelsSourceForItemControls": "chosen",
+        "errors": {
+          "invalid": "Enter website or social page {n} like yourbusiness.co.uk, or remove it.",
+          "tooLong": "Website or social page {n} must be {max} characters or fewer.",
+          "tooMany": "You can add up to {max} website or social page addresses."
+        }
+      },
+      {
+        "key": "publicEmail",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-D",
+        "group": "publicContact",
+        "label": "Email address to show on the website",
+        "labelSource": "chosen",
+        "help": null,
+        "type": "email",
+        "required": false,
+        "requiredWhen": { "field": "publicEmailFromReply", "filled": true },
+        "maxLength": 254,
+        "autocomplete": "off",
+        "errors": {
+          "required": "Enter the email address to show on the website, or untick Use my reply email address on the website.",
+          "invalid": "Enter the email address to show in the correct format, like name@example.co.uk, or leave it blank.",
+          "tooLong": "The email address to show must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "publicEmailFromReply",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-D",
+        "group": "publicContact",
+        "label": "Use my reply email address on the website",
+        "labelSource": "brief",
+        "help": null,
+        "type": "checkbox",
+        "required": false,
+        "default": false,
+        "_ui": "Initially unchecked. Ticking it copies the CURRENT reply email into publicEmail (visible and editable). Later changes to the reply email are NOT copied again silently; the review shows the exact public value."
+      },
+      {
+        "key": "publicPhone",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-D",
+        "group": "publicContact",
+        "label": "Phone number to show on the website",
+        "labelSource": "chosen",
+        "help": null,
+        "type": "tel",
+        "required": false,
+        "requiredWhen": { "field": "publicPhoneFromReply", "filled": true },
+        "maxLength": 32,
+        "autocomplete": "off",
+        "errors": {
+          "required": "Enter the phone number to show on the website, or untick Use my phone number on the website.",
+          "invalid": "Enter the phone number to show using digits, spaces, brackets or +, or leave it blank.",
+          "tooLong": "The phone number to show must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "publicPhoneFromReply",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-D",
+        "group": "publicContact",
+        "label": "Use my phone number on the website",
+        "labelSource": "brief",
+        "help": null,
+        "type": "checkbox",
+        "required": false,
+        "default": false,
+        "_ui": "Initially unchecked. Ticking it copies the CURRENT private phone number into publicPhone (visible and editable). Never re-copied silently."
+      },
+      {
+        "key": "publicAddress",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-D",
+        "group": "publicContact",
+        "label": "Address to show on the website",
+        "labelSource": "brief",
+        "help": "Leave this blank to keep your address private.",
+        "helpSource": "chosen",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 300,
+        "autocomplete": "off",
+        "errors": {
+          "tooLong": "The address to show must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "customersVisit",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-D",
+        "group": "publicContact",
+        "label": "Do customers visit this address?",
+        "labelSource": "brief",
+        "help": null,
+        "type": "radio",
+        "options": "customersVisit",
+        "required": false,
+        "default": null,
+        "errors": {
+          "invalid": "Choose Yes, No or Not sure."
+        }
+      },
+      {
+        "key": "openingHours",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-D",
+        "group": "publicContact",
+        "label": "Opening hours or times customers can contact you",
+        "labelSource": "brief",
+        "help": null,
+        "type": "textarea",
+        "required": false,
+        "maxLength": 500,
+        "errors": {
+          "tooLong": "Opening hours must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "pricingPreference",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-E",
+        "label": "What prices or offers would you like to show?",
+        "labelSource": "brief",
+        "help": null,
+        "type": "radio",
+        "options": "pricingPreference",
+        "required": false,
+        "default": null,
+        "errors": {
+          "invalid": "Choose one of the listed options."
+        }
+      },
+      {
+        "key": "pricingDetails",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-E",
+        "label": "Prices, wording and conditions",
+        "labelSource": "chosen",
+        "help": "Include the exact wording, amounts, currency, units and any conditions. You can also add a price list in step 4.",
+        "helpSource": "chosen",
+        "type": "textarea",
+        "required": false,
+        "showWhen": { "field": "pricingPreference", "in": ["fixed", "from", "quote"] },
+        "maxLength": 2000,
+        "errors": {
+          "tooLong": "Prices, wording and conditions must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "proofAvailable",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-F",
+        "label": "Do you have reviews, qualifications, memberships or guarantees we can include?",
+        "labelSource": "brief",
+        "help": "Only share genuine details and material you have permission to use. For a review, tell us which name or attribution may be shown.",
+        "type": "radio",
+        "options": "proofAvailable",
+        "required": false,
+        "default": null,
+        "errors": {
+          "invalid": "Choose Yes, Not yet or I am not sure."
+        }
+      },
+      {
+        "key": "proofDetails",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-F",
+        "label": "Details or review wording",
+        "labelSource": "chosen",
+        "help": "Copy reviews exactly, and say which name or attribution may be shown. You can add documents in step 4.",
+        "helpSource": "chosen",
+        "type": "textarea",
+        "required": false,
+        "showWhen": { "field": "proofAvailable", "equals": "yes" },
+        "maxLength": 3000,
+        "errors": {
+          "tooLong": "The details or review wording must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "proofLink",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-F",
+        "label": "Supporting website address",
+        "labelSource": "chosen",
+        "help": "For example a page that shows your reviews or a membership.",
+        "helpSource": "chosen",
+        "type": "url",
+        "required": false,
+        "showWhen": { "field": "proofAvailable", "equals": "yes" },
+        "maxLength": 300,
+        "inputMode": "url",
+        "errors": {
+          "invalid": "Enter a web address such as yourbusiness.co.uk, or leave it blank.",
+          "tooLong": "The web address must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "faqs",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-G",
+        "label": "What questions do customers regularly ask?",
+        "labelSource": "brief",
+        "help": "Leave an answer blank if you would like Matt to help write it.",
+        "helpSource": "chosen",
+        "type": "group",
+        "required": false,
+        "minItems": 0,
+        "maxItems": 3,
+        "initialItems": 1,
+        "itemLabel": "Question {n}",
+        "addLabel": "Add another question",
+        "removeLabel": "Remove this question",
+        "labelsSourceForItemControls": "brief (addLabel); chosen (itemLabel, removeLabel)",
+        "items": [
+          {
+            "key": "question",
+            "label": "Question",
+            "labelSource": "chosen",
+            "type": "text",
+            "required": true,
+            "maxLength": 200,
+            "errors": {
+              "required": "Enter question {n}, or remove it.",
+              "tooLong": "Question {n} must be {max} characters or fewer."
+            }
+          },
+          {
+            "key": "answer",
+            "label": "Answer",
+            "labelSource": "chosen",
+            "type": "textarea",
+            "required": false,
+            "maxLength": 1000,
+            "errors": {
+              "tooLong": "The answer to question {n} must be {max} characters or fewer."
+            }
+          }
+        ],
+        "errors": {
+          "tooMany": "You can add up to {max} questions."
+        }
+      },
+      {
+        "key": "contentWanted",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-H",
+        "label": "What else would you like to show?",
+        "labelSource": "brief",
+        "help": null,
+        "type": "checkboxes",
+        "options": "contentWanted",
+        "required": false,
+        "default": [],
+        "errors": {
+          "invalid": "Choose from the listed options."
+        }
+      },
+      {
+        "key": "features",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-I",
+        "label": "Does your website need anything beyond information and enquiries?",
+        "labelSource": "brief",
+        "help": "Booking systems, online selling and other specialist features need to be discussed and agreed separately.",
+        "type": "checkboxes",
+        "options": "features",
+        "exclusive": ["none", "not-sure"],
+        "required": false,
+        "default": [],
+        "errors": {
+          "invalid": "Choose from the listed options.",
+          "exclusive": "Choose No, a straightforward website is enough, or I am not sure, on its own."
+        }
+      },
+      {
+        "key": "bookingLink",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-I",
+        "label": "Address of your booking service",
+        "labelSource": "chosen",
+        "help": "The web address customers use to book with you now.",
+        "helpSource": "chosen",
+        "type": "url",
+        "required": false,
+        "showWhen": { "field": "features", "includes": "booking-link" },
+        "maxLength": 300,
+        "inputMode": "url",
+        "errors": {
+          "invalid": "Enter a web address such as yourbookingservice.com, or leave it blank.",
+          "tooLong": "The web address must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "featureDetails",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-I",
+        "label": "Tell us about the feature you need",
+        "labelSource": "chosen",
+        "help": null,
+        "type": "textarea",
+        "required": false,
+        "showWhen": { "anyOf": [{ "field": "features", "includes": "selling" }, { "field": "features", "includes": "other" }] },
+        "maxLength": 1000,
+        "errors": {
+          "tooLong": "The feature description must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "styleNotes",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-J",
+        "label": "Do you have preferred colours or a style?",
+        "labelSource": "brief",
+        "help": "You can describe it in ordinary words, or leave this to Matt.",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 1000,
+        "errors": {
+          "tooLong": "Your colours or style must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "styleSuggest",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-J",
+        "label": "I would like Matt to suggest a style.",
+        "labelSource": "brief",
+        "help": null,
+        "type": "checkbox",
+        "required": false,
+        "default": false
+      },
+      {
+        "key": "references",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-K",
+        "label": "Are there two or three similar businesses' websites we can look at?",
+        "labelSource": "brief",
+        "help": "Share websites from businesses offering similar services or products. These help us understand your preferences. You can skip this section if you do not have any.",
+        "type": "group",
+        "required": false,
+        "minItems": 0,
+        "maxItems": 3,
+        "initialItems": 2,
+        "itemLabel": "Similar website {n}",
+        "addLabel": "Add a third website",
+        "removeLabel": "Remove this website",
+        "labelsSourceForItemControls": "brief (itemLabel, addLabel); chosen (removeLabel)",
+        "_rule": "Each item pairs ONE address with ITS OWN exclusions, visibly and structurally (the exclusions textarea directly under its address). Never merged into one box. Exclusions are kept while the address is being corrected; an item with exclusions but no address is refused at send with an explicit message (never silently discarded).",
+        "items": [
+          {
+            "key": "url",
+            "label": "Similar website {n}",
+            "labelSource": "brief",
+            "type": "url",
+            "required": true,
+            "maxLength": 300,
+            "inputMode": "url",
+            "errors": {
+              "required": "Enter the address of similar website {n}, or clear what it offers that you do not.",
+              "invalid": "Enter similar website {n} like theirbusiness.co.uk.",
+              "tooLong": "Similar website {n} must be {max} characters or fewer."
+            }
+          },
+          {
+            "key": "exclusions",
+            "label": "What does this business offer that you do not?",
+            "labelSource": "brief",
+            "help": "List services or products on this website that you do not provide. We will leave them out of your website.",
+            "type": "textarea",
+            "required": false,
+            "maxLength": 1500,
+            "errors": {
+              "tooLong": "What similar website {n} offers that you do not must be {max} characters or fewer."
+            }
+          }
+        ],
+        "errors": {
+          "tooMany": "You can add up to {max} similar websites."
+        }
+      },
+      {
+        "key": "referencePreferred",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-K",
+        "label": "Which feels closest to the website you would like, and what do you like about it?",
+        "labelSource": "brief",
+        "help": null,
+        "type": "radio",
+        "options": "referencePreferred",
+        "required": false,
+        "default": null,
+        "errors": {
+          "invalid": "The website you chose has changed. Choose again."
+        }
+      },
+      {
+        "key": "referenceLikes",
+        "form": "brief",
+        "stage": 3,
+        "section": "S3-K",
+        "label": "Tell us what you like — for example, the colours, photos, layout or how clearly things are explained.",
+        "labelSource": "brief",
+        "help": null,
+        "type": "textarea",
+        "required": false,
+        "maxLength": 1500,
+        "errors": {
+          "tooLong": "What you like must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "files",
+        "form": "brief",
+        "stage": 4,
+        "section": "S4",
+        "label": "Photos and files",
+        "labelSource": "brief",
+        "help": "Up to 8 photos or files, each up to 3 MB: JPEG, PNG, WebP or HEIC photos, or PDF documents. Larger JPEG, PNG and WebP photos are made smaller on your device before sending.",
+        "helpSource": "chosen",
+        "type": "files",
+        "required": false,
+        "maxItems": 8,
+        "_rule": "Not a text answer: the brief body carries a top-level 'files' manifest (see FORMS-CONTRACT section 4) and each file is posted separately afterwards (action=file). Limits and per-file fields are in the top-level 'files' block."
+      },
+      {
+        "key": "sharingLink",
+        "form": "brief",
+        "stage": 4,
+        "section": "S4",
+        "label": "Have larger files or a shared folder? Paste a sharing link.",
+        "labelSource": "brief",
+        "help": "Check that Matt can open the link. Do not share passwords or private customer records.",
+        "type": "url",
+        "required": false,
+        "maxLength": 500,
+        "inputMode": "url",
+        "errors": {
+          "invalid": "Enter the sharing link as a web address, for example one that starts with https://, or leave it blank.",
+          "tooLong": "The sharing link must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "imagePreference",
+        "form": "brief",
+        "stage": 4,
+        "section": "S4",
+        "label": "For the sample, what would you prefer?",
+        "labelSource": "brief",
+        "help": "If you do not have photos yet. No answer means you have not decided.",
+        "helpSource": "chosen",
+        "type": "radio",
+        "options": "imagePreference",
+        "required": false,
+        "default": null,
+        "errors": {
+          "invalid": "Choose one of the listed options."
+        }
+      },
+      {
+        "key": "anythingElse",
+        "form": "brief",
+        "stage": 5,
+        "section": "S5",
+        "label": "Anything else Matt should know?",
+        "labelSource": "brief",
+        "bullets": [
+          "Services or products to highlight or leave out.",
+          "Prices, offers or questions customers often ask.",
+          "Qualifications, reviews or examples of your work.",
+          "Anything to include or avoid, and important dates."
+        ],
+        "help": "Short notes are fine. Please do not include passwords, payment details or private information about your customers.",
+        "type": "textarea",
+        "required": false,
+        "maxLength": 4000,
+        "errors": {
+          "tooLong": "Anything else must be {max} characters or fewer."
+        }
+      },
+      {
+        "key": "materialPermission",
+        "form": "brief",
+        "stage": 5,
+        "section": "S5",
+        "label": "I have permission to share the material I have supplied for use in preparing my website.",
+        "labelSource": "brief",
+        "help": null,
+        "type": "checkbox",
+        "required": false,
+        "requiredWhen": { "anyOf": [{ "files": "any" }, { "field": "proofDetails", "filled": true }] },
+        "showWhen": { "anyOf": [{ "files": "any" }, { "field": "proofDetails", "filled": true }] },
+        "default": false,
+        "errors": {
+          "required": "Tick the box to confirm you have permission to share the material you have supplied, or remove that material."
+        },
+        "_rule": "Initially unchecked. Confirms content permission only: not proof of every legal right, not marketing consent."
+      }
+    ]
+  }
+}

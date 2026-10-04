@@ -51,15 +51,16 @@
 # come from /* above and are NOT repeated (Cloudflare Pages appends matching
 # rules). Content-Security-Policy is the one name shared with /*: browsers
 # enforce every CSP they receive, so /*'s frame-ancestors policy and this
-# stricter preview policy (same-origin only, no inline script) both apply.
+# stricter preview policy (same-origin only and no inline script; the one
+# other origin is the MTCW forms function, for its two email forms) both apply.
 # Written by the MTCW project's scripts/deploy-preview.mjs, which replaces
 # everything between these markers on each run: change it there, not here.
 /MTCW
   X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://scdesign-wirral.vercel.app; object-src 'none'; base-uri 'self'; form-action 'self' https://scdesign-wirral.vercel.app; frame-ancestors 'none'
 /MTCW/*
   X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://scdesign-wirral.vercel.app; object-src 'none'; base-uri 'self'; form-action 'self' https://scdesign-wirral.vercel.app; frame-ancestors 'none'
 # <<< MTCW preview <<<
 
 # /WVROOFING — a separate concept project (WV Roofing) parked on this host for
