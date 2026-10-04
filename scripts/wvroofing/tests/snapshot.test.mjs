@@ -363,6 +363,42 @@ test("saved rows that can't be read stop everything rather than starting empty",
   assert.equal((await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() })).status, 201);
 });
 
+test("if the pointer to the newest save goes missing, the newest saved rows are used, never empty tables", async () => {
+  const p = await newProject(A);
+  const pointer = fake.S.objects.get("wvroofing/db/head.json");
+  fake.S.objects.delete("wvroofing/db/head.json");
+  try {
+    await A.reset();
+    assert.equal((await A.api("GET", "projects/" + p.id, { token: p.token })).status, 200, "found from the newest rows-N file");
+    const q = await newProject(A);
+    assert.ok(head() && head().version > JSON.parse(pointer.buf.toString()).version - 1, "saving again writes a new pointer");
+    await A.reset();
+    assert.equal((await A.api("GET", "projects/" + q.id, { token: q.token })).status, 200);
+  } finally {
+    if (!fake.S.objects.has("wvroofing/db/head.json")) fake.S.objects.set("wvroofing/db/head.json", pointer);
+  }
+});
+
+test("only a definite 'not found' counts as missing: any other error stops rather than starting empty", async () => {
+  const saved = fake.S.failNext;
+  // Supabase sends most errors as HTTP 400 with the real code inside.
+  sb.setFetch(async (input, init) => {
+    if (/db\/head\.json$/.test(String(input)) && (init.method || "GET") === "GET") {
+      return new Response(JSON.stringify({ statusCode: "400", error: "InvalidJWT", message: "Invalid Compact JWS" }), { status: 400, headers: { "content-type": "application/json" } });
+    }
+    return fake.fetch(input, init);
+  });
+  try {
+    await A.reset();
+    const r = await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() });
+    assert.equal(r.status, 503, JSON.stringify(r.json));
+  } finally {
+    sb.setFetch(fake.fetch);
+    fake.S.failNext = saved;
+  }
+  assert.equal((await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() })).status, 201);
+});
+
 test("the daily tidy-up runs inside requests, once a day", async () => {
   const count = async () => (await db.query("SELECT count(*)::int AS n FROM wvr_retention_runs WHERE kind = 'daily'")).rows[0].n;
   const first = await count();

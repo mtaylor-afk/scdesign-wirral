@@ -15,11 +15,12 @@ function jsFiles(dir) {
   return out;
 }
 
-test("api/ holds 11 function files: WV Roofing adds exactly one (never a 13th)", () => {
+test("api/ stays within Hobby's 12 functions: WV Roofing adds exactly one (never a 13th)", () => {
   const files = jsFiles(path.join(repo, "api")).map((f) => path.relative(repo, f).split(path.sep).join("/"));
   const wv = files.filter((f) => f.startsWith("api/wvroofing/"));
   assert.deepEqual(wv, ["api/wvroofing/app.js"]);
-  assert.equal(files.length, 11, files.join(", "));
+  // 12 since 2026-10-04, when MT Creative Works' preview added api/mtcw.js: the limit is now reached.
+  assert.ok(files.length <= 12, files.length + " functions: " + files.join(", "));
 });
 
 test("vercel.json: every functions pattern matches a file, and the WV rewrite and cron exist", () => {

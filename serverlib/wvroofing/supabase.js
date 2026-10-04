@@ -104,7 +104,9 @@ async function errorOf(res) {
 
 /** @param {{ status: string, code: string, message: string }} e */
 function isNotFound(e) {
-  return e.status === "404" || /not.?found/i.test(e.code) || /not.?found/i.test(e.message);
+  // "Bucket not found" is not "object not found": a missing bucket must never read as "no saved data".
+  if (/bucket/i.test(e.code) || /bucket/i.test(e.message)) return false;
+  return e.status === "404" || /not.?found|NoSuchKey/i.test(e.code) || /not.?found/i.test(e.message);
 }
 
 /** @param {{ status: string, code: string, message: string }} e */
@@ -175,8 +177,11 @@ async function download(path) {
   const { bucket } = cfg();
   const res = await call("GET", "/object/authenticated/" + encodeURIComponent(bucket) + "/" + enc(path));
   if (res.ok) return { buf: Buffer.from(await res.arrayBuffer()), contentType: res.headers.get("content-type") || "application/octet-stream" };
+  // Only a definite "not found" means missing. Supabase answers most errors with HTTP 400 and the real
+  // code inside (e.g. {"statusCode":"400","error":"InvalidJWT"}, checked 2026-10-04): reading any other
+  // error as "missing" could make the saved rows look absent, and an empty copy would then overwrite them.
   const e = await errorOf(res);
-  if (isNotFound(e) || res.status === 400 || res.status === 404) return null;
+  if (isNotFound(e)) return null;
   throw fail("download", res.status);
 }
 

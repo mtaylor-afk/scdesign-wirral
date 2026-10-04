@@ -393,14 +393,24 @@ async function importRows(pg, snap) {
 
 /** Which snapshot is the newest: { version, key } (version 0: none saved yet). */
 async function readHead() {
-  const head = await require("./supabase.js").download(SNAP_HEAD);
-  if (!head) return { version: 0, key: "" };
-  try {
-    const h = JSON.parse(head.buf.toString("utf8"));
-    return { version: Number(h.version) || 0, key: typeof h.key === "string" ? h.key : "" };
-  } catch (err) {
-    throw new HttpError(503, "busy", "WV Roofing's saved data couldn't be read just now. Please try again.", { retryAfter: 5 });
+  const sb = require("./supabase.js");
+  const head = await sb.download(SNAP_HEAD);
+  if (head) {
+    try {
+      const h = JSON.parse(head.buf.toString("utf8"));
+      return { version: Number(h.version) || 0, key: typeof h.key === "string" ? h.key : "" };
+    } catch (err) {
+      throw new HttpError(503, "busy", "WV Roofing's saved data couldn't be read just now. Please try again.", { retryAfter: 5 });
+    }
   }
+  // No pointer: a brand-new store, or the pointer was lost (e.g. its upload failed after the rows' upload
+  // worked). Use the newest saved rows if there are any: never empty tables over saved ones.
+  let best = { version: 0, key: "" };
+  for (const k of await sb.list("db/")) {
+    const m = /^db\/rows-(\d+)\.json\.gz$/.exec(k);
+    if (m && Number(m[1]) > best.version) best = { version: Number(m[1]), key: k };
+  }
+  return best;
 }
 
 /** Bring this instance's copy up to the newest snapshot (the caller has this instance to itself). */
