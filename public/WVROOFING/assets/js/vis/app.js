@@ -295,6 +295,15 @@ async function handleFile(file) {
     // (an iPhone HEIC, a very large photo, another format) a JPEG made on this device.
     if (!((kind === "jpeg" || kind === "png") && file.size <= MAX_BYTES)) showStatus("Getting your photo ready on this device…");
     up = await prepareForUpload(file, kind);
+    // The server didn't answer when the page opened (a new instance can be slow to
+    // start): ask again now rather than keeping the photo on the device for the whole visit.
+    if (!storageReady() && !(S.health && S.health.reachable)) {
+      const h = await getHealth();
+      if (h.reachable) {
+        S.health = h;
+        S.caps = h.caps;
+      }
+    }
     if (!storageReady()) {
       await openOnDevice(up.blob, file, "off");
       return;

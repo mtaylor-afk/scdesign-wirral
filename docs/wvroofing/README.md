@@ -69,6 +69,8 @@ npm run wvr:selftest                       # maths, compositing and handler self
 npm run wvr:qa                             # headless browser pass (needs the dev server running)
 node scripts/wvroofing/gen-docs.mjs        # regenerate permissions-record.md
 node scripts/wvroofing/gen-admin.mjs       # regenerate the three admin pages (--check: fail if out of date)
+node scripts/wvroofing/gen-pglite-base.mjs # remake snapshot mode's starting database after a new migration or
+                                           # PGlite upgrade (--check: fail if out of date; a test runs it)
 node scripts/wvroofing/setup-vercel.mjs    # NOT NEEDED since 2026-10-03 (snapshot mode). Matthew only, and
                                            # only to move to a database of its own (ask Claude first: the
                                            # saved rows need copying). Desktop: SET UP WV ROOFING ADMIN.cmd

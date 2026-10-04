@@ -25,6 +25,8 @@ const SAFE_ROUTE = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/;
  * @property {string[]} methods
  * @property {Auth} auth
  * @property {"any" | "allowed"} [origin]  "any": callers without an allowed Origin are served too (health, cron)
+ * @property {"write"} [turn]  a GET whose change must be saved (an audit row, a paid-call cap, a render
+ *   worker's claim) takes a write turn in snapshot mode (db.js), not a read turn
  * @property {(ctx: Ctx) => Promise<void>} handler
  */
 
@@ -45,14 +47,14 @@ const ROUTES = [
   { path: "projects/:id/mockups", methods: ["POST"], auth: "project", handler: (ctx) => require("./mockups.js").add(/** @type {any} */ (ctx)) },
   // Photo-real renders (A3): durable jobs, polled by the customer.
   { path: "projects/:id/renders", methods: ["POST"], auth: "project", handler: (ctx) => require("./renders.js").submit(/** @type {any} */ (ctx)) },
-  { path: "projects/:id/renders", methods: ["GET"], auth: "project", handler: (ctx) => require("./renders.js").list(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/renders", methods: ["GET"], auth: "project", turn: "write", handler: (ctx) => require("./renders.js").list(/** @type {any} */ (ctx)) },
   { path: "projects/:id/renders/:jobId/image", methods: ["GET"], auth: "project", handler: (ctx) => require("./renders.js").image(/** @type {any} */ (ctx)) },
   { path: "projects/:id/renders/:jobId/cancel", methods: ["POST"], auth: "project", handler: (ctx) => require("./renders.js").cancel(/** @type {any} */ (ctx)) },
   // The property (A5): address lookup and choice, the aerial view, the customer's confirmation.
   { path: "projects/:id/address/lookup", methods: ["POST"], auth: "project", handler: (ctx) => require("./property.js").lookup(/** @type {any} */ (ctx)) },
   { path: "projects/:id/address", methods: ["POST"], auth: "project", handler: (ctx) => require("./property.js").choose(/** @type {any} */ (ctx)) },
   { path: "projects/:id/address", methods: ["DELETE"], auth: "project", handler: (ctx) => require("./property.js").clear(/** @type {any} */ (ctx)) },
-  { path: "projects/:id/property/view", methods: ["GET"], auth: "project", handler: (ctx) => require("./property.js").view(/** @type {any} */ (ctx)) },
+  { path: "projects/:id/property/view", methods: ["GET"], auth: "project", turn: "write", handler: (ctx) => require("./property.js").view(/** @type {any} */ (ctx)) },
   { path: "projects/:id/property/confirm", methods: ["POST"], auth: "project", handler: (ctx) => require("./property.js").confirm(/** @type {any} */ (ctx)) },
   // The estimate step (B2): the roof's size and materials, only from a measurement the roofer approved and made visible.
   { path: "projects/:id/estimate", methods: ["GET"], auth: "project", handler: (ctx) => require("./measurements.js").estimate(/** @type {any} */ (ctx)) },
@@ -75,10 +77,10 @@ const ROUTES = [
   // The admin pages' home (counts for one site or both) and the enquiries as a
   // spreadsheet (no ".csv" in the path: routes are plain words, see SAFE_ROUTE).
   { path: "operator/overview", methods: ["GET"], auth: "operator", handler: (ctx) => op().overview(/** @type {any} */ (ctx)) },
-  { path: "operator/export/enquiries", methods: ["GET"], auth: "operator", handler: (ctx) => op().exportEnquiries(/** @type {any} */ (ctx)) },
+  { path: "operator/export/enquiries", methods: ["GET"], auth: "operator", turn: "write", handler: (ctx) => op().exportEnquiries(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries", methods: ["GET"], auth: "operator", handler: (ctx) => op().listEnquiries(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id", methods: ["GET"], auth: "operator", handler: (ctx) => op().enquiryDetail(/** @type {any} */ (ctx)) },
-  { path: "operator/enquiries/:id/aerial", methods: ["GET"], auth: "operator", handler: (ctx) => op().enquiryAerial(/** @type {any} */ (ctx)) },
+  { path: "operator/enquiries/:id/aerial", methods: ["GET"], auth: "operator", turn: "write", handler: (ctx) => op().enquiryAerial(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id/scope", methods: ["POST"], auth: "operator", handler: (ctx) => op().scope(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id/status", methods: ["POST"], auth: "operator", handler: (ctx) => op().setStatus(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id/request-survey", methods: ["POST"], auth: "operator", handler: (ctx) => op().requestSurvey(/** @type {any} */ (ctx)) },
@@ -89,7 +91,7 @@ const ROUTES = [
   { path: "operator/projects/:id", methods: ["GET"], auth: "operator", handler: (ctx) => op().projectView(/** @type {any} */ (ctx)) },
   { path: "operator/projects/:id/photo", methods: ["GET"], auth: "operator", handler: (ctx) => op().projectPhoto(/** @type {any} */ (ctx)) },
   { path: "operator/mockups/:id/image", methods: ["GET"], auth: "operator", handler: (ctx) => op().mockupImage(/** @type {any} */ (ctx)) },
-  { path: "operator/projects/:id/original", methods: ["GET"], auth: "operator", handler: (ctx) => op().projectOriginal(/** @type {any} */ (ctx)) },
+  { path: "operator/projects/:id/original", methods: ["GET"], auth: "operator", turn: "write", handler: (ctx) => op().projectOriginal(/** @type {any} */ (ctx)) },
   { path: "operator/projects/:id/delete", methods: ["POST"], auth: "operator", handler: (ctx) => op().deleteProjectRoute(/** @type {any} */ (ctx)) },
   { path: "operator/jobs", methods: ["GET"], auth: "operator", handler: (ctx) => op().listJobs(/** @type {any} */ (ctx)) },
   { path: "operator/jobs/:id/image", methods: ["GET"], auth: "operator", handler: (ctx) => op().jobImage(/** @type {any} */ (ctx)) },
@@ -100,7 +102,7 @@ const ROUTES = [
   { path: "operator/measurements/:id/approve", methods: ["POST"], auth: "operator", handler: (ctx) => op().approveMeasurement(/** @type {any} */ (ctx)) },
   { path: "operator/measurements/:id/reject", methods: ["POST"], auth: "operator", handler: (ctx) => op().rejectMeasurement(/** @type {any} */ (ctx)) },
   { path: "operator/measurements/:id/visibility", methods: ["POST"], auth: "operator", handler: (ctx) => op().measurementVisibility(/** @type {any} */ (ctx)) },
-  { path: "operator/evidence/:id", methods: ["GET"], auth: "operator", handler: (ctx) => op().evidenceLink(/** @type {any} */ (ctx)) },
+  { path: "operator/evidence/:id", methods: ["GET"], auth: "operator", turn: "write", handler: (ctx) => op().evidenceLink(/** @type {any} */ (ctx)) },
 ];
 
 function op() {
@@ -238,16 +240,129 @@ async function authorise(auth, ctx) {
 }
 
 /**
- * The function entry point. In snapshot mode (db.js) the whole request is one
- * turn on the database (a read turn for a GET), and the reply is held back until
- * any change it made is saved, so "saved" is never said about something that wasn't.
+ * Answer with an error (an HttpError's own status and message, anything else a 500).
+ * @param {Res} res
+ * @param {unknown} err
+ */
+function respondError(res, err) {
+  if (err instanceof HttpError) {
+    const extra = err.extra || {};
+    const headers = extra.retryAfter ? { "Retry-After": String(extra.retryAfter) } : undefined;
+    if (!res.headersSent) json(res, err.status, Object.assign({ ok: false, error: err.code, message: err.message }, extra), headers);
+    return;
+  }
+  console.error("[wvroofing] unhandled error", err instanceof Error ? err.message : err);
+  if (!res.headersSent) json(res, 500, { ok: false, error: "server_error", message: "Something went wrong." });
+}
+
+/**
+ * Everything decided without the database: the path, the method, CORS, the Origin
+ * rule, JSON for POSTs, and the cron key. Answers the request itself when one of
+ * them settles it (or for OPTIONS) and returns null; otherwise the route and its ctx.
+ * In snapshot mode this runs before any database turn, so a request that will be
+ * refused anyway never takes the lock.
+ * @param {Req} req
+ * @param {Res} res
+ * @param {number} startedAt
+ * @returns {{ route: Route, ctx: Ctx } | null}
+ */
+function precheck(req, res, startedAt) {
+  const resolved = resolvePath(req);
+  if ("error" in resolved) {
+    applyCors(req, res);
+    json(res, resolved.status, { ok: false, error: resolved.error });
+    return null;
+  }
+  const m = match(resolved.path, String(req.method));
+  if (!m) {
+    applyCors(req, res);
+    json(res, 404, { ok: false, error: "not_found" });
+    return null;
+  }
+  const route = m.route;
+  const allowed = applyCors(req, res);
+  if (req.method === "OPTIONS") {
+    res.statusCode = allowed ? 204 : 403;
+    res.end();
+    return null;
+  }
+  if (!route.methods.includes(String(req.method))) {
+    json(res, 405, { ok: false, error: "method_not_allowed" }, { Allow: [...new Set(m.allowed.concat(["OPTIONS"]))].join(", ") });
+    return null;
+  }
+  // Origin rule: a disallowed Origin is always refused. Browsers send no Origin on
+  // same-origin GETs, so a missing one is accepted for GET/HEAD (no side effects,
+  // and project routes still need the bearer token) but never for POST.
+  const hasOrigin = !!req.headers.origin;
+  const safeMethod = req.method === "GET" || req.method === "HEAD";
+  if (route.origin !== "any" && (hasOrigin ? !allowed : !safeMethod)) {
+    json(res, 403, { ok: false, error: "origin", message: "Requests from this site aren't allowed." });
+    return null;
+  }
+  // JSON only: a cross-site HTML form can't send it without a CORS preflight, which only our origins pass.
+  if (req.method === "POST" && !/^application\/json\b/i.test(String(req.headers["content-type"] || ""))) {
+    json(res, 415, { ok: false, error: "invalid_content_type", message: "Send JSON." });
+    return null;
+  }
+  /** @type {Ctx} */
+  const ctx = { req, res, params: m.params, url: resolved.url, startedAt };
+  return { route, ctx };
+}
+
+/** The cron key needs no database, so it is checked before any turn. @param {{ route: Route, ctx: Ctx }} pre */
+async function precheckCron(pre) {
+  if (pre.route.auth === "cron") await authorise("cron", pre.ctx);
+}
+
+// Snapshot mode: requests that may write take the one lock all instances share, so
+// each visitor (keyed by IP, in this instance's memory) gets a fair share of them.
+const WRITE_WINDOW_MS = 60 * 1000;
+/** @type {Map<string, { start: number, count: number }>} */
+const writeCounts = new Map();
+
+/** @param {Req} req @returns {number} seconds to wait, or 0 */
+function writeAllowance(req) {
+  const max = Number(process.env.WVR_WRITES_PER_IP_MINUTE) || 60;
+  const ip = core.clientIp(req) || "unknown";
+  const now = Date.now();
+  if (writeCounts.size > 5000) for (const [k, v] of writeCounts) if (now - v.start > WRITE_WINDOW_MS) writeCounts.delete(k);
+  const c = writeCounts.get(ip);
+  if (!c || now - c.start > WRITE_WINDOW_MS) {
+    writeCounts.set(ip, { start: now, count: 1 });
+    return 0;
+  }
+  c.count++;
+  return c.count > max ? Math.max(1, Math.ceil((c.start + WRITE_WINDOW_MS - now) / 1000)) : 0;
+}
+
+/**
+ * The function entry point. In snapshot mode (db.js) the request's database work
+ * is one turn (a read turn for a GET, unless its route says otherwise), and the
+ * reply is held back until any change it made is saved, so "saved" is never said
+ * about something that wasn't. Requests refused without the database never take a turn.
  * @param {Req} req
  * @param {Res} res
  */
 async function handle(req, res) {
   const db = require("./db.js");
+  if (!db.snapshotMode(process.env)) return route(req, res);
+  const startedAt = Date.now();
+  /** @type {{ route: Route, ctx: Ctx } | null} */
+  let pre = null;
+  try {
+    pre = precheck(req, res, startedAt);
+    if (pre) await precheckCron(pre);
+  } catch (err) {
+    return respondError(res, err);
+  }
+  if (!pre) return;
+  const checked = pre;
   const method = String(req.method || "GET").toUpperCase();
-  if (!db.snapshotMode(process.env) || method === "OPTIONS") return route(req, res);
+  const write = checked.route.turn === "write" || (method !== "GET" && method !== "HEAD");
+  if (write) {
+    const wait = writeAllowance(req);
+    if (wait) return json(res, 429, { ok: false, error: "rate_limited", message: "That's a lot of requests at once. Please wait a moment." }, { "Retry-After": String(wait) });
+  }
   const realEnd = res.end.bind(res);
   const pending = { args: /** @type {any[] | null} */ (null), done: false };
   // @ts-ignore: hold the reply (status and headers are already set on res) until the save is done
@@ -258,7 +373,17 @@ async function handle(req, res) {
     return res;
   };
   try {
-    await db.session(() => route(req, res), { write: method !== "GET" && method !== "HEAD" });
+    await db.session(
+      async () => {
+        try {
+          await authorise(checked.route.auth, checked.ctx);
+          await checked.route.handler(checked.ctx);
+        } catch (err) {
+          respondError(res, err);
+        }
+      },
+      { write }
+    );
   } catch (err) {
     pending.done = true;
     // The turn couldn't be had, or the save failed: whatever the handler wrote is replaced by a 503.
@@ -268,6 +393,8 @@ async function handle(req, res) {
     for (const h of ["content-type", "content-length", "content-disposition", "cache-control"]) {
       if (typeof res.removeHeader === "function") res.removeHeader(h);
     }
+    // Set again, so the pages (on another origin) can read the reason and Retry-After.
+    applyCors(req, res);
     const e = err instanceof HttpError ? err : new HttpError(503, "busy", "WV Roofing is busy for a moment. Please try again.");
     const retry = e.extra && e.extra.retryAfter ? { "Retry-After": String(e.extra.retryAfter) } : undefined;
     return json(res, e.status, { ok: false, error: e.code, message: e.message }, retry);
@@ -278,59 +405,18 @@ async function handle(req, res) {
 }
 
 /**
- * One request, routed.
+ * One request, routed (every mode but snapshot, where handle() runs the same steps around a turn).
  * @param {Req} req
  * @param {Res} res
  */
 async function route(req, res) {
-  const startedAt = Date.now();
   try {
-    const resolved = resolvePath(req);
-    if ("error" in resolved) {
-      applyCors(req, res);
-      return json(res, resolved.status, { ok: false, error: resolved.error });
-    }
-    const m = match(resolved.path, String(req.method));
-    if (!m) {
-      applyCors(req, res);
-      return json(res, 404, { ok: false, error: "not_found" });
-    }
-    const route = m.route;
-    const allowed = applyCors(req, res);
-    const methods = route.methods;
-    if (req.method === "OPTIONS") {
-      res.statusCode = allowed ? 204 : 403;
-      res.end();
-      return;
-    }
-    if (!methods.includes(String(req.method))) {
-      return json(res, 405, { ok: false, error: "method_not_allowed" }, { Allow: [...new Set(m.allowed.concat(["OPTIONS"]))].join(", ") });
-    }
-    // Origin rule: a disallowed Origin is always refused. Browsers send no Origin on
-    // same-origin GETs, so a missing one is accepted for GET/HEAD (no side effects,
-    // and project routes still need the bearer token) but never for POST.
-    const hasOrigin = !!req.headers.origin;
-    const safeMethod = req.method === "GET" || req.method === "HEAD";
-    if (route.origin !== "any" && (hasOrigin ? !allowed : !safeMethod)) {
-      return json(res, 403, { ok: false, error: "origin", message: "Requests from this site aren't allowed." });
-    }
-    // JSON only: a cross-site HTML form can't send it without a CORS preflight, which only our origins pass.
-    if (req.method === "POST" && !/^application\/json\b/i.test(String(req.headers["content-type"] || ""))) {
-      return json(res, 415, { ok: false, error: "invalid_content_type", message: "Send JSON." });
-    }
-    /** @type {Ctx} */
-    const ctx = { req, res, params: m.params, url: resolved.url, startedAt };
-    await authorise(route.auth, ctx);
-    await route.handler(ctx);
+    const pre = precheck(req, res, Date.now());
+    if (!pre) return;
+    await authorise(pre.route.auth, pre.ctx);
+    await pre.route.handler(pre.ctx);
   } catch (err) {
-    if (err instanceof HttpError) {
-      const extra = err.extra || {};
-      const headers = extra.retryAfter ? { "Retry-After": String(extra.retryAfter) } : undefined;
-      if (!res.headersSent) return json(res, err.status, Object.assign({ ok: false, error: err.code, message: err.message }, extra), headers);
-      return;
-    }
-    console.error("[wvroofing] unhandled error", err instanceof Error ? err.message : err);
-    if (!res.headersSent) return json(res, 500, { ok: false, error: "server_error", message: "Something went wrong." });
+    respondError(res, err);
   }
 }
 

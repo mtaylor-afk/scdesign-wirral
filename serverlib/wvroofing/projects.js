@@ -181,8 +181,9 @@ async function commit(ctx) {
     const { rows } = await db.query("SELECT * FROM wvr_photos WHERE id = $1", [photoId]);
     return json(ctx.res, 200, { ok: true, photo: photoOut(rows[0]) });
   } finally {
-    // The raw upload (which may still carry GPS data) never outlives this request.
-    await st.del([up.pathname]).catch(() => undefined);
+    // The raw upload (which may still carry GPS data) never outlives this request,
+    // and its upload link can't be used again (storage.js retire).
+    await st.retire(up.pathname).catch(() => undefined);
   }
 }
 
@@ -219,22 +220,43 @@ async function mask(ctx) {
     throw new HttpError(400, "invalid_mask", "The marked roof area is too small or too large.");
   }
   const shapes = images.cleanShapes(body.shapes, photo.work_w, photo.work_h);
+  limited(await limits.hit("mask_project", p.id, envNum("WVR_MASKS_PER_PROJECT_DAILY", 100), 24 * 3600), "That's the limit for roof outlines on this project today.");
   const id = crypto.randomUUID();
-  await db.tx(async (t) => {
-    await t.query("INSERT INTO wvr_masks (id, project_id, photo_id, png, w, h, coverage, editor_meta) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [
-      id,
-      p.id,
-      photo.id,
-      png,
-      photo.work_w,
-      photo.work_h,
-      info.transparentFrac,
-      JSON.stringify({ shapes, displayW: photo.work_w, displayH: photo.work_h, editorVersion: 1 }),
-    ]);
-    await t.query("UPDATE wvr_projects SET mask_id = $2, updated_at = now() WHERE id = $1", [p.id, id]);
-    // Renders not yet sent were for the old outline; running ones are quarantined when they finish.
-    await jobs.closeQueued(t, p.id, "superseded", null);
-  });
+  // The outline is a file next to the photo, not bytes in the database: in snapshot mode
+  // every row goes into one saved object, which outlines would soon outgrow.
+  const pngPath = "projects/" + p.id + "/masks/" + id + ".png";
+  const st = storage();
+  await st.put(pngPath, png, "image/png");
+  /** @type {string[]} */
+  let dropped = [];
+  try {
+    dropped = await db.tx(async (t) => {
+      await t.query("INSERT INTO wvr_masks (id, project_id, photo_id, png, png_path, w, h, coverage, editor_meta) VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8)", [
+        id,
+        p.id,
+        photo.id,
+        pngPath,
+        photo.work_w,
+        photo.work_h,
+        info.transparentFrac,
+        JSON.stringify({ shapes, displayW: photo.work_w, displayH: photo.work_h, editorVersion: 1 }),
+      ]);
+      await t.query("UPDATE wvr_projects SET mask_id = $2, updated_at = now() WHERE id = $1", [p.id, id]);
+      // Renders not yet sent were for the old outline; running ones are quarantined when they finish.
+      await jobs.closeQueued(t, p.id, "superseded", null);
+      // Earlier outlines no render is still working from are not needed any more.
+      const old = await t.query(
+        "DELETE FROM wvr_masks m WHERE m.project_id = $1 AND m.id <> $2 AND NOT EXISTS " +
+          "(SELECT 1 FROM wvr_jobs j WHERE j.mask_id = m.id AND j.status IN ('queued', 'running')) RETURNING png_path",
+        [p.id, id]
+      );
+      return old.rows.map((r) => r.png_path).filter(Boolean);
+    });
+  } catch (err) {
+    await st.del([pngPath]).catch(() => undefined);
+    throw err;
+  }
+  if (dropped.length) await st.del(dropped).catch(() => undefined);
   return json(ctx.res, 200, { ok: true, mask: { id, coverage: info.transparentFrac } });
 }
 

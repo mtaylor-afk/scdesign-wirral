@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { repo, load, fakeReq } from "./helpers.mjs";
 
 function jsFiles(dir) {
@@ -57,11 +58,16 @@ test("the cron path resolves to the cron route", () => {
 test("snapshot mode can run on Vercel: PGlite is a runtime dependency and its WebAssembly files are bundled", () => {
   const cfg = JSON.parse(fs.readFileSync(path.join(repo, "vercel.json"), "utf8"));
   const include = cfg.functions["api/wvroofing/app.js"].includeFiles;
-  assert.equal(include, "{db/wvroofing/**,node_modules/@electric-sql/pglite/dist/**}");
+  assert.equal(include, "{db/wvroofing/**,db/wvroofing-pglite/**,node_modules/@electric-sql/pglite/dist/**}");
   for (const f of ["pglite.wasm", "pglite.data", "initdb.wasm"]) assert.ok(fs.existsSync(path.join(repo, "node_modules/@electric-sql/pglite/dist", f)), f);
   const pkg = JSON.parse(fs.readFileSync(path.join(repo, "package.json"), "utf8"));
   assert.ok(pkg.dependencies["@electric-sql/pglite"], "a dependency, not only a dev one");
   assert.match(fs.readFileSync(path.join(repo, "serverlib/wvroofing/db.js"), "utf8"), /import\("@electric-sql\/pglite"\)/, "a literal import Vercel can trace");
+});
+
+test("snapshot mode's bundled PGlite data directory is current (the installed PGlite, every migration)", () => {
+  const r = spawnSync(process.execPath, [path.join(repo, "scripts/wvroofing/gen-pglite-base.mjs"), "--check"], { encoding: "utf8" });
+  assert.equal(r.status, 0, (r.stdout || "") + (r.stderr || ""));
 });
 
 test("the migration folder that vercel.json bundles exists and is well formed", () => {

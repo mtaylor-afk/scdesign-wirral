@@ -48,8 +48,9 @@ Claude first, because the saved rows need copying across.
 - **Lockout.** Five wrong attempts from one connection, or twenty from anywhere, within 15 minutes lock the
   login for 15 minutes. Even the right password waits. Each attempt is counted before the password is
   checked, so many sent at once can't get round the limit.
-- **Speed.** The first page after a quiet spell can take a few seconds while the server loads the saved
-  data. After that, pages that change something take about a second.
+- **Speed.** The first page after a quiet spell can take a few seconds while the server starts its
+  database. After that, pages that change something take about a second. If it ever says "WV Roofing is
+  busy for a moment", wait a few seconds and try again.
 
 ## The site switch
 

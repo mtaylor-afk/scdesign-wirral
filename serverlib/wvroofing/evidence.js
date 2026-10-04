@@ -135,8 +135,9 @@ async function commit(ctx) {
     const { rows } = await db.query("SELECT * FROM wvr_evidence WHERE id = $1", [id]);
     return json(ctx.res, 200, { ok: true, evidence: out(rows[0]) });
   } finally {
-    // The raw upload (a photo may still carry GPS data) never outlives this request.
-    await st.del([up.pathname]).catch(() => undefined);
+    // The raw upload (a photo may still carry GPS data) never outlives this request,
+    // and its upload link can't be used again (storage.js retire).
+    await st.retire(up.pathname).catch(() => undefined);
   }
 }
 

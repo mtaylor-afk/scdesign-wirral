@@ -16,9 +16,9 @@ const OFFLINE = { reachable: false, caps: {}, renders: { live: false, test: fals
 export function getHealth() {
   if (healthPromise) return healthPromise;
   const ctl = new AbortController();
-  // Generous: the first request to a cold function also wakes the database.
-  const timer = setTimeout(() => ctl.abort(), 15000);
-  healthPromise = fetch(API_BASE + "/api/wvroofing/health", { cache: "no-store", signal: ctl.signal })
+  // Generous: the first request to a new server instance also starts its database.
+  const timer = setTimeout(() => ctl.abort(), 20000);
+  const asked = fetch(API_BASE + "/api/wvroofing/health", { cache: "no-store", signal: ctl.signal })
     .then((r) => (r.ok ? r.json() : null))
     .then((j) => {
       if (!j || !j.ok) return OFFLINE;
@@ -39,5 +39,10 @@ export function getHealth() {
     })
     .catch(() => OFFLINE)
     .finally(() => clearTimeout(timer));
+  // An unreachable answer isn't kept: the next call (e.g. when a photo is chosen) asks again.
+  healthPromise = asked.then((h) => {
+    if (!h.reachable) healthPromise = null;
+    return h;
+  });
   return healthPromise;
 }

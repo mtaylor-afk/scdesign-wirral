@@ -465,12 +465,11 @@ own**, small trade-offs accepted, SC Design's existing Supabase access allowed, 
     secret.
   - The daily tidy-up runs inside the first request after 23 hours, checked at most every 6 hours per
     instance, so `CRON_SECRET` isn't needed.
-- **Uploads go straight to Supabase.** A signed upload link is used once, its path is chosen by the
-  server, and the file is checked on commit as before. The CSP's `connect-src` adds
-  `https://yxapzkiodjecladjziom.supabase.co`.
+- **Uploads go straight to Supabase.** The upload link's path is chosen by the server, and the file is
+  checked on commit as before. The CSP's `connect-src` adds `https://yxapzkiodjecladjziom.supabase.co`.
 - **The trade-offs, told to Matthew.**
-  - Slower: a few tenths of a second a request, about a second for one that saves, and about 3 seconds on
-    a new instance's first request.
+  - Slower: a few tenths of a second a request, about a second for one that saves, and about 2 seconds
+    (4 CPU-seconds) to start a new instance's database (see the 2026-10-04 review below).
   - It shares SC's Supabase free-tier allowances (1 GB of storage).
   - No emails to the roofer until `WVR_LEAD_TO` is set; SC Design's mailboxes are never used.
   - Renders, address search and the satellite view stay off without their keys.
@@ -487,3 +486,60 @@ own**, small trade-offs accepted, SC Design's existing Supabase access allowed, 
   - 222 / 333 working and the test password refused;
   - a photo going phone → bucket → admin;
   - the daily tidy-up.
+
+### Before the first push: real-Supabase probes and a five-lens review (2026-10-04)
+
+The first push attempt (3 Oct, 01:17) stopped at the script's rebase because work was in progress, so
+none of this reached the live site before these fixes.
+
+**Probes of the real project, with no keys.**
+- The CORS preflight for a browser PUT to a signed upload link from `https://scdesignwirral.co.uk` is
+  allowed (`*`, `content-type`, PUT).
+- The signed upload route checks only its token.
+- Storage answers most errors as HTTP 400 with the real code inside (e.g.
+  `{"statusCode":"400","error":"InvalidJWT"}`), so only a definite "not found" may count as missing.
+- If `db/head.json` is ever missing, the newest `db/rows-N` is used, never empty tables.
+
+**Then a five-lens review** (Supabase API contract, Vercel runtime, concurrency, flows, security), with
+an independent check of every finding. 15 of 19 findings were confirmed, and all are fixed:
+- **Outlines could fill the snapshot.** A visitor could send outline after outline: up to 512 KB each, all
+  kept as rows. Past the bucket's size limit every save on the site would fail, admin login included.
+  - Outlines are now files next to the photo (migration 0010, `png_path`), and superseded ones are
+    deleted.
+  - There is a per-project daily cap (`WVR_MASKS_PER_PROJECT_DAILY`, 100).
+  - The bucket's file limit is 21 MB, and a save over 5 MB logs a warning.
+- **A new instance took 10-30 s of CPU to start its database.** That was PGlite's initdb plus the
+  migrations on one vCPU, which also tripped v1's 15 s health timeout.
+  - Each instance now loads `db/wvroofing-pglite/base.tar.gz`, made by
+    `scripts/wvroofing/gen-pglite-base.mjs` from the same `applyMigrations` (about 2 s and 4 CPU-s on a
+    laptop). A test fails if it falls behind the migrations or PGlite.
+  - Booting happens before any lock is taken.
+  - v1 waits 20 s for health and asks again when a photo is chosen if the server didn't answer.
+- **The lock had no fencing.**
+  - Before saving, the lock must still be this turn's own and the pointer unchanged.
+  - The lock is kept fresh every 20 s.
+  - Only the waiter that makes a takeover marker (`db/takeover-*`, x-upsert false) clears a lock left by
+    a crash. Markers are removed after a day.
+- **Every POST took the lock before any check.**
+  - Path, method, Origin, content type and the cron key are now checked before any turn.
+  - There is a per-visitor cap of 60 writes a minute per instance (`WVR_WRITES_PER_IP_MINUTE`).
+  - The instance's writers queue before taking the bucket lock, so reads aren't held up by a waiting
+    writer, and every wait has a deadline.
+- **Changes in GET requests could be lost.**
+  - GETs whose changes matter take write turns (`turn: "write"`): the render poll, the satellite view,
+    the spreadsheet download, an original or plan download and the operator's satellite view.
+  - The render worker runs detached from the request's turn, and stops before calling OpenAI if it no
+    longer holds the job.
+  - In snapshot mode the daily sweep never runs renders inside its turn.
+- **Enquiry emails could go before the save.** In snapshot mode an enquiry email starts only after the
+  turn has saved (`db.afterSave`).
+- **"Busy" answers had no CORS headers**, so the pages couldn't read them; they now do.
+- **Signed upload links were reusable for about 2 hours.** A finished upload is now replaced by a
+  one-byte placeholder (`storage.retire`), so a second upload to the link is refused. If that fails, the
+  file is deleted.
+- **The privacy notices overstated who can open the storage.** They now say it is a Supabase project
+  another website run by the same owner also uses. SC Design isn't named, under the separation rule.
+
+**Tests.** `snapshot.test.mjs` grew to 21 tests: outline files and the cap, cheap rejections taking no
+lock, CORS on busy, a save never overwriting another's, the single stale-lock clearer, the per-visitor
+cap, emails only after the save, and reused upload links refused.

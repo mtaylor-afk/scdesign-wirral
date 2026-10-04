@@ -4,7 +4,7 @@
   "outputDirectory": "public",
   "functions": {
     "api/*.js": { "maxDuration": 30 },
-    "api/wvroofing/app.js": { "maxDuration": 300, "includeFiles": "{db/wvroofing/**,node_modules/@electric-sql/pglite/dist/**}" }
+    "api/wvroofing/app.js": { "maxDuration": 300, "includeFiles": "{db/wvroofing/**,db/wvroofing-pglite/**,node_modules/@electric-sql/pglite/dist/**}" }
   },
   "rewrites": [
     { "source": "/api/wvroofing/:path*", "destination": "/api/wvroofing/app?path=:path*" }

@@ -10,7 +10,7 @@ import http from "node:http";
 import { fork } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import zlib from "node:zlib";
-import { load, apiFor } from "./helpers.mjs";
+import { load, apiFor, call, outlinePng, SITE } from "./helpers.mjs";
 
 const URL_BASE = "https://abcdefghijklmnop.supabase.co";
 const KEY = "service-role-" + "k".repeat(40);
@@ -23,14 +23,24 @@ process.env.SC_SUPABASE_SERVICE_ROLE_KEY = KEY;
 process.env.SC_ADMIN_SESSION_SECRET = "sc-admin-session-" + "s".repeat(40);
 process.env.WVR_PROJECTS_PER_IP_DAILY = "1000";
 process.env.WVR_DAILY_UPLOADS = "1000";
-process.env.WVR_SNAPSHOT_LOCK_WAIT_MS = "1500";
+// The production wait (25 s) shortened; the tests about a held lock shorten it further (shortWait).
+process.env.WVR_SNAPSHOT_LOCK_WAIT_MS = "15000";
+/** Run fn with a 1.5 s wait for the lock. @param {() => Promise<void>} fn */
+async function shortWait(fn) {
+  process.env.WVR_SNAPSHOT_LOCK_WAIT_MS = "1500";
+  try {
+    await fn();
+  } finally {
+    process.env.WVR_SNAPSHOT_LOCK_WAIT_MS = "15000";
+  }
+}
 
 // ---------------------------------------------------------------------------
 // a pretend Supabase Storage: buckets and objects in memory, the same replies
 // (status codes and error shapes) as the real Storage API
 
 function fakeSupabase() {
-  const S = { buckets: new Set(), objects: new Map(), calls: [], failNext: null, latency: true };
+  const S = { buckets: new Set(), objects: new Map(), calls: [], failNext: null, onCall: null, latency: true };
   const reply = (status, body, type) =>
     new Response(body == null ? null : typeof body === "string" || body instanceof Uint8Array ? body : JSON.stringify(body), {
       status,
@@ -44,6 +54,7 @@ function fakeSupabase() {
     const headers = Object.fromEntries(Object.entries(init.headers || {}).map(([k, v]) => [k.toLowerCase(), String(v)]));
     const route = u.pathname.replace(/^\/storage\/v1/, "");
     S.calls.push(method + " " + route);
+    if (S.onCall) S.onCall(method, route);
     if (S.latency) await new Promise((r) => setTimeout(r, 1 + Math.floor(Math.random() * 6)));
     if (S.failNext && S.failNext(method, route)) {
       S.failNext = null;
@@ -51,8 +62,10 @@ function fakeSupabase() {
     }
     const signed = /^\/object\/upload\/sign\/([^/]+)\/(.+)$/.exec(route);
     if (signed && method === "PUT") {
-      // The browser's upload: the token is the only credential.
+      // The browser's upload: the token is the only credential. Like Supabase, a link
+      // signed without x-upsert can be used again, but never over an existing object.
       if (u.searchParams.get("token") !== "t-" + key(signed[1], signed[2])) return err(400, "InvalidSignature", "bad token");
+      if (S.objects.has(key(signed[1], signed[2]))) return err(409, "Duplicate", "The resource already exists");
       S.objects.set(key(signed[1], signed[2]), { buf: Buffer.from(await new Response(init.body).arrayBuffer()), type: headers["content-type"] || "application/octet-stream" });
       return reply(200, { Key: key(signed[1], signed[2]) });
     }
@@ -111,7 +124,8 @@ const server = http.createServer(async (req, res) => {
   try {
     const chunks = [];
     for await (const c of req) chunks.push(c);
-    const r = await fake.fetch(URL_BASE + req.url, { method: req.method, headers: req.headers, body: chunks.length ? Buffer.concat(chunks) : undefined });
+    const hasBody = req.method !== "GET" && req.method !== "HEAD";
+    const r = await fake.fetch(URL_BASE + req.url, { method: req.method, headers: req.headers, body: hasBody ? Buffer.concat(chunks) : undefined });
     res.writeHead(r.status, { "content-type": r.headers.get("content-type") || "application/json" });
     res.end(Buffer.from(await r.arrayBuffer()));
   } catch (err) {
@@ -303,6 +317,12 @@ test("a photo goes from the phone straight to the bucket, and the admin can see 
   assert.equal(put.status, 200);
   const commit = await B.api("POST", "projects/" + p.id + "/photo/commit", { token: p.token, body: { uploadId: pre.json.uploadId }, ip: nextIp() });
   assert.equal(commit.status, 200, JSON.stringify(commit.json));
+  // The link can't be used again: the finished upload's place is taken by an empty file.
+  const again = await viaHttp(pre.json.url, { method: "PUT", headers: pre.json.headers, body: jpg });
+  assert.equal(again.status, 400, "a used upload link is refused");
+  const incoming = [...fake.S.objects.keys()].filter((k) => k.startsWith("wvroofing/projects/" + p.id + "/incoming/"));
+  assert.equal(incoming.length, 1);
+  assert.equal(fake.S.objects.get(incoming[0]).buf.length, 1, "the raw upload is gone; only a one-byte placeholder is left");
   const login = await B.api("POST", "operator/login", { body: { username: "222", password: "333" }, ip: nextIp() });
   assert.equal(login.status, 200);
   await pause(2100);
@@ -324,7 +344,11 @@ test("someone else's turn is waited for; a lock left by a crash is cleared; a lo
     holdLock("crashed", Date.now() - 120000);
     await newProject(A);
     holdLock("busy", Date.now());
-    const busy = await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() });
+    /** @type {any} */
+    let busy;
+    await shortWait(async () => {
+      busy = await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() });
+    });
     assert.equal(busy.status, 503);
     assert.equal(busy.json.error, "busy");
     assert.equal(busy.headers["retry-after"], "3");
@@ -397,6 +421,156 @@ test("only a definite 'not found' counts as missing: any other error stops rathe
     fake.S.failNext = saved;
   }
   assert.equal((await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() })).status, 201);
+});
+
+/** A project with a committed 900 x 600 photo, through instance i. */
+async function projectWithPhoto(i) {
+  const p = await newProject(i);
+  const sharp = load("serverlib/wvroofing/images.js").sharp();
+  const jpg = await sharp({ create: { width: 900, height: 600, channels: 3, background: { r: 120, g: 110, b: 100 } } })
+    .jpeg({ quality: 85 })
+    .toBuffer();
+  const pre = await i.api("POST", "projects/" + p.id + "/photo/presign", { token: p.token, body: { contentType: "image/jpeg", bytes: jpg.length }, ip: nextIp() });
+  assert.equal(pre.status, 200, JSON.stringify(pre.json));
+  assert.equal((await viaHttp(pre.json.url, { method: "PUT", headers: pre.json.headers, body: jpg })).status, 200);
+  const c = await i.api("POST", "projects/" + p.id + "/photo/commit", { token: p.token, body: { uploadId: pre.json.uploadId }, ip: nextIp() });
+  assert.equal(c.status, 200, JSON.stringify(c.json));
+  return p;
+}
+
+test("roof outlines are files next to the photo, never rows in the saved snapshot; old ones go; a daily limit per project", async () => {
+  const p = await projectWithPhoto(A);
+  const png = outlinePng(900, 600);
+  const send = () =>
+    A.api("POST", "projects/" + p.id + "/mask", { token: p.token, body: { png, shapes: [{ mode: "add", pts: [[180, 120], [540, 120], [540, 360]] }], displayW: 900, displayH: 600 }, ip: nextIp() });
+  const m1 = await send();
+  assert.equal(m1.status, 200, JSON.stringify(m1.json));
+  const m2 = await send();
+  assert.equal(m2.status, 200, JSON.stringify(m2.json));
+  const files = [...fake.S.objects.keys()].filter((k) => k.startsWith("wvroofing/projects/" + p.id + "/masks/"));
+  assert.deepEqual(files, ["wvroofing/projects/" + p.id + "/masks/" + m2.json.mask.id + ".png"], "the earlier outline went with its row");
+  const rows = JSON.parse(zlib.gunzipSync(fake.S.objects.get("wvroofing/" + head().key).buf).toString("utf8"));
+  assert.ok(rows.tables.wvr_masks.rows.includes(m2.json.mask.id), "the outline's row is saved");
+  assert.ok(!/\\\\x89504e47/i.test(rows.tables.wvr_masks.rows), "but not its picture");
+  process.env.WVR_MASKS_PER_PROJECT_DAILY = "3";
+  try {
+    assert.equal((await send()).status, 200);
+    const over = await send();
+    assert.equal(over.status, 429, JSON.stringify(over.json));
+  } finally {
+    delete process.env.WVR_MASKS_PER_PROJECT_DAILY;
+  }
+});
+
+test("requests refused without the database never take the lock", async () => {
+  const locks = () => fake.S.calls.filter((c) => c === "POST /object/wvroofing/db/lock.json").length;
+  const before = locks();
+  assert.equal((await A.api("POST", "nothing-here", { body: {} })).status, 404);
+  assert.equal((await A.api("POST", "projects", { body: {}, origin: "https://evil.example" })).status, 403);
+  assert.equal((await call(app, "POST", "/api/wvroofing/projects", { origin: SITE, "content-type": "text/plain" }, "x")).status, 415);
+  assert.equal((await A.api("GET", "cron/daily")).status, 503, "no CRON_SECRET: refused before any turn");
+  assert.equal(locks(), before);
+});
+
+test("a 'busy' answer carries CORS headers, so the pages (on another origin) can read it", async () => {
+  holdLock("busy2", Date.now());
+  try {
+    /** @type {any} */
+    let r;
+    await shortWait(async () => {
+      r = await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() });
+    });
+    assert.equal(r.status, 503);
+    assert.equal(r.headers["access-control-allow-origin"], SITE);
+    assert.equal(r.headers["retry-after"], "3");
+  } finally {
+    fake.S.objects.delete(LOCK);
+  }
+});
+
+test("a save never overwrites one made meanwhile by another instance", async () => {
+  await newProject(A);
+  const before = head();
+  let heads = 0;
+  fake.S.onCall = (method, route) => {
+    // The turn reads the pointer twice: when it starts, and again just before saving.
+    if (method === "GET" && route === "/object/authenticated/wvroofing/db/head.json" && ++heads === 2) {
+      const next = head().version + 1;
+      const key = "db/rows-" + next + ".json.gz";
+      fake.S.objects.set("wvroofing/" + key, fake.S.objects.get("wvroofing/" + head().key));
+      fake.S.objects.set("wvroofing/db/head.json", { buf: Buffer.from(JSON.stringify({ version: next, key })), type: "application/json" });
+    }
+  };
+  let r;
+  try {
+    r = await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() });
+  } finally {
+    fake.S.onCall = null;
+  }
+  assert.equal(r.status, 503, JSON.stringify(r.json));
+  assert.equal(head().version, before.version + 1, "the other instance's save stands");
+  const p = await newProject(A);
+  assert.equal(head().version, before.version + 2, "and the next save follows on from it");
+  assert.equal((await A.api("GET", "projects/" + p.id, { token: p.token })).status, 200);
+});
+
+test("only one waiter clears a lock left by a crash", async () => {
+  const at = Date.now() - 120000;
+  holdLock("crashed2", at);
+  // Another waiter has already claimed the right to clear it (its takeover marker).
+  fake.S.objects.set("wvroofing/db/takeover-crashed2-" + at + ".json", { buf: Buffer.from("{}"), type: "application/json" });
+  try {
+    /** @type {any} */
+    let r;
+    await shortWait(async () => {
+      r = await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() });
+    });
+    assert.equal(r.status, 503, "it leaves the lock to the waiter that claimed it");
+    assert.equal(JSON.parse(fake.S.objects.get(LOCK).buf.toString()).owner, "crashed2");
+  } finally {
+    fake.S.objects.delete(LOCK);
+  }
+  assert.equal((await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() })).status, 201);
+});
+
+test("each visitor gets a fair share of the requests that take the lock", async () => {
+  process.env.WVR_WRITES_PER_IP_MINUTE = "3";
+  try {
+    const ip = "203.0.113.77";
+    for (let n = 0; n < 3; n++) assert.equal((await A.api("POST", "projects", { body: { noticeShown: true }, ip })).status, 201);
+    const r = await A.api("POST", "projects", { body: { noticeShown: true }, ip });
+    assert.equal(r.status, 429);
+    assert.ok(Number(r.headers["retry-after"]) >= 1);
+    assert.equal((await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() })).status, 201, "other visitors aren't held up");
+  } finally {
+    delete process.env.WVR_WRITES_PER_IP_MINUTE;
+  }
+});
+
+test("the roofer is emailed only once the enquiry is saved", async () => {
+  Object.assign(process.env, { WVR_LEAD_TO: "roofer@example.com", WVR_CAP_ENQUIRY_DELIVERY: "on", WVR_MAIL_DRYRUN: "1" });
+  const jobs = load("serverlib/wvroofing/jobs.js");
+  /** @type {string[]} */
+  const said = [];
+  const log = console.log;
+  console.log = (...a) => said.push(a.join(" "));
+  const emails = () => said.filter((l) => /DRY RUN email/.test(l)).length;
+  const form = (k) => ({ name: "Sam Test", phone: "+44 151 496 0003", email: "sam@example.com", message: "Hello", consent: true, source: "bulletin", elapsedMs: 9000, idempotencyKey: k });
+  try {
+    fake.S.failNext = (method, route) => method === "POST" && route === "/object/wvroofing/db/head.json";
+    const failed = await A.api("POST", "enquiries", { body: form("snapkey00000001"), ip: nextIp() });
+    assert.equal(failed.status, 503, JSON.stringify(failed.json));
+    await jobs.drain();
+    assert.equal(emails(), 0, "no email about an enquiry that wasn't saved");
+    const ok = await A.api("POST", "enquiries", { body: form("snapkey00000002"), ip: nextIp() });
+    assert.equal(ok.status, 201, JSON.stringify(ok.json));
+    await jobs.drain();
+    assert.equal(emails(), 1, "emailed once saved");
+  } finally {
+    console.log = log;
+    fake.S.failNext = null;
+    for (const k of ["WVR_LEAD_TO", "WVR_CAP_ENQUIRY_DELIVERY", "WVR_MAIL_DRYRUN"]) delete process.env[k];
+  }
 });
 
 test("the daily tidy-up runs inside requests, once a day", async () => {

@@ -130,9 +130,10 @@ function ensureBucket() {
       if (got.ok) return;
       const made = await call("POST", "/bucket", {
         headers: { "Content-Type": "application/json" },
-        // Private: every read needs the service key or a signed link. 25 MB covers the
-        // largest photo (20 MB) and the database snapshot.
-        body: JSON.stringify({ id: bucket, name: bucket, public: false, file_size_limit: 25 * 1024 * 1024 }),
+        // Private: every read needs the service key or a signed link. 21 MB covers the
+        // largest photo or plan (20 MB); the saved rows are a few hundred KB (outlines
+        // are files of their own, not rows), and db.js warns long before this limit.
+        body: JSON.stringify({ id: bucket, name: bucket, public: false, file_size_limit: 21 * 1024 * 1024 }),
       });
       if (made.ok) return;
       const e = await errorOf(made);

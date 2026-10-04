@@ -10,26 +10,53 @@ nothing of SC Design's.
   `https://scdesignwirral.co.uk/WVROOFING/`.
 - **The API** is a single Vercel function, `api/wvroofing/app.js`, on project `scdesign-wirral`.
   - `vercel.json` rewrites `/api/wvroofing/*` to it.
-  - It has 300 seconds, and it bundles the migrations (`db/wvroofing/**`) and PGlite's WebAssembly files
+  - It has 300 seconds. It bundles the migrations (`db/wvroofing/**`), the PGlite data directory snapshot
+    mode starts from (`db/wvroofing-pglite/**`) and PGlite's WebAssembly files
     (`node_modules/@electric-sql/pglite/dist/**`).
-  - `api/` holds 11 files. Never add a 12th for WV Roofing: Hobby allows 12 functions.
+  - `api/` holds 12 files since MT Creative Works' `api/mtcw.js` (2026-10-04): Hobby's limit is reached.
+    WV Roofing keeps to its one function.
 - **Storage** has two modes, chosen from what is on the Vercel project. `/api/wvroofing/health` reports
   which one is running as `store`.
   - **`snapshot`, the mode in use now.** No database URL is set, but SC Design's `SC_SUPABASE_URL` and
     `SC_SUPABASE_SERVICE_ROLE_KEY` are. Photos and renders go into a private bucket called `wvroofing` in
     that project, which is made on first use.
-    - The database is PGlite in each function instance's memory. Every row of WV Roofing's tables is saved
-      to the same bucket as one small snapshot, `db/rows-N.json.gz`, with `db/head.json` pointing at the
-      newest. A few KB.
-    - **Writes.** A request that changes something takes a lock object, `db/lock.json`, loads the newest
-      snapshot if its copy is older, and saves a new one before it replies. "Saved" is therefore never said
-      about something that wasn't saved.
-    - **Reads.** GETs take no lock and use the instance's copy for up to 2 seconds.
+    - **The database** is PGlite in each function instance's memory.
+      - Every row of WV Roofing's tables is saved to the same bucket as one small snapshot,
+        `db/rows-N.json.gz`, with `db/head.json` pointing at the newest. A few KB.
+      - Roof outlines are files (`projects/<id>/masks/`), not rows, so the snapshot stays small (migration
+        0010).
+      - Each new instance starts its PGlite from a bundled data directory, `db/wvroofing-pglite/base.tar.gz`,
+        which has every migration applied and no rows.
+      - Remake that file with `node scripts/wvroofing/gen-pglite-base.mjs` after adding a migration or
+        upgrading PGlite. A test fails until you do.
+    - **Writes.**
+      - A request that changes something waits its turn in its instance, then takes a lock object,
+        `db/lock.json`.
+      - It loads the newest snapshot if its copy is older, and saves a new one before it replies, so "saved"
+        is never said about something that wasn't saved.
+      - Just before saving it checks the lock is still its own and nobody else has saved, so a save never
+        overwrites another.
+      - The lock is kept fresh every 20 s while a turn runs. One left by a crash is cleared after 90 s, by one
+        waiter only.
+      - Waits end after 25 s with "busy" (503, with CORS headers and `Retry-After`).
+    - **Reads.** GETs take no lock and use the instance's copy for up to 2 seconds. Some GETs record
+      something that matters (an audit row, a paid-call cap, a render claim); those routes take write turns
+      (`turn: "write"` in `router.js`).
+    - **Cheap checks first.** Requests that fail them never take a turn:
+      - an unknown path, the wrong method, a foreign Origin, non-JSON POSTs, or the cron key;
+      - more than 60 writes a minute from one visitor (per instance).
     - **Other settings it needs.**
       - The session secret is derived one-way from `SC_ADMIN_SESSION_SECRET`.
       - The daily tidy-up runs inside requests once a day, so `CRON_SECRET` isn't needed.
-    - **The cost.** A few tenths of a second a request, more for one that writes, and about 3 seconds
-      for the first request on a new instance.
+    - **Emails after saving.** Enquiry emails (once switched on) go out only after the enquiry's turn has
+      saved.
+    - **Upload links can't be reused.** Supabase's upload links stay valid about 2 hours, so a finished upload
+      is replaced by a one-byte placeholder, which blocks a second upload to the same link.
+    - **The cost, measured 2026-10-04 on a laptop.**
+      - A new instance starts its database in about 2 s (4 CPU-seconds, about 320 MB). Without the bundled
+        data directory it took 10-30 s on one vCPU.
+      - Then a few tenths of a second a request, and about a second for one that saves (several Storage
+        calls under the lock).
     - Details are in `serverlib/wvroofing/db.js` and `supabase.js`. The tests are in
       `scripts/wvroofing/tests/snapshot.test.mjs`: a pretend Supabase, and two instances in two processes.
   - **`pg`.** A database of WV Roofing's own (`WVR_DATABASE_URL`, for example Neon) plus a private

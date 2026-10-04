@@ -11,18 +11,23 @@
 //    is on this Vercel project. The database is PGlite in memory, and WV Roofing's
 //    rows (every wvr_ table, as COPY text, gzipped JSON: a few KB) are saved as
 //    one snapshot in WV Roofing's own private bucket (supabase.js).
-//    - A request that can change things (POST and the rest) takes a WRITE turn:
-//      it holds a lock object in the bucket, loads the newest snapshot if this
-//      instance's copy is older, runs, and saves a new snapshot if the rows changed.
+//    - A request that can change things (POST and the rest, and GETs whose route
+//      says so) takes a WRITE turn: it queues behind this instance's other writers,
+//      takes a lock object in the bucket (kept fresh while it runs; one left by a
+//      crash is cleared by a single waiter), loads the newest snapshot if this
+//      instance's copy is older, runs, and saves a new snapshot if the rows
+//      changed, after checking the lock is still its own and nobody saved meanwhile.
 //    - A GET takes a READ turn: no lock; the copy is brought up to date if it was
 //      last checked over 2 seconds ago, and reads run side by side. A GET that
-//      did change something (a rate-limit count, an audit row) saves under the
-//      lock afterwards, unless another instance saved first (then that change is
-//      dropped: it can only be a count or a log line).
-//    Slower than a real database (a few tenths of a second a request, more for one
-//    that writes), fine for a concept site; setting a database URL later switches
-//    to (1) with no other change. The whole-data-directory snapshot was measured
-//    first and rejected: 4.7 MB and 5 seconds a save.
+//      did change something (a rate-limit count) saves under the lock afterwards,
+//      unless another instance saved first (then that change is dropped).
+//    - Each instance starts its PGlite from a bundled data directory with every
+//      migration applied (PGLITE_BASE): about 2 s, against 10-30 s of CPU for
+//      PGlite's own initdb plus the migrations on one vCPU.
+//    Slower than a real database (a few tenths of a second a request, about a
+//    second for one that saves), fine for a concept site; setting a database URL
+//    later switches to (1) with no other change. The whole-data-directory snapshot
+//    was measured first and rejected: 4.7 MB and 5 seconds a save.
 //
 // Migrations: numbered files in db/wvroofing/NNNN_name.sql, applied in order
 // inside ONE transaction holding pg_advisory_xact_lock (safe behind PgBouncer
@@ -39,6 +44,9 @@ const { databaseUrl, isTest } = require("./capabilities.js");
 
 const MIGRATIONS_DIR = path.join(__dirname, "..", "..", "db", "wvroofing");
 const MIGRATION_LOCK = 7273770001; // arbitrary constant for pg_advisory_xact_lock
+// Snapshot mode starts each instance's PGlite from this data directory: every
+// migration already applied, no rows (made by scripts/wvroofing/gen-pglite-base.mjs).
+const PGLITE_BASE = path.join(__dirname, "..", "..", "db", "wvroofing-pglite", "base.tar.gz");
 
 // Snapshot mode's objects in the bucket.
 const SNAP_LOCK = "db/lock.json";
@@ -77,9 +85,30 @@ function configured(env) {
   return !!databaseUrl(env) || isTest(env) || snapshotMode(env);
 }
 
-/** An empty PGlite in memory. */
+/**
+ * A PGlite in memory, started from PGLITE_BASE when it can be: PGlite's own
+ * initdb plus the migrations took 10-30 s of CPU on a new instance (measured
+ * 2026-10-04); the bundled data directory takes about 3 s. Without it, or if this
+ * PGlite version can't read it, PGlite starts empty and the migrations run as before.
+ */
 async function newPglite() {
   const { PGlite } = await import("@electric-sql/pglite");
+  /** @type {Buffer | null} */
+  let base = null;
+  try {
+    base = fs.readFileSync(PGLITE_BASE);
+  } catch (err) {
+    base = null;
+  }
+  if (base) {
+    try {
+      const pg = new PGlite({ loadDataDir: new Blob([new Uint8Array(base)]) });
+      await pg.waitReady;
+      return pg;
+    } catch (err) {
+      console.error("[wvroofing] the bundled PGlite data directory couldn't be used; starting empty", err instanceof Error ? err.message : err);
+    }
+  }
   const pg = new PGlite();
   await pg.waitReady;
   return pg;
@@ -162,7 +191,12 @@ async function pgliteDriver(dir) {
  * @type {{ pg: any, version: number, hash: string, checkedAt: number, dailyCheckedAt: number }}
  */
 const SNAP = { pg: null, version: -1, hash: "", checkedAt: 0, dailyCheckedAt: 0 };
-/** The turn a piece of work belongs to: { active, wrote }. */
+/**
+ * The turn a piece of work belongs to: whether it is still running, whether it may
+ * have changed something, and what to start once its changes are saved.
+ * @typedef {{ active: boolean, wrote: boolean, after: (() => void)[] }} TurnStore
+ * @type {AsyncLocalStorage<TurnStore>}
+ */
 const session$ = new AsyncLocalStorage();
 
 /** Might this statement change anything? (Conservative: the rows are compared before anything is saved.) @param {string} sql */
@@ -181,6 +215,15 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** A table or column name, quoted for SQL. @param {string} name */
 const ident = (name) => '"' + String(name).replace(/"/g, '""') + '"';
+
+function busy() {
+  return new HttpError(503, "busy", "WV Roofing is busy for a moment. Please try again.", { retryAfter: 3 });
+}
+
+/** How long a request waits for its turn. */
+function lockWait() {
+  return Number(process.env.WVR_SNAPSHOT_LOCK_WAIT_MS) || LOCK_WAIT_MS;
+}
 
 /** @returns {Driver} */
 function snapshotDriver() {
@@ -219,7 +262,8 @@ function snapshotDriver() {
 }
 
 // --- turns inside this instance: any number of reads at once, or one write.
-// A write that is waiting goes before reads that arrive after it.
+// A write that is waiting goes before reads that arrive after it. Every wait
+// has a deadline, so a request never hangs until the function's time limit.
 
 /** @type {{ readers: number, writer: boolean, waiting: { write: boolean, go: () => void }[] }} */
 const turns = { readers: 0, writer: false, waiting: [] };
@@ -236,15 +280,19 @@ function admit() {
 }
 
 /**
- * Wait for a turn in this instance.
+ * Wait for a turn in this instance, until the deadline.
  * @param {boolean} write
+ * @param {number} deadline  ms since epoch
  * @returns {Promise<() => void>} call it to leave
  */
-function enter(write) {
-  return new Promise((resolve) => {
-    turns.waiting.push({
+function enter(write, deadline) {
+  return new Promise((resolve, reject) => {
+    /** @type {NodeJS.Timeout | undefined} */
+    let timer;
+    const waiter = {
       write,
       go: () => {
+        clearTimeout(timer);
         let left = false;
         resolve(() => {
           if (left) return;
@@ -254,57 +302,134 @@ function enter(write) {
           admit();
         });
       },
-    });
+    };
+    turns.waiting.push(waiter);
     admit();
+    if (turns.waiting.includes(waiter)) {
+      timer = setTimeout(() => {
+        const i = turns.waiting.indexOf(waiter);
+        if (i < 0) return; // admitted meanwhile
+        turns.waiting.splice(i, 1);
+        admit(); // a writer giving up may let the readers behind it in
+        reject(busy());
+      }, Math.max(0, deadline - Date.now()));
+    }
+  });
+}
+
+/**
+ * This instance's writers queue here before they take the bucket lock, so reads aren't held up by a writer that is only waiting.
+ * @type {Promise<void>}
+ */
+let writerTail = Promise.resolve();
+
+/**
+ * @param {number} deadline
+ * @returns {Promise<() => void>} call it to let the next writer go
+ */
+function queueWriter(deadline) {
+  /** @type {() => void} */
+  let release = () => undefined;
+  /** @type {Promise<void>} */
+  const mine = new Promise((r) => (release = () => r()));
+  const before = writerTail;
+  writerTail = before.then(() => mine);
+  return new Promise((resolve, reject) => {
+    let gaveUp = false;
+    const timer = setTimeout(() => {
+      gaveUp = true;
+      reject(busy());
+    }, Math.max(0, deadline - Date.now()));
+    before.then(() => {
+      clearTimeout(timer);
+      if (gaveUp) release(); // our place passes straight on
+      else resolve(release);
+    });
   });
 }
 
 // --- the lock across instances: an object in the bucket
 
+const HEARTBEAT_MS = 20000; // a turn that runs long keeps its lock fresh
+
+/**
+ * @typedef {{ owner: string, at: number, timer?: NodeJS.Timeout }} Lock
+ */
+
+/** The lock object's contents, or null. */
+async function readLock() {
+  const held = await require("./supabase.js").download(SNAP_LOCK);
+  if (!held) return null;
+  try {
+    const mark = JSON.parse(held.buf.toString("utf8"));
+    return { owner: String(mark.owner || ""), at: Number(mark.at) || 0 };
+  } catch (err) {
+    return { owner: "", at: 0 };
+  }
+}
+
 /**
  * Take the lock: an object made only if it isn't there (x-upsert false). A lock
- * older than LOCK_STALE_MS was left by a request that crashed, and is cleared.
- * @returns {Promise<{ owner: string, at: number }>}
+ * older than LOCK_STALE_MS was left by a request that crashed. Only one waiter may
+ * clear a given stale lock: the one that makes its takeover marker (x-upsert
+ * false again), so two waiters can never both clear it and both go ahead.
+ * @param {number} deadline
+ * @returns {Promise<Lock>}
  */
-async function acquireLock() {
+async function acquireLock(deadline) {
   const sb = require("./supabase.js");
   const owner = crypto.randomBytes(9).toString("hex");
-  const deadline = Date.now() + (Number(process.env.WVR_SNAPSHOT_LOCK_WAIT_MS) || LOCK_WAIT_MS);
   for (;;) {
     const at = Date.now();
     const made = await sb.upload(SNAP_LOCK, JSON.stringify({ owner, at }), "application/json", { upsert: false });
-    if (made.ok) return { owner, at };
-    const held = await sb.download(SNAP_LOCK);
-    if (!held) continue; // released between the two calls: try again at once
-    let heldAt = 0;
-    try {
-      const mark = JSON.parse(held.buf.toString("utf8"));
-      // Our own: the upload worked but its reply was lost (and was sent again).
-      if (mark.owner === owner) return { owner, at: Number(mark.at) || at };
-      heldAt = Number(mark.at) || 0;
-    } catch (err) {
-      heldAt = 0;
+    if (made.ok) return heartbeat({ owner, at });
+    const mark = await readLock();
+    if (!mark) continue; // released between the two calls: try again at once
+    // Our own: the upload worked but its reply was lost (and was sent again).
+    if (mark.owner === owner) return heartbeat({ owner, at: mark.at || at });
+    if (Date.now() - mark.at > LOCK_STALE_MS) {
+      const tag = (mark.owner.replace(/[^a-z0-9]/gi, "").slice(0, 40) || "unreadable") + "-" + mark.at;
+      const won = await sb.upload("db/takeover-" + tag + ".json", JSON.stringify({ by: owner, at: Date.now() }), "application/json", { upsert: false });
+      if (won.ok) {
+        await sb.remove([SNAP_LOCK]);
+        continue;
+      }
     }
-    if (Date.now() - heldAt > LOCK_STALE_MS) {
-      await sb.remove([SNAP_LOCK]);
-      continue;
-    }
-    if (Date.now() > deadline) throw new HttpError(503, "busy", "WV Roofing is busy for a moment. Please try again.", { retryAfter: 3 });
+    if (Date.now() > deadline) throw busy();
     await sleep(120 + Math.floor(Math.random() * 230));
   }
 }
 
-/** Give the lock back, if it is still ours. @param {{ owner: string, at: number }} lock */
+/** Keep a held lock fresh while its turn runs, so a long turn is never taken for a crash. @param {Lock} lock */
+function heartbeat(lock) {
+  const sb = require("./supabase.js");
+  lock.timer = setInterval(() => {
+    readLock()
+      .then((mark) => {
+        if (!mark || mark.owner !== lock.owner) return; // lost: the check before saving refuses
+        const at = Date.now();
+        return sb.upload(SNAP_LOCK, JSON.stringify({ owner: lock.owner, at }), "application/json", { upsert: true }).then(() => {
+          lock.at = at;
+        });
+      })
+      .catch(() => undefined);
+  }, HEARTBEAT_MS);
+  if (typeof lock.timer.unref === "function") lock.timer.unref();
+  return lock;
+}
+
+/** Give the lock back, if it is still ours. @param {Lock} lock */
 async function releaseLock(lock) {
+  clearInterval(lock.timer);
   const sb = require("./supabase.js");
   try {
-    // Well inside the stale limit nobody can have taken it over, so it is simply removed.
+    // Well inside the stale limit (the heartbeat keeps "at" fresh) nobody can have taken it over.
     if (Date.now() - lock.at < LOCK_STALE_MS - 30000) {
       await sb.remove([SNAP_LOCK]);
       return;
     }
-    const held = await sb.download(SNAP_LOCK);
-    if (held && JSON.parse(held.buf.toString("utf8")).owner === lock.owner) await sb.remove([SNAP_LOCK]);
+    const mark = await readLock();
+    if (mark && mark.owner === lock.owner) await sb.remove([SNAP_LOCK]);
   } catch (err) {
     console.error("[wvroofing] lock release failed", err instanceof Error ? err.message : err);
   }
@@ -413,17 +538,35 @@ async function readHead() {
   return best;
 }
 
+/** @type {Promise<void> | null} */
+let bootPromise = null;
+
+/**
+ * This instance's PGlite, made once, before any lock is taken: started from the
+ * bundled data directory (PGLITE_BASE) and topped up with any newer migration.
+ */
+function bootCopy() {
+  if (SNAP.pg) return Promise.resolve();
+  if (!bootPromise) {
+    bootPromise = (async () => {
+      const pg = await newPglite();
+      SNAP.pg = pg;
+      SNAP.version = -1;
+      schemaPromise = null;
+      await ensureSchema();
+    })().finally(() => {
+      bootPromise = null;
+    });
+  }
+  return bootPromise;
+}
+
 /** Bring this instance's copy up to the newest snapshot (the caller has this instance to itself). */
 async function syncSnapshot() {
   const head = await readHead();
   SNAP.checkedAt = Date.now();
-  if (SNAP.pg && SNAP.version === head.version) return;
-  if (!SNAP.pg) {
-    SNAP.pg = await newPglite();
-    SNAP.version = -1;
-    schemaPromise = null;
-  }
   await ensureSchema();
+  if (SNAP.version === head.version) return;
   let data = null;
   if (head.key) {
     const got = await require("./supabase.js").download(head.key);
@@ -440,32 +583,51 @@ async function syncSnapshot() {
   SNAP.version = head.version;
 }
 
+/** This copy may now differ from the saved rows: the next turn starts again from them. */
+function lost() {
+  SNAP.version = -1;
+  return new HttpError(503, "busy", "That couldn't be saved just now. Please try again.", { retryAfter: 3 });
+}
+
 /**
- * Save the rows as the newest snapshot, if they changed (the caller holds the
- * lock and has this instance to itself).
+ * Save the rows as the newest snapshot, if they changed. The caller holds the
+ * lock and has this instance to itself. Just before saving, the lock must still
+ * be ours and the newest snapshot still the one this copy came from: a lock lost
+ * to another instance (a stalled turn taken for a crash) never overwrites its save.
+ * @param {Lock} lock
  * @param {{ json: string, hash: string }} [rows]  already exported
+ * @returns {Promise<boolean>} whether anything was saved
  */
-async function saveChanges(rows) {
+async function saveChanges(lock, rows) {
   const e = rows || (await exportRows(SNAP.pg));
-  if (e.hash === SNAP.hash) return;
+  if (e.hash === SNAP.hash) return false;
   const sb = require("./supabase.js");
+  const mark = await readLock();
+  if (!mark || mark.owner !== lock.owner) {
+    console.error("[wvroofing] snapshot not saved: the lock was taken over");
+    throw lost();
+  }
+  if ((await readHead()).version !== SNAP.version) {
+    console.error("[wvroofing] snapshot not saved: another instance saved first");
+    throw lost();
+  }
   const version = SNAP.version + 1;
   const key = "db/rows-" + version + ".json.gz";
+  const gz = zlib.gzipSync(e.json);
+  if (gz.length > 5 * 1024 * 1024) console.warn("[wvroofing] the saved rows are " + Math.round(gz.length / 1024) + " KB: far more than expected");
   try {
-    const gz = zlib.gzipSync(e.json);
     await sb.upload(key, gz, "application/gzip", { upsert: true });
     await sb.upload(SNAP_HEAD, JSON.stringify({ version, key, bytes: gz.length, at: new Date().toISOString() }), "application/json", { upsert: true });
   } catch (err) {
-    // This copy now has changes the bucket may not: the next turn starts again from the saved one.
-    SNAP.version = -1;
     console.error("[wvroofing] snapshot save failed", err instanceof Error ? err.message : err);
-    throw new HttpError(503, "busy", "That couldn't be saved just now. Please try again.", { retryAfter: 3 });
+    throw lost();
   }
   const spare = SNAP.version - 1; // the one before is kept as a spare; older ones go
   SNAP.version = version;
   SNAP.hash = e.hash;
   SNAP.checkedAt = Date.now();
   if (spare >= 1) await sb.remove(["db/rows-" + spare + ".json.gz"]).catch(() => undefined);
+  return true;
 }
 
 /**
@@ -474,7 +636,8 @@ async function saveChanges(rows) {
  * @param {() => Promise<any>} fn
  */
 async function inTurn(fn) {
-  const store = { active: true, wrote: false };
+  /** @type {TurnStore} */
+  const store = { active: true, wrote: false, after: [] };
   try {
     return { store, failed: false, error: /** @type {unknown} */ (null), value: await session$.run(store, fn) };
   } catch (error) {
@@ -484,27 +647,51 @@ async function inTurn(fn) {
   }
 }
 
+/** Start what a turn asked to run once its changes were saved (outside the turn). @param {TurnStore} store */
+function runAfter(store) {
+  for (const fn of store.after.splice(0)) {
+    try {
+      session$.exit(fn);
+    } catch (err) {
+      console.error("[wvroofing] after-save work failed to start", err instanceof Error ? err.message : err);
+    }
+  }
+}
+
 /**
- * A turn that may change things: the lock, the newest rows, fn, and a save if
- * the rows changed (even when fn failed: what it wrote stays written, as it would in Postgres).
+ * A turn that may change things: this instance's writer queue, the lock, the
+ * newest rows, fn, and a save if the rows changed (even when fn failed: what it
+ * wrote stays written, as it would in Postgres).
  * @param {() => Promise<any>} fn
  */
 async function writeTurn(fn) {
-  const leave = await enter(true);
+  await bootCopy();
+  // The wait for a turn starts once this instance's copy is up, not before (booting is local work).
+  const deadline = Date.now() + lockWait();
+  const nextWriter = await queueWriter(deadline);
+  /** @type {Awaited<ReturnType<typeof inTurn>> | null} */
+  let out = null;
   try {
-    const lock = await acquireLock();
+    const lock = await acquireLock(deadline);
     try {
-      await syncSnapshot();
-      const out = await inTurn(fn);
-      if (out.store.wrote) await saveChanges();
-      if (out.failed) throw out.error;
-      return out.value;
+      const leave = await enter(true, deadline);
+      try {
+        await syncSnapshot();
+        out = await inTurn(fn);
+        if (out.store.wrote) await saveChanges(lock);
+      } finally {
+        leave();
+      }
     } finally {
       await releaseLock(lock);
     }
   } finally {
-    leave();
+    nextWriter();
   }
+  if (!out) throw busy();
+  runAfter(out.store);
+  if (out.failed) throw out.error;
+  return out.value;
 }
 
 /**
@@ -513,16 +700,18 @@ async function writeTurn(fn) {
  * @param {() => Promise<any>} fn
  */
 async function readTurn(fn) {
-  const stale = () => !SNAP.pg || SNAP.version < 0 || Date.now() - SNAP.checkedAt > READ_FRESH_MS;
+  await bootCopy();
+  const deadline = Date.now() + lockWait();
+  const stale = () => SNAP.version < 0 || Date.now() - SNAP.checkedAt > READ_FRESH_MS;
   if (stale()) {
-    const leave = await enter(true);
+    const leave = await enter(true, deadline);
     try {
       if (stale()) await syncSnapshot();
     } finally {
       leave();
     }
   }
-  const leave = await enter(false);
+  const leave = await enter(false, deadline);
   /** @type {Awaited<ReturnType<typeof inTurn>>} */
   let out;
   try {
@@ -530,36 +719,44 @@ async function readTurn(fn) {
   } finally {
     leave();
   }
-  if (out.store.wrote) await saveAfterRead();
+  if (out.store.wrote) await saveAfterRead(deadline);
+  runAfter(out.store);
   if (out.failed) throw out.error;
   return out.value;
 }
 
 /**
- * A read changed something (a rate-limit count, an audit row): save it under
- * the lock, unless another instance saved first (then it is dropped).
+ * A read changed something (a rate-limit count): save it under the lock, unless
+ * another instance saved first (then it is dropped and logged). GET routes whose
+ * changes matter take write turns instead (router.js, `turn: "write"`).
+ * @param {number} deadline
  */
-async function saveAfterRead() {
-  const leave = await enter(true);
+async function saveAfterRead(deadline) {
+  const nextWriter = await queueWriter(deadline).catch(() => null);
+  if (!nextWriter) return; // too busy just now: a count is all that is dropped
   try {
-    if (SNAP.version < 0) return;
-    const rows = await exportRows(SNAP.pg);
-    if (rows.hash === SNAP.hash) return;
-    const lock = await acquireLock();
+    const lock = await acquireLock(deadline).catch(() => null);
+    if (!lock) return;
     try {
-      const head = await readHead();
-      SNAP.checkedAt = Date.now();
-      if (head.version === SNAP.version) {
-        await saveChanges(rows);
-      } else {
-        SNAP.version = -1;
-        console.warn("[wvroofing] a change made during a read was overtaken by another save and dropped");
+      const leave = await enter(true, deadline);
+      try {
+        if (SNAP.version < 0) return;
+        const rows = await exportRows(SNAP.pg);
+        if (rows.hash === SNAP.hash) return;
+        if ((await readHead()).version !== SNAP.version) {
+          SNAP.version = -1;
+          console.warn("[wvroofing] a change made during a read was overtaken by another save and dropped");
+          return;
+        }
+        await saveChanges(lock, rows).catch(() => undefined);
+      } finally {
+        leave();
       }
     } finally {
       await releaseLock(lock);
     }
   } finally {
-    leave();
+    nextWriter();
   }
 }
 
@@ -580,6 +777,13 @@ async function maybeDaily() {
       await writeTurn(async () => {
         if (await due()) await require("./cron/daily.js").runDaily(Date.now());
       });
+      // Takeover markers (acquireLock) older than a day are no longer needed.
+      const sb = require("./supabase.js");
+      const old = (await sb.list("db/")).filter((k) => {
+        const m = /^db\/takeover-.*-(\d+)\.json$/.exec(k);
+        return m && Date.now() - Number(m[1]) > 24 * 3600 * 1000;
+      });
+      if (old.length) await sb.remove(old);
     }
   } catch (err) {
     console.error("[wvroofing] daily tidy-up failed", err instanceof Error ? err.message : err);
@@ -601,6 +805,29 @@ async function session(fn, opts) {
   const out = opts && opts.write === false ? await readTurn(fn) : await writeTurn(fn);
   await maybeDaily();
   return out;
+}
+
+/**
+ * Run fn outside the current turn: its database calls take turns of their own
+ * (so they wait for this one to end, and are saved under the lock). For work
+ * started in the background, never for work the current turn waits for.
+ * @template T
+ * @param {() => T} fn
+ * @returns {T}
+ */
+function detached(fn) {
+  return session$.exit(fn);
+}
+
+/**
+ * In snapshot mode, start fn only once the current turn's changes are saved
+ * (e.g. an email about a row that must exist first); otherwise start it now.
+ * @param {() => void} fn
+ */
+function afterSave(fn) {
+  const s = session$.getStore();
+  if (s && s.active && snapshotMode(process.env)) s.after.push(fn);
+  else fn();
 }
 
 /** @param {Record<string, string | undefined>} env */
@@ -632,30 +859,40 @@ function driver() {
   return driverPromise;
 }
 
-/** @returns {Promise<number>} the latest applied migration version */
-async function migrate() {
-  const d = await driver();
-  const files = fs
+/** The migration files, in order. */
+function migrationFiles() {
+  return fs
     .readdirSync(MIGRATIONS_DIR)
     .filter((f) => /^\d{4}_[a-z0-9_]+\.sql$/.test(f))
     .sort();
-  return d.tx(async (t) => {
-    await t.query("SELECT pg_advisory_xact_lock($1)", [MIGRATION_LOCK]);
-    await t.exec(
-      "CREATE TABLE IF NOT EXISTS wvr_schema_migrations (version integer PRIMARY KEY, name text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())"
-    );
-    const { rows } = await t.query("SELECT version FROM wvr_schema_migrations");
-    const have = new Set(rows.map((r) => Number(r.version)));
-    let latest = 0;
-    for (const f of files) {
-      const v = Number(f.slice(0, 4));
-      latest = Math.max(latest, v);
-      if (have.has(v)) continue;
-      await t.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
-      await t.query("INSERT INTO wvr_schema_migrations (version, name) VALUES ($1, $2)", [v, f]);
-    }
-    return latest;
-  });
+}
+
+/**
+ * Apply every pending migration inside the caller's transaction.
+ * (Also used by scripts/wvroofing/gen-pglite-base.mjs to make PGLITE_BASE.)
+ * @param {TxClient} t
+ * @returns {Promise<number>} the latest migration version
+ */
+async function applyMigrations(t) {
+  await t.query("SELECT pg_advisory_xact_lock($1)", [MIGRATION_LOCK]);
+  await t.exec("CREATE TABLE IF NOT EXISTS wvr_schema_migrations (version integer PRIMARY KEY, name text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())");
+  const { rows } = await t.query("SELECT version FROM wvr_schema_migrations");
+  const have = new Set(rows.map((r) => Number(r.version)));
+  let latest = 0;
+  for (const f of migrationFiles()) {
+    const v = Number(f.slice(0, 4));
+    latest = Math.max(latest, v);
+    if (have.has(v)) continue;
+    await t.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    await t.query("INSERT INTO wvr_schema_migrations (version, name) VALUES ($1, $2)", [v, f]);
+  }
+  return latest;
+}
+
+/** @returns {Promise<number>} the latest applied migration version */
+async function migrate() {
+  const d = await driver();
+  return d.tx(applyMigrations);
 }
 
 /** Apply pending migrations once per instance. @returns {Promise<number>} */
@@ -746,6 +983,8 @@ async function reset() {
   turns.readers = 0;
   turns.writer = false;
   turns.waiting = [];
+  writerTail = Promise.resolve();
+  bootPromise = null;
 }
 
 /** What kind of database this is ("pg", "pglite" for tests, "snapshot"), without connecting. */
@@ -757,4 +996,21 @@ function mode() {
   return "none";
 }
 
-module.exports = { configured, snapshotMode, mode, session, ensureSchema, migrate, query, tx, withLease, reset, MIGRATIONS_DIR };
+module.exports = {
+  configured,
+  snapshotMode,
+  mode,
+  session,
+  detached,
+  afterSave,
+  ensureSchema,
+  migrate,
+  applyMigrations,
+  migrationFiles,
+  query,
+  tx,
+  withLease,
+  reset,
+  MIGRATIONS_DIR,
+  PGLITE_BASE,
+};

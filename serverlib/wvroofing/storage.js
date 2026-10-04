@@ -47,6 +47,7 @@ function configured(env) {
  * @property {(pathname: string) => Promise<StoredObject | null>} get
  * @property {(pathname: string) => Promise<Buffer | null>} getBuffer
  * @property {(pathnames: string[]) => Promise<void>} del
+ * @property {(pathname: string) => Promise<void>} retire  an upload is finished with: its file goes, and its upload link can't put another there
  * @property {(prefix: string) => Promise<string[]>} list
  * @property {(pathname: string, opts: { contentTypes: string[], maxBytes: number, ttlSeconds: number }) => Promise<string>} presignPut
  * @property {(pathname: string, ttlSeconds: number) => Promise<string>} presignGet
@@ -84,6 +85,9 @@ function blobDriver() {
     async del(pathnames) {
       const list = pathnames.map(checkPath);
       if (list.length) await blob.del(list);
+    },
+    async retire(pathname) {
+      await this.del([pathname]);
     },
     async list(prefix) {
       /** @type {string[]} */
@@ -156,6 +160,19 @@ function supabaseDriver() {
     async del(pathnames) {
       await sb.remove(pathnames.map(checkPath));
     },
+    // Supabase's upload links stay valid for about 2 hours and can be used again
+    // once their path is free (they're signed with x-upsert false). So a finished
+    // upload is replaced by a one-byte placeholder, not deleted: the link then can't
+    // put another file there. It goes with the project's other files. If that fails,
+    // the upload is deleted as before: the raw file (maybe with GPS data) never stays.
+    async retire(pathname) {
+      const p = checkPath(pathname);
+      try {
+        await sb.upload(p, Buffer.from([0]), "application/octet-stream", { upsert: true });
+      } catch (err) {
+        await sb.remove([p]);
+      }
+    },
     async list(prefix) {
       return sb.list(checkPath(prefix));
     },
@@ -205,6 +222,9 @@ function fsDriver(root) {
         fs.rmSync(full(p), { force: true });
         fs.rmSync(metaFile(p), { force: true });
       }
+    },
+    async retire(pathname) {
+      await this.del([pathname]);
     },
     async list(prefix) {
       checkPath(prefix);

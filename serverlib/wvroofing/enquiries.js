@@ -358,8 +358,14 @@ async function getForProject(ctx) {
  */
 async function answer(ctx, saved) {
   let row = saved.row;
-  if (!saved.existing && row.status === "new" && isEnabled("enquiry_delivery", process.env)) {
-    const jobs = require("./jobs.js");
+  const deliver = !saved.existing && row.status === "new" && isEnabled("enquiry_delivery", process.env);
+  const jobs = require("./jobs.js");
+  if (deliver && db.snapshotMode(process.env)) {
+    // Snapshot mode: the row is only saved when this request's turn ends, so the
+    // roofer is emailed after that (never about an enquiry that then failed to save).
+    const id = row.id;
+    db.afterSave(() => jobs.background(() => deliverWithRetry(id)));
+  } else if (deliver) {
     const work = jobs.background(() => deliverWithRetry(row.id));
     await within(work, INLINE_WAIT_MS);
     const fresh = await db.query("SELECT * FROM wvr_enquiries WHERE id = $1", [row.id]);

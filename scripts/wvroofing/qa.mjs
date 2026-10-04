@@ -161,7 +161,9 @@ async function customerEnquiry() {
 function watch(page) {
   const errors = [];
   page.on("console", (m) => {
-    if (m.type() === "error") errors.push("console: " + m.text());
+    // "Failed to load resource" says which only in its location.
+    const where = m.location && m.location() && m.location().url ? " (" + m.location().url + ")" : "";
+    if (m.type() === "error") errors.push("console: " + m.text() + where);
   });
   page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
   page.on("requestfailed", (r) => {

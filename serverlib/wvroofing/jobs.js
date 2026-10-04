@@ -468,14 +468,17 @@ async function prepare(job) {
   /** @type {import("./compose.js").AiSpec} */
   const spec = typeof job.spec === "string" ? JSON.parse(job.spec) : job.spec;
   const ph = await db.query("SELECT working_path, work_w, work_h FROM wvr_photos WHERE id = $1 AND project_id = $2", [job.photo_id, job.project_id]);
-  const mk = await db.query("SELECT png FROM wvr_masks WHERE id = $1 AND project_id = $2", [job.mask_id, job.project_id]);
+  const mk = await db.query("SELECT png, png_path FROM wvr_masks WHERE id = $1 AND project_id = $2", [job.mask_id, job.project_id]);
   /** @type {Row | undefined} */
   const photo = ph.rows[0];
   if (!photo || !mk.rows[0] || !product || !spec) throw new Error("photo, outline or product missing");
   openai.validateParams({ model: job.model, quality: job.quality, W: spec.W, H: spec.H });
   const working = await storage().getBuffer(photo.working_path);
   if (!working) throw new Error("working copy missing from storage");
-  const roof = await compose.roofMaskFromPng(toBuffer(mk.rows[0].png), photo.work_w, photo.work_h);
+  // Outlines are files since migration 0010; older ones are still bytes in the row.
+  const maskPng = mk.rows[0].png_path ? await storage().getBuffer(mk.rows[0].png_path) : mk.rows[0].png ? toBuffer(mk.rows[0].png) : null;
+  if (!maskPng) throw new Error("outline missing from storage");
+  const roof = await compose.roofMaskFromPng(maskPng, photo.work_w, photo.work_h);
   const inputs = await compose.aiInputs(working, roof, photo.work_w, photo.work_h, spec);
   return { spec, photo, working, roof, inputs, product };
 }
@@ -521,8 +524,12 @@ async function runJob(job, token, cfg) {
   }
   const { spec, photo, working, roof, inputs, product } = prep;
 
-  // 4. The call. From here on the render may be charged.
-  await db.query("UPDATE wvr_jobs SET called_at = now(), updated_at = now() WHERE id = $1 AND lease_token = $2", [job.id, token]);
+  // 4. The call. From here on the render may be charged, so only while this worker still holds the job.
+  const marked = await db.query("UPDATE wvr_jobs SET called_at = now(), updated_at = now() WHERE id = $1 AND lease_token = $2", [job.id, token]);
+  if (!marked.rowCount) {
+    await limits.undo("upstream_openai", "global", 60);
+    return "done";
+  }
   /** @type {import("./openai.js").EditResult} */
   let result;
   try {
@@ -668,7 +675,10 @@ async function work(projectId, deadline) {
  * @param {number} startedAt  when this invocation began
  */
 function kick(projectId, startedAt) {
-  return background(() => work(projectId, deadlineFrom(startedAt)));
+  // Detached from the request's database turn (snapshot mode, db.js): the worker's
+  // lease and claim then take turns of their own and are saved under the lock
+  // before anything is sent to OpenAI, never left in a read turn's unsaved copy.
+  return background(() => db.detached(() => work(projectId, deadlineFrom(startedAt))));
 }
 
 /**
@@ -724,7 +734,11 @@ async function sweep(deadline) {
   const reconciled = await reconcileExpired(null);
   const staleFailed = await failStale();
   const renderFilesDeleted = await purgeUnusedFiles();
-  const { rows } = await db.query("SELECT DISTINCT project_id FROM wvr_jobs WHERE status = 'queued' AND (run_after IS NULL OR run_after <= now()) LIMIT 50");
+  // In snapshot mode this runs inside one database turn holding the lock, so it never
+  // waits on OpenAI there: the customer's next poll starts the worker instead.
+  const { rows } = db.snapshotMode(process.env)
+    ? { rows: [] }
+    : await db.query("SELECT DISTINCT project_id FROM wvr_jobs WHERE status = 'queued' AND (run_after IS NULL OR run_after <= now()) LIMIT 50");
   let rendersRun = 0;
   for (const r of rows) {
     if (Date.now() + cfg.timeoutMs + START_MARGIN_MS > deadline) break;
