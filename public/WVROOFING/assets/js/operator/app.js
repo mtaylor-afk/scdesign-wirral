@@ -540,11 +540,10 @@ function propertyCard(e, p) {
   const card = h("section", { class: "op-card" }, h("h3", { text: "Property" }));
   if (!p) {
     const snap = e.snapshot && e.snapshot.address;
-    card.append(
-      // A project enquiry's snapshot names its project; an enquiry sent without one never had a saved photo.
-      h("p", { class: "op-muted op-small", text: e.snapshot && e.snapshot.project ? "The customer's photo has since been deleted." : "This enquiry came without a saved photo." }),
-      snap ? kv([["Address when sent", addressText(snap)]]) : null
-    );
+    // A project enquiry's snapshot names its project; an enquiry sent without one never had a saved photo.
+    card.append(h("p", { class: "op-muted op-small", text: e.snapshot && e.snapshot.project ? "The customer's photo has since been deleted." : "This enquiry came without a saved photo." }));
+    // (append(null) would print the word "null".)
+    if (snap) card.append(kv([["Address when sent", addressText(snap)]]));
     return card;
   }
   const a = p.addresses.find((x) => x.current);

@@ -565,3 +565,34 @@ by hand against the code. Six were real, and all are fixed:
 
 Four more snapshot tests (25 in all): the cron call on a cold instance runs the tidy-up, an abandoned
 claim is dropped, a failed outline save keeps its file, and an unreadable upload is still retired.
+
+### First live test (2026-10-16): Supabase's CDN served old copies
+
+What happened:
+- Pushed 5094c02, and `/health` reported `store: snapshot`.
+- Matthew's test enquiry from the Roof Cam was saved without its photo, although the save light said
+  "Saved".
+- A live test reproduced it. The project was created (201) and read back (200), and the next write turn
+  answered `project_not_found` (404).
+
+The cause:
+- Supabase's CDN caches downloads, private-bucket ones included. Supabase's docs say Smart CDN takes up
+  to 60 s to invalidate after an update, on Pro; the Free plan has only the basic CDN.
+- So a turn read an old `db/head.json`, loaded an older save, and lost sight of rows saved a moment
+  before.
+- The same stale read in the check before saving could also have let a save overwrite a newer one.
+
+The fixes:
+- **A unique `cacheNonce` query string on every download**, Supabase's documented cache-buster. The real
+  route accepts it: checked with no key, it complains only about the missing authorization.
+- **An instance never goes back.** `SNAP.highest` is the newest version an instance has loaded or saved.
+  A pointer older than that is treated as a stale read: the turn answers 503 busy and never loads the
+  older save (so never saves over the newer one).
+- **The pretend Supabase gained a CDN mode** (it caches by path and query). A test replays the live
+  sequence across two instances. It fails without the nonce and passes with it. A second test checks the
+  never-go-back guard.
+- **A wording slip:** the admin's Property card printed "null" for an enquiry without a photo.
+
+Matthew's first test project and photo rows were probably lost to this. The files may remain in the
+bucket under `projects/`, and are removed with the 30-day tidy-up only if a row points to them, so a
+one-off clean-up may be needed.

@@ -187,10 +187,11 @@ async function pgliteDriver(dir) {
 /**
  * This instance's copy of the database: the PGlite in memory, which saved
  * snapshot it matches (version, and a fingerprint of its rows), and when the
- * bucket was last checked for a newer one.
- * @type {{ pg: any, version: number, hash: string, checkedAt: number, dailyCheckedAt: number }}
+ * bucket was last checked for a newer one. "highest" is the newest version this
+ * instance has ever loaded or saved: it never goes back to an older one.
+ * @type {{ pg: any, version: number, highest: number, hash: string, checkedAt: number, dailyCheckedAt: number }}
  */
-const SNAP = { pg: null, version: -1, hash: "", checkedAt: 0, dailyCheckedAt: 0 };
+const SNAP = { pg: null, version: -1, highest: 0, hash: "", checkedAt: 0, dailyCheckedAt: 0 };
 /**
  * The turn a piece of work belongs to: whether it is still running, whether it may
  * have changed something, and what to start once its changes are saved.
@@ -584,6 +585,12 @@ function bootCopy() {
 /** Bring this instance's copy up to the newest snapshot (the caller has this instance to itself). */
 async function syncSnapshot() {
   const head = await readHead();
+  // Older than a save this instance has already loaded or made: a stale read (a cache).
+  // Never load it (and so never save over the newer one): try again in a moment.
+  if (head.version < SNAP.highest) {
+    console.warn("[wvroofing] the saved-rows pointer read older than this instance has seen (" + head.version + " < " + SNAP.highest + ")");
+    throw new HttpError(503, "busy", "WV Roofing is busy for a moment. Please try again.", { retryAfter: 2 });
+  }
   SNAP.checkedAt = Date.now();
   await ensureSchema();
   if (SNAP.version === head.version) return;
@@ -601,6 +608,7 @@ async function syncSnapshot() {
   await importRows(SNAP.pg, data);
   SNAP.hash = (await exportRows(SNAP.pg)).hash;
   SNAP.version = head.version;
+  SNAP.highest = Math.max(SNAP.highest, head.version);
 }
 
 /** This copy may now differ from the saved rows: the next turn starts again from them. */
@@ -644,6 +652,7 @@ async function saveChanges(lock, rows) {
   }
   const spare = SNAP.version - 1; // the one before is kept as a spare; older ones go
   SNAP.version = version;
+  SNAP.highest = Math.max(SNAP.highest, version);
   SNAP.hash = e.hash;
   SNAP.checkedAt = Date.now();
   if (spare >= 1) await sb.remove(["db/rows-" + spare + ".json.gz"]).catch(() => undefined);
@@ -1000,6 +1009,7 @@ async function reset() {
   SNAP.hash = "";
   SNAP.checkedAt = 0;
   SNAP.dailyCheckedAt = 0;
+  SNAP.highest = 0;
   turns.readers = 0;
   turns.writer = false;
   turns.waiting = [];

@@ -176,7 +176,12 @@ async function upload(path, body, contentType, opts) {
 async function download(path) {
   await ensureBucket();
   const { bucket } = cfg();
-  const res = await call("GET", "/object/authenticated/" + encodeURIComponent(bucket) + "/" + enc(path));
+  // Supabase's CDN caches downloads, private-bucket ones included, and can serve a replaced
+  // object's old copy (up to 60 s on Pro, longer on Free). That made the saved-rows pointer
+  // read stale on the live site (2026-10-16), so a turn loaded an older save. A unique query
+  // string is Supabase's documented way to make every read come from storage itself.
+  const nonce = "?cacheNonce=" + require("crypto").randomBytes(9).toString("hex");
+  const res = await call("GET", "/object/authenticated/" + encodeURIComponent(bucket) + "/" + enc(path) + nonce);
   if (res.ok) return { buf: Buffer.from(await res.arrayBuffer()), contentType: res.headers.get("content-type") || "application/octet-stream" };
   // Only a definite "not found" means missing. Supabase answers most errors with HTTP 400 and the real
   // code inside (e.g. {"statusCode":"400","error":"InvalidJWT"}, checked 2026-10-04): reading any other

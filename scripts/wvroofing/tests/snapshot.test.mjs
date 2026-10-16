@@ -40,7 +40,8 @@ async function shortWait(fn) {
 // (status codes and error shapes) as the real Storage API
 
 function fakeSupabase() {
-  const S = { buckets: new Set(), objects: new Map(), calls: [], failNext: null, onCall: null, latency: true };
+  // cdn: like Supabase's CDN, downloads are cached by their full address (path and query string).
+  const S = { buckets: new Set(), objects: new Map(), calls: [], failNext: null, onCall: null, latency: true, cdn: false, cdnCache: new Map() };
   const reply = (status, body, type) =>
     new Response(body == null ? null : typeof body === "string" || body instanceof Uint8Array ? body : JSON.stringify(body), {
       status,
@@ -82,7 +83,10 @@ function fakeSupabase() {
     if (signed && method === "POST") return reply(200, { url: "/object/upload/sign/" + signed[1] + "/" + signed[2] + "?token=" + encodeURIComponent("t-" + key(signed[1], signed[2])) });
     if ((m = /^\/object\/sign\/([^/]+)\/(.+)$/.exec(route)) && method === "POST") return reply(200, { signedURL: "/object/sign/" + m[1] + "/" + m[2] + "?token=dl" });
     if ((m = /^\/object\/authenticated\/([^/]+)\/(.+)$/.exec(route)) && method === "GET") {
+      const hit = S.cdn && S.cdnCache.get(u.pathname + u.search);
+      if (hit) return reply(hit.status, hit.body ? new Uint8Array(hit.body) : JSON.stringify(hit.json), hit.type);
       const o = S.objects.get(key(m[1], m[2]));
+      if (S.cdn) S.cdnCache.set(u.pathname + u.search, o ? { status: 200, body: o.buf, type: o.type } : { status: 400, json: { statusCode: "404", error: "not_found", message: "Object not found" }, type: "application/json" });
       return o ? reply(200, new Uint8Array(o.buf), o.type) : err(404, "not_found", "Object not found");
     }
     if ((m = /^\/object\/list\/([^/]+)$/.exec(route)) && method === "POST") {
@@ -407,7 +411,7 @@ test("only a definite 'not found' counts as missing: any other error stops rathe
   const saved = fake.S.failNext;
   // Supabase sends most errors as HTTP 400 with the real code inside.
   sb.setFetch(async (input, init) => {
-    if (/db\/head\.json$/.test(String(input)) && (init.method || "GET") === "GET") {
+    if (/db\/head\.json(\?|$)/.test(String(input)) && (init.method || "GET") === "GET") {
       return new Response(JSON.stringify({ statusCode: "400", error: "InvalidJWT", message: "Invalid Compact JWS" }), { status: 400, headers: { "content-type": "application/json" } });
     }
     return fake.fetch(input, init);
@@ -584,6 +588,55 @@ test("the daily tidy-up runs inside requests, once a day", async () => {
   await A.reset();
   await newProject(A);
   assert.equal(await count(), 1, "a new instance checks, but it isn't due again the same day");
+});
+
+test("a caching CDN in front of Storage never makes a later request miss what an earlier one saved (live bug, 2026-10-16)", async () => {
+  // On the live site a write turn read an old copy of db/head.json from Supabase's CDN, loaded
+  // an older save and answered "project not found" one request after the project was made.
+  fake.S.cdn = true;
+  fake.S.cdnCache.clear();
+  try {
+    await A.api("GET", "health"); // warm: the pointer is read (and would be cached)
+    const p = await newProject(A);
+    assert.equal((await A.api("GET", "projects/" + p.id, { token: p.token })).status, 200);
+    const sharp = load("serverlib/wvroofing/images.js").sharp();
+    const jpg = await sharp({ create: { width: 900, height: 600, channels: 3, background: { r: 128, g: 128, b: 128 } } })
+      .jpeg()
+      .toBuffer();
+    const pre = await A.api("POST", "projects/" + p.id + "/photo/presign", { token: p.token, body: { contentType: "image/jpeg", bytes: jpg.length }, ip: nextIp() });
+    assert.equal(pre.status, 200, "the next write turn still finds the project: " + JSON.stringify(pre.json));
+    assert.equal((await viaHttp(pre.json.url, { method: "PUT", headers: pre.json.headers, body: jpg })).status, 200);
+    const c = await B.api("POST", "projects/" + p.id + "/photo/commit", { token: p.token, body: { uploadId: pre.json.uploadId }, ip: nextIp() });
+    assert.equal(c.status, 200, "and so does another instance: " + JSON.stringify(c.json));
+    const again = await A.api("POST", "projects/" + p.id + "/consent", { token: p.token, body: { ai: false }, ip: nextIp() });
+    assert.equal(again.status, 200, "and the first instance after that: " + JSON.stringify(again.json));
+    assert.ok(fake.S.cdnCache.size > 0, "downloads went through the pretend CDN");
+  } finally {
+    fake.S.cdn = false;
+    fake.S.cdnCache.clear();
+  }
+});
+
+test("a server never goes back to an older save, even if storage answers with one", async () => {
+  await newProject(A); // A has now loaded / made the newest version
+  const newest = head();
+  const older = { version: newest.version - 1, key: "db/rows-" + (newest.version - 1) + ".json.gz" };
+  fake.S.onCall = (method, route) => {
+    // Every pointer read answers with an older version (as a stale cache would).
+    if (method === "GET" && route === "/object/authenticated/wvroofing/db/head.json") {
+      fake.S.objects.set("wvroofing/db/head.json", { buf: Buffer.from(JSON.stringify(older)), type: "application/json" });
+    }
+  };
+  let r;
+  try {
+    r = await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() });
+  } finally {
+    fake.S.onCall = null;
+    fake.S.objects.set("wvroofing/db/head.json", { buf: Buffer.from(JSON.stringify(newest)), type: "application/json" });
+  }
+  assert.equal(r.status, 503, "it waits rather than load the older save");
+  assert.equal((await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() })).status, 201, "and carries on once the newest is read");
+  assert.ok(head().version > newest.version, "saving on from the newest, not over it");
 });
 
 test("Vercel's daily call runs the tidy-up even when nobody visits (no CRON_SECRET)", async () => {
