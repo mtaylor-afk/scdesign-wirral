@@ -153,8 +153,9 @@ async function commit(ctx) {
   }
   const up = claim.rows[0];
   const st = storage();
-  const buf = await st.getBuffer(up.pathname);
   try {
+    // Inside the try: if reading it fails, the raw upload is still retired below.
+    const buf = await st.getBuffer(up.pathname);
     if (!buf) throw new HttpError(400, "upload_missing", "The photo didn't finish uploading. Please try again.");
     if (buf.length > up.max_bytes) throw new HttpError(413, "too_large", "The uploaded file is larger than announced.");
     const out = await images.processUpload(buf);
@@ -256,7 +257,9 @@ async function mask(ctx) {
     await st.del([pngPath]).catch(() => undefined);
     throw err;
   }
-  if (dropped.length) await st.del(dropped).catch(() => undefined);
+  // The earlier outlines' files go only once their rows' deletion is saved (snapshot mode
+  // saves at the end of the request): a failed save must never leave a row without its file.
+  if (dropped.length) db.afterSave(() => jobs.background(() => st.del(dropped)));
   return json(ctx.res, 200, { ok: true, mask: { id, coverage: info.transparentFrac } });
 }
 

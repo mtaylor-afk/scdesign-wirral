@@ -277,8 +277,8 @@ This tab lists photo-real renders from the last 30 days that **failed**, or that
   - Figures are recorded at the time of each call, at the most it could cost.
   - The providers' own bills are the final word.
 - **Daily tidy-up.** When it last ran and what it deleted.
-  - It runs once a day and needs `CRON_SECRET`.
-  - If it says it hasn't run for more than a day, check that variable in Vercel.
+  - It runs once a day, triggered by Vercel's daily schedule or by the first visit of the day.
+  - If it says it hasn't run for more than a day, tell Claude.
 
 ## Deleting
 

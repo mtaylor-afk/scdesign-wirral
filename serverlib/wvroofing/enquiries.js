@@ -364,7 +364,7 @@ async function answer(ctx, saved) {
     // Snapshot mode: the row is only saved when this request's turn ends, so the
     // roofer is emailed after that (never about an enquiry that then failed to save).
     const id = row.id;
-    db.afterSave(() => jobs.background(() => deliverWithRetry(id)));
+    db.afterSave(() => jobs.background(() => whenNotBusy(() => deliverWithRetry(id))));
   } else if (deliver) {
     const work = jobs.background(() => deliverWithRetry(row.id));
     await within(work, INLINE_WAIT_MS);
@@ -372,6 +372,26 @@ async function answer(ctx, saved) {
     if (fresh.rows[0]) row = fresh.rows[0];
   }
   return json(ctx.res, saved.existing ? 200 : 201, view(row, saved.existing));
+}
+
+/**
+ * Snapshot mode: try fn again (twice, after 3 and 10 seconds) when it couldn't get
+ * a database turn, so a busy moment doesn't leave the roofer un-emailed until the
+ * next daily tidy-up.
+ * @template T
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+async function whenNotBusy(fn) {
+  for (const wait of [3000, 10000, 0]) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!(err instanceof HttpError && err.code === "busy") || !wait) throw err;
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+  throw new Error("unreachable");
 }
 
 /**

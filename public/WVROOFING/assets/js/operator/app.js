@@ -1119,7 +1119,7 @@ function sweepCard(s, r) {
     const done = SWEEP_WORDS.filter(([k]) => d[k]).map(([k, t]) => d[k] + " " + t);
     card.append(h("p", { class: "op-small", text: "Last ran " + when(s.at) + ". " + (done.length ? done.join(", ") + "." : "Nothing was due.") }));
   } else {
-    card.append(h("p", { class: "op-small", text: "It hasn't run yet. It runs once a day on Vercel's schedule, once CRON_SECRET is set." }));
+    card.append(h("p", { class: "op-small", text: "It hasn't run yet. It runs once a day, on Vercel's schedule or with the first visit of the day." }));
   }
   card.append(
     h("p", {

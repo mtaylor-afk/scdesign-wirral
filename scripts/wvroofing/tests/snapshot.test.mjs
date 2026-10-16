@@ -447,6 +447,7 @@ test("roof outlines are files next to the photo, never rows in the saved snapsho
   assert.equal(m1.status, 200, JSON.stringify(m1.json));
   const m2 = await send();
   assert.equal(m2.status, 200, JSON.stringify(m2.json));
+  await load("serverlib/wvroofing/jobs.js").drain(); // the earlier file goes once the save is done
   const files = [...fake.S.objects.keys()].filter((k) => k.startsWith("wvroofing/projects/" + p.id + "/masks/"));
   assert.deepEqual(files, ["wvroofing/projects/" + p.id + "/masks/" + m2.json.mask.id + ".png"], "the earlier outline went with its row");
   const rows = JSON.parse(zlib.gunzipSync(fake.S.objects.get("wvroofing/" + head().key).buf).toString("utf8"));
@@ -462,13 +463,15 @@ test("roof outlines are files next to the photo, never rows in the saved snapsho
   }
 });
 
-test("requests refused without the database never take the lock", async () => {
+test("requests refused without the database, and Vercel's daily call, never take the lock", async () => {
   const locks = () => fake.S.calls.filter((c) => c === "POST /object/wvroofing/db/lock.json").length;
   const before = locks();
   assert.equal((await A.api("POST", "nothing-here", { body: {} })).status, 404);
   assert.equal((await A.api("POST", "projects", { body: {}, origin: "https://evil.example" })).status, 403);
   assert.equal((await call(app, "POST", "/api/wvroofing/projects", { origin: SITE, "content-type": "text/plain" }, "x")).status, 415);
-  assert.equal((await A.api("GET", "cron/daily")).status, 503, "no CRON_SECRET: refused before any turn");
+  const cron = await A.api("GET", "cron/daily");
+  assert.equal(cron.status, 200, "no CRON_SECRET: answered in a read turn (the tidy-up runs inside requests)");
+  assert.equal(cron.json.skipped, "snapshot_mode");
   assert.equal(locks(), before);
 });
 
@@ -518,7 +521,7 @@ test("only one waiter clears a lock left by a crash", async () => {
   const at = Date.now() - 120000;
   holdLock("crashed2", at);
   // Another waiter has already claimed the right to clear it (its takeover marker).
-  fake.S.objects.set("wvroofing/db/takeover-crashed2-" + at + ".json", { buf: Buffer.from("{}"), type: "application/json" });
+  fake.S.objects.set("wvroofing/db/takeover-crashed2-" + at + ".json", { buf: Buffer.from(JSON.stringify({ by: "other-waiter", at: Date.now() })), type: "application/json" });
   try {
     /** @type {any} */
     let r;
@@ -581,4 +584,61 @@ test("the daily tidy-up runs inside requests, once a day", async () => {
   await A.reset();
   await newProject(A);
   assert.equal(await count(), 1, "a new instance checks, but it isn't due again the same day");
+});
+
+test("Vercel's daily call runs the tidy-up even when nobody visits (no CRON_SECRET)", async () => {
+  const count = async () => (await db.query("SELECT count(*)::int AS n FROM wvr_retention_runs WHERE kind = 'daily'")).rows[0].n;
+  const before = await count();
+  await db.query("UPDATE wvr_retention_runs SET started_at = now() - interval '2 days'");
+  await A.reset(); // a cold instance: only the cron call arrives
+  const r = await A.api("GET", "cron/daily");
+  assert.equal(r.status, 200);
+  assert.equal(await count(), before + 1, "the tidy-up ran on schedule");
+});
+
+test("a takeover claim left by a crashed waiter is dropped, so writing never stops for good", async () => {
+  const at = Date.now() - 200000;
+  holdLock("crashed3", at);
+  fake.S.objects.set("wvroofing/db/takeover-crashed3-" + at + ".json", { buf: Buffer.from(JSON.stringify({ by: "gone", at: Date.now() - 100000 })), type: "application/json" });
+  try {
+    assert.equal((await A.api("POST", "projects", { body: { noticeShown: true }, ip: nextIp() })).status, 201);
+  } finally {
+    fake.S.objects.delete(LOCK);
+  }
+});
+
+test("a failed save keeps the outline it was replacing, file and all", async () => {
+  const jobs = load("serverlib/wvroofing/jobs.js");
+  const p = await projectWithPhoto(A);
+  const png = outlinePng(900, 600);
+  const send = () =>
+    A.api("POST", "projects/" + p.id + "/mask", { token: p.token, body: { png, shapes: [{ mode: "add", pts: [[180, 120], [540, 120], [540, 360]] }], displayW: 900, displayH: 600 }, ip: nextIp() });
+  const first = await send();
+  assert.equal(first.status, 200);
+  const firstFile = "wvroofing/projects/" + p.id + "/masks/" + first.json.mask.id + ".png";
+  fake.S.failNext = (method, route) => method === "POST" && route === "/object/wvroofing/db/head.json";
+  const failed = await send();
+  assert.equal(failed.status, 503);
+  await jobs.drain();
+  assert.ok(fake.S.objects.has(firstFile), "the saved outline still has its file");
+  const again = await send();
+  assert.equal(again.status, 200);
+  await jobs.drain();
+  assert.ok(!fake.S.objects.has(firstFile), "and it goes once its replacement is saved");
+});
+
+test("if the raw upload can't be read, it is still retired (never left with its GPS data)", async () => {
+  const p = await newProject(A);
+  const sharp = load("serverlib/wvroofing/images.js").sharp();
+  const jpg = await sharp({ create: { width: 900, height: 600, channels: 3, background: { r: 90, g: 90, b: 90 } } })
+    .jpeg()
+    .toBuffer();
+  const pre = await A.api("POST", "projects/" + p.id + "/photo/presign", { token: p.token, body: { contentType: "image/jpeg", bytes: jpg.length }, ip: nextIp() });
+  assert.equal((await viaHttp(pre.json.url, { method: "PUT", headers: pre.json.headers, body: jpg })).status, 200);
+  fake.S.failNext = (method, route) => method === "GET" && /\/incoming\//.test(route);
+  const c = await A.api("POST", "projects/" + p.id + "/photo/commit", { token: p.token, body: { uploadId: pre.json.uploadId }, ip: nextIp() });
+  assert.equal(c.status, 503);
+  const incoming = [...fake.S.objects.keys()].filter((k) => k.startsWith("wvroofing/projects/" + p.id + "/incoming/"));
+  assert.equal(incoming.length, 1);
+  assert.equal(fake.S.objects.get(incoming[0]).buf.length, 1, "only the one-byte placeholder is left");
 });

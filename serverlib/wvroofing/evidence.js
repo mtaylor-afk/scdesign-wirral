@@ -115,8 +115,9 @@ async function commit(ctx) {
   if (!claim.rows.length) throw new HttpError(404, "not_found", "That upload doesn't exist or has expired. Please choose the file again.");
   const up = claim.rows[0];
   const st = storage();
-  const buf = await st.getBuffer(up.pathname);
   try {
+    // Inside the try: if reading it fails, the raw upload is still retired below.
+    const buf = await st.getBuffer(up.pathname);
     if (!buf) throw new HttpError(400, "upload_missing", "The file didn't finish uploading. Please try again.");
     if (buf.length > up.max_bytes) throw new HttpError(413, "too_large", "The uploaded file is larger than announced.");
     const got = await prepare(buf, up.content_type);

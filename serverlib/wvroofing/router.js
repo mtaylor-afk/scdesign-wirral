@@ -309,9 +309,15 @@ function precheck(req, res, startedAt) {
   return { route, ctx };
 }
 
-/** The cron key needs no database, so it is checked before any turn. @param {{ route: Route, ctx: Ctx }} pre */
+/**
+ * The cron key needs no database, so it is checked before any turn, when there is
+ * one. In snapshot mode CRON_SECRET is unset: Vercel's daily call then still gets
+ * a (read) turn, so the tidy-up that runs inside requests (db.js maybeDaily)
+ * happens on schedule even when nobody visits.
+ * @param {{ route: Route, ctx: Ctx }} pre
+ */
 async function precheckCron(pre) {
-  if (pre.route.auth === "cron") await authorise("cron", pre.ctx);
+  if (pre.route.auth === "cron" && process.env.CRON_SECRET) await authorise("cron", pre.ctx);
 }
 
 // Snapshot mode: requests that may write take the one lock all instances share, so
@@ -358,7 +364,10 @@ async function handle(req, res) {
   if (!pre) return;
   const checked = pre;
   const method = String(req.method || "GET").toUpperCase();
-  const write = checked.route.turn === "write" || (method !== "GET" && method !== "HEAD");
+  // Vercel's daily call without CRON_SECRET: answered in a read turn, after which db.session runs the tidy-up.
+  const cronWithoutKey = checked.route.auth === "cron" && !process.env.CRON_SECRET;
+  // With the key (checked above) the cron job itself runs, and its deletions must be saved: a write turn.
+  const write = checked.route.turn === "write" || (checked.route.auth === "cron" && !cronWithoutKey) || (method !== "GET" && method !== "HEAD");
   if (write) {
     const wait = writeAllowance(req);
     if (wait) return json(res, 429, { ok: false, error: "rate_limited", message: "That's a lot of requests at once. Please wait a moment." }, { "Retry-After": String(wait) });
@@ -375,6 +384,10 @@ async function handle(req, res) {
   try {
     await db.session(
       async () => {
+        if (cronWithoutKey) {
+          json(res, 200, { ok: true, skipped: "snapshot_mode", message: "The daily tidy-up runs inside requests in snapshot mode." });
+          return;
+        }
         try {
           await authorise(checked.route.auth, checked.ctx);
           await checked.route.handler(checked.ctx);

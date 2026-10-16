@@ -353,7 +353,7 @@ function queueWriter(deadline) {
 const HEARTBEAT_MS = 20000; // a turn that runs long keeps its lock fresh
 
 /**
- * @typedef {{ owner: string, at: number, timer?: NodeJS.Timeout }} Lock
+ * @typedef {{ owner: string, at: number, timer?: NodeJS.Timeout, beat?: Promise<void>, released?: boolean }} Lock
  */
 
 /** The lock object's contents, or null. */
@@ -389,9 +389,24 @@ async function acquireLock(deadline) {
     if (mark.owner === owner) return heartbeat({ owner, at: mark.at || at });
     if (Date.now() - mark.at > LOCK_STALE_MS) {
       const tag = (mark.owner.replace(/[^a-z0-9]/gi, "").slice(0, 40) || "unreadable") + "-" + mark.at;
-      const won = await sb.upload("db/takeover-" + tag + ".json", JSON.stringify({ by: owner, at: Date.now() }), "application/json", { upsert: false });
+      const marker = "db/takeover-" + tag + ".json";
+      const won = await sb.upload(marker, JSON.stringify({ by: owner, at: Date.now() }), "application/json", { upsert: false });
       if (won.ok) {
         await sb.remove([SNAP_LOCK]);
+        continue;
+      }
+      // Another waiter claimed it. A claim as old as a stale lock means its maker
+      // crashed before clearing the lock: drop the claim, so the next round can
+      // make one (otherwise nothing could ever write again).
+      const claim = await sb.download(marker);
+      let claimedAt = 0;
+      try {
+        claimedAt = claim ? Number(JSON.parse(claim.buf.toString("utf8")).at) || 0 : 0;
+      } catch (err) {
+        claimedAt = 0;
+      }
+      if (claim && Date.now() - claimedAt > LOCK_STALE_MS) {
+        await sb.remove([marker]);
         continue;
       }
     }
@@ -403,16 +418,19 @@ async function acquireLock(deadline) {
 /** Keep a held lock fresh while its turn runs, so a long turn is never taken for a crash. @param {Lock} lock */
 function heartbeat(lock) {
   const sb = require("./supabase.js");
+  const beatOnce = async () => {
+    if (lock.released) return;
+    const mark = await readLock();
+    // Lost (the check before saving refuses), or given back meanwhile: never re-make it.
+    if (lock.released || !mark || mark.owner !== lock.owner) return;
+    const at = Date.now();
+    await sb.upload(SNAP_LOCK, JSON.stringify({ owner: lock.owner, at }), "application/json", { upsert: true });
+    lock.at = at;
+  };
+  lock.beat = Promise.resolve();
   lock.timer = setInterval(() => {
-    readLock()
-      .then((mark) => {
-        if (!mark || mark.owner !== lock.owner) return; // lost: the check before saving refuses
-        const at = Date.now();
-        return sb.upload(SNAP_LOCK, JSON.stringify({ owner: lock.owner, at }), "application/json", { upsert: true }).then(() => {
-          lock.at = at;
-        });
-      })
-      .catch(() => undefined);
+    // One beat at a time; releaseLock waits for the one in flight before it removes the lock.
+    lock.beat = (lock.beat || Promise.resolve()).then(beatOnce).catch(() => undefined);
   }, HEARTBEAT_MS);
   if (typeof lock.timer.unref === "function") lock.timer.unref();
   return lock;
@@ -420,7 +438,9 @@ function heartbeat(lock) {
 
 /** Give the lock back, if it is still ours. @param {Lock} lock */
 async function releaseLock(lock) {
+  lock.released = true;
   clearInterval(lock.timer);
+  await (lock.beat || Promise.resolve()).catch(() => undefined);
   const sb = require("./supabase.js");
   try {
     // Well inside the stale limit (the heartbeat keeps "at" fresh) nobody can have taken it over.

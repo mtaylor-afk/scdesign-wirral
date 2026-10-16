@@ -543,3 +543,25 @@ an independent check of every finding. 15 of 19 findings were confirmed, and all
 **Tests.** `snapshot.test.mjs` grew to 21 tests: outline files and the cap, cheap rejections taking no
 lock, CORS on busy, a save never overwriting another's, the single stale-lock clearer, the per-visitor
 cap, emails only after the save, and reused upload links refused.
+
+**A second review, of those fixes (2026-10-16).** It covered three lenses: turns and the lock, the
+router, and the feature changes. Two of its skeptic checks failed to run, so their findings were checked
+by hand against the code. Six were real, and all are fixed:
+- **Vercel's daily call had stopped starting the tidy-up.** It was refused before any turn, so deletion
+  depended on visitors. Without `CRON_SECRET`, it now gets a read turn, answers 200 `snapshot_mode`, and
+  the tidy-up runs. With the key, it runs the cron job in a write turn.
+- **A takeover claim whose maker crashed could block writing for good.** A claim older than 90 s is now
+  dropped, so the next waiter can make one.
+- **A heartbeat in flight while the lock was given back could re-make the lock.** Release now waits for it,
+  and a released lock is never refreshed.
+- **A failed outline save could leave a saved row whose file was gone.** Superseded outlines' files now
+  go only after the save (`db.afterSave`).
+- **A raw upload that couldn't be read was never retired.** The read is now inside the `try`, in photo and
+  evidence commits.
+- **An enquiry email that met a busy moment waited for the next day.** It now tries again after 3 and
+  10 seconds.
+- **Wording.** The admin's "Daily tidy-up" card and the operator guide no longer say the tidy-up needs
+  `CRON_SECRET`.
+
+Four more snapshot tests (25 in all): the cron call on a cold instance runs the tidy-up, an abandoned
+claim is dropped, a failed outline save keeps its file, and an unreadable upload is still retired.
