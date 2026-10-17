@@ -7,7 +7,7 @@
     "dev": "next dev",
     "cms:sync": "node scripts/sync-cms-projects.mjs",
     "cms:setup": "node scripts/setup-projects-cms.mjs",
-    "cms:setup:test": "node --test scripts/tests/setup-projects-cms.test.mjs",
+    "cms:test": "node --test scripts/tests/projects-queue.test.mjs scripts/tests/setup-projects-cms.test.mjs",
     "prebuild": "node scripts/sync-cms-projects.mjs",
     "build": "next build",
     "start": "next start",

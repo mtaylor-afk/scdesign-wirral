@@ -32,6 +32,8 @@ const {
   sbInsertProjectEvent,
   sbStorageUpload,
   sbStorageList,
+  cmsQueueAll,
+  cmsResultsAll,
   sbStorageDeleteMany,
   sbStorageSignedUrl,
 } = require("../serverlib/common");
@@ -240,6 +242,7 @@ async function viewList(req, res) {
   if (!Number.isFinite(page) || page < 1) page = 1;
 
   const { rows, total } = await sbSelectProjects(pageSize, (page - 1) * pageSize);
+  const queue = await queueState();
   const out = (rows || []).map((r) => {
     const c = r && r.content && typeof r.content === "object" ? r.content : {};
     return {
@@ -253,6 +256,8 @@ async function viewList(req, res) {
       updatedAt: r.updated_at || null,
       publishedAt: r.published_at || null,
       lastPublishSha: r.last_publish_sha || null,
+      pending: queue.pending[r.slug] || null,
+      lastResult: queue.results[r.slug] || null,
     };
   });
 
@@ -267,6 +272,29 @@ async function viewList(req, res) {
       generatedAt: nowIso(),
     })
   );
+}
+
+/**
+ * What the publish queue holds, by slug: { pending: {slug: {action, requestedAt,
+ * lastError}}, results: {slug: {action, ok, at, message}} }. Never throws: the
+ * queue is extra information, and the list must still show without it.
+ */
+async function queueState() {
+  const pending = {};
+  const results = {};
+  try {
+    for (const e of await cmsQueueAll()) {
+      pending[e.slug] = { action: e.action, requestedAt: e.requestedAt || null, lastError: e.lastError || null };
+    }
+    for (const r of await cmsResultsAll()) {
+      // A result older than the request now waiting describes the past, not this.
+      if (pending[r.slug]) continue;
+      results[r.slug] = { action: r.action, ok: !!r.ok, at: r.at || null, message: r.message || "" };
+    }
+  } catch (err) {
+    console.error("sc-admin-projects queue read error", err && err.message);
+  }
+  return { pending, results };
 }
 
 /** One project: the full content JSON, its publication meta, and staged media. */
@@ -304,6 +332,7 @@ async function viewOne(req, res) {
         updatedAt: row.updated_at || null,
         publishedAt: row.published_at || null,
         lastPublishSha: row.last_publish_sha || null,
+        ...(await queueState().then((q) => ({ pending: q.pending[slug] || null, lastResult: q.results[slug] || null }))),
       },
       // `inContent: false` is an orphan (staged but unused); `missingFiles` are
       // referenced by the JSON with nothing staged behind them. Both are shown

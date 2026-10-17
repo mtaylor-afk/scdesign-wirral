@@ -1,0 +1,42 @@
+name: Publish Sean's projects
+
+# Puts changes queued in the admin (Content → Projects) onto the website, so no
+# GitHub token has to be created, stored or renewed. Every few minutes this job
+# lends the admin API its own short-lived GITHUB_TOKEN; the API proves the call
+# is this workflow with an OIDC token (serverlib/gh-oidc.js), runs each queued
+# publish / unpublish / delete, and its commit to main makes Cloudflare rebuild.
+# A quiet run (nothing queued) takes a few seconds. See docs/PROJECTS-CMS.md.
+#
+# The API checks this file's exact path and the branch, so renaming it, or running
+# it from another branch, makes every call refuse.
+
+on:
+  schedule:
+    # GitHub runs schedules late at busy times; minute 2 avoids the top of the hour.
+    - cron: "2-59/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: cms-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/cms-runner.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run the publish queue
+        run: node scripts/cms-runner.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -15,6 +15,9 @@ const {
   sbSelectEnquiriesSince,
   sbProbeTable,
   sbProbeStorage,
+  projectStoreMode,
+  sbJsonRead,
+  cmsQueueAll,
   sbLastTimestamp,
 } = require("../serverlib/common");
 const github = require("../serverlib/github");
@@ -1071,6 +1074,19 @@ async function healthReport(now) {
 
   const storage = await sbProbeStorage();
 
+  // The Projects editor needs no tables and no token: drafts can live as files
+  // ("files") and publishing can go through the cms-publish workflow's queue. Its
+  // last check-in is what shows that queue is actually being run.
+  const projects = { store: null, queued: 0, lastRunnerAt: null };
+  try {
+    projects.store = await projectStoreMode();
+    const runner = await sbJsonRead("_cms/runner.json");
+    projects.lastRunnerAt = (runner && runner.at) || null;
+    projects.queued = (await cmsQueueAll()).length;
+  } catch (e) {
+    projects.error = "unreachable";
+  }
+
   // Publishing. isConfigured() is local, but a token that is present can still be
   // expired or revoked — which looks identical from the settings alone — so when
   // one is set we actually ask GitHub a question.
@@ -1111,6 +1127,7 @@ async function healthReport(now) {
     tables,
     storage,
     github: gh,
+    projects,
     activity,
   };
 }

@@ -837,7 +837,7 @@ function isProjectSlug(v) {
  * is all but two columns — so naming them buys nothing and would need editing
  * every time the table grows one. Throws on failure, like sbSelectEnquiries.
  */
-async function sbSelectProjects(limit, offset) {
+async function tableSelectProjects(limit, offset) {
   limit = limit || 50;
   offset = offset || 0;
   const url =
@@ -863,7 +863,7 @@ async function sbSelectProjects(limit, offset) {
 }
 
 /** One project row by slug, or null if there is no such row. Throws on failure. */
-async function sbGetProject(slug) {
+async function tableGetProject(slug) {
   const url =
     `${sbBase()}/rest/v1/sc_projects?select=*` +
     `&slug=eq.${encodeURIComponent(slug)}&limit=1`;
@@ -886,7 +886,7 @@ async function sbGetProject(slug) {
  * ONE comma-separated value — a second `Prefer` key would just overwrite the
  * first in the headers object.
  */
-async function sbUpsertProject(row) {
+async function tableUpsertProject(row) {
   const url = `${sbBase()}/rest/v1/sc_projects?on_conflict=slug`;
   const res = await fetch(url, {
     method: "POST",
@@ -911,7 +911,7 @@ async function sbUpsertProject(row) {
  * pattern BEFORE the URL is built: an empty string, undefined, or a value
  * carrying `&`/`?` can never reach the wire as a missing or broken filter.
  */
-async function sbDeleteProject(slug) {
+async function tableDeleteProject(slug) {
   if (!isProjectSlug(slug)) return { ok: false, status: 0, error: "bad slug", deleted: 0 };
   const url = `${sbBase()}/rest/v1/sc_projects?slug=eq.${encodeURIComponent(slug)}`;
   const res = await fetch(url, {
@@ -939,7 +939,7 @@ async function sbDeleteProject(slug) {
  * earlier rows keep their new numbers. That is safe because the operation is
  * idempotent — the caller can simply send the same order again.
  */
-async function sbSetProjectOrder(slugs) {
+async function tableSetProjectOrder(slugs) {
   if (!Array.isArray(slugs) || !slugs.length) return { ok: false, updated: 0, error: "no slugs" };
   for (const s of slugs) {
     if (!isProjectSlug(s)) return { ok: false, updated: 0, error: "bad slug" };
@@ -971,7 +971,7 @@ async function sbSetProjectOrder(slugs) {
  * process.env.SC_ADMIN_USER server-side — the session token carries only {exp},
  * and a username from the request body would be attacker-chosen.
  */
-async function sbInsertProjectEvent(row) {
+async function tableInsertProjectEvent(row) {
   const src = row || {};
   const detail = src.detail === undefined || src.detail === null ? null : String(src.detail);
   const payload = {
@@ -1031,6 +1031,7 @@ function sbStorageKeyPath(key) {
  * of the byte array, not an image.
  */
 async function sbStorageUpload(key, bytes, contentType) {
+  await ensureBucket();
   const url = `${sbStorageBase()}/object/${sbBucket()}/${sbStorageKeyPath(key)}`;
   const res = await fetch(url, {
     method: "POST",
@@ -1079,6 +1080,7 @@ async function sbStorageDownload(key) {
  *     delete means orphaned files left behind in the bucket for ever.
  */
 async function sbStorageList(prefix) {
+  await ensureBucket();
   const url = `${sbStorageBase()}/object/list/${sbBucket()}`;
   const pageSize = 100;
   const out = [];
@@ -1176,6 +1178,298 @@ async function sbStorageSignedUrl(key, expiresIn) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Projects CMS — the file store (used when the sc_projects tables don't exist)
+// ---------------------------------------------------------------------------
+// So the CMS works with nothing to set up: the same rows, kept as small JSON files
+// in the private project-media bucket, which is made on first use with the
+// service-role key Vercel already has. Same idea as WV Roofing's snapshot mode
+// (serverlib/wvroofing/supabase.js). Keys live under "_cms/", which can never
+// collide with a project's photo folder: a slug has no underscore.
+//
+//   _cms/projects/<slug>.json      one row, the same columns as sc_projects
+//   _cms/events/<day>/<ts>-<r>.json  the audit trail, write-only
+//   _cms/queue/<slug>.json         a publish waiting for the cms-publish workflow
+//   _cms/results/<slug>.json       how the last queued publish went
+//
+// One editor (Sean) at a time is assumed: an upsert is read-merge-write, so two
+// saves of the SAME project in the same instant could lose one. Different
+// projects never interfere.
+
+const CMS_PREFIX = "_cms";
+const PROJECT_STORE_PROBE_MS = 5 * 60 * 1000;
+let projectStore = null; // { mode: "table" | "files", at }
+
+/**
+ * "table" when sc_projects exists (db/sc_projects.sql was run), else "files".
+ * Decided once per instance and rechecked every few minutes. A probe that fails
+ * for any other reason is not cached and answers "table", so a Supabase outage
+ * still fails loudly exactly as it always did instead of showing an empty list.
+ * SC_PROJECTS_STORE=table|files forces it.
+ */
+async function projectStoreMode() {
+  const forced = String(process.env.SC_PROJECTS_STORE || "").trim();
+  if (forced === "table" || forced === "files") return forced;
+  if (projectStore && Date.now() - projectStore.at < PROJECT_STORE_PROBE_MS) return projectStore.mode;
+  const probe = await sbProbeTable("sc_projects");
+  if (probe.ok || probe.status === 404) {
+    projectStore = { mode: probe.ok ? "table" : "files", at: Date.now() };
+    return projectStore.mode;
+  }
+  return "table";
+}
+
+let bucketReady = null;
+
+/**
+ * Make the private bucket the first time it's needed (once per instance). Safe
+ * when db/sc_projects.sql already made it: GET answers 200 and nothing happens.
+ */
+function ensureBucket() {
+  if (!bucketReady) {
+    bucketReady = (async () => {
+      const bucket = sbBucket();
+      const got = await fetch(`${sbStorageBase()}/bucket/${encodeURIComponent(bucket)}`, { headers: sbHeaders() });
+      if (got.ok) return;
+      const made = await fetch(`${sbStorageBase()}/bucket`, {
+        method: "POST",
+        headers: sbHeaders(),
+        // Private: every read needs the service key or a signed link. 5 MB is far
+        // above the 1.2 MB photo limit and the few-KB rows.
+        body: JSON.stringify({ id: bucket, name: bucket, public: false, file_size_limit: 5 * 1024 * 1024 }),
+      });
+      if (made.ok) return;
+      const text = await made.text().catch(() => "");
+      if (made.status === 409 || /duplicate|already exists/i.test(text)) return;
+      throw new Error(`Supabase storage bucket could not be made (${made.status})`);
+    })().catch((err) => {
+      bucketReady = null;
+      throw err;
+    });
+  }
+  return bucketReady;
+}
+
+/**
+ * Read one JSON object, or null when it does not exist. Throws on anything else.
+ *
+ * The cacheNonce matters: Supabase's CDN caches downloads, private ones included,
+ * and served WV Roofing a replaced file's OLD copy (2026-10-16). A unique query
+ * string is Supabase's documented way to read from storage itself.
+ */
+async function sbJsonRead(key) {
+  await ensureBucket();
+  const nonce = crypto.randomBytes(9).toString("hex");
+  const url = `${sbStorageBase()}/object/authenticated/${sbBucket()}/${sbStorageKeyPath(key)}?cacheNonce=${nonce}`;
+  const res = await fetch(url, { headers: sbHeaders() });
+  if (res.ok) return JSON.parse(Buffer.from(await res.arrayBuffer()).toString("utf8"));
+  const text = await res.text().catch(() => "");
+  // Storage answers most errors 400 with the real code inside. Only a definite
+  // "object not found" means missing — never a missing BUCKET, which must not
+  // read as "no data".
+  let j = null;
+  try {
+    j = JSON.parse(text);
+  } catch {
+    j = null;
+  }
+  const code = String((j && (j.error || j.code)) || "");
+  const status = String((j && j.statusCode) || res.status);
+  const msg = String((j && j.message) || "");
+  if (!/bucket/i.test(code + msg) && (status === "404" || /not.?found|NoSuchKey/i.test(code + " " + msg))) return null;
+  throw new Error(`Supabase storage read failed (${res.status})`);
+}
+
+/** Write one JSON object (replacing it). Returns {ok, status, error}. */
+async function sbJsonWrite(key, value, opts) {
+  await ensureBucket();
+  const res = await fetch(`${sbStorageBase()}/object/${sbBucket()}/${sbStorageKeyPath(key)}`, {
+    method: "POST",
+    headers: sbHeaders({
+      "Content-Type": "application/json",
+      "x-upsert": opts && opts.create ? "false" : "true",
+      "cache-control": "no-cache",
+    }),
+    body: JSON.stringify(value),
+  });
+  if (!res.ok) {
+    const error = await res.text().catch(() => "");
+    return { ok: false, status: res.status, error };
+  }
+  return { ok: true, status: res.status };
+}
+
+/** Every JSON object directly under a folder, read in parallel: [{ key, value }]. */
+async function sbJsonReadAll(prefix) {
+  const keys = (await sbStorageList(prefix)).filter((k) => k.endsWith(".json"));
+  const out = [];
+  for (let i = 0; i < keys.length; i += 8) {
+    const batch = await Promise.all(keys.slice(i, i + 8).map(async (key) => ({ key, value: await sbJsonRead(key) })));
+    for (const b of batch) if (b.value && typeof b.value === "object") out.push(b);
+  }
+  return out;
+}
+
+function projectFileKey(slug) {
+  return `${CMS_PREFIX}/projects/${slug}.json`;
+}
+
+async function filesSelectProjects(limit, offset) {
+  limit = limit || 50;
+  offset = offset || 0;
+  const rows = (await sbJsonReadAll(`${CMS_PREFIX}/projects`)).map((r) => r.value).filter((r) => isProjectSlug(r.slug));
+  // The table's order: sort_order ascending, nulls last, then most recently edited.
+  rows.sort((a, b) => {
+    const sa = Number.isFinite(a.sort_order) ? a.sort_order : Infinity;
+    const sb = Number.isFinite(b.sort_order) ? b.sort_order : Infinity;
+    if (sa !== sb) return sa - sb;
+    return String(b.updated_at || "").localeCompare(String(a.updated_at || ""));
+  });
+  return { rows: rows.slice(offset, offset + limit), total: rows.length };
+}
+
+async function filesGetProject(slug) {
+  if (!isProjectSlug(slug)) return null;
+  return sbJsonRead(projectFileKey(slug));
+}
+
+/** Merge into the stored row, like the table's merge-duplicates upsert. */
+async function filesUpsertProject(row) {
+  const slug = row && row.slug;
+  if (!isProjectSlug(slug)) return { ok: false, status: 400, error: "bad slug" };
+  let existing;
+  try {
+    existing = await sbJsonRead(projectFileKey(slug));
+  } catch (e) {
+    return { ok: false, status: 502, error: e.message };
+  }
+  const now = new Date().toISOString();
+  const base = existing || {
+    slug,
+    status: "draft",
+    content: null,
+    sort_order: null,
+    published_at: null,
+    last_publish_sha: null,
+    updated_by: null,
+    created_at: now,
+  };
+  const next = Object.assign({}, base, row, { slug, created_at: base.created_at || now, updated_at: now });
+  // The table refuses a row with no content (content jsonb not null); so does this.
+  if (!next.content || typeof next.content !== "object") return { ok: false, status: 400, error: "content required" };
+  return sbJsonWrite(projectFileKey(slug), next);
+}
+
+async function filesDeleteProject(slug) {
+  if (!isProjectSlug(slug)) return { ok: false, status: 0, error: "bad slug", deleted: 0 };
+  let existing;
+  try {
+    existing = await sbJsonRead(projectFileKey(slug));
+  } catch (e) {
+    return { ok: false, status: 502, error: e.message, deleted: 0 };
+  }
+  if (!existing) return { ok: true, status: 200, deleted: 0 };
+  const del = await sbStorageDeleteMany([projectFileKey(slug)]);
+  return del.ok ? { ok: true, status: 200, deleted: 1 } : { ok: false, status: 502, error: del.error, deleted: 0 };
+}
+
+async function filesSetProjectOrder(slugs) {
+  if (!Array.isArray(slugs) || !slugs.length) return { ok: false, updated: 0, error: "no slugs" };
+  for (const s of slugs) {
+    if (!isProjectSlug(s)) return { ok: false, updated: 0, error: "bad slug" };
+  }
+  let updated = 0;
+  for (let i = 0; i < slugs.length; i++) {
+    let row;
+    try {
+      row = await sbJsonRead(projectFileKey(slugs[i]));
+    } catch (e) {
+      return { ok: false, status: 502, error: e.message, updated };
+    }
+    if (row) {
+      // sort_order only: updated_at stays, as the table's PATCH leaves it (the
+      // trigger would touch it there; "last edited" should mean the words).
+      const w = await sbJsonWrite(projectFileKey(slugs[i]), Object.assign({}, row, { sort_order: i }));
+      if (!w.ok) return { ok: false, status: w.status, error: w.error, updated };
+    }
+    updated++;
+  }
+  return { ok: true, updated };
+}
+
+async function filesInsertProjectEvent(row) {
+  const src = row || {};
+  const detail = src.detail === undefined || src.detail === null ? null : String(src.detail);
+  const ts = new Date().toISOString();
+  const payload = {
+    ts,
+    slug: src.slug || null,
+    action: src.action || null,
+    outcome: src.outcome || null,
+    detail: detail === null ? null : detail.slice(0, 4000),
+    commit_sha: src.commit_sha || null,
+    actor: src.actor || null,
+    ip_hash: src.ip_hash || null,
+  };
+  const key = `${CMS_PREFIX}/events/${ts.slice(0, 10)}/${ts.replace(/[:.]/g, "-")}-${crypto.randomBytes(4).toString("hex")}.json`;
+  return sbJsonWrite(key, payload, { create: true });
+}
+
+/* The six project helpers the API calls: the table when it exists, else files. */
+async function sbSelectProjects(limit, offset) {
+  return (await projectStoreMode()) === "files" ? filesSelectProjects(limit, offset) : tableSelectProjects(limit, offset);
+}
+async function sbGetProject(slug) {
+  return (await projectStoreMode()) === "files" ? filesGetProject(slug) : tableGetProject(slug);
+}
+async function sbUpsertProject(row) {
+  return (await projectStoreMode()) === "files" ? filesUpsertProject(row) : tableUpsertProject(row);
+}
+async function sbDeleteProject(slug) {
+  return (await projectStoreMode()) === "files" ? filesDeleteProject(slug) : tableDeleteProject(slug);
+}
+async function sbSetProjectOrder(slugs) {
+  return (await projectStoreMode()) === "files" ? filesSetProjectOrder(slugs) : tableSetProjectOrder(slugs);
+}
+async function sbInsertProjectEvent(row) {
+  return (await projectStoreMode()) === "files" ? filesInsertProjectEvent(row) : tableInsertProjectEvent(row);
+}
+
+/* ---- The publish queue (both modes: it is always files) ---- */
+
+function queueKey(slug) {
+  return `${CMS_PREFIX}/queue/${slug}.json`;
+}
+function resultKey(slug) {
+  return `${CMS_PREFIX}/results/${slug}.json`;
+}
+
+/**
+ * Ask for an action on a project. One entry per slug: a newer request replaces an
+ * older one that hasn't run yet (Publish then Delete means Delete).
+ */
+async function cmsQueuePut(entry) {
+  if (!isProjectSlug(entry && entry.slug)) return { ok: false, status: 400, error: "bad slug" };
+  return sbJsonWrite(queueKey(entry.slug), entry);
+}
+async function cmsQueueGet(slug) {
+  return isProjectSlug(slug) ? sbJsonRead(queueKey(slug)) : null;
+}
+async function cmsQueueAll() {
+  return (await sbJsonReadAll(`${CMS_PREFIX}/queue`)).map((r) => r.value).filter((v) => isProjectSlug(v.slug));
+}
+async function cmsQueueRemove(slug) {
+  if (!isProjectSlug(slug)) return { ok: false, deleted: 0, error: "bad slug" };
+  return sbStorageDeleteMany([queueKey(slug)]);
+}
+async function cmsResultPut(slug, value) {
+  if (!isProjectSlug(slug)) return { ok: false, status: 400, error: "bad slug" };
+  return sbJsonWrite(resultKey(slug), value);
+}
+async function cmsResultsAll() {
+  return (await sbJsonReadAll(`${CMS_PREFIX}/results`)).map((r) => r.value).filter((v) => isProjectSlug(v.slug));
+}
+
 module.exports = {
   ALLOWED_ORIGINS,
   applyCors,
@@ -1221,4 +1515,15 @@ module.exports = {
   sbStorageList,
   sbStorageDeleteMany,
   sbStorageSignedUrl,
+  // Projects CMS — store mode, JSON files, publish queue
+  projectStoreMode,
+  ensureBucket,
+  sbJsonRead,
+  sbJsonWrite,
+  cmsQueuePut,
+  cmsQueueGet,
+  cmsQueueAll,
+  cmsQueueRemove,
+  cmsResultPut,
+  cmsResultsAll,
 };

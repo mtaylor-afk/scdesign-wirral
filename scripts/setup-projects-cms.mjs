@@ -1,6 +1,11 @@
-// Projects CMS — one-run set-up, so Sean can publish case studies from the admin.
+// Projects CMS — OPTIONAL set-up for IMMEDIATE publishing.
 //
-//   node scripts/setup-projects-cms.mjs             (or double-click "SET UP SEAN PROJECTS.cmd")
+// Not needed: with nothing set up, drafts are kept as files in Supabase Storage and
+// publishing is queued for the cms-publish workflow (live within ~15 minutes, no
+// token to renew). Run this only to publish while Sean waits instead (1–3 minutes),
+// at the price of a GitHub token that expires yearly.
+//
+//   npm run cms:setup
 //   node scripts/setup-projects-cms.mjs --dry-run   shows what it would do; changes nothing
 //
 // Run it yourself, in a terminal on your own computer. It does docs/PROJECTS-CMS.md
@@ -534,7 +539,7 @@ function hidden(prompt) {
   return new Promise((resolve, reject) => {
     const input = process.stdin;
     if (!input.isTTY) {
-      reject(new Stop("NO_TERMINAL", "Run this in a terminal window (double-click SET UP SEAN PROJECTS.cmd), so tokens can be typed without showing."));
+      reject(new Stop("NO_TERMINAL", "Run this in a terminal window (npm run cms:setup), so tokens can be typed without showing."));
       return;
     }
     process.stdout.write(prompt);

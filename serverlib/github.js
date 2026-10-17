@@ -52,10 +52,14 @@
  * backslashes) so a malformed path can never reach the API.
  *
  * Env vars (set in the SC `scdesign-wirral` Vercel project):
- *   SC_GITHUB_TOKEN   (required) — fine-grained PAT, Contents: Read and write
+ *   SC_GITHUB_TOKEN   (optional) — fine-grained PAT, Contents: Read and write. Without
+ *                     it, publishing queues and the cms-publish workflow lends its own
+ *                     short-lived token (withToken).
  *   SC_GITHUB_REPO    (optional) — "owner/repo", default mtaylor-afk/scdesign-wirral
  *   SC_GITHUB_BRANCH  (optional) — default "main" (the Cloudflare deploy branch)
  */
+
+const { AsyncLocalStorage } = require("node:async_hooks");
 
 const API_BASE = "https://api.github.com";
 const API_VERSION = "2022-11-28";
@@ -106,13 +110,27 @@ let lastTokenExpiry = null;
  * Configuration                                                       *
  * ------------------------------------------------------------------ */
 
+/**
+ * A token lent for one piece of work: the publish queue runs with the short-lived
+ * GITHUB_TOKEN that the cms-publish workflow hands over (see api/sc-admin-publish.js,
+ * "run-queue"). AsyncLocalStorage, not process.env, because one warm instance can
+ * serve two requests at once, and a lent token must never leak into the other.
+ */
+const lent = new AsyncLocalStorage();
+
 function token() {
-  return process.env.SC_GITHUB_TOKEN || "";
+  const l = lent.getStore();
+  return (l && l.token) || process.env.SC_GITHUB_TOKEN || "";
 }
 
 /** True when a publishing token is present. Callers gate on this before anything else. */
 function isConfigured() {
   return !!token();
+}
+
+/** Run `fn` with `t` as the publishing token, for that call chain only. */
+function withToken(t, fn) {
+  return lent.run({ token: String(t || "") }, fn);
 }
 
 function configError() {
@@ -645,6 +663,7 @@ async function commitChanges(opts) {
 
 module.exports = {
   isConfigured,
+  withToken,
   repoInfo,
   commitChanges,
   listTree,

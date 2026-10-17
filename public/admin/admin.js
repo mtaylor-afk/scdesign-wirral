@@ -2250,15 +2250,34 @@ function tableState(t) {
  * Shared by the Health page's badge and by Today, so the sidebar count and the
  * list of problems can never disagree with each other.
  */
+/** The case studies are kept as files in storage because the sc_projects table isn't there (by design). */
+function projectsAsFiles(h) {
+  return !!(h && h.projects && h.projects.store === "files");
+}
+
+/**
+ * Publishing without a token goes through the cms-publish workflow, which checks
+ * in every few minutes. "ok" = it did so lately; "stale" = it has gone quiet
+ * (GitHub turns off scheduled workflows after 60 days of no repository activity);
+ * "never" = it hasn't run yet (the first run follows the push that added it).
+ */
+const RUNNER_STALE_MS = 2 * 3600e3;
+function publishQueueState(h) {
+  const at = h && h.projects && h.projects.lastRunnerAt;
+  if (!at) return "never";
+  return Date.now() - new Date(at).getTime() > RUNNER_STALE_MS ? "stale" : "ok";
+}
+
 function healthProblemList(h) {
   if (!h || h.failed || !h.env) return [];
   const e = h.env, tb = h.tables || {}, gh = h.github || {}, st = h.storage || {};
   const out = [];
   if (!(e.SMTP_USER && e.SMTP_PASS)) out.push("the backup email cannot send");
-  const missing = ["sc_events", "sc_errors", "sc_enquiries", "sc_projects"].filter((k) => !(tb[k] && tb[k].ok));
+  const missing = ["sc_events", "sc_errors", "sc_enquiries", "sc_projects"].filter((k) => !(tb[k] && tb[k].ok) && !(k === "sc_projects" && projectsAsFiles(h)));
   if (missing.length) out.push(missing.length === 1 ? "a database table is missing" : `${missing.length} database tables are missing`);
-  if (!(gh.configured && gh.reachable)) out.push("the Projects editor cannot publish");
-  else if (!st.ok) out.push("photo storage is unavailable");
+  const pq = publishQueueState(h);
+  if (!(gh.configured && gh.reachable) && pq !== "ok") out.push(pq === "stale" ? "the publishing job has stopped checking in" : "the Projects editor cannot publish");
+  else if (!st.ok && !projectsAsFiles(h)) out.push("photo storage is unavailable");
   if (!(e.SC_ADMIN_USER && e.SC_ADMIN_PASS && e.SC_ADMIN_SESSION_SECRET)) out.push("a sign-in setting is missing");
   return out;
 }
@@ -2337,7 +2356,8 @@ function viewHealth() {
     // label meaning two different things on one page reads as a fault.
     ["Case studies", "sc_projects"],
   ];
-  const dbBad = tableRows.filter(([, k]) => !(tb[k] && tb[k].ok));
+  const asFiles = projectsAsFiles(h);
+  const dbBad = tableRows.filter(([, k]) => !(tb[k] && tb[k].ok) && !(k === "sc_projects" && asFiles));
   groups.push({
     title: "Database",
     status: dbBad.length === 0 ? "ok" : dbBad.length === tableRows.length ? "bad" : "warn",
@@ -2347,21 +2367,31 @@ function viewHealth() {
         // "1 of 4 tables is…" — the noun agrees with the total, the verb with the count.
         : `${dbBad.length} of ${tableRows.length} tables ${dbBad.length === 1 ? "is" : "are"} not available.`,
     detail: "",
-    rows: tableRows.map(([label, key]) => healthRow(label, tableState(tb[key]), tableNote(tb[key]))),
-    fix:
-      tb.sc_projects && tb.sc_projects.error === "missing"
-        ? "The Projects editor needs its table before it can save anything. Run <code>db/sc_projects.sql</code> once in the Supabase SQL editor."
-        : "",
+    rows: tableRows.map(([label, key]) =>
+      key === "sc_projects" && asFiles
+        ? healthRow(label, "ok", "kept as files in photo storage — no table needed")
+        : healthRow(label, tableState(tb[key]), tableNote(tb[key]))
+    ),
+    fix: "",
   });
 
   /* --- Publishing --- */
-  const canPublish = gh.configured && gh.reachable && st.ok && tb.sc_projects && tb.sc_projects.ok;
+  const pq = publishQueueState(h);
+  const lastRun = h.projects && h.projects.lastRunnerAt;
+  const viaToken = gh.configured && gh.reachable;
+  const canPublish = (viaToken || pq === "ok") && st.ok && ((tb.sc_projects && tb.sc_projects.ok) || asFiles);
   const publishRows = [
-    healthRow("GitHub token (SC_GITHUB_TOKEN)", gh.configured ? (gh.reachable ? "ok" : "bad") : "off",
-      gh.configured ? (gh.reachable ? "accepted by GitHub" : esc(gh.error || "GitHub refused it")) : "no token set"),
+    viaToken
+      ? healthRow("GitHub token (SC_GITHUB_TOKEN)", "ok", "accepted by GitHub — publishing is immediate")
+      : healthRow("Publishing job (GitHub Actions)", pq === "ok" ? "ok" : pq === "stale" ? "bad" : "warn",
+          lastRun
+            ? `last checked in ${esc(whenLabel(lastRun))}` + (h.projects.queued ? ` · ${h.projects.queued} waiting` : "")
+            : "hasn't run yet — it runs every 5 minutes"),
     healthRow("Repository", gh.repo ? "ok" : "off", gh.repo ? esc(gh.repo + " · " + (gh.branch || "")) : "uses the built-in default"),
     healthRow("Photo storage", st.ok ? "ok" : "bad", st.ok ? esc(st.bucket || "") : st.error === "missing" ? "the bucket does not exist" : "could not be reached"),
-    healthRow("Projects table", tableState(tb.sc_projects), tableNote(tb.sc_projects)),
+    asFiles
+      ? healthRow("Projects store", "ok", "files in photo storage")
+      : healthRow("Projects table", tableState(tb.sc_projects), tableNote(tb.sc_projects)),
   ];
   groups.push({
     title: "Projects editor",
@@ -2373,7 +2403,9 @@ function viewHealth() {
     rows: publishRows,
     fix: canPublish
       ? ""
-      : "Create <code>SC_GITHUB_TOKEN</code> in the scdesign-wirral Vercel project (a fine-grained GitHub token with <strong>Contents: Read and write</strong> on this repository), and run <code>db/sc_projects.sql</code> once in Supabase.",
+      : pq === "stale"
+        ? "The publishing job has stopped. On GitHub open <strong>mtaylor-afk/scdesign-wirral → Actions → Publish Sean's projects</strong> and press <strong>Enable workflow</strong> (GitHub pauses scheduled jobs after 60 days without a commit)."
+        : "Nothing to set up: the publishing job runs every 5 minutes once the latest code is on <code>main</code>. If this stays red, check <strong>Actions → Publish Sean's projects</strong> on GitHub.",
   });
 
   /* --- Sign-in --- */

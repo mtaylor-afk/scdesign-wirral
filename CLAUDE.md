@@ -118,6 +118,20 @@ https://scdesignwirral.co.uk/samantha/ so she can view it on a real URL.
   overrides are now inside `@media (prefers-color-scheme: dark)` and
   `:root[data-theme="dark"]` only. Watch for the same pattern elsewhere.
 
+## Projects CMS — works with NOTHING set up (Oct 2026)
+
+Sean's admin **Content → Projects** (write, publish, unpublish, delete case
+studies) needs no tables, no GitHub token and no set-up step. Drafts fall back to
+JSON files under `_cms/` in the private `project-media` bucket when `sc_projects`
+is absent; publishing is queued and run every 5 minutes by
+`.github/workflows/cms-publish.yml`, which proves itself with GitHub OIDC
+(`serverlib/gh-oidc.js`) and lends its short-lived `GITHUB_TOKEN`. Live within
+~15 minutes. Full detail: `docs/PROJECTS-CMS.md` §2. Rules: never rename or
+move `cms-publish.yml` (the API pins its exact path + `main`); don't run
+`db/sc_projects.sql` without migrating the `_cms/projects/` files; the Vercel
+project is at Hobby's 12-function cap, so the queue runner lives inside
+`api/sc-admin-publish.js` (action `run-queue`). Tests: `npm run cms:test`.
+
 ## Standing authorization — no approval prompts, auto-continue (MANDATORY)
 
 Matthew has granted **full, permanent, standing approval** for this project. This

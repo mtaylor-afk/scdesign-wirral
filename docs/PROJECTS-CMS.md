@@ -56,18 +56,44 @@ previous good deploy live.
 
 ---
 
-## 2. One-time setup
+## 2. Setup — none needed (Oct 2026)
 
-Nothing works until all four are done.
+**Nothing has to be set up.** Two fallbacks make the CMS work with only what the
+`scdesign-wirral` Vercel project already had (`SC_SUPABASE_URL`,
+`SC_SUPABASE_SERVICE_ROLE_KEY`, `SC_ADMIN_*`):
 
-> **The quick way (added Oct 2026):** double-click **`SET UP SEAN PROJECTS.cmd`**
-> in the repo root (or `npm run cms:setup`) on your own computer. It does 2.1–2.3
-> in one run: it asks for a Vercel token, a Supabase access token and the GitHub
-> token below (all at hidden prompts, none saved), fills in whatever is missing,
-> creates the tables, proves the GitHub token can write, saves the settings and
-> redeploys. Safe to re-run; `--dry-run` changes nothing. **2.4 is already
-> confirmed:** GitHub shows a Cloudflare build on every push to `main`. The manual
-> steps below remain the reference if the wizard stops.
+- **No tables → files.** If `sc_projects` doesn't exist, drafts, the audit trail
+  and the queue are kept as small JSON files under `_cms/` in the private
+  `project-media` bucket, which the API makes on first use (`projectStoreMode()`
+  in `serverlib/common.js`). Same approach as WV Roofing's snapshot mode, with the
+  same `cacheNonce` on every read. **Don't run `db/sc_projects.sql` later** without
+  moving the files into the table first: once the table exists the API reads it
+  instead, and drafts kept as files would disappear from the editor.
+- **No GitHub token → the publish queue.** Publish / unpublish / delete are
+  written to `_cms/queue/<slug>.json`. The **Publish Sean's projects** workflow
+  (`.github/workflows/cms-publish.yml`, every 5 minutes) calls
+  `sc-admin-publish` with action `run-queue`: a GitHub OIDC token proves it is
+  that workflow file on `main` in this repo (`serverlib/gh-oidc.js`, pinned by
+  repository and owner id), and it lends its own short-lived `GITHUB_TOKEN`
+  (`contents: write`, this repo only, expires with the job). The usual
+  `doPublish` / `doUnpublish` / `doDelete` then run unchanged through
+  `github.withToken()`. **Live within about 15 minutes** (GitHub runs schedules
+  late at busy times) instead of 1–3. Nothing to create, store or renew.
+  A draft that never reached the site is deleted / unpublished at once.
+- **Results.** `_cms/results/<slug>.json` holds how the last queued action went;
+  the admin shows "Publishing soon" while waiting and "Last publish failed" with
+  the reason if it didn't. An upstream failure is retried up to 3 runs; a refusal
+  (bad content, not found) is reported straight away.
+- **Health.** Admin → Health shows when the workflow last checked in
+  (`_cms/runner.json`). **GitHub pauses scheduled workflows after 60 days with no
+  commit to the repo**; if that happens Health goes red and the fix is Actions →
+  Publish Sean's projects → Enable workflow.
+
+**Optional — immediate publishing.** Setting `SC_GITHUB_TOKEN` (2.3 below, or
+`npm run cms:setup`, which does 2.1–2.3 in one run) makes Publish commit while
+Sean waits, as originally designed. The trade-off is a token that expires yearly.
+
+The original manual steps are kept below as reference.
 
 ### 2.1 Confirm the existing Vercel env vars
 
@@ -261,6 +287,11 @@ a cookieless identifier.
 ---
 
 ## 7a. Known issue: concurrent pushes during a publish
+
+(With the queue, publishes run one at a time inside the workflow, so two
+publishes can no longer overlap; a push from Matthew's machine at the same
+moment still can.)
+
 
 **Top follow-up.** Publishing reads `content/removed-projects.json` and the list
 of already-committed images *before* it starts the commit sequence. If the

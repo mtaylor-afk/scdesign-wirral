@@ -480,6 +480,28 @@
       : '<span class="pill grey">Draft</span>';
   }
 
+  /**
+   * Without a publishing token of its own the admin queues each change for the
+   * website's publishing job, which runs every few minutes. These say so, so a
+   * press of Publish never looks as if it did nothing.
+   */
+  var PENDING_LABEL = { publish: "Publishing soon", unpublish: "Coming off soon", "delete": "Being deleted" };
+
+  function queuePills(pending, lastResult) {
+    if (pending && PENDING_LABEL[pending.action]) {
+      return ' <span class="pill amber" title="' + E(pending.lastError ? "Last try: " + pending.lastError : "Waiting for the website to pick it up") + '">' +
+        E(PENDING_LABEL[pending.action]) + "</span>";
+    }
+    if (lastResult && !lastResult.ok) {
+      return ' <span class="pill red" title="' + E(lastResult.message || "") + '">Last ' + E(lastResult.action === "publish" ? "publish" : "change") + " failed</span>";
+    }
+    return "";
+  }
+
+  function queuedNotice(json) {
+    return { kind: "ok", text: json.note || "Queued. The website picks this up within about 15 minutes." };
+  }
+
   function projectRow(p, i) {
     var rows = state.projects && state.projects.rows ? state.projects.rows : [];
     var open = S.confirm && S.confirm.where === "list" && S.confirm.slug === p.slug;
@@ -493,10 +515,10 @@
       '<div class="prj-rowsub">/projects/' + E(p.slug) + "/</div>" +
       /* Shown only on narrow screens, where the Status column is hidden so the
          title has room to read as a title rather than one word per line. */
-      '<div class="prj-rowstatus">' + statusPill(p.status) + "</div></td>" +
+      '<div class="prj-rowstatus">' + statusPill(p.status) + queuePills(p.pending, p.lastResult) + "</div></td>" +
       "<td>" + E(p.town || "—") + "</td>" +
       "<td>" + E(label(STAGES, p.stage)) + "</td>" +
-      "<td>" + statusPill(p.status) + "</td>" +
+      "<td>" + statusPill(p.status) + queuePills(p.pending, p.lastResult) + "</td>" +
       '<td class="num">' + fmt(p.imageCount || 0) + "</td>" +
       '<td class="prj-when">' + E(p.updatedAt ? fmtDateTime(p.updatedAt) : "—") + "</td>" +
       '<td class="prj-rowacts">' +
@@ -511,8 +533,8 @@
     var d = state.projects;
     var callout =
       '<div class="callout"><strong>Your case studies.</strong> Write a project up here and it becomes its own page on the website at ' +
-      "<code>/projects/…/</code>. Nothing appears publicly until you press <strong>Publish</strong>, and the website then " +
-      "<strong>rebuilds itself — which takes a minute or two</strong>. You can take a page back off the site at any time, " +
+      "<code>/projects/…/</code>. Nothing appears publicly until you press <strong>Publish</strong>; the website picks the change up " +
+      "<strong>within about 15 minutes</strong> and rebuilds itself. You can take a page back off the site at any time, " +
       "or delete a project completely if it turns out not to be suitable.</div>";
     if (S.loadError) {
       return callout + '<div class="card"><div class="empty">' + E(S.loadError) + '</div><div style="margin-top:12px">' +
@@ -914,7 +936,8 @@
     var w = S.editing;
     var published = S.meta && S.meta.status === "published";
     var live = published ? href(liveUrl(w.slug)) : null;
-    var bits = [statusPill(published ? "published" : "draft")];
+    var failed = S.meta && !S.meta.pending && S.meta.lastResult && !S.meta.lastResult.ok ? S.meta.lastResult : null;
+    var bits = [statusPill(published ? "published" : "draft") + queuePills(S.meta && S.meta.pending, S.meta && S.meta.lastResult)];
     if (S.dirty) bits.push('<span class="pill red">Not saved</span>');
     if (S.meta && S.meta.publishedAt) bits.push('<span class="prj-headmeta">Published ' + E(fmtDateTime(S.meta.publishedAt)) + "</span>");
     else if (S.meta && S.meta.updatedAt) bits.push('<span class="prj-headmeta">Saved ' + E(fmtDateTime(S.meta.updatedAt)) + "</span>");
@@ -923,6 +946,10 @@
       '<button class="btn btn-ghost prj-sm" data-projback>← All projects</button>' +
       '<div class="prj-headtitle">' + E(w.title || (S.isNew ? "New project" : w.slug)) + "</div>" +
       '<div class="prj-headbits">' + bits.join("") + "</div>" +
+      (failed
+        ? '<div class="prj-headmeta" style="flex-basis:100%">The last ' + E(failed.action) + " didn’t go through: " +
+          E(failed.message || "no reason was given") + " Fix it and press the button again.</div>"
+        : "") +
       // A page that was just published does not exist yet — the commit has to
       // go through a Cloudflare build first. Offering the link straight away
       // means the first thing Sean clicks is a 404, which reads as "publishing
@@ -951,8 +978,8 @@
       (S.savedSlug ? '<button class="btn btn-danger" data-projdelete="' + E(S.editing.slug) + '">Delete completely</button>' : "") +
       "</div>" +
       '<div class="csub" style="margin-top:10px">Saving keeps your work here and changes nothing on the website. ' +
-      "Publishing writes the page into the website, which then <strong>rebuilds itself — a minute or two</strong> before " +
-      "the page appears.</div>" +
+      "Publishing writes the page into the website — <strong>usually within 15 minutes</strong> — and it then " +
+      "rebuilds itself before the page appears.</div>" +
       /* "imgrm" renders inside the picture it belongs to, not down here. */
       (S.confirm && S.confirm.where === "editor" && S.confirm.mode !== "imgrm"
         ? confirmPanel(S.editing.slug, published ? "published" : "draft", S.editing.title)
@@ -1339,6 +1366,18 @@
           if (r.status === 422 || (!r.json.ok && r.json.problems)) { S.editing.status = wasStatus; applyProblems(r.json); return; }
           if (!r.ok || !r.json.ok) { S.editing.status = wasStatus; S.notice = { kind: "warn", text: errText(r.json) }; paint(); return; }
           S.meta = S.meta || {};
+          if (r.json.queued) {
+            S.editing.status = wasStatus;
+            S.meta.pending = { action: "publish", requestedAt: new Date().toISOString() };
+            S.meta.lastResult = null;
+            S.problems = null;
+            showToast("Queued for the website");
+            S.notice = queuedNotice(r.json);
+            state.projects = null;
+            paint();
+            setMeta();
+            return;
+          }
           S.meta.status = "published";
           S.meta.publishedAt = new Date().toISOString();
           S.meta.lastPublishSha = r.json.commitSha || null;
@@ -1381,6 +1420,17 @@
         S.confirm = null;
         if (r.halt) return;
         if (!r.ok || !r.json.ok) { S.notice = { kind: "warn", text: errText(r.json) }; paint(); return; }
+        if (r.json.queued) {
+          if (S.editing && S.editing.slug === slug) {
+            S.meta = S.meta || {};
+            S.meta.pending = { action: "unpublish", requestedAt: new Date().toISOString() };
+          }
+          showToast("Queued for the website");
+          S.notice = queuedNotice(r.json);
+          state.projects = null;
+          if (S.editing) { paint(); } else { loadProjects(); }
+          return;
+        }
         if (S.editing && S.editing.slug === slug) {
           S.editing.status = "draft";
           S.meta = S.meta || {};
@@ -1421,6 +1471,25 @@
           return;
         }
         var wasPublished = !!r.json.commitSha;
+        if (r.json.queued) {
+          S.confirm = null;
+          S.confirmText = "";
+          if (S.editing && S.editing.slug === slug) {
+            S.editing = null;
+            S.meta = null;
+            S.savedSlug = null;
+            S.isNew = false;
+            S.dirty = false;
+            S.pending = [];
+            S.problems = null;
+            clearLocal();
+          }
+          showToast("Queued for deletion");
+          S.notice = queuedNotice(r.json);
+          state.projects = null;
+          loadProjects();
+          return;
+        }
         S.confirm = null;
         S.confirmText = "";
         if (S.editing && S.editing.slug === slug) {

@@ -62,8 +62,18 @@
  * later change to the site. That file is the only routing-adjacent thing the
  * admin may write, and public/_redirects itself stays outside the allow-list.
  *
+ * ── THE QUEUE (no GitHub token needed) ──────────────────────────────────────
+ * With SC_GITHUB_TOKEN set, an action commits while Sean waits, as above. Without
+ * it, the action is QUEUED (_cms/queue/<slug>.json) and the cms-publish workflow
+ * (.github/workflows/cms-publish.yml, every few minutes) calls this endpoint with
+ * action "run-queue": a GitHub OIDC token proves the call is that workflow on main
+ * (serverlib/gh-oidc.js), and the workflow lends its own short-lived GITHUB_TOKEN,
+ * which runs the very same doPublish / doUnpublish / doDelete through
+ * github.withToken(). Nothing to create, store or renew. A draft that never reached
+ * the site is deleted or unpublished at once: there is nothing in the repo to change.
+ *
  * Env: SC_SUPABASE_URL, SC_SUPABASE_SERVICE_ROLE_KEY, SC_ADMIN_SESSION_SECRET,
- * SC_ADMIN_USER, SC_GITHUB_TOKEN (+ optional SC_GITHUB_REPO, SC_GITHUB_BRANCH,
+ * SC_ADMIN_USER (+ optional SC_GITHUB_TOKEN, SC_GITHUB_REPO, SC_GITHUB_BRANCH,
  * SC_PROJECT_MEDIA_BUCKET).
  */
 
@@ -81,6 +91,12 @@ const {
   sbStorageDownload,
   sbStorageList,
   sbStorageDeleteMany,
+  cmsQueuePut,
+  cmsQueueGet,
+  cmsQueueAll,
+  cmsQueueRemove,
+  cmsResultPut,
+  sbJsonWrite,
 } = require("../serverlib/common");
 
 const {
@@ -98,6 +114,7 @@ const {
 } = require("../serverlib/cms");
 
 const github = require("../serverlib/github");
+const { verifyWorkflowToken } = require("../serverlib/gh-oidc");
 
 /* ------------------------------------------------------------------ *
  * Constants                                                           *
@@ -185,6 +202,9 @@ function actorName() {
  * header, so treat it as a correlation aid, not as evidence.
  */
 function ipHash(req) {
+  // A queued action runs later, from the workflow: it carries the hash taken from
+  // Sean's request when he pressed the button.
+  if (req.queuedIpHash !== undefined) return req.queuedIpHash;
   const ua = String(req.headers["user-agent"] || "").slice(0, 512);
   return visitorHash(clientIp(req), ua, "scdesign");
 }
@@ -762,18 +782,24 @@ async function commitRemoval(slug, subject, actor, extra) {
   };
 }
 
+/** commitRemoval's answer for a project that was never on the site. */
+const NOTHING_REMOVED = Object.freeze({ sha: null, htmlUrl: null, deleted: [], notRemoved: [], tombstoned: false, skipped: [] });
+
 /* ------------------------------------------------------------------ *
  * unpublish                                                           *
  * ------------------------------------------------------------------ */
 
-async function doUnpublish(req, res, slug) {
+async function doUnpublish(req, res, slug, opts) {
   const row = await sbGetProject(slug);
   if (!row) return sendRefusal(req, res, "unpublish", slug, 404, "not_found");
 
-  const removal = await commitRemoval(slug, `Unpublish case study: ${slug}`, actorName(), [
-    "Action: unpublish",
-    "The Supabase draft and its staged photos are kept so it can be fixed and published again.",
-  ]);
+  const removal =
+    opts && opts.notOnSite
+      ? NOTHING_REMOVED
+      : await commitRemoval(slug, `Unpublish case study: ${slug}`, actorName(), [
+          "Action: unpublish",
+          "The Supabase draft and its staged photos are kept so it can be fixed and published again.",
+        ]);
 
   // Keep the row and the staged images: unpublish is "take it down while I fix
   // it", not "get rid of it". last_publish_sha is left alone deliberately — it
@@ -831,17 +857,20 @@ async function doUnpublish(req, res, slug) {
  * delete                                                              *
  * ------------------------------------------------------------------ */
 
-async function doDelete(req, res, slug) {
+async function doDelete(req, res, slug, opts) {
   const row = await sbGetProject(slug);
   if (!row) return sendRefusal(req, res, "delete", slug, 404, "not_found");
 
   // 1. Off the site first. See the header: if the Storage delete below then
   //    fails we are left with orphaned private bytes, not a live page pointing
   //    at images that no longer exist.
-  const removal = await commitRemoval(slug, `Delete case study: ${slug}`, actorName(), [
-    "Action: delete",
-    "The draft and its staged photos are being deleted as well.",
-  ]);
+  const removal =
+    opts && opts.notOnSite
+      ? NOTHING_REMOVED
+      : await commitRemoval(slug, `Delete case study: ${slug}`, actorName(), [
+          "Action: delete",
+          "The draft and its staged photos are being deleted as well.",
+        ]);
 
   // 2. The staged images. A failure here is reported but does not undo the
   //    removal — the bucket is private, so the leftovers are invisible and the
@@ -932,6 +961,27 @@ module.exports = async (req, res) => {
     res.statusCode = 405;
     return res.end(JSON.stringify({ ok: false, error: "method" }));
   }
+  // The cms-publish workflow: no browser, no session — a GitHub OIDC token instead.
+  if (bearer(req)) {
+    let b;
+    try {
+      b = await readJsonBody(req);
+    } catch {
+      b = {};
+    }
+    if (!b || typeof b !== "object" || Array.isArray(b) || b.action !== "run-queue") {
+      return json(res, 400, { ok: false, error: "action" });
+    }
+    if (!process.env.SC_SUPABASE_URL || !process.env.SC_SUPABASE_SERVICE_ROLE_KEY) {
+      return json(res, 500, { ok: false, error: "Supabase not configured." });
+    }
+    try {
+      return await runQueue(req, res, b);
+    } catch (err) {
+      console.error("sc-admin-publish run-queue failed", err && err.message);
+      return json(res, 502, { ok: false, error: "run_queue_failed" });
+    }
+  }
   // The only CSRF defence — the session cookie is SameSite=None by necessity.
   if (!isAllowedOrigin(req)) {
     res.statusCode = 403;
@@ -946,18 +996,6 @@ module.exports = async (req, res) => {
     res.statusCode = 500;
     return res.end(JSON.stringify({ ok: false, error: "Supabase not configured." }));
   }
-  // Checked up front so a missing token is explained before any work is done,
-  // rather than failing halfway through a publish.
-  if (!github.isConfigured()) {
-    res.statusCode = 500;
-    return res.end(
-      JSON.stringify({
-        ok: false,
-        error: "Publishing is not configured. Set SC_GITHUB_TOKEN in the Vercel project.",
-      })
-    );
-  }
-
   let body;
   try {
     body = await readJsonBody(req);
@@ -985,10 +1023,17 @@ module.exports = async (req, res) => {
     return sendRefusal(req, res, "delete", slug, 400, "confirm", "confirm did not match the slug");
   }
 
+  // No token of our own: queue it for the cms-publish workflow.
+  if (!github.isConfigured()) return queueAction(req, res, action, slug);
+  return dispatch(req, res, action, slug, msLeft);
+};
+
+/** Run one action and map what it throws, for a request and for the queue alike. */
+async function dispatch(req, res, action, slug, msLeft, opts) {
   try {
     if (action === "publish") return await doPublish(req, res, slug, msLeft);
-    if (action === "unpublish") return await doUnpublish(req, res, slug);
-    return await doDelete(req, res, slug);
+    if (action === "unpublish") return await doUnpublish(req, res, slug, opts);
+    return await doDelete(req, res, slug, opts);
   } catch (err) {
     // The allow-list refusing a path is a 400, not an upstream failure: it means
     // this request tried to touch something the publisher may never write.
@@ -1013,4 +1058,150 @@ module.exports = async (req, res) => {
     }
     return sendFailure(req, res, action, slug, err);
   }
-};
+}
+
+/* ------------------------------------------------------------------ *
+ * The queue                                                           *
+ * ------------------------------------------------------------------ */
+
+/** How long Sean is told to wait. The workflow runs every 5 minutes; GitHub can run it late. */
+const QUEUE_WAIT = "usually within 10 to 15 minutes";
+
+/** After this many failed runs of one entry, stop retrying and report it. */
+const MAX_QUEUE_ATTEMPTS = 3;
+
+/** True when nothing of this project can be in the repo: no GitHub work to do. */
+function neverPublished(row) {
+  return row.status !== "published" && !row.published_at && !row.last_publish_sha;
+}
+
+async function queueAction(req, res, action, slug) {
+  const row = await sbGetProject(slug);
+  if (!row) return sendRefusal(req, res, action, slug, 404, "not_found");
+
+  // A draft that never reached the website has nothing in the repo to remove, so
+  // unpublish / delete finish now. Any publish still waiting for it is dropped.
+  if (action !== "publish" && neverPublished(row)) {
+    await cmsQueueRemove(slug).catch(() => {});
+    return dispatch(req, res, action, slug, () => FUNCTION_BUDGET_MS, { notOnSite: true });
+  }
+
+  const entry = { slug, action, requestedAt: new Date().toISOString(), attempts: 0, ipHash: ipHash(req) };
+  const put = await cmsQueuePut(entry);
+  if (!put.ok) {
+    return sendFailure(req, res, action, slug, new Error(`queue write failed (${put.status}): ${put.error || ""}`));
+  }
+  await audit(req, { slug, action, outcome: "queued" });
+  const what =
+    action === "publish"
+      ? "It will be published"
+      : action === "unpublish"
+        ? "It will be taken off the website"
+        : "It will be removed from the website and deleted";
+  return json(res, 200, {
+    ok: true,
+    queued: true,
+    action,
+    slug,
+    status: row.status === "published" ? "published" : "draft",
+    note: `${what} ${QUEUE_WAIT}, then the website rebuilds (a minute or two more). You can close this page.`,
+    generatedAt: new Date().toISOString(),
+  });
+}
+
+/** A response object that keeps what an action answered instead of sending it. */
+function captureRes() {
+  const out = { statusCode: 200, body: "" };
+  return {
+    out,
+    get statusCode() {
+      return out.statusCode;
+    },
+    set statusCode(v) {
+      out.statusCode = v;
+    },
+    setHeader() {},
+    end(body) {
+      out.body = body ? String(body) : "";
+    },
+  };
+}
+
+function bearer(req) {
+  const h = String(req.headers.authorization || "");
+  return h.startsWith("Bearer ") ? h.slice(7).trim() : "";
+}
+
+/**
+ * action "run-queue": called by the cms-publish workflow, never by a browser.
+ * Runs the OLDEST waiting entry and answers how many are left, so the workflow
+ * calls again until the queue is empty (one entry per call keeps each inside the
+ * 30-second function limit).
+ */
+async function runQueue(req, res, body) {
+  const proof = await verifyWorkflowToken(bearer(req));
+  if (!proof.ok) {
+    console.error("sc-admin-publish run-queue refused", proof.reason);
+    return json(res, 401, { ok: false, error: "unauthorized" });
+  }
+  const lent = typeof body.githubToken === "string" ? body.githubToken.trim() : "";
+  if (!/^[A-Za-z0-9_.-]{20,400}$/.test(lent)) return json(res, 400, { ok: false, error: "githubToken" });
+  // The check-in the admin's Health page reads: proof the workflow is still running.
+  await sbJsonWrite("_cms/runner.json", { at: new Date().toISOString() }).catch(() => {});
+
+  const waiting = (await cmsQueueAll())
+    .filter((e) => ACTIONS.includes(e.action))
+    .sort((a, b) => String(a.requestedAt).localeCompare(String(b.requestedAt)));
+  if (!waiting.length) return json(res, 200, { ok: true, processed: null, remaining: 0 });
+
+  const entry = waiting[0];
+  const startedAt = Date.now();
+  const msLeft = () => FUNCTION_BUDGET_MS - (Date.now() - startedAt);
+  const fakeReq = { headers: {}, queuedIpHash: entry.ipHash || null };
+  const cap = captureRes();
+  await github.withToken(lent, () => dispatch(fakeReq, cap, entry.action, entry.slug, msLeft));
+
+  let answer = {};
+  try {
+    answer = JSON.parse(cap.out.body || "{}");
+  } catch {
+    answer = {};
+  }
+  const ok = !!answer.ok && cap.out.statusCode < 400;
+  const at = new Date().toISOString();
+  const attempts = (entry.attempts || 0) + 1;
+  // A refusal (bad content, gone, not permitted) won't change by retrying; an
+  // upstream failure might, a few times.
+  const final = ok || cap.out.statusCode < 500 || attempts >= MAX_QUEUE_ATTEMPTS;
+  const message = ok
+    ? answer.note || ""
+    : answer.problems
+      ? answer.problems.slice(0, 6).map((p) => p.message).join(" ")
+      : typeof answer.error === "string"
+        ? answer.error
+        : `${entry.action} failed`;
+
+  // Only clear the entry if Sean hasn't asked for something newer meanwhile.
+  const current = await cmsQueueGet(entry.slug).catch(() => null);
+  const replaced = current && current.requestedAt !== entry.requestedAt;
+  if (!replaced) {
+    if (final) await cmsQueueRemove(entry.slug).catch(() => {});
+    else await cmsQueuePut(Object.assign({}, entry, { attempts, lastError: message, lastTriedAt: at })).catch(() => {});
+  }
+  if (final) {
+    await cmsResultPut(entry.slug, {
+      slug: entry.slug,
+      action: entry.action,
+      ok,
+      at,
+      requestedAt: entry.requestedAt,
+      commitSha: answer.commitSha || null,
+      message: String(message).slice(0, 600),
+    }).catch(() => {});
+  }
+  return json(res, 200, {
+    ok: true,
+    processed: { slug: entry.slug, action: entry.action, ok, status: cap.out.statusCode, final },
+    remaining: waiting.length - 1,
+  });
+}
