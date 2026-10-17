@@ -243,6 +243,25 @@ test("the daily job deletes expired projects and stale uploads, and leaves live 
   assert.ok((await storage().list("projects/" + live.id + "/working/")).length === 1, "live project's photo untouched");
 });
 
+test("the daily tidy-up removes files whose project no longer exists, and nothing else", async () => {
+  const { sweepOrphanFiles } = load("serverlib/wvroofing/cron/daily.js");
+  const kept = await newProject();
+  const st = storage();
+  const orphan = "00000000-0000-4000-8000-0000000000aa";
+  await st.put("projects/" + orphan + "/originals/x.jpg", Buffer.from("a"), "image/jpeg");
+  await st.put("projects/" + orphan + "/working/x.png", Buffer.from("b"), "image/png");
+  await st.put("projects/" + kept.id + "/working/y.png", Buffer.from("c"), "image/png");
+  await st.put("projects/not-a-project-id/keep.txt", Buffer.from("d"), "text/plain");
+  const before = (await st.list("projects/")).length;
+  const out = await sweepOrphanFiles();
+  assert.ok(out.orphanFilesDeleted >= 2);
+  assert.deepEqual(await st.list("projects/" + orphan + "/"), [], "the orphan's files are gone");
+  assert.equal((await st.list("projects/" + kept.id + "/")).length, 1, "a live project's file stays");
+  assert.equal((await st.list("projects/not-a-project-id/")).length, 1, "a folder that isn't a project id is never touched");
+  assert.equal((await st.list("projects/")).length, before - out.orphanFilesDeleted);
+  await st.del(["projects/not-a-project-id/keep.txt", "projects/" + kept.id + "/working/y.png"]);
+});
+
 test("without storage configured, project routes say so plainly", async () => {
   process.env.WVR_ENV = "";
   try {

@@ -12,6 +12,9 @@ Vercel once a day).
 - **Since 2026-10-03 (snapshot mode, no set-up)**, the same tidy-up runs inside the first request after
   23 hours instead, and doesn't need `CRON_SECRET`. "Neon" and "Vercel Blob" below then mean WV Roofing's
   private bucket in SC Design's Supabase project (see `setup-and-deploy.md`).
+- Since 2026-10-17 the tidy-up also removes any project folder in storage whose project no longer exists.
+  This happens, for example, when a save was lost (as on 16 Oct 2026, the CDN fault in `decisions.md`).
+  Such files have no record pointing to them, so nothing else would ever delete them.
 - Each run is recorded in `wvr_retention_runs`.
 - The operator screen's **Costs** tab shows the last run.
 - Each run deletes whatever is due, so a missed or repeated run does no harm.

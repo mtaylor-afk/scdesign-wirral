@@ -9,7 +9,8 @@
 //      renders, uploads, address and answers cascade). This is what makes the
 //      "kept for 30 days" promise true.
 //   2. Uploads presigned but never committed are removed after 24 hours, with
-//      their files; records of committed uploads go at the same age.
+//      their files; records of committed uploads go at the same age. Files whose
+//      project no longer exists at all (a lost save) are removed too.
 //   3. Rate-limit windows older than 48 hours are purged.
 //   4. Enquiries: sends that never reported back become 'uncertain' (not
 //      resent), failed emails due a retry are tried again (at most 3 attempts
@@ -56,13 +57,44 @@ async function sweepUploads() {
 }
 
 /**
+ * Files whose project no longer exists, e.g. the files of a save lost in snapshot
+ * mode (2026-10-16): every file lives under projects/<projectId>/, so a folder
+ * with no project row is removed. The files are listed first and the rows read
+ * after: a project's row always exists before any of its files, so the folder of
+ * a project being made at that moment can't be taken for an orphan.
+ */
+async function sweepOrphanFiles() {
+  const { storage } = require("../storage.js");
+  const { UUID_RE } = require("../auth.js");
+  const st = storage();
+  /** @type {Map<string, string[]>} */
+  const byProject = new Map();
+  for (const f of await st.list("projects/")) {
+    const id = f.split("/")[1];
+    if (!id || !UUID_RE.test(id)) continue;
+    const list = byProject.get(id) || [];
+    list.push(f);
+    byProject.set(id, list);
+  }
+  if (!byProject.size) return { orphanFilesDeleted: 0 };
+  const { rows } = await db.query("SELECT id::text AS id FROM wvr_projects WHERE id = ANY($1::uuid[])", [[...byProject.keys()]]);
+  const known = new Set(rows.map((r) => String(r.id)));
+  const doomed = [...byProject]
+    .filter(([id]) => !known.has(id))
+    .slice(0, BATCH)
+    .flatMap(([, list]) => list);
+  if (doomed.length) await st.del(doomed);
+  return { orphanFilesDeleted: doomed.length };
+}
+
+/**
  * The whole tidy-up, once (a lease stops two at the same time).
  * @param {number} startedAt  when the request began (for the render queue's time limit)
  */
 function runDaily(startedAt) {
   return db.withLease("cron_daily", 600, async () => {
     const started = new Date().toISOString();
-    const detail = Object.assign({}, await expireProjects(), await sweepUploads(), { rateLimitRowsPurged: await limits.purge() });
+    const detail = Object.assign({}, await expireProjects(), await sweepUploads(), await sweepOrphanFiles(), { rateLimitRowsPurged: await limits.purge() });
     Object.assign(detail, await enquiries.sweep());
     Object.assign(detail, await require("../auth.js").purgeOperatorRecords());
     Object.assign(detail, await retention.purgeRecords());
@@ -80,4 +112,4 @@ async function daily(ctx) {
   return core.json(ctx.res, 200, { ok: true, ran: true, detail: out.result });
 }
 
-module.exports = { daily, runDaily, expireProjects, sweepUploads };
+module.exports = { daily, runDaily, expireProjects, sweepUploads, sweepOrphanFiles };
