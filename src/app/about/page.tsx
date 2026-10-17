@@ -5,7 +5,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { withBase } from "@/lib/base";
 import { wi } from "@/lib/media";
 import { site } from "@/lib/site";
-import { pageMeta, breadcrumbJsonLd, personJsonLd } from "@/lib/seo";
+import { pageMeta, breadcrumbJsonLd, personJsonLd, profilePageJsonLd } from "@/lib/seo";
 
 export const metadata = pageMeta({
   title: "About — Sean Corser MCIAT, Architectural Designer",
@@ -45,6 +45,7 @@ export default function AboutPage() {
             { name: "About", path: "/about" },
           ]),
           personJsonLd(),
+          profilePageJsonLd(),
         ]}
       />
       <Section tone="card" className="pt-16">

@@ -89,11 +89,11 @@ export default function VisualiserPage() {
             architectural drawing, not planning advice, and not confirmation that a design is
             buildable or likely to receive approval. Real design always starts with a proper look at
             your property. See the{" "}
-            <a href={withBase("/visualiser-terms")} className="underline">
+            <a href={withBase("/visualiser-terms/")} className="underline">
               visualiser terms
             </a>{" "}
             and{" "}
-            <a href={withBase("/privacy-policy")} className="underline">
+            <a href={withBase("/privacy-policy/")} className="underline">
               privacy policy
             </a>
             .

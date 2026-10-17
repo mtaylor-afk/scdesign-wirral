@@ -25,7 +25,7 @@ export function ConsentBanner() {
         <p className="min-w-[16rem] flex-1 text-sm text-ink">
           We use <strong>cookieless</strong> analytics — no cookies, no stored IP addresses, no
           cross-site tracking. Accepting also turns on our Google reviews widget.{" "}
-          <a href={withBase("/cookie-policy")} className="font-medium underline">
+          <a href={withBase("/cookie-policy/")} className="font-medium underline">
             Details
           </a>
         </p>
@@ -33,14 +33,14 @@ export function ConsentBanner() {
           <button
             type="button"
             onClick={() => setConsent("accepted")}
-            className="inline-flex h-9 items-center rounded-full bg-accent-strong px-5 text-sm font-medium text-white hover:bg-accent-deep"
+            className="inline-flex h-11 lg:h-9 items-center rounded-full bg-accent-strong px-5 text-sm font-medium text-white hover:bg-accent-deep"
           >
             Accept
           </button>
           <button
             type="button"
             onClick={() => setConsent("rejected")}
-            className="inline-flex h-9 items-center rounded-full border border-line px-5 text-sm font-medium text-ink hover:bg-paper"
+            className="inline-flex h-11 lg:h-9 items-center rounded-full border border-line px-5 text-sm font-medium text-ink hover:bg-paper"
           >
             Reject
           </button>

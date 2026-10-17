@@ -43,7 +43,7 @@ export default function VisualiserTermsPage() {
         on our website servers afterwards. We email the result to the address you enter, and a
         copy of your photo, the concept and the details you entered is emailed to {site.name} and
         our website administrator so we can see what the tool produced and help if you get in
-        touch. See our <a href={withBase("/privacy-policy")}>Privacy Policy</a> for how long we keep
+        touch. See our <a href={withBase("/privacy-policy/")}>Privacy Policy</a> for how long we keep
         it.
       </p>
 

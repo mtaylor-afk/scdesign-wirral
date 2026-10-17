@@ -160,7 +160,7 @@ export function Footer() {
               rel="noopener noreferrer"
               className="text-paper/60 hover:underline"
             >
-              Visualised images powered by{" "}
+              AI concept visualiser powered by{" "}
               <span className="font-semibold text-paper">Tailored</span>
               <span className="font-semibold text-[#7aa2f7]">Quote</span>
               <span className="font-semibold text-paper/50">.co.uk</span>

@@ -56,8 +56,8 @@ export const site = {
 
   // Companies House registration — shown in the footer + legal/policy pages to
   // meet UK company-website disclosure. The registered office (below) is the
-  // Liverpool address on the public register; the visible contact address is the
-  // Wallasey trading office (see `address` / `addressDisplay`).
+  // Liverpool address on the public register. No trading street address is
+  // published (service-area business).
   companiesHouseNumber: "11511225",
   registeredOffice: "Seymour Chambers, 92 London Road, Liverpool, L3 5NW",
 
@@ -68,18 +68,8 @@ export const site = {
     "Friendly, practical architectural design for growing families across Wirral, Liverpool, Cheshire, Warrington and North Wales — from first idea to clear planning, building-regulations and builder-quote drawings.",
   yearsExperience: 15,
 
-  // NAP — the Wallasey TRADING/contact address (distinct from the registered
-  // office above). Confirmed public by the owner. `region` stays the county
-  // (Merseyside) for schema addressRegion; `addressDisplay` is the visible block.
-  address: {
-    street: "20 Ripon Road",
-    town: "Wallasey",
-    region: "Merseyside",
-    postcode: "CH45 6TR",
-    country: "GB",
-  },
-  addressDisplay: "20 Ripon Road, Wallasey, Wirral, CH45 6TR",
-  addressIsPublic: false, // service-area-only — the Wallasey trading address is NOT published
+  // Service-area business: the trading (home) street address is deliberately
+  // NOT stored or published anywhere in the site code. Never add it back.
 
   // Service area — Sean's brief: "Wirral peninsula, North Wales, Liverpool,
   // Warrington, Southport" + "Wirral, Liverpool, Cheshire, Warrington, Merseyside".

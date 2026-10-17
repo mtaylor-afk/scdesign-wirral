@@ -1,16 +1,20 @@
 import { ImageResponse } from "next/og";
 import { brandAssets } from "@/lib/brand-assets";
+import { ogImage } from "@/lib/seo";
 
 export const dynamic = "force-static";
 
-export const alt =
-  "SC Design Wirral — Architectural Design across Wirral, Liverpool, Cheshire, Warrington & North Wales";
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+const size = { width: ogImage.width, height: ogImage.height };
 
 /**
  * The card Google, Facebook, LinkedIn and WhatsApp show beside a link, and the
  * `image` on the LocalBusiness JSON-LD (lib/seo.ts).
+ *
+ * Served at /og-image.png (a route handler, not the opengraph-image file
+ * convention): the static export then writes a file with a .png extension, so
+ * Cloudflare sends Content-Type: image/png (the old extensionless
+ * /opengraph-image went out with no type at all under nosniff). pageMeta()
+ * references it explicitly on every page; /opengraph-image 301s here.
  *
  * Sean asked for the brand lockup here instead of the old text-only card, so the
  * thumbnail beside a search result is the SC Design Wirral wordmark rather than
@@ -27,7 +31,7 @@ export const contentType = "image/png";
  */
 const wordmark = brandAssets.brandWordmark;
 
-export default function OpengraphImage() {
+export function GET() {
   return new ImageResponse(
     (
       <div

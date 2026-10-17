@@ -288,8 +288,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
           <div className="mt-10 rounded-[var(--radius)] border border-line bg-paper-card p-5">
             {ctaService && (
               <p className="text-pretty text-ink-soft">
-                Need help with this? Our {ctaService.title} service covers it — clear, coordinated
-                drawings ready for builders and building control.
+                Need help with this? Our {ctaService.title} service covers it — {ctaService.blurb}
               </p>
             )}
             <div className={ctaService ? "mt-4 flex flex-wrap gap-3" : "flex flex-wrap gap-3"}>

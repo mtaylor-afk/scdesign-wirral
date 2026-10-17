@@ -15,6 +15,18 @@ export function absUrl(path: string): string {
   return `${siteUrl}${p.endsWith("/") ? p : `${p}/`}`;
 }
 
+/**
+ * The SC brand card (app/og-image.png/route.tsx) — the default share image on
+ * every page. The alt matches what the card actually shows.
+ */
+export const ogImage = {
+  path: "/og-image.png",
+  width: 1200,
+  height: 630,
+  type: "image/png",
+  alt: "SC Design Wirral — architectural design for extensions, loft conversions and planning drawings across Wirral, Cheshire & Merseyside",
+} as const;
+
 type PageMetaInput = {
   title: string;
   description: string;
@@ -42,12 +54,23 @@ export function pageMeta({ title, description, path, noindex }: PageMetaInput): 
       siteName: site.name,
       locale: "en_GB",
       type: "website",
-      // og image is provided by the file-based convention (app/opengraph-image.tsx).
+      // Explicit on every page: a nested openGraph object replaces the parent's
+      // wholesale, so an inherited file-based image only ever reached "/".
+      images: [
+        {
+          url: ogImage.path,
+          width: ogImage.width,
+          height: ogImage.height,
+          type: ogImage.type,
+          alt: ogImage.alt,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: fullTitle,
       description,
+      images: [{ url: ogImage.path, alt: ogImage.alt }],
     },
   };
 }
@@ -121,7 +144,7 @@ export function localBusinessJsonLd() {
     url: absUrl("/"),
     telephone: site.phoneE164,
     email: site.email,
-    image: `${siteUrl}/opengraph-image`,
+    image: `${siteUrl}${ogImage.path}`,
     logo: `${siteUrl}${site.logo}`,
     areaServed: areasServed.map((name) => ({ "@type": "Place", name })),
     serviceType: serviceTypes,
@@ -133,20 +156,8 @@ export function localBusinessJsonLd() {
     ].filter(Boolean),
     founder: { "@id": `${siteUrl}/about#sean-corser` },
   };
-  // Service-area business: only expose a postal address when the client has
-  // approved publishing it. Otherwise omit `address` entirely (Google's guidance
-  // for service-area businesses that work from home) and rely on areaServed —
-  // we do NOT expose the home town as a business locality.
-  if (site.addressIsPublic) {
-    data.address = {
-      "@type": "PostalAddress",
-      streetAddress: site.address.street,
-      addressLocality: site.address.town,
-      addressRegion: site.address.region,
-      postalCode: site.address.postcode,
-      addressCountry: site.address.country,
-    };
-  }
+  // Service-area business: no `address` at all (Google's guidance for
+  // service-area businesses that work from home) — rely on areaServed.
   return data;
 }
 
@@ -254,5 +265,20 @@ export function personJsonLd() {
     ],
     worksFor: { "@id": `${siteUrl}/#business` },
     url: absUrl("/about"),
+    // The headshot already shown on / and /about/ (only when one is set).
+    ...(site.headshot ? { image: `${siteUrl}${site.headshot.src}` } : {}),
+  };
+}
+
+/**
+ * ProfilePage JSON-LD for /about/ — the page every Article author @id points
+ * to. mainEntity references the Person block above by @id (no new facts).
+ */
+export function profilePageJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    url: absUrl("/about"),
+    mainEntity: { "@id": `${siteUrl}/about#sean-corser` },
   };
 }

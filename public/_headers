@@ -28,6 +28,21 @@
 /admin/*
   Cache-Control: no-store, max-age=0
 
+# Image folders: let browsers keep images for one day. Not longer and not
+# "immutable" - filenames are not fingerprinted and photos are replaced in place.
+# /guide/* is the IMAGE folder; never /guides/* (the guide pages). Only
+# Cache-Control is set here; nothing else matches these paths with Cache-Control.
+/work/*
+  Cache-Control: public, max-age=86400
+/portfolio/*
+  Cache-Control: public, max-age=86400
+/examples/*
+  Cache-Control: public, max-age=86400
+/guide/*
+  Cache-Control: public, max-age=86400
+/brand/*
+  Cache-Control: public, max-age=86400
+
 # /samantha — PRIVATE DESIGN SANDBOX (Wallasey Trusted Home Cleans draft).
 # Must NEVER be indexed, cached by a search engine, summarised by an AI crawler,
 # or have its images picked up. X-Robots-Tag is the belt; the page's own <meta

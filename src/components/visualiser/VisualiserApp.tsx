@@ -532,7 +532,7 @@ export function VisualiserApp() {
               create the concept and isn&apos;t kept on our website servers afterwards. We email you
               the result, and a copy of your photo, the concept and your details is emailed to SC
               Design Wirral. See the{" "}
-              <a href={withBase("/visualiser-terms")} className="underline">
+              <a href={withBase("/visualiser-terms/")} className="underline">
                 visualiser terms
               </a>
               .

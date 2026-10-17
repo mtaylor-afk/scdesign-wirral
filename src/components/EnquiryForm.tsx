@@ -521,7 +521,7 @@ export function EnquiryForm({
         <span>
           I&apos;m happy for {site.shortName} to use these details to respond to my enquiry, in line
           with the{" "}
-          <a href={withBase("/privacy-policy")} className="underline">
+          <a href={withBase("/privacy-policy/")} className="underline">
             Privacy Policy
           </a>
           . <span className="text-xs text-muted">(required)</span>

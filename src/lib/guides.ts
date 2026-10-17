@@ -247,7 +247,7 @@ export const guides: Guide[] = [
         heading: "How we describe ourselves",
         body: [
           "We provide architectural design and drawings for Wirral homeowners — concept design, planning drawings and building-regulations drawings — with 18+ years of experience. We focus purely on design, so our advice stays centred on getting it right for you.",
-          "We describe ourselves as an architectural design studio, not as registered architects, unless ARB registration is expressly confirmed.",
+          "We describe ourselves as an architectural design studio. We are not registered architects; Sean is a Chartered Architectural Technologist (MCIAT).",
         ],
       },
     ],
@@ -861,7 +861,7 @@ export const guides: Guide[] = [
         heading: "How drawings and calculations work together",
         body: [
           "The two are coordinated: the engineer's calculations confirm the structure, and the drawings show how it all fits into the design and construction. Building control may ask to see the calculations alongside the drawings.",
-          "We prepare the architectural and building-regulations drawings and coordinate with a structural engineer so the two sets line up. We don't present ourselves as the structural engineer unless that's expressly confirmed — the calculations are the engineer's specialist work.",
+          "We prepare the architectural and building-regulations drawings and coordinate with a structural engineer so the two sets line up. We are not structural engineers: the calculations are the engineer's specialist work, and we coordinate our drawings with theirs.",
         ],
       },
     ],
@@ -872,7 +872,7 @@ export const guides: Guide[] = [
       },
       {
         q: "Who provides structural calculations?",
-        a: "A structural engineer. We coordinate our drawings with their calculations, but we don't claim to provide the engineering ourselves unless that's expressly agreed.",
+        a: "A structural engineer. We coordinate our drawings with their calculations; we don't provide the structural engineering ourselves.",
       },
       {
         q: "When are beam calculations needed?",
@@ -1708,7 +1708,7 @@ export const guides: Guide[] = [
     slug: "wirral-pre-application-advice-home-extension",
     navLabel: "Wirral pre-application advice",
     category: "local-buying",
-    ctaService: "/services/building-regulations-drawings-wirral",
+    ctaService: "/services/planning-drawings-wirral",
     title: "Do I Need Pre-Application Advice from Wirral Council?",
     metaTitle: "Wirral Pre-Application Advice for Home Extensions",
     description:
@@ -1777,8 +1777,8 @@ export const guides: Guide[] = [
       { label: "Planning Portal", href: "https://www.planningportal.co.uk/" },
     ],
     related: [
-      "/services/building-regulations-drawings-wirral",
       "/services/planning-drawings-wirral",
+      "/services/building-regulations-drawings-wirral",
       "/guides/do-i-need-planning-permission-for-an-extension",
       "/guides/wirral-householder-planning-application-drawings-checklist",
       "/guides/how-long-does-planning-permission-take-wirral",
@@ -1825,7 +1825,7 @@ export const guides: Guide[] = [
         heading: "What helps — and how SC Design can support you",
         body: [
           "A successful conservation-area proposal usually needs sensitive design, appropriate materials and clear drawings that justify the approach. For sensitive or uncertain schemes, pre-application advice from the council can also be worthwhile.",
-          "The practical sequence for a page like this is simple: confirm the designation, understand the extra controls, then commission a design that genuinely responds to the setting. We can't guarantee approval — no one honestly can — but a considered, well-presented proposal gives your project its best chance.",
+          "The sensible order is: confirm the designation, understand the extra controls, then commission a design that genuinely responds to the setting. We can't guarantee approval — no one honestly can — but a considered, well-presented proposal gives your project its best chance.",
         ],
       },
     ],

@@ -97,7 +97,7 @@ export function Nav() {
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-paper-card",
+                      "rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-paper-card min-[1152px]:whitespace-nowrap",
                       active && "text-accent-strong"
                     )}
                   >
@@ -141,7 +141,7 @@ export function Nav() {
                     }
                   }}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-paper-card",
+                    "inline-flex items-center gap-1 rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-paper-card min-[1152px]:whitespace-nowrap",
                     (active || isOpen) && "text-accent-strong"
                   )}
                 >
@@ -178,7 +178,7 @@ export function Nav() {
         <div className="hidden lg:block">
           <Link
             href={cta.primary.href}
-            className="inline-flex h-10 items-center rounded-full bg-accent-strong px-5 text-sm font-medium text-white transition-colors hover:bg-accent-deep"
+            className="inline-flex h-10 items-center rounded-full bg-accent-strong px-5 text-sm font-medium text-white transition-colors hover:bg-accent-deep min-[1152px]:whitespace-nowrap"
           >
             {cta.primary.label}
           </Link>
@@ -188,7 +188,7 @@ export function Nav() {
         <button
           ref={toggleRef}
           type="button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-md text-ink lg:hidden"
+          className="inline-flex h-12 w-12 items-center justify-center rounded-md text-ink lg:hidden"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
           aria-controls="mobile-menu"

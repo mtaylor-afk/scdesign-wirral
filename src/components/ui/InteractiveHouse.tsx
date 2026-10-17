@@ -172,7 +172,7 @@ export function InteractiveHouse() {
         </p>
         {feat ? (
           <div className="rounded-lg border border-line bg-paper-card p-6 shadow-card">
-            <h3 className="text-xl">{feat.label}</h3>
+            <h2 className="text-xl">{feat.label}</h2>
             <div className="mt-3 flex flex-wrap gap-2">
               <NeedBadge label="Planning" level={feat.needs.planning} />
               <NeedBadge label="Building regs" level={feat.needs.buildingRegs} />
@@ -236,7 +236,7 @@ export function InteractiveHouse() {
           </div>
         ) : (
           <div className="rounded-lg border border-dashed border-line bg-paper-card p-6 text-pretty text-muted">
-            <h3 className="text-xl text-ink">Tap a + on the house</h3>
+            <h2 className="text-xl text-ink">Tap a + on the house</h2>
             <p className="mt-2">
               Select a feature — porch, dormer, garage, extension or garden room — to see whether it
               usually needs planning permission and building regulations, with a link to the official

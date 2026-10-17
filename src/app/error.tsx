@@ -38,7 +38,7 @@ export default function Error({
           Try again
         </button>
         <a
-          href={withBase("/contact")}
+          href={withBase("/contact/")}
           className="inline-flex h-11 items-center rounded-full border border-line px-5 text-sm font-medium text-ink hover:bg-paper-card"
         >
           Contact Sean

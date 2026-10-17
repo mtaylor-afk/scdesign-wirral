@@ -143,7 +143,7 @@ export const generalFaqs: Faq[] = [
   {
     category: "scope",
     q: "Are you architects?",
-    a: "We provide architectural design and drawing services. In the UK, the title 'architect' is protected by law and reserved for those registered with the ARB. We describe ourselves as an architectural design studio, not as registered architects, unless ARB registration is expressly confirmed.",
+    a: "We provide architectural design and drawing services. In the UK, the title 'architect' is protected by law and reserved for those registered with the ARB. We describe ourselves as an architectural design studio. We are not registered architects; Sean is a Chartered Architectural Technologist (MCIAT).",
   },
   {
     category: "scope",

@@ -10,10 +10,18 @@
 #  redirect map is version-controlled from the start of the rebuild.)
 
 # --- WS3: retired service pages (content now lives in the guides) ---
-/services/permitted-development-wirral            /guides/permitted-development-rights-wirral       301
-/services/lawful-development-certificate-wirral    /guides/lawful-development-certificate-explained  301
-/services/conservation-area-design-wirral          /guides/conservation-area-extensions-wirral       301
-/services/planning-building-regulations            /services                                         301
+# Both forms (bare and trailing slash), slash-terminated targets: one 301 hop.
+/services/permitted-development-wirral             /guides/permitted-development-rights-wirral/       301
+/services/permitted-development-wirral/            /guides/permitted-development-rights-wirral/       301
+/services/lawful-development-certificate-wirral    /guides/lawful-development-certificate-explained/  301
+/services/lawful-development-certificate-wirral/   /guides/lawful-development-certificate-explained/  301
+/services/conservation-area-design-wirral          /guides/conservation-area-extensions-wirral/       301
+/services/conservation-area-design-wirral/         /guides/conservation-area-extensions-wirral/       301
+/services/planning-building-regulations            /services/                                         301
+/services/planning-building-regulations/           /services/                                         301
+
+# --- Share card moved to a .png address so it is served as image/png ---
+/opengraph-image   /og-image.png   301
 
 # --- /llm.txt compatibility → canonical machine-readable AI summary ---
 /llm.txt   /llms.txt   301
