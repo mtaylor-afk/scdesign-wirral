@@ -60,6 +60,15 @@ previous good deploy live.
 
 Nothing works until all four are done.
 
+> **The quick way (added Oct 2026):** double-click **`SET UP SEAN PROJECTS.cmd`**
+> in the repo root (or `npm run cms:setup`) on your own computer. It does 2.1–2.3
+> in one run: it asks for a Vercel token, a Supabase access token and the GitHub
+> token below (all at hidden prompts, none saved), fills in whatever is missing,
+> creates the tables, proves the GitHub token can write, saves the settings and
+> redeploys. Safe to re-run; `--dry-run` changes nothing. **2.4 is already
+> confirmed:** GitHub shows a Cloudflare build on every push to `main`. The manual
+> steps below remain the reference if the wizard stops.
+
 ### 2.1 Confirm the existing Vercel env vars
 
 In the **`scdesign-wirral`** Vercel project, confirm these are set:
