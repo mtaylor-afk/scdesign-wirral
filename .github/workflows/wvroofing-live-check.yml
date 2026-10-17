@@ -34,7 +34,11 @@ jobs:
           set +e
           node scripts/wvroofing/qa.mjs --base "${{ inputs.base }}" --live --out qa-out 2>&1 | tee qa.log
           status=${PIPESTATUS[0]}
-          grep '^FAIL' qa.log | head -10 | sed 's/^/::error::/'
+          # GitHub shows at most 10 errors per step: the first 9 in full, then every failure's name in one.
+          grep '^FAIL' qa.log | head -9 | cut -c1-900 | sed 's/^/::error::/'
+          if [ "$(grep -c '^FAIL' qa.log)" -gt 9 ]; then
+            echo "::error title=all failures::$(grep '^FAIL' qa.log | sed 's/ - .*//' | sed ':a;N;$!ba;s/\n/%0A/g')"
+          fi
           grep '^SKIP' qa.log | head -10 | sed 's/^/::warning::/'
           tail -1 qa.log | sed 's/^/::notice title=result::/'
           exit $status

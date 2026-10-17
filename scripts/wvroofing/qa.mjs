@@ -158,17 +158,22 @@ async function customerEnquiry() {
   return { ref: e.json && e.json.reference, status: e.status, project: p };
 }
 
+// Cloudflare Pages injects its Web Analytics beacon into every page it serves. WV Roofing sends
+// no analytics, so its CSP blocks the beacon on purpose: that block is the intended outcome.
+const CF_BEACON = /static\.cloudflareinsights\.com\/beacon/;
+
 function watch(page) {
   const errors = [];
   page.on("console", (m) => {
     // "Failed to load resource" says which only in its location.
     const where = m.location && m.location() && m.location().url ? " (" + m.location().url + ")" : "";
-    if (m.type() === "error") errors.push("console: " + m.text() + where);
+    if (m.type() === "error" && !CF_BEACON.test(m.text())) errors.push("console: " + m.text() + where);
   });
   page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
   page.on("requestfailed", (r) => {
     const u = r.url();
     if (/fonts\.(googleapis|gstatic)\.com/.test(u)) return; // offline-tolerant
+    if (CF_BEACON.test(u)) return;
     // A reload or navigation cancels API polls in flight (a render poll during the refresh check):
     // not a fault. Real API problems fail the functional checks.
     if (r.method() === "GET" && u.includes("/api/wvroofing/") && /ERR_ABORTED/.test((r.failure() && r.failure().errorText) || "")) return;
