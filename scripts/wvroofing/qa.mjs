@@ -505,8 +505,14 @@ try {
         await shot(page, { path: path.join(OUT, "vis-previews-phone.png"), fullPage: true });
 
         // Photo-real renders: nothing goes to the AI service until the customer agrees.
+        // With image generation off (a copy without an OpenAI key), the offer must not be shown at all.
         const offered = await page.isVisible("#btn-start-ai");
-        ok("phone: no photo-real render is requested before the customer agrees", renderPosts === 0 && offered, renderPosts + " requests, offer shown: " + offered);
+        const rendersOn = capState("image_generation") === "enabled";
+        ok(
+          rendersOn ? "phone: no photo-real render is requested before the customer agrees" : "phone: renders are off here, so none is offered or requested",
+          renderPosts === 0 && offered === rendersOn,
+          renderPosts + " requests, offer shown: " + offered + ", image_generation: " + capState("image_generation"),
+        );
         // Renders are driven only against the local test environment's stand-in, never a deployed
         // copy (--live): a real render costs money and goes to OpenAI.
         const live = await page.evaluate(() => !!(window.__wvr && window.__wvr.health && window.__wvr.health.renders.live && window.__wvr.health.renders.test));
