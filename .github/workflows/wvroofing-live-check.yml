@@ -1,0 +1,36 @@
+name: WV Roofing live check
+
+# Runs the WV Roofing browser QA against the deployed site in --live mode:
+# forms are filled in but never sent, no renders are made and there is no
+# operator login, so nothing reaches the roofer or costs money. The test photo
+# it uploads is deleted again at the end. Run it from the Actions tab
+# ("Run workflow") after a push; screenshots are kept as the run's artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Site to check
+        default: https://scdesignwirral.co.uk
+
+jobs:
+  live-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Health
+        run: curl -sS https://scdesign-wirral.vercel.app/api/wvroofing/health
+      - name: Live QA
+        run: node scripts/wvroofing/qa.mjs --base "${{ inputs.base }}" --live --out qa-out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wvroofing-live-qa
+          path: qa-out
