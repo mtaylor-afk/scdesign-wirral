@@ -15,7 +15,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "validate": "npm run typecheck && npm run lint && npm run build",
     "test:e2e": "playwright test",
-    "wvr:test": "node --test scripts/wvroofing/tests/",
+    "wvr:test": "node scripts/wvroofing/run-tests.mjs",
     "wvr:check": "tsc -p tsconfig.wvroofing.json",
     "wvr:selftest": "node scripts/wvroofing/selftest.mjs",
     "wvr:qa": "node scripts/wvroofing/qa.mjs"

@@ -180,7 +180,8 @@ function watch(page) {
   return errors;
 }
 
-const browser = await chromium.launch();
+// WVR_CHROMIUM points at an installed Chromium when Playwright's own build isn't there.
+const browser = await chromium.launch(process.env.WVR_CHROMIUM ? { executablePath: process.env.WVR_CHROMIUM } : {});
 try {
   // ---- every page, both widths ----------------------------------------------
   for (const vp of VIEWPORTS) {
@@ -464,7 +465,15 @@ try {
       const commitRes = await committed;
       ok("phone: the photo is uploaded to the project and prepared by the server", !!commitRes && commitRes.status() === 200, commitRes ? String(commitRes.status()) : "no commit");
       await page.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 30000 });
-      const box = await page.locator(".editor-canvas").boundingBox();
+      // Opening the step smooth-scrolls to it: measure only once the canvas has stopped moving.
+      let box = await page.locator(".editor-canvas").boundingBox();
+      for (let i = 0; i < 40; i++) {
+        await page.waitForTimeout(100);
+        const next = await page.locator(".editor-canvas").boundingBox();
+        const still = next && box && Math.abs(next.y - box.y) < 0.5;
+        box = next;
+        if (still) break;
+      }
       const pts = [
         [0.1, 0.33],
         [0.47, 0.18],
