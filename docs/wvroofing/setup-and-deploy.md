@@ -130,7 +130,6 @@ everywhere.
 - **Enquiry emails to the roofer.** Set `WVR_LEAD_TO` (the inbox) and `WVR_CAP_ENQUIRY_DELIVERY=on`.
   `SMTP_USER` and `SMTP_PASS` are already on the project.
 - The address search, satellite view and photo-real render keys in step 4 below.
-- Step 0, the Node.js version.
 
 ## A database of its own (optional, later)
 
@@ -156,7 +155,7 @@ also ran it after each push; it no longer does.
   the newest code.
 - Make a Vercel token at `https://vercel.com/account/tokens`: **Create Token**, Scope = the team that owns
   scdesign-wirral, Expiration = 1 day. You can delete it afterwards.
-- Step 0 below (the Node.js version) is still done by hand, once.
+- Step 0 below: the Node.js version now sets itself (`package.json`); only noting the plan is left.
 
 **What it asks for**
 
@@ -247,7 +246,10 @@ The steps below are the same work done by hand, kept as the fallback.
 **Step 0: Vercel checks.** In project `scdesign-wirral`, go to **Settings**.
 
 - Note the plan (Hobby or Pro), whether **Fluid compute** is on, and the **Function Region**.
-- Set **Node.js Version** to **24.x**: Vercel deprecates Node 20 on 1 October 2026.
+- **Node.js Version** needs nothing: since 2026-10-17 `"engines": { "node": "24.x" }` in `package.json`
+  sets it (it overrides the setting on that page; Vercel deprecated Node 20 on 1 October 2026). The
+  suites pass on Node 24. Cloudflare Pages still builds the static site with `.nvmrc` (Node 20), which
+  only prints an engines warning.
 
 **Step 1: storage.**
 
