@@ -249,6 +249,79 @@ function shortUrl(u: string): string {
   }
 }
 
+/* ----------------------------- stale chunks ----------------------------- */
+
+/*
+ * After a deploy the site's script files get new names and the old ones are
+ * gone. A page that was already open (or restored from the browser's cache, e.g.
+ * Facebook's in-app browser) then asks for a file that no longer exists and
+ * stops working until it is reloaded — logged 6 Sep, 12 Oct, 13 Oct 2026. So the
+ * page reloads itself ONCE, which fetches the current HTML and current files.
+ *
+ * Guarded so it can never make things worse: our own /_next/static/ scripts
+ * only; never when offline (the file isn't stale, the network is down); never
+ * while a form field has been typed into (it would lose their words); at most
+ * once per tab every 5 minutes (so a file that is truly missing can't loop);
+ * and not at all if sessionStorage is unavailable, because then there is no way
+ * to remember that it already tried.
+ */
+const STALE_RELOAD_KEY = "sc_stale_chunk_reload";
+const STALE_RELOAD_GAP_MS = 5 * 60 * 1000;
+
+function isStaleChunk(src: string): boolean {
+  try {
+    const u = new URL(src, window.location.href);
+    return u.origin === window.location.origin && u.pathname.startsWith("/_next/static/");
+  } catch {
+    return false;
+  }
+}
+
+function hasUnsavedInput(): boolean {
+  const fields = document.querySelectorAll("input, textarea, select");
+  for (const el of Array.from(fields)) {
+    if (el instanceof HTMLInputElement) {
+      if (["checkbox", "radio"].includes(el.type) ? el.checked !== el.defaultChecked : el.value !== el.defaultValue) {
+        if (el.type !== "hidden") return true;
+      }
+    } else if (el instanceof HTMLTextAreaElement) {
+      if (el.value !== el.defaultValue) return true;
+    } else if (el instanceof HTMLSelectElement) {
+      for (const o of Array.from(el.options)) if (o.selected !== o.defaultSelected) return true;
+    }
+  }
+  return false;
+}
+
+function mayReloadForStaleChunk(): boolean {
+  try {
+    if (navigator.onLine === false) return false;
+    if (hasUnsavedInput()) return false;
+    const last = Number(window.sessionStorage.getItem(STALE_RELOAD_KEY) || 0);
+    if (last && Date.now() - last < STALE_RELOAD_GAP_MS) return false;
+    window.sessionStorage.setItem(STALE_RELOAD_KEY, String(Date.now()));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Send the queued reports now (so the reload doesn't lose them), then reload. */
+function reloadForStaleChunk() {
+  try {
+    while (queue.length) send(queue.shift() as Json);
+  } catch {
+    /* reporting must never block the recovery */
+  }
+  setTimeout(() => {
+    try {
+      window.location.reload();
+    } catch {
+      /* nothing more to do */
+    }
+  }, 150);
+}
+
 function onErrorEvent(ev: Event) {
   const target = ev.target as (HTMLElement & { src?: string; href?: string }) | null;
   // Resource-load failure (img / script / link / media) — target is the element,
@@ -257,13 +330,15 @@ function onErrorEvent(ev: Event) {
     const tag = target.tagName.toLowerCase();
     if (["img", "script", "link", "audio", "video", "source", "track"].includes(tag)) {
       const resUrl = target.src || target.href || "";
+      const reload = tag === "script" && isStaleChunk(resUrl) && mayReloadForStaleChunk();
       reportError({
         type: "resource_error",
         severity: "error",
         message: `Failed to load ${tag}${resUrl ? `: ${resUrl}` : ""}`,
         source: resUrl,
-        props: { resourceUrl: resUrl, tagName: tag },
+        props: { resourceUrl: resUrl, tagName: tag, recovery: reload ? "reload" : undefined },
       });
+      if (reload) reloadForStaleChunk();
       return;
     }
   }

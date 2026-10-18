@@ -37,7 +37,25 @@ function escapeForScript(input: string): string {
   return out;
 }
 
+/**
+ * An array is written as one script per object, never as a top-level JSON
+ * array. Google reads both forms identically, but scripts that read the page's
+ * structured data (seen from a Safari add-on, Sep–Oct 2026) do
+ * `block["@context"].toLowerCase()` on each block and crash on an array, which
+ * has no "@context" of its own. One object per block gives every reader the
+ * shape it expects; the objects themselves are unchanged.
+ */
 export function JsonLd({ data }: { data: Record<string, unknown> | Record<string, unknown>[] }) {
-  const json = escapeForScript(JSON.stringify(data));
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: json }} />;
+  const items = Array.isArray(data) ? data : [data];
+  return (
+    <>
+      {items.map((item, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: escapeForScript(JSON.stringify(item)) }}
+        />
+      ))}
+    </>
+  );
 }
