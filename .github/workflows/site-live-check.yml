@@ -1,0 +1,48 @@
+name: Site live check
+
+# Read-only checks of the deployed SC Design site and its API (scripts/live-smoke.mjs):
+# every sitemap page and unlisted area answers with its page, every serverless function
+# starts, the admin endpoints refuse a request with no session. Then the Playwright smoke
+# tests (tests/e2e) run against the live site. Nothing is written: no form, no analytics
+# event, no login attempt. Run it from the Actions tab ("Run workflow").
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: Site to check
+        default: https://scdesignwirral.co.uk
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Pages and functions
+        env:
+          SITE: ${{ inputs.site }} # passed as data, never spliced into the script
+        run: |
+          set +e
+          node scripts/live-smoke.mjs --site "$SITE" 2>&1 | tee smoke.log
+          status=${PIPESTATUS[0]}
+          node scripts/wvroofing/qa-annotate.mjs smoke.log "$status"
+          exit $status
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Smoke tests (tests/e2e) against the live site
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ inputs.site }}
+        run: |
+          set +e
+          npx playwright test 2>&1 | tee e2e.log
+          status=${PIPESTATUS[0]}
+          node scripts/wvroofing/qa-annotate.mjs e2e.log "$status"
+          exit $status

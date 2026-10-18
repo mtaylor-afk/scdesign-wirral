@@ -1,5 +1,6 @@
 // Serves the static export (out/) for the Playwright smoke tests: `next start` can't serve an
-// `output: "export"` build. Directory URLs serve their index.html, as Cloudflare Pages does.
+// `output: "export"` build. Directory URLs serve their index.html and /page serves page.html, as
+// Cloudflare Pages does.
 //
 //   node scripts/serve-static.mjs [dir=out] [port=3000]
 import http from "node:http";
@@ -17,6 +18,7 @@ http
     if (!file.startsWith(root)) return res.writeHead(403).end();
     if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, "index.html");
     else if (!fs.existsSync(file) && fs.existsSync(file + "/index.html")) file += "/index.html";
+    else if (!fs.existsSync(file) && fs.existsSync(file + ".html")) file += ".html"; // /llms -> llms.html, as Cloudflare does
     if (!fs.existsSync(file)) {
       const notFound = path.join(root, "404.html");
       res.writeHead(404, { "content-type": TYPES[".html"] });
