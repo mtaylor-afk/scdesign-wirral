@@ -12,6 +12,8 @@ export class ApiError extends Error {
     this.code = code;
     // what the server listed as wrong, e.g. which roof face
     this.problems = (detail && Array.isArray(detail.problems) && detail.problems) || [];
+    // which form fields the server rejected, e.g. ["email"]
+    this.fields = (detail && Array.isArray(detail.fields) && detail.fields) || [];
   }
 }
 

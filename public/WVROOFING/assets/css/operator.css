@@ -248,6 +248,7 @@ body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
   border: 1px solid var(--field-line); background: var(--field-bg); color: var(--text); font-size: 16px;
 }
 .op-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--focus-ring); }
+.op-input[aria-invalid="true"] { border-color: var(--err); }
 .op-table.op-entry td { padding-right: 6px; vertical-align: middle; }
 .op-table.op-entry input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--blue); }
 .op-hover-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }

@@ -659,7 +659,13 @@ async function setStatus(ctx) {
   return json(ctx.res, 200, { ok: true, status });
 }
 
-const CONTACT_FIELDS = ["name", "contact", "email", "phone", "postcode"];
+const CONTACT_WORDS = /** @type {Record<string, string>} */ ({
+  name: "a name of at least 2 letters",
+  contact: "a phone number or an email address",
+  email: "the email address",
+  phone: "the phone number (7 to 20 digits, spaces, +, - or brackets)",
+  postcode: "the postcode",
+});
 
 /**
  * Correct the customer's contact details (a typo in an email, a new phone number),
@@ -671,8 +677,12 @@ async function updateContact(ctx) {
   const e = await enquiryRow(ctx);
   const body = await readJson(ctx.req, 4 * 1024);
   const { d, problems } = enquiries.validate({ name: body.name, phone: body.phone, email: body.email, postcode: body.postcode, consent: true });
-  const wrong = problems.filter((p) => CONTACT_FIELDS.includes(p));
-  if (wrong.length) throw new HttpError(400, "invalid_fields", "Please check the details: a name, and a phone number or an email address, are needed.", { fields: wrong });
+  const wrong = problems.filter((p) => p in CONTACT_WORDS);
+  if (wrong.length) {
+    const words = wrong.map((p) => CONTACT_WORDS[p]);
+    const list = words.length === 1 ? words[0] : words.slice(0, -1).join(", ") + " and " + words[words.length - 1];
+    throw new HttpError(400, "invalid_fields", "Please check " + list + ".", { fields: wrong });
+  }
   const now = { name: d.name, email: d.email || null, phone: d.phone || null, postcode: d.postcode || null };
   const was = { name: e.contact_name, email: e.contact_email || null, phone: e.contact_phone || null, postcode: e.postcode || null };
   const changed = /** @type {(keyof typeof now)[]} */ (Object.keys(now)).filter((k) => now[k] !== was[k]);

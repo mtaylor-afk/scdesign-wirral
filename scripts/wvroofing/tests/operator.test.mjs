@@ -319,6 +319,7 @@ test("contact details are corrected with the form's checks; the history names th
   const bad = await post({ name: "J", email: "not-an-email", phone: "", postcode: "nowhere" });
   assert.equal(bad.status, 400);
   assert.deepEqual(bad.json.fields.sort(), ["email", "name", "postcode"]);
+  assert.equal(bad.json.message, "Please check a name of at least 2 letters, the email address and the postcode.", "names what's wrong");
   assert.equal((await post({ name: "Jo Test", email: "", phone: "", postcode: "" })).status, 400, "a phone number or an email is needed");
   const same = await post({ name: before.contact_name, email: before.contact_email || "", phone: before.contact_phone || "", postcode: before.postcode || "" });
   assert.equal(same.status, 200);

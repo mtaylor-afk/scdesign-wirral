@@ -553,7 +553,7 @@ function contactForm(e) {
     h("h4", { text: "Correct the contact details" }),
     h("p", { class: "op-muted op-small", text: "The same checks as the enquiry form: a name, and a phone number or an email address. The history notes what changed, not the old details." }),
     field("name", "Name", e.name, { autocomplete: "off", maxlength: "80", required: true }),
-    field("phone", "Phone", e.phone, { autocomplete: "off", maxlength: "24", inputmode: "tel" }),
+    field("phone", "Phone", e.phone, { autocomplete: "off", maxlength: "20", inputmode: "tel" }),
     field("email", "Email", e.email, { autocomplete: "off", maxlength: "120", inputmode: "email" }),
     field("postcode", "Postcode", e.postcode, { autocomplete: "off", maxlength: "10" }),
     err,
@@ -578,6 +578,7 @@ function contactForm(e) {
     ev.preventDefault();
     err.hidden = true;
     btn.disabled = true;
+    for (const input of Object.values(inputs)) input.removeAttribute("aria-invalid");
     try {
       const r = await api("POST", "operator/enquiries/" + e.id + "/contact", { name: inputs.name.value, phone: inputs.phone.value, email: inputs.email.value, postcode: inputs.postcode.value });
       status(r.changed.length ? "Contact details corrected for " + e.reference + "." : "Nothing changed for " + e.reference + ".");
@@ -587,6 +588,10 @@ function contactForm(e) {
       err.textContent = ex.message;
       err.hidden = false;
       btn.disabled = false;
+      // "contact" means neither a phone nor an email: mark both.
+      const bad = (ex.fields || []).flatMap((f) => (f === "contact" ? ["phone", "email"] : [f])).filter((f) => inputs[f]);
+      for (const f of bad) inputs[f].setAttribute("aria-invalid", "true");
+      if (bad.length) inputs[bad[0]].focus();
     }
   });
   return h("div", { class: "op-contact" }, toggle, form);
