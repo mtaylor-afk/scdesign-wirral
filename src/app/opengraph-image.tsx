@@ -45,7 +45,6 @@ export default function OpengraphImage() {
           padding: "72px",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={wordmark.src} alt="" width={820} height={266} />
         <div
           style={{
