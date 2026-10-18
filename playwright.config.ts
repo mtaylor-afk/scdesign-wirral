@@ -17,7 +17,8 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
-        command: "npm run build && npm run start",
+        // A static export: `next start` can't serve it, so out/ is served as Cloudflare Pages would.
+        command: "npm run build && node scripts/serve-static.mjs out 3000",
         url: "http://localhost:3000",
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
