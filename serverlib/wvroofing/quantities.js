@@ -161,6 +161,7 @@ function estimate(m, product, opts) {
     spec_version: spec.version,
     spec_status: spec.status,
     unit: spec.unit,
+    min_pitch_deg: spec.min_pitch_deg,
     complete: usable && counted.length > 0 && open.length === 0,
     lines,
     total,

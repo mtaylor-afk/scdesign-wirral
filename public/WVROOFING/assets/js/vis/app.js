@@ -1185,7 +1185,7 @@ async function boot() {
         const id = S.cat ? firstChoice() : null;
         const v = id && S.cat.byId.get(id);
         const measuring = S.caps && S.caps.assisted_measurement && S.caps.assisted_measurement.state === "enabled";
-        showEstimate({ visualId: v ? id : null, visualName: v ? v.name + ", " + v.colourName : "this roof", canAddFiles: !!currentProject() && storageReady() && !!measuring });
+        showEstimate({ visualId: v ? id : null, visualName: v ? v.name + ", " + v.colourName : "this roof", canAddFiles: !S.sample && !!currentProject() && storageReady() && !!measuring, sampleId: S.sample ? S.sample.id : null });
       }
       updateSummary();
     },

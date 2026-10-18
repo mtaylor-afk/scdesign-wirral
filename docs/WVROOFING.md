@@ -102,6 +102,7 @@ state and the reason.
 | Variable | Needed for | Default |
 |---|---|---|
 | `WVR_OPENAI_API_KEY` | photo-real renders (use a dedicated OpenAI project with a hard budget); also needs `WVR_CAP_IMAGE_GENERATION=on` and project storage | unset = previews only |
+| `WVR_CUSTOMER_DRAFTS` | `off` = customers see quantities only from roofer-verified products (the strict rule, for a real business) | on: the concept shows the draft figures, each marked as unchecked |
 | `WVR_LEAD_TO` | where enquiry notifications are emailed (comma-separated); also needs `WVR_CAP_ENQUIRY_DELIVERY=on` | unset = saved, not emailed |
 | `WVR_IDEAL_POSTCODES_KEY` | address lookup; also needs `WVR_CAP_ADDRESS_LOOKUP=on` | unset = type the address |
 | `WVR_GOOGLE_MAPS_STATIC_KEY` + `WVR_GOOGLE_MAPS_SIGNING_SECRET` | the satellite view; also needs `WVR_CAP_AERIAL_DISPLAY=on` | unset = no satellite view |

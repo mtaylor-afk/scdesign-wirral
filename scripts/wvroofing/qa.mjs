@@ -357,13 +357,15 @@ try {
     const renderNote = (await page.textContent("#render-status")) || "";
     ok("sample houses never call the AI service", startHidden && /own photo|pre-rendered/.test(renderNote), renderNote);
 
-    // The estimate step says honestly that there's no measurement data, and offers a survey.
+    // A sample house shows its example roof size; with no roof chosen yet, it asks for one.
     await page.click("#btn-to-estimate");
     await page.waitForSelector('[data-panel="estimate"]:not([hidden])', { timeout: 5000 });
-    const est = (await page.textContent('[data-panel="estimate"]')) || "";
+    await page.waitForFunction(() => /Example figures/.test((document.querySelector("#estimate-source") || {}).textContent || ""), null, { timeout: 10000 }).catch(() => null);
+    const est = (await page.innerText('[data-panel="estimate"]')) || "";
     ok(
-      "estimate: 'suitable data unavailable', the survey disclaimer and what's not included",
-      /Suitable data unavailable/.test(est) && /Final quantities, specification and price are subject to a roof survey/.test(est) && /ridges, hips, valleys/.test(est)
+      "estimate: a sample house's example size (marked as an example), 'choose a roof', the survey disclaimer and what's not included",
+      /Indicative estimate/.test(est) && /Example figures for this sample house/.test(est) && /Choose a roof/.test(est) && /Final quantities, specification and price are subject to a roof survey/.test(est) && /ridges/.test(est),
+      est.replace(/\s+/g, " ").slice(0, 200)
     );
     await page.click("#btn-estimate-back");
     await page.waitForSelector('[data-panel="compare"]:not([hidden])', { timeout: 5000 });
@@ -406,6 +408,24 @@ try {
     }
     await shot(page, { path: path.join(OUT, "vis-quote-desktop.png") });
     ok("visualiser flow has no console errors", errors.length === 0, errors.join(" | "));
+
+    // With a roof chosen (here from the link), the sample's quantities, the drafts marked as unchecked.
+    const page2 = await ctx.newPage();
+    const errors2 = watch(page2);
+    await page2.goto(BASE + "/WVROOFING/visualiser/?sample=semi-1930s&tile=welsh-slate", { waitUntil: "load", timeout: 45000 });
+    await page2.waitForSelector('[data-panel="mark"]:not([hidden])', { timeout: 15000 });
+    await page2.click("#btn-compare");
+    await page2.waitForSelector("#btn-to-estimate:not([disabled])", { timeout: 60000 });
+    await page2.click("#btn-to-estimate");
+    await page2.waitForFunction(() => /\d slates/.test((document.querySelector("#estimate-products") || {}).textContent || ""), null, { timeout: 10000 }).catch(() => null);
+    const est2 = (await page2.innerText('[data-panel="estimate"]')) || "";
+    ok(
+      "estimate: a sample house's example quantities for the chosen roof, marked as not yet checked by a roofer",
+      /Welsh Slate .*: about [\d,]+ slates, including a 5% allowance/.test(est2) && /not yet checked by a roofer/.test(est2) && /Example figures for this sample house/.test(est2),
+      est2.replace(/\s+/g, " ").slice(0, 240)
+    );
+    await shot(page2, { path: path.join(OUT, "vis-estimate-sample-desktop.png"), fullPage: true });
+    ok("sample estimate page has no console errors", errors2.length === 0, errors2.join(" | "));
     await ctx.close();
   }
 
@@ -760,7 +780,7 @@ try {
         await cctx.addInitScript((proj) => sessionStorage.setItem("wvr.project.v1", JSON.stringify(proj)), made.project);
         const cpage = await cctx.newPage();
         const cerrors = watch(cpage);
-        await cpage.goto(BASE + "/WVROOFING/visualiser/?project=" + made.project.id + "&step=estimate", { waitUntil: "load", timeout: 45000 });
+        await cpage.goto(BASE + "/WVROOFING/visualiser/?project=" + made.project.id + "&step=estimate&tile=welsh-slate", { waitUntil: "load", timeout: 45000 });
         const figures = await cpage
           .waitForFunction(() => {
             const a = document.querySelector("#estimate-area");
@@ -768,10 +788,11 @@ try {
           }, null, { timeout: 30000 })
           .then(() => true)
           .catch(() => false);
-        const estText = (await cpage.textContent('[data-panel="estimate"]')) || "";
+        await cpage.waitForFunction(() => /\d slates/.test((document.querySelector("#estimate-products") || {}).textContent || ""), null, { timeout: 10000 }).catch(() => null);
+        const estText = (await cpage.innerText('[data-panel="estimate"]')) || "";
         ok(
           "customer: the estimate shows the roofer's measurement (about 98 m², who and when, the disclaimer)",
-          figures && /Indicative estimate/.test(estText) && /Measured by the roofer from a site survey/.test(estText) && /subject to a roof survey/.test(estText),
+          figures && /Indicative estimate/.test(estText) && /Measured by the roofer from a site survey/.test(estText) && /subject to a roof survey/.test(estText) && /not yet checked by a roofer/.test(estText),
           estText.replace(/\s+/g, " ").slice(0, 160)
         );
         await cpage.setInputFiles("#evidence-file", { name: "plan.pdf", mimeType: "application/pdf", buffer: Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.alloc(400, 32)]) });

@@ -191,9 +191,19 @@ test("the customer sees a measurement only once it's approved and made visible",
   assert.equal(e.measurement.faces, 2);
   assert.match(e.measurement.label, /^Measured by the roofer from a site survey on 20 September 2026$/);
   assert.equal(e.measurement.changes_since_year, 2026);
-  assert.equal(e.reason, "no_verified_product", "no product for this look is verified: no quantities");
-  assert.deepEqual(e.products, []);
   assert.ok(!JSON.stringify(e).includes("97.6"), "no unrounded figures reach the customer");
+  // The concept (the default): the draft specifications, each marked as a draft.
+  assert.equal(e.reason, null);
+  assert.ok(e.products.length > 0 && e.products.every((p) => p.draft === true && p.total.units > 0), "drafts shown, marked");
+  // Strict mode, for a real business: verified products only, and none is verified.
+  process.env.WVR_CUSTOMER_DRAFTS = "off";
+  try {
+    const strict = await estimate(j.p);
+    assert.equal(strict.reason, "no_verified_product", "no product for this look is verified: no quantities");
+    assert.deepEqual(strict.products, []);
+  } finally {
+    delete process.env.WVR_CUSTOMER_DRAFTS;
+  }
   const noLook = (await api("GET", "projects/" + j.p.id + "/estimate", { token: j.p.token })).json.estimate;
   assert.equal(noLook.status, "indicative_available", "the roof's size doesn't depend on the look");
   assert.equal(noLook.measurement.area_m2, 98);
@@ -202,6 +212,7 @@ test("the customer sees a measurement only once it's approved and made visible",
 
 test("with a verified product: quantities, the allowance, a ridge from its entered length, and what isn't included", async () => {
   catalogue.PRODUCTS.set(TEST_PRODUCT.id, TEST_PRODUCT);
+  process.env.WVR_CUSTOMER_DRAFTS = "off"; // strict mode: the real drafts stay out of the counts below
   try {
     const j = await customerJourney(api, { enquiry: false });
     const { measurement: m } = await record(j.p.id);
@@ -220,10 +231,30 @@ test("with a verified product: quantities, the allowance, a ridge from its enter
     assert.deepEqual(other.products, [], "a look without a verified product has no quantities");
     const draft = Object.assign({}, TEST_PRODUCT, { id: "test-draft", spec: Object.assign({}, TEST_PRODUCT.spec, { status: "draft", verified_by: null, verified_at: null }) });
     catalogue.PRODUCTS.set(draft.id, draft);
-    assert.equal((await estimate(j.p)).products.length, 1, "drafts never reach the customer");
+    assert.equal((await estimate(j.p)).products.length, 1, "in strict mode drafts never reach the customer");
+    assert.equal(p.draft, false, "a verified product isn't marked as a draft");
   } finally {
+    delete process.env.WVR_CUSTOMER_DRAFTS;
     catalogue.PRODUCTS.delete(TEST_PRODUCT.id);
     catalogue.PRODUCTS.delete("test-draft");
+  }
+});
+
+test("the concept shows customers the draft figures with verified ones, each marked", async () => {
+  catalogue.PRODUCTS.set(TEST_PRODUCT.id, TEST_PRODUCT);
+  try {
+    const j = await customerJourney(api, { enquiry: false });
+    const { measurement: m } = await record(j.p.id);
+    await approve(m.id);
+    const e = await estimate(j.p);
+    const verified = e.products.find((x) => x.name === "Testco Slate-look tile, Smooth Grey");
+    const drafts = e.products.filter((x) => x.draft);
+    assert.ok(verified && verified.draft === false, "the verified product is there, unmarked");
+    assert.ok(drafts.length > 0 && drafts.every((x) => x.total.units > 0), "the look's draft product is there too, marked");
+    const slate = await estimate(j.p, "welsh-slate");
+    assert.ok(slate.products.length > 0 && slate.products.every((x) => x.draft && /Welsh Slate/.test(x.name)), "drafts only for a look with no verified product");
+  } finally {
+    catalogue.PRODUCTS.delete(TEST_PRODUCT.id);
   }
 });
 
@@ -263,6 +294,7 @@ test("the operator's scope correction sends the measurement back for review and 
 
 test("an enquiry keeps the measurement and quantities the customer could see when they sent it", async () => {
   catalogue.PRODUCTS.set(TEST_PRODUCT.id, TEST_PRODUCT);
+  process.env.WVR_CUSTOMER_DRAFTS = "off"; // strict mode: only the verified test product is quoted
   try {
     const j = await customerJourney(api, { enquiry: false });
     const { measurement: m } = await record(j.p.id);
@@ -277,6 +309,7 @@ test("an enquiry keeps the measurement and quantities the customer could see whe
     assert.equal(snap.measurement.shown.area_m2, 98);
     assert.equal(snap.quantities[0].name, "Testco Slate-look tile, Smooth Grey");
   } finally {
+    delete process.env.WVR_CUSTOMER_DRAFTS;
     catalogue.PRODUCTS.delete(TEST_PRODUCT.id);
   }
   const hidden = await customerJourney(api, { enquiry: false });

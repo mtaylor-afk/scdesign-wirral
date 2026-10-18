@@ -23,6 +23,16 @@ function enabled() {
   return require("./capabilities.js").isEnabled("assisted_measurement", process.env);
 }
 
+/**
+ * Do customers see quantities from DRAFT specifications? On by default: WV Roofing is a
+ * concept site with no roofer to verify the products (owner decision, 2026-10-18), so the
+ * drafts are shown, every line marked as unchecked. WVR_CUSTOMER_DRAFTS=off restores the
+ * strict rule (verified products only) for a real business.
+ */
+function customerDrafts() {
+  return process.env.WVR_CUSTOMER_DRAFTS !== "off";
+}
+
 function requireEnabled() {
   if (!enabled()) throw new HttpError(503, "not_configured", "Roof measurement isn't switched on.");
 }
@@ -195,7 +205,8 @@ const NOT_INCLUDED_WORDS = /** @type {Record<string, string>} */ ({
  *   unavailable           nothing measured (or the measurement was rejected)
  *   processing            measured, and the roofer is checking it
  *   measured_not_shown    approved, but its figures can't be shown online: they come with the quotation
- *   indicative_available  the roof's size, and quantities from verified products
+ *   indicative_available  the roof's size, and quantities from verified products (and
+ *                         from drafts, marked draft: true, while customerDrafts() is on)
  * The roof's size doesn't depend on the look; the materials do (no look chosen
  * yet: the size alone, reason "no_look_chosen").
  * @param {string} projectId
@@ -212,7 +223,7 @@ async function estimateFor(projectId, visualId) {
     if (cur.approved_at && cur.status === "indicative_available") return Object.assign({ status: "measured_not_shown", reason: "figures_in_quotation" }, none);
     return Object.assign({ status: "processing", reason: "being_checked" }, none);
   }
-  const ests = visualId ? quantities.estimateForVisual(forQuantities(m), visualId) : [];
+  const ests = visualId ? quantities.estimateForVisual(forQuantities(m), visualId, { drafts: customerDrafts() }) : [];
   const notIncluded = new Set();
   for (const e of ests) for (const n of e.not_included) notIncluded.add(NOT_INCLUDED_WORDS[n.item] || n.item);
   if (!ests.length) for (const w of Object.values(NOT_INCLUDED_WORDS)) notIncluded.add(w);
@@ -223,7 +234,9 @@ async function estimateFor(projectId, visualId) {
     products: ests.map((e) => ({
       name: e.product_name,
       unit: e.unit,
+      draft: e.spec_status !== "verified",
       complete: e.complete,
+      too_shallow: !e.total && e.lines.some((l) => l.status === "below_min_pitch") ? e.min_pitch_deg : null,
       total: e.total ? { units: e.total.units, allowance_pct: e.total.allowance_pct, packs: e.total.packs, pack_size: e.total.pack_size, pack_name: e.total.pack_name } : null,
       linear: e.linear.map((l) => ({ kind: l.kind, length_m: Math.round(l.length_m * 10) / 10, units: l.units, product: l.product })),
       warnings: e.warnings,
@@ -242,4 +255,4 @@ async function estimateRoute(ctx) {
   return json(ctx.res, 200, { ok: true, estimate: await estimateFor(ctx.project.id, visualId || null) });
 }
 
-module.exports = { create, current, visible, supersedeAll, sendBackForReview, estimateFor, estimate: estimateRoute, fromRow, forQuantities, enabled, requireEnabled };
+module.exports = { create, current, visible, supersedeAll, sendBackForReview, estimateFor, estimate: estimateRoute, fromRow, forQuantities, enabled, requireEnabled, customerDrafts };
