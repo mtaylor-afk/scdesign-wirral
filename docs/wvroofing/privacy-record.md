@@ -119,12 +119,14 @@ See `retention.md`. In short:
 | Request | How it's handled |
 |---|---|
 | **Access** | Operator screen, then search by name, email, phone, postcode or reference, then open the enquiry. It shows everything held. **Get the original file** gives the photo; renders open full size. A copy is sent to the customer by email. |
-| **Rectification** | The kind of property: **Correct the scope**, which keeps a history. Contact details can't be edited on the screen yet: note the correction in the reply, or delete the enquiry and ask the customer to send it again. This is a known gap. |
+| **Rectification** | The kind of property: **Correct the scope**, which keeps a history. Contact details (name, phone, email, postcode): **Correct the details** in the Customer card (since 2026-10-18), with the enquiry form's checks. |
 | **Erasure** | **Delete the enquiry and its project**, or **Delete the photo and project only**. Also delete the roofer's email copies. Provider copies expire as in section 5. |
 | **Objection** | Treated as erasure for the visualiser. |
 | **Withdrawing consent (OpenAI)** | The switch in the visualiser. The operator can't make renders for a customer who has withdrawn. |
 
 Every operator action is recorded with before and after (`wvr_operator_actions`) and kept for 12 months.
+The exception is a contact-details correction: it records only which fields changed, never the old or new
+values, because these records outlive a deleted enquiry.
 
 ## 7. Security measures (summary)
 

@@ -218,8 +218,10 @@ and is hidden until you approve it again.
 **Quantities.** The card lists what each product for the customer's chosen roof would need.
 
 - The figures come from the manufacturers' datasheets and are marked **Draft**.
-- Customers never see draft figures. They see quantities only for products you've verified: check the
-  datasheet, then set the product's specification to verified with your name and the date.
+- On this concept site customers see the draft figures too (since 2026-10-18), each line marked "not yet
+  checked by a roofer". With `WVR_CUSTOMER_DRAFTS=off` they see quantities only for products you've
+  verified: check the datasheet, then set the product's specification to verified with your name and the
+  date.
 
 **Plans and drawings.** Files the customer added (plans, drawings, extra photos) are listed under **The
 customer's plans and drawings**.
