@@ -324,5 +324,6 @@ test("a newer request made while one runs is kept", async () => {
 test("oidc: a valid token passes and names the workflow", async () => {
   const v = await oidc.verifyWorkflowToken(jwt({ event_name: "workflow_dispatch" }));
   assert.equal(v.ok, true, v.reason);
+  assert.equal((await oidc.verifyWorkflowToken(jwt({ event_name: "push" }))).ok, true);
   assert.equal(v.claims.job_workflow_ref, oidc.EXPECT.workflow);
 });

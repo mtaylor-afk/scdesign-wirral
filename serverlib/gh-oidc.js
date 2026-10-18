@@ -95,7 +95,10 @@ async function verifyWorkflowToken(jwt, opts) {
     // job_workflow_ref names the workflow FILE that ran, so another workflow in
     // the repo (or a pull request's copy of this one) is refused.
     if (c.job_workflow_ref !== EXPECT.workflow) return { ok: false, reason: "workflow" };
-    if (c.event_name !== "schedule" && c.event_name !== "workflow_dispatch") return { ok: false, reason: "event" };
+    // "push" is a push to main that changed the workflow or its script (see the
+    // workflow's paths filter): it runs code already on main, like the schedule.
+    // pull_request and the rest never reach here with ref main, but are named out.
+    if (!["schedule", "workflow_dispatch", "push"].includes(c.event_name)) return { ok: false, reason: "event" };
     return { ok: true, claims: c };
   } catch {
     return { ok: false, reason: "invalid" };
