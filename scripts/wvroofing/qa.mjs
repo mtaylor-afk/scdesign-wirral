@@ -535,6 +535,18 @@ try {
           renderPosts === 0 && offered === rendersOn,
           renderPosts + " requests, offer shown: " + offered + ", image_generation: " + capState("image_generation"),
         );
+        // The customer's own photo, not yet measured: the estimate says so honestly (no example figures).
+        await page.click("#btn-to-estimate");
+        await page.waitForSelector('[data-panel="estimate"]:not([hidden])', { timeout: 5000 });
+        await page.waitForFunction(() => /Suitable data unavailable/.test((document.querySelector("#estimate-badge") || {}).textContent || ""), null, { timeout: 10000 }).catch(() => null);
+        const ownEst = (await page.innerText('[data-panel="estimate"]')) || "";
+        ok(
+          "phone: an unmeasured photo's estimate says 'suitable data unavailable', with the disclaimer and what's not included",
+          /Suitable data unavailable/.test(ownEst) && !/Example figures/.test(ownEst) && /subject to a roof survey/.test(ownEst) && /ridges, hips, valleys/.test(ownEst),
+          ownEst.replace(/\s+/g, " ").slice(0, 200)
+        );
+        await page.click("#btn-estimate-back");
+        await page.waitForSelector('[data-panel="compare"]:not([hidden])', { timeout: 5000 });
         // Renders are driven only against the local test environment's stand-in, never a deployed
         // copy (--live): a real render costs money and goes to OpenAI.
         const live = await page.evaluate(() => !!(window.__wvr && window.__wvr.health && window.__wvr.health.renders.live && window.__wvr.health.renders.test));
