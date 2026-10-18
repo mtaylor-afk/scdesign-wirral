@@ -13,6 +13,10 @@ on:
         description: Site to check
         default: https://scdesignwirral.co.uk
 
+# Read-only: the job only checks out the code and reports.
+permissions:
+  contents: read
+
 jobs:
   live-qa:
     runs-on: ubuntu-latest
@@ -26,25 +30,19 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Health
-        run: echo "::notice title=health::$(curl -sS https://scdesign-wirral.vercel.app/api/wvroofing/health)"
-      # Failures, skips and the total are also posted as annotations, so they can
-      # be read from the run's page (or the API) without opening the log.
+        run: |
+          curl -sS https://scdesign-wirral.vercel.app/api/wvroofing/health > health.json || true
+          node scripts/wvroofing/qa-annotate.mjs --health health.json
+      # Failures, skips and the total are also posted as annotations (scripts/wvroofing/qa-annotate.mjs),
+      # so they can be read from the run's page (or the API) without opening the log.
       - name: Live QA
+        env:
+          BASE: ${{ inputs.base }} # passed as data, never spliced into the script
         run: |
           set +e
-          node scripts/wvroofing/qa.mjs --base "${{ inputs.base }}" --live --out qa-out 2>&1 | tee qa.log
+          node scripts/wvroofing/qa.mjs --base "$BASE" --live --out qa-out 2>&1 | tee qa.log
           status=${PIPESTATUS[0]}
-          # GitHub shows at most 10 errors per step: the first 9 in full, then every failure's name in one.
-          grep '^FAIL' qa.log | head -9 | cut -c1-900 | sed 's/^/::error::/'
-          if [ "$(grep -c '^FAIL' qa.log)" -gt 9 ]; then
-            echo "::error title=all failures::$(grep '^FAIL' qa.log | sed 's/ - .*//' | sed ':a;N;$!ba;s/\n/%0A/g')"
-          fi
-          grep '^SKIP' qa.log | head -10 | sed 's/^/::warning::/'
-          tail -1 qa.log | sed 's/^/::notice title=result::/'
-          # On a failure, the end of the log too (a crash's stack trace lives there).
-          if [ "$status" -ne 0 ]; then
-            echo "::notice title=log tail::$(tail -30 qa.log | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
-          fi
+          node scripts/wvroofing/qa-annotate.mjs qa.log "$status"
           exit $status
       - uses: actions/upload-artifact@v7
         if: always()

@@ -23,5 +23,7 @@ jobs:
       - run: npm ci
       - name: Typecheck + lint + build
         run: npm run validate
+      - name: WV Roofing type check + test suites (incl. sample estimates in step with products.json)
+        run: npm run -s wvr:check && npm run -s wvr:test
       - name: Dependency audit (report only — vuln fixes are owner-timed)
         run: npm audit --audit-level=high || true
