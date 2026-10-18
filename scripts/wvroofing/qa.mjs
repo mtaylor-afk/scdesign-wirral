@@ -232,6 +232,8 @@ try {
     await page.goto(BASE + "/WVROOFING/", { waitUntil: "load", timeout: 45000 });
     await page.locator("[data-picker]").scrollIntoViewIfNeeded();
     const dots = page.locator('[data-picker-dots] [role="radio"]');
+    // The dots are built after the picker's code and the catalogue load: wait for them.
+    await page.waitForFunction(() => document.querySelectorAll('[data-picker-dots] [role="radio"]').length > 0, null, { timeout: 15000 }).catch(() => null);
     ok("picker offers 8 roof colours", (await dots.count()) === 8, (await dots.count()) + " dots");
     const first = await page
       .waitForFunction(() => document.querySelector("[data-picker]").dataset.showing || null, null, { timeout: 30000 })
