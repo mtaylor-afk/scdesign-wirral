@@ -144,6 +144,10 @@ Message, Photo (Yes/No), Previews, Email to roofer (whether it was delivered), M
 - Name, phone and email, which you can tap to call or write.
 - Their roof choice and message.
 - Whether they asked for their images to be attached to the email.
+- **Correct the details** (added 2026-10-18) fixes a name, phone number, email or postcode, for example a
+  typo in an email address. It uses the same checks as the enquiry form: a name, and a phone number or an
+  email address. The history notes which details changed, not what they were, because the history is kept
+  after an enquiry is deleted.
 
 **Property**
 

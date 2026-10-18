@@ -659,6 +659,32 @@ async function setStatus(ctx) {
   return json(ctx.res, 200, { ok: true, status });
 }
 
+const CONTACT_FIELDS = ["name", "contact", "email", "phone", "postcode"];
+
+/**
+ * Correct the customer's contact details (a typo in an email, a new phone number),
+ * with the same checks as the enquiry form. The history records which fields
+ * changed, never the old or new values: audit rows outlive a deleted enquiry.
+ * @param {OperatorCtx} ctx
+ */
+async function updateContact(ctx) {
+  const e = await enquiryRow(ctx);
+  const body = await readJson(ctx.req, 4 * 1024);
+  const { d, problems } = enquiries.validate({ name: body.name, phone: body.phone, email: body.email, postcode: body.postcode, consent: true });
+  const wrong = problems.filter((p) => CONTACT_FIELDS.includes(p));
+  if (wrong.length) throw new HttpError(400, "invalid_fields", "Please check the details: a name, and a phone number or an email address, are needed.", { fields: wrong });
+  const now = { name: d.name, email: d.email || null, phone: d.phone || null, postcode: d.postcode || null };
+  const was = { name: e.contact_name, email: e.contact_email || null, phone: e.contact_phone || null, postcode: e.postcode || null };
+  const changed = /** @type {(keyof typeof now)[]} */ (Object.keys(now)).filter((k) => now[k] !== was[k]);
+  if (changed.length) {
+    await db.tx(async (t) => {
+      await t.query("UPDATE wvr_enquiries SET contact_name = $2, contact_email = $3, contact_phone = $4, postcode = $5, updated_at = now() WHERE id = $1", [e.id, now.name, now.email, now.phone, now.postcode]);
+      await audit(t, ctx, "enquiry", e.id, "contact_corrected", null, { fields: changed });
+    });
+  }
+  return json(ctx.res, 200, { ok: true, contact: now, changed });
+}
+
 /** @param {OperatorCtx} ctx */
 async function requestSurvey(ctx) {
   const e = await enquiryRow(ctx);
@@ -1139,6 +1165,7 @@ module.exports = {
   enquiryAerial,
   scope,
   setStatus,
+  updateContact,
   requestSurvey,
   resend,
   deleteEnquiry,

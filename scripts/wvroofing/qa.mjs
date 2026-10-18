@@ -750,6 +750,18 @@ try {
         .then(() => true)
         .catch(() => false);
       ok("operator: a scope correction is saved and shows in the history", corrected);
+      await page.click("#op-contact-edit");
+      await page.fill("#op-contact-phone", "0151 496 0999");
+      await page.click('#op-contact-form button[type="submit"]');
+      const contactFixed = await page
+        .waitForFunction(() => Array.from(document.querySelectorAll(".op-kv")).some((k) => /0151 496 0999/.test(k.textContent)) && /Contact details corrected: phone/.test((document.querySelector(".op-audit") || {}).textContent || ""), null, { timeout: 10000 })
+        .then(() => true)
+        .catch(() => false);
+      ok(
+        "operator: a contact detail is corrected and the history names the field",
+        contactFixed,
+        contactFixed ? "" : ((await page.textContent(".op-audit").catch(() => "")) || "").replace(/\s+/g, " ").slice(-200) + " | " + ((await page.textContent("#op-status").catch(() => "")) || "")
+      );
       await page.selectOption(".op-head select", "contacted");
       const contacted = await page
         .waitForFunction(() => /Contacted/.test(document.querySelector("#op-ref-title").textContent), null, { timeout: 10000 })

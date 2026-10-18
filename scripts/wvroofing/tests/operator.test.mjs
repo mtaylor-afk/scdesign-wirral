@@ -311,6 +311,32 @@ test("status changes and survey requests are recorded with before and after", as
   assert.equal((await api("POST", "operator/enquiries/" + id + "/scope", { token: t, body: { propertyType: "detached" } })).status, 409, "no project to correct");
 });
 
+test("contact details are corrected with the form's checks; the history names the fields, never the details", async () => {
+  const t = await login();
+  const { id } = await freeEnquiry();
+  const post = (body) => api("POST", "operator/enquiries/" + id + "/contact", { token: t, body });
+  const before = (await db.query("SELECT contact_name, contact_email, contact_phone, postcode FROM wvr_enquiries WHERE id = $1", [id])).rows[0];
+  const bad = await post({ name: "J", email: "not-an-email", phone: "", postcode: "nowhere" });
+  assert.equal(bad.status, 400);
+  assert.deepEqual(bad.json.fields.sort(), ["email", "name", "postcode"]);
+  assert.equal((await post({ name: "Jo Test", email: "", phone: "", postcode: "" })).status, 400, "a phone number or an email is needed");
+  const same = await post({ name: before.contact_name, email: before.contact_email || "", phone: before.contact_phone || "", postcode: before.postcode || "" });
+  assert.equal(same.status, 200);
+  assert.deepEqual(same.json.changed, [], "nothing changed, nothing recorded");
+  const ok = await post({ name: "Jo  Test-Smith", email: "jo.new@example.com", phone: before.contact_phone || "", postcode: "ch45 1ab" });
+  assert.equal(ok.status, 200, JSON.stringify(ok.json));
+  const row = (await db.query("SELECT contact_name, contact_email, contact_phone, postcode FROM wvr_enquiries WHERE id = $1", [id])).rows[0];
+  assert.equal(row.contact_email, "jo.new@example.com");
+  assert.equal(row.postcode, "CH45 1AB", "cleaned as the form cleans it");
+  const trail = (await actions(id)).filter((x) => x.action === "contact_corrected");
+  assert.equal(trail.length, 1);
+  assert.equal(trail[0].before, null);
+  assert.ok(trail[0].after.fields.includes("email") && !trail[0].after.fields.includes("phone"));
+  assert.ok(!JSON.stringify(trail[0]).includes("example.com"), "no contact details in the history");
+  const d = await api("GET", "operator/enquiries/" + id, { token: t });
+  assert.equal(d.json.enquiry.email, "jo.new@example.com");
+});
+
 test("finding a customer's enquiries by name, email, phone, postcode, address or reference", async () => {
   const t = await login();
   const free = await freeEnquiry();

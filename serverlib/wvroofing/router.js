@@ -83,6 +83,7 @@ const ROUTES = [
   { path: "operator/enquiries/:id/aerial", methods: ["GET"], auth: "operator", turn: "write", handler: (ctx) => op().enquiryAerial(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id/scope", methods: ["POST"], auth: "operator", handler: (ctx) => op().scope(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id/status", methods: ["POST"], auth: "operator", handler: (ctx) => op().setStatus(/** @type {any} */ (ctx)) },
+  { path: "operator/enquiries/:id/contact", methods: ["POST"], auth: "operator", handler: (ctx) => op().updateContact(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id/request-survey", methods: ["POST"], auth: "operator", handler: (ctx) => op().requestSurvey(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id/resend", methods: ["POST"], auth: "operator", handler: (ctx) => op().resend(/** @type {any} */ (ctx)) },
   { path: "operator/enquiries/:id/delete", methods: ["POST"], auth: "operator", handler: (ctx) => op().deleteEnquiry(/** @type {any} */ (ctx)) },

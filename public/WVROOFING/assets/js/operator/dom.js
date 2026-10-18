@@ -121,6 +121,7 @@ export const JOB_WORDS = {
 
 export const ACTION_WORDS = {
   scope_corrected: "Scope corrected",
+  contact_corrected: "Contact details corrected",
   status_changed: "Status changed",
   survey_requested: "Survey requested",
   email_resent: "Email sent again",

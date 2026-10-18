@@ -532,8 +532,64 @@ function customerCard(e) {
       ["Images in the email", e.includeImages ? "Yes" : "No"],
       ["Marketing", e.marketing ? "Opted in" : null],
       ["Lawful basis", e.lawfulBasis === "steps_before_contract" ? "Steps before a contract (a quote)" : e.lawfulBasis],
-    ])
+    ]),
+    contactForm(e)
   );
+}
+
+/** Correct the contact details, behind a toggle so the card stays short. */
+function contactForm(e) {
+  const inputs = {};
+  const field = (key, label, value, attrs) => {
+    const id = "op-contact-" + key;
+    inputs[key] = h("input", Object.assign({ class: "op-input", id, type: "text", value: value || "" }, attrs));
+    return [h("label", { class: "op-label", for: id, text: label }), inputs[key]];
+  };
+  const err = h("p", { class: "field-error", role: "alert", hidden: true });
+  const btn = h("button", { class: "btn btn-primary btn-sm", type: "submit", text: "Save the details" });
+  const form = h(
+    "form",
+    { class: "op-form", id: "op-contact-form", hidden: true },
+    h("h4", { text: "Correct the contact details" }),
+    h("p", { class: "op-muted op-small", text: "The same checks as the enquiry form: a name, and a phone number or an email address. The history notes what changed, not the old details." }),
+    field("name", "Name", e.name, { autocomplete: "off", maxlength: "80", required: true }),
+    field("phone", "Phone", e.phone, { autocomplete: "off", maxlength: "24", inputmode: "tel" }),
+    field("email", "Email", e.email, { autocomplete: "off", maxlength: "120", inputmode: "email" }),
+    field("postcode", "Postcode", e.postcode, { autocomplete: "off", maxlength: "10" }),
+    err,
+    btn
+  );
+  const toggle = h("button", {
+    class: "btn btn-neutral btn-sm",
+    type: "button",
+    id: "op-contact-edit",
+    "aria-expanded": "false",
+    "aria-controls": "op-contact-form",
+    text: "Correct the details",
+    on: {
+      click: () => {
+        form.hidden = !form.hidden;
+        toggle.setAttribute("aria-expanded", String(!form.hidden));
+        if (!form.hidden) inputs.name.focus();
+      },
+    },
+  });
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    err.hidden = true;
+    btn.disabled = true;
+    try {
+      const r = await api("POST", "operator/enquiries/" + e.id + "/contact", { name: inputs.name.value, phone: inputs.phone.value, email: inputs.email.value, postcode: inputs.postcode.value });
+      status(r.changed.length ? "Contact details corrected for " + e.reference + "." : "Nothing changed for " + e.reference + ".");
+      await refreshAfterChange(e.id);
+    } catch (ex) {
+      if (ex.status === 401) return;
+      err.textContent = ex.message;
+      err.hidden = false;
+      btn.disabled = false;
+    }
+  });
+  return h("div", { class: "op-contact" }, toggle, form);
 }
 
 function propertyCard(e, p) {
@@ -779,6 +835,7 @@ function describe(a) {
   const b = a.before || {};
   const f = a.after || {};
   if (a.action === "status_changed") return ": " + (STATUS_WORDS[b.status] || b.status) + " to " + (STATUS_WORDS[f.status] || f.status);
+  if (a.action === "contact_corrected" && Array.isArray(f.fields)) return ": " + f.fields.join(", ");
   if (a.action === "scope_corrected") {
     const from = b.propertyType ? (PROPERTY_WORDS[b.propertyType] || b.propertyType) + " to " : "";
     return ": " + from + (PROPERTY_WORDS[f.propertyType] || f.propertyType) + (f.notes ? " (" + f.notes + ")" : "");

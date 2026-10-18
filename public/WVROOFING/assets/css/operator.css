@@ -193,6 +193,8 @@ body.op { background: var(--bg-alt); font-size: 15px; line-height: 1.45; }
 .op-form .textarea::placeholder { color: var(--text-3); }
 .op-form .select { height: 44px; padding: 8px 44px 8px 14px; }
 .op-form .btn { justify-self: start; margin-top: 4px; }
+.op-contact { display: grid; gap: 12px; justify-items: start; margin-top: 14px; }
+.op-contact .op-form { justify-self: stretch; }
 .op-label { font-size: 13px; font-weight: 600; color: var(--text-2); margin-top: 4px; }
 
 .op-aerial { border-radius: 12px; overflow: hidden; background: var(--bg-alt); }

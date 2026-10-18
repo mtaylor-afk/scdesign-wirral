@@ -20,7 +20,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 /** Cache-buster for the admin's own stylesheets and script. Change it when they change. */
-export const VERSION = "20261002a";
+export const VERSION = "20261018a";
 
 const V1_FONTS = "https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap";
 const V2_FONTS =
