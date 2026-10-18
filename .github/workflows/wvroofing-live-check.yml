@@ -41,6 +41,10 @@ jobs:
           fi
           grep '^SKIP' qa.log | head -10 | sed 's/^/::warning::/'
           tail -1 qa.log | sed 's/^/::notice title=result::/'
+          # On a failure, the end of the log too (a crash's stack trace lives there).
+          if [ "$status" -ne 0 ]; then
+            echo "::notice title=log tail::$(tail -30 qa.log | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
+          fi
           exit $status
       - uses: actions/upload-artifact@v7
         if: always()
