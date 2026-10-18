@@ -602,12 +602,20 @@ one-off clean-up may be needed.
 Matthew settled the three open owner items. Don't raise them again:
 
 - **WV Roofing is a concept website.** There is no roofer to check the nine draft product specifications,
-  so they stay drafts (`verified_by: null`). Customers see no material quantities, by design. The
-  operator screen still shows the drafts.
+  so they stay drafts (`verified_by: null`). Since the same day, customers see quantities from the
+  drafts, every line marked "not yet checked by a roofer" (`WVR_CUSTOMER_DRAFTS`, on unless set to
+  `off`; `off` restores verified-only for a real business). The sample houses show example figures from
+  `samples/estimates.json` (`scripts/wvroofing/gen-sample-estimates.mjs`; re-run after editing
+  `products.json`, a test checks it).
 - **No enquiry email address exists.** `WVR_LEAD_TO` stays unset and `enquiry_delivery` stays off.
   Enquiries and photos are saved and shown in the admin only.
 - **The admin login stays 222 / 333.** Leave it as it is.
 
 The same day the live site passed its browser check 104/104 (3 skips: operator login, a sent enquiry,
 paid renders), run from GitHub Actions: **WV Roofing live check** (`.github/workflows/wvroofing-live-check.yml`,
-Run workflow). The Vercel functions now run on Node 24 (`engines` in `package.json`).
+Run workflow). The Vercel functions now run on Node 24 (`engines` in `package.json`), as do the
+Cloudflare build (`.nvmrc`) and the GitHub workflows.
+
+Also approved and done on 2026-10-18: the admin's **Correct the details** (contact details; the history
+names the fields, never the values), the home page's "(concept wording, to be confirmed)" note removed,
+and security upgrades (Next 16.4, sharp 0.35, nodemailer 10).
