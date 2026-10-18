@@ -196,7 +196,7 @@ let sampleFigures = null;
  * @param {string} sampleId
  * @param {string | null} visualId
  */
-async function sampleEstimate(sampleId, visualId) {
+async function sampleEstimate(sampleId, visualId, drafts) {
   if (!sampleFigures) {
     const r = await fetch(ROOT + "samples/estimates.json", { cache: "no-cache" });
     if (!r.ok) throw new Error("sample estimates " + r.status);
@@ -205,7 +205,8 @@ async function sampleEstimate(sampleId, visualId) {
   const s = sampleFigures.samples[sampleId];
   if (!s) return null;
   const v = visualId ? s.byVisual[visualId] : null;
-  const products = v ? v.products : [];
+  // With drafts switched off (a real business), unchecked figures aren't shown here either.
+  const products = v ? v.products.filter((p) => drafts || !p.draft) : [];
   return {
     status: "indicative_available",
     reason: !visualId ? "no_look_chosen" : products.length ? null : "no_verified_product",
@@ -219,14 +220,14 @@ async function sampleEstimate(sampleId, visualId) {
  * The step is on screen: show the estimate for the chosen look (a sample house
  * shows its example figures; a photo without a project keeps the plain message),
  * and, for the customer's own project, a place to add plans and drawings.
- * @param {{ visualId: string | null, visualName: string, canAddFiles?: boolean, sampleId?: string | null }} o
+ * @param {{ visualId: string | null, visualName: string, canAddFiles?: boolean, sampleId?: string | null, drafts?: boolean }} o
  */
 export async function showEstimate(o) {
   showFiles(!!o.canAddFiles);
   const mine = ++seq;
   let e = null;
   try {
-    e = o.sampleId ? await sampleEstimate(o.sampleId, o.visualId) : await getEstimate(o.visualId);
+    e = o.sampleId ? await sampleEstimate(o.sampleId, o.visualId, o.drafts !== false) : await getEstimate(o.visualId);
   } catch (err) {
     e = null;
   }

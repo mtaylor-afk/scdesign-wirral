@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const require = createRequire(import.meta.url);
 const quantities = require(path.join(repo, "serverlib/wvroofing/quantities.js"));
+const { tooShallow } = require(path.join(repo, "serverlib/wvroofing/measurements.js"));
 const { wholeM2 } = require(path.join(repo, "serverlib/wvroofing/measure/geometry.js"));
 const visuals = JSON.parse(fs.readFileSync(path.join(repo, "public/WVROOFING/data/catalogue.json"), "utf8")).visuals;
 const samples = JSON.parse(fs.readFileSync(path.join(repo, "public/WVROOFING/samples/samples.json"), "utf8")).samples;
@@ -58,7 +59,7 @@ export function build() {
           unit: e.unit,
           draft: e.spec_status !== "verified",
           complete: e.complete,
-          too_shallow: !e.total && e.lines.some((l) => l.status === "below_min_pitch") ? e.min_pitch_deg : null,
+          too_shallow: tooShallow(e),
           total: e.total ? { units: e.total.units, allowance_pct: e.total.allowance_pct, packs: e.total.packs, pack_size: e.total.pack_size, pack_name: e.total.pack_name } : null,
           linear: [],
           warnings: e.warnings,

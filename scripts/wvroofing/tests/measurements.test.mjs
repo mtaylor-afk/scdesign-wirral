@@ -240,6 +240,26 @@ test("with a verified product: quantities, the allowance, a ridge from its enter
   }
 });
 
+test("the drafts switch: on unless off, false, 0 or no (any case); /health reports it", async () => {
+  for (const v of [undefined, "", "on", "yes", "1"]) assert.equal(measurements.customerDrafts({ WVR_CUSTOMER_DRAFTS: v }), true, String(v));
+  for (const v of ["off", "OFF", " Off ", "false", "0", "no", "No"]) assert.equal(measurements.customerDrafts({ WVR_CUSTOMER_DRAFTS: v }), false, v);
+  assert.equal((await api("GET", "health")).json.estimates.customerDrafts, true);
+  process.env.WVR_CUSTOMER_DRAFTS = "False";
+  try {
+    assert.equal((await api("GET", "health")).json.estimates.customerDrafts, false);
+  } finally {
+    delete process.env.WVR_CUSTOMER_DRAFTS;
+  }
+});
+
+test("'too shallow' only when the pitch alone rules the product out on every face in scope", () => {
+  const e = (statuses) => ({ total: null, min_pitch_deg: 35, lines: statuses.map((status) => ({ status })) });
+  assert.equal(measurements.tooShallow(e(["below_min_pitch", "below_min_pitch", "excluded"])), 35);
+  assert.equal(measurements.tooShallow(e(["below_min_pitch", "needs_pitch"])), null, "a face of unknown pitch: not just too shallow");
+  assert.equal(measurements.tooShallow(e(["excluded"])), null);
+  assert.equal(measurements.tooShallow(Object.assign(e(["below_min_pitch", "ok"]), { total: { units: 10 } })), null, "partly estimated");
+});
+
 test("the concept shows customers the draft figures with verified ones, each marked", async () => {
   catalogue.PRODUCTS.set(TEST_PRODUCT.id, TEST_PRODUCT);
   try {

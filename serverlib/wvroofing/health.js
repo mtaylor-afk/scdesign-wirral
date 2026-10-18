@@ -108,6 +108,8 @@ async function health(ctx) {
     capabilities: caps,
     setup: setupState(env, caps),
     imageModel: cfg.model,
+    // Quantities from draft specifications shown to customers (measurements.customerDrafts).
+    estimates: { customerDrafts: require("./measurements.js").customerDrafts(env) },
     renders: {
       model: cfg.model,
       quality: cfg.quality,

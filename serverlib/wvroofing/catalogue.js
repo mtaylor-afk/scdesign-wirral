@@ -8,8 +8,9 @@
 //       the default allowance and, optionally, a figure per metre by edge kind.
 //
 // A specification is "draft" until the roofer checks it against the datasheet and
-// marks it "verified" (verified_by, verified_at). Drafts are only ever shown on the
-// operator screen; customers see quantities from verified products only.
+// marks it "verified" (verified_by, verified_at). The operator screen shows drafts,
+// labelled. Customers see them too, marked as unchecked, unless WVR_CUSTOMER_DRAFTS is
+// off, when they see verified products only (measurements.customerDrafts).
 "use strict";
 
 const { CATALOGUE, VISUALS } = require("./core.js");

@@ -198,7 +198,7 @@ function quantitiesView(list, e, ui) {
         )
       )
     ),
-    h("p", { class: "op-caption", text: "Draft figures come from the manufacturers' datasheets and aren't shown to customers until you verify the product." })
+    h("p", { class: "op-caption", text: "Draft figures come from the manufacturers' datasheets. On this concept site customers see them too, each marked as not yet checked by a roofer (WVR_CUSTOMER_DRAFTS=off shows customers verified products only)." })
   );
 }
 

@@ -5,7 +5,8 @@
 // A measurement is never edited: a new one supersedes the old. The customer sees
 // one only when the operator has approved it and made it visible; then the
 // estimate shows the roof's size in whole m² and degrees, who measured it from
-// what and when, and quantities from VERIFIED products for the chosen look only.
+// what and when, and quantities for the chosen look only: from verified products, and
+// from drafts (marked) unless WVR_CUSTOMER_DRAFTS is off.
 // A new address supersedes the project's measurements; a scope correction by
 // the operator sends the current one back for review.
 "use strict";
@@ -26,11 +27,14 @@ function enabled() {
 /**
  * Do customers see quantities from DRAFT specifications? On by default: WV Roofing is a
  * concept site with no roofer to verify the products (owner decision, 2026-10-18), so the
- * drafts are shown, every line marked as unchecked. WVR_CUSTOMER_DRAFTS=off restores the
- * strict rule (verified products only) for a real business.
+ * drafts are shown, every line marked as unchecked. WVR_CUSTOMER_DRAFTS=off (or false, 0,
+ * no; any case) restores the strict rule, verified products only, for a real business;
+ * /health reports it so the sample houses follow it too.
+ * @param {Record<string, string | undefined>} [env]
  */
-function customerDrafts() {
-  return process.env.WVR_CUSTOMER_DRAFTS !== "off";
+function customerDrafts(env) {
+  const v = String((env || process.env).WVR_CUSTOMER_DRAFTS || "").trim().toLowerCase();
+  return !["off", "false", "0", "no"].includes(v);
 }
 
 function requireEnabled() {
@@ -236,13 +240,23 @@ async function estimateFor(projectId, visualId) {
       unit: e.unit,
       draft: e.spec_status !== "verified",
       complete: e.complete,
-      too_shallow: !e.total && e.lines.some((l) => l.status === "below_min_pitch") ? e.min_pitch_deg : null,
+      too_shallow: tooShallow(e),
       total: e.total ? { units: e.total.units, allowance_pct: e.total.allowance_pct, packs: e.total.packs, pack_size: e.total.pack_size, pack_name: e.total.pack_name } : null,
       linear: e.linear.map((l) => ({ kind: l.kind, length_m: Math.round(l.length_m * 10) / 10, units: l.units, product: l.product })),
       warnings: e.warnings,
     })),
     not_included: [...notIncluded],
   };
+}
+
+/**
+ * The product's minimum pitch when that alone rules it out (every face in scope is too
+ * shallow for it), else null.
+ * @param {{ total: unknown, lines: { status: string }[], min_pitch_deg: number | null }} e
+ */
+function tooShallow(e) {
+  const inScope = e.lines.filter((l) => l.status !== "excluded");
+  return !e.total && inScope.length > 0 && inScope.every((l) => l.status === "below_min_pitch") ? e.min_pitch_deg : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -255,4 +269,4 @@ async function estimateRoute(ctx) {
   return json(ctx.res, 200, { ok: true, estimate: await estimateFor(ctx.project.id, visualId || null) });
 }
 
-module.exports = { create, current, visible, supersedeAll, sendBackForReview, estimateFor, estimate: estimateRoute, fromRow, forQuantities, enabled, requireEnabled, customerDrafts };
+module.exports = { create, current, visible, supersedeAll, sendBackForReview, estimateFor, estimate: estimateRoute, fromRow, forQuantities, enabled, requireEnabled, customerDrafts, tooShallow };

@@ -4,7 +4,7 @@ import { API_BASE } from "../config.js";
 
 let healthPromise = null;
 
-const OFFLINE = { reachable: false, caps: {}, renders: { live: false, test: false, auto: 1, budget: null } };
+const OFFLINE = { reachable: false, caps: {}, drafts: true, renders: { live: false, test: false, auto: 1, budget: null } };
 
 /**
  * Capabilities and render settings. Never throws: an unreachable API means
@@ -12,6 +12,7 @@ const OFFLINE = { reachable: false, caps: {}, renders: { live: false, test: fals
  * renders.live: photo-real renders can be made (key, owner switch, storage).
  * renders.test: the labelled test environment's stand-in renderer.
  * renders.auto: how many finishes render automatically once agreed (0 = on tap).
+ * drafts: quantities from unchecked (draft) product figures may be shown.
  */
 export function getHealth() {
   if (healthPromise) return healthPromise;
@@ -29,6 +30,7 @@ export function getHealth() {
       return {
         reachable: true,
         caps,
+        drafts: !(j.estimates && j.estimates.customerDrafts === false),
         renders: {
           live: gen.state === "enabled" && r.renderer === "ready",
           test: gen.reason === "test_environment",
