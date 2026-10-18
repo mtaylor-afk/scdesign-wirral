@@ -248,8 +248,8 @@ The steps below are the same work done by hand, kept as the fallback.
 - Note the plan (Hobby or Pro), whether **Fluid compute** is on, and the **Function Region**.
 - **Node.js Version** needs nothing: since 2026-10-17 `"engines": { "node": "24.x" }` in `package.json`
   sets it (it overrides the setting on that page; Vercel deprecated Node 20 on 1 October 2026). The
-  suites pass on Node 24. Cloudflare Pages still builds the static site with `.nvmrc` (Node 20), which
-  only prints an engines warning.
+  suites pass on Node 24. Cloudflare builds the static site with `.nvmrc`, also Node 24 since
+  2026-10-18, as do the GitHub workflows.
 
 **Step 1: storage.**
 

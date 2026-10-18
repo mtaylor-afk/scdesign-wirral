@@ -25,8 +25,8 @@ repository — the repo is only being used here as a convenient testing host.
 - **Hosting:** Cloudflare Pages, which builds from `main` on every push
   (`npm run build` → static export in `out/`). Live at
   https://scdesignwirral.co.uk — deploys land in ~15–60s.
-- **Local clone:** `C:\dev\scdesign-wirral` (kept outside OneDrive). Node 20
-  (matches `.nvmrc`).
+- **Local clone:** `C:\dev\scdesign-wirral` (kept outside OneDrive). Node 24
+  (matches `.nvmrc` and `engines`; moved from 20 on 2026-10-18, as Node 20 is end-of-life).
 - **Update workflow (simple edits):** for text / colour / content changes →
   edit → `git commit` → `git push origin main`. Cloudflare rebuilds and
   deploys automatically (~30s). No local rebuild or live-site polling is
