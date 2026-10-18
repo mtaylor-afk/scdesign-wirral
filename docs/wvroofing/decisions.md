@@ -596,3 +596,18 @@ The fixes:
 Matthew's first test project and photo rows were probably lost to this. The files may remain in the
 bucket under `projects/`, and are removed with the 30-day tidy-up only if a row points to them, so a
 one-off clean-up may be needed.
+
+## Owner decisions, 2026-10-18: a concept site, left as it is
+
+Matthew settled the three open owner items. Don't raise them again:
+
+- **WV Roofing is a concept website.** There is no roofer to check the nine draft product specifications,
+  so they stay drafts (`verified_by: null`). Customers see no material quantities, by design. The
+  operator screen still shows the drafts.
+- **No enquiry email address exists.** `WVR_LEAD_TO` stays unset and `enquiry_delivery` stays off.
+  Enquiries and photos are saved and shown in the admin only.
+- **The admin login stays 222 / 333.** Leave it as it is.
+
+The same day the live site passed its browser check 104/104 (3 skips: operator login, a sent enquiry,
+paid renders), run from GitHub Actions: **WV Roofing live check** (`.github/workflows/wvroofing-live-check.yml`,
+Run workflow). The Vercel functions now run on Node 24 (`engines` in `package.json`).
