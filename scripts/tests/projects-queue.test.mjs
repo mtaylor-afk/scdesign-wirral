@@ -211,7 +211,7 @@ test("publish without a GitHub token is queued, and the list says so", async () 
   const r = await call(publish, "POST", "/api/sc-admin-publish", ADMIN, { action: "publish", slug: "delta" });
   assert.equal(r.status, 200);
   assert.equal(r.json.queued, true);
-  assert.match(r.json.note, /15 minutes/);
+  assert.match(r.json.note, /within a few hours/);
   const q = await common.cmsQueueGet("delta");
   assert.equal(q.action, "publish");
   assert.equal(q.attempts, 0);

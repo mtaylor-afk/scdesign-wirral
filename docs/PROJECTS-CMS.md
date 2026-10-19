@@ -77,7 +77,7 @@ previous good deploy live.
   repository and owner id), and it lends its own short-lived `GITHUB_TOKEN`
   (`contents: write`, this repo only, expires with the job). The usual
   `doPublish` / `doUnpublish` / `doDelete` then run unchanged through
-  `github.withToken()`. **Live within about 15 minutes** (GitHub runs schedules
+  `github.withToken()`. **Live within a few hours** — GitHub ran the 5-minute schedule every 2–5 hours when measured in Oct 2026 (GitHub runs schedules
   late at busy times) instead of 1–3. Nothing to create, store or renew.
   A draft that never reached the site is deleted / unpublished at once.
 - **Results.** `_cms/results/<slug>.json` holds how the last queued action went;

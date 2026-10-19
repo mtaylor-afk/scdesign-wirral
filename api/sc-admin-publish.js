@@ -1064,8 +1064,9 @@ async function dispatch(req, res, action, slug, msLeft, opts) {
  * The queue                                                           *
  * ------------------------------------------------------------------ */
 
-/** How long Sean is told to wait. The workflow runs every 5 minutes; GitHub can run it late. */
-const QUEUE_WAIT = "usually within 10 to 15 minutes";
+/** How long Sean is told to wait. The workflow asks for every 5 minutes, but GitHub
+ * runs schedules on a quiet repository far less often (observed Oct 2026: every 2–5 hours). */
+const QUEUE_WAIT = "usually within a few hours (GitHub decides exactly when)";
 
 /** After this many failed runs of one entry, stop retrying and report it. */
 const MAX_QUEUE_ATTEMPTS = 3;

@@ -126,7 +126,7 @@ JSON files under `_cms/` in the private `project-media` bucket when `sc_projects
 is absent; publishing is queued and run every 5 minutes by
 `.github/workflows/cms-publish.yml`, which proves itself with GitHub OIDC
 (`serverlib/gh-oidc.js`) and lends its short-lived `GITHUB_TOKEN`. Live within
-~15 minutes. Full detail: `docs/PROJECTS-CMS.md` §2. Rules: never rename or
+a few hours (GitHub runs the 5-minute schedule only every 2–5 hours on this repo; set `SC_GITHUB_TOKEN` via `npm run cms:setup` for instant publishing). Full detail: `docs/PROJECTS-CMS.md` §2. Rules: never rename or
 move `cms-publish.yml` (the API pins its exact path + `main`); don't run
 `db/sc_projects.sql` without migrating the `_cms/projects/` files; the Vercel
 project is at Hobby's 12-function cap, so the queue runner lives inside

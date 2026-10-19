@@ -499,7 +499,7 @@
   }
 
   function queuedNotice(json) {
-    return { kind: "ok", text: json.note || "Queued. The website picks this up within about 15 minutes." };
+    return { kind: "ok", text: json.note || "Queued. The website picks this up within a few hours." };
   }
 
   function projectRow(p, i) {
@@ -534,7 +534,7 @@
     var callout =
       '<div class="callout"><strong>Your case studies.</strong> Write a project up here and it becomes its own page on the website at ' +
       "<code>/projects/…/</code>. Nothing appears publicly until you press <strong>Publish</strong>; the website picks the change up " +
-      "<strong>within about 15 minutes</strong> and rebuilds itself. You can take a page back off the site at any time, " +
+      "<strong>within a few hours</strong> and rebuilds itself. You can take a page back off the site at any time, " +
       "or delete a project completely if it turns out not to be suitable.</div>";
     if (S.loadError) {
       return callout + '<div class="card"><div class="empty">' + E(S.loadError) + '</div><div style="margin-top:12px">' +
@@ -978,7 +978,7 @@
       (S.savedSlug ? '<button class="btn btn-danger" data-projdelete="' + E(S.editing.slug) + '">Delete completely</button>' : "") +
       "</div>" +
       '<div class="csub" style="margin-top:10px">Saving keeps your work here and changes nothing on the website. ' +
-      "Publishing writes the page into the website — <strong>usually within 15 minutes</strong> — and it then " +
+      "Publishing writes the page into the website — <strong>usually within a few hours</strong> — and it then " +
       "rebuilds itself before the page appears.</div>" +
       /* "imgrm" renders inside the picture it belongs to, not down here. */
       (S.confirm && S.confirm.where === "editor" && S.confirm.mode !== "imgrm"

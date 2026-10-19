@@ -2261,7 +2261,9 @@ function projectsAsFiles(h) {
  * (GitHub turns off scheduled workflows after 60 days of no repository activity);
  * "never" = it hasn't run yet (the first run follows the push that added it).
  */
-const RUNNER_STALE_MS = 2 * 3600e3;
+// GitHub runs the 5-minute schedule every 2–5 hours on a quiet repository, so
+// only a silence well beyond that means it has actually stopped.
+const RUNNER_STALE_MS = 12 * 3600e3;
 function publishQueueState(h) {
   const at = h && h.projects && h.projects.lastRunnerAt;
   if (!at) return "never";
@@ -2386,7 +2388,7 @@ function viewHealth() {
       : healthRow("Publishing job (GitHub Actions)", pq === "ok" ? "ok" : pq === "stale" ? "bad" : "warn",
           lastRun
             ? `last checked in ${esc(whenLabel(lastRun))}` + (h.projects.queued ? ` · ${h.projects.queued} waiting` : "")
-            : "hasn't run yet — it runs every 5 minutes"),
+            : "hasn't run yet — GitHub runs it every few hours"),
     healthRow("Repository", gh.repo ? "ok" : "off", gh.repo ? esc(gh.repo + " · " + (gh.branch || "")) : "uses the built-in default"),
     healthRow("Photo storage", st.ok ? "ok" : "bad", st.ok ? esc(st.bucket || "") : st.error === "missing" ? "the bucket does not exist" : "could not be reached"),
     asFiles
@@ -2405,7 +2407,7 @@ function viewHealth() {
       ? ""
       : pq === "stale"
         ? "The publishing job has stopped. On GitHub open <strong>mtaylor-afk/scdesign-wirral → Actions → Publish Sean's projects</strong> and press <strong>Enable workflow</strong> (GitHub pauses scheduled jobs after 60 days without a commit)."
-        : "Nothing to set up: the publishing job runs every 5 minutes once the latest code is on <code>main</code>. If this stays red, check <strong>Actions → Publish Sean's projects</strong> on GitHub.",
+        : "Nothing to set up: the publishing job runs every few hours once the latest code is on <code>main</code>. If this stays red, check <strong>Actions → Publish Sean's projects</strong> on GitHub.",
   });
 
   /* --- Sign-in --- */
