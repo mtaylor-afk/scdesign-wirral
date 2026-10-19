@@ -3,13 +3,16 @@
 // MT Creative Works forms: ONE Vercel Node function (deployed as api/mtcw.js on the scdesign-wirral project).
 // Source of truth: this repo's functions/ folder; the exact behaviour is docs/build/FORMS-CONTRACT.md.
 //
-//   GET     /api/mtcw                  health: {ok, service, schemaVersion, mode, smtpConfigured, fileTokensConfigured}
+//   GET     /api/mtcw                  health: {ok, service, schemaVersion, mode, smtpConfigured, fileTokensConfigured,
+//                                      backupStore, sharedLimits}
 //   OPTIONS /api/mtcw                  CORS preflight (allowed origins only)
 //   POST    /api/mtcw?action=contact   quick message   (JSON, or a native urlencoded post answered with HTML)
 //   POST    /api/mtcw?action=brief     website brief   (JSON, or native urlencoded) -> one email with 3 attachments
 //   POST    /api/mtcw?action=file      one photo/file  (JSON + base64) -> one email with exactly one attachment
 //
-// Email only: Matt's iCloud inbox is the record. No storage, no cookies; per-instance in-memory limits only.
+// Email is the record. A private safety-net copy of each form (photos: metadata only) and the shared rate limits /
+// de-duplication live in a private bucket of SC's existing Supabase (serverlib/mtcw/store.js); if that is
+// unavailable everything fails open to per-instance memory and the email is still sent. No cookies.
 // Uses only Node's own req/res API (no res.status/res.json/res.send; req.body ONLY as a fallback when a platform has
 // already consumed the request stream, see serverlib/mtcw/http.js), so the local harness and Vercel behave alike.
 // Logs: action, status, error code, reference, duration. Never bodies, names, addresses, files, IPs, tokens or env.
@@ -25,6 +28,7 @@ const F = require('../serverlib/mtcw/format');
 const K = require('../serverlib/mtcw/token');
 const L = require('../serverlib/mtcw/limits');
 const M = require('../serverlib/mtcw/mailer');
+const B = require('../serverlib/mtcw/backup');
 const { buildBriefModel, businessLabelOf } = require('../serverlib/mtcw/brief-model');
 const { buildPack } = require('../serverlib/mtcw/pack');
 
@@ -120,6 +124,8 @@ function health(res, allowed, log) {
       mode: M.mailMode(),
       smtpConfigured: M.smtpConfigured(),
       fileTokensConfigured: K.tokenKey().key !== null,
+      backupStore: B.backupStatus(),
+      sharedLimits: L.sharedStatus(),
     },
     allowed,
   );
@@ -181,13 +187,13 @@ async function handleForm(action, kind, body, req, reply, ctx) {
   const now = Date.now();
   const dedupeKey = envelope.attemptId ? `${action}|${envelope.attemptId}` : null;
   if (dedupeKey) {
-    const prior = L.recall(dedupeKey, now);
+    const prior = await L.recallShared(dedupeKey, now);
     if (prior) {
       if (prior.tokenParts && !K.tokenKey().key) return reply.error(503, 'mail_unavailable');
       return reply.success({ ...fromRemembered(prior, result.values), duplicate: true });
     }
   }
-  const limited = L.take(L.checksFor(action, K.hashClient(H.clientIp(req))), now);
+  const limited = await L.takeShared(L.checksFor(action, K.hashClient(H.clientIp(req))), now);
   if (!limited.ok) {
     return reply.error(429, 'rate_limited', { 'Retry-After': String(limited.retryAfter) }, { retryAfter: limited.retryAfter });
   }
@@ -208,6 +214,7 @@ async function handleForm(action, kind, body, req, reply, ctx) {
       attemptTag: F.attemptTag(envelope.attemptId),
       mode,
     });
+    await B.saveForm({ action, ref, date, values: result.values, attribution: envelope.attribution, files: [], mode });
     try {
       await M.send({ ...email, replyTo: result.values.email }, { ref, label: 'quick-message', date });
     } catch (error) {
@@ -253,6 +260,7 @@ async function handleForm(action, kind, body, req, reply, ctx) {
       tokenExpiresAt = F.isoSeconds(signed.expiresAt);
       tokenParts = { n: files.length, e: Math.floor(signed.expiresAt.getTime() / 1000), f: descriptors };
     }
+    await B.saveForm({ action, ref, date, values: result.values, attribution: envelope.attribution, files, mode });
     const email = R.briefEmail(model, pack.missingLines, attachments.map((a) => a.filename));
     try {
       await M.send({ ...email, replyTo: result.values.email, attachments }, { ref, label: 'brief', date });
@@ -262,7 +270,7 @@ async function handleForm(action, kind, body, req, reply, ctx) {
     response = { ok: true, ref, sent: true, mode, fileToken, expectedFiles: files.length, tokenExpiresAt };
   }
 
-  if (dedupeKey) L.remember(dedupeKey, rememberable(response, tokenParts), now);
+  if (dedupeKey) await L.rememberShared(dedupeKey, rememberable(response, tokenParts), now);
   return reply.success(response);
 }
 
@@ -310,9 +318,9 @@ async function handleFile(body, req, reply, ctx) {
   }
 
   const dedupeKey = `file|${ref}|${index}|${data.attemptId}`;
-  const prior = L.recall(dedupeKey, now);
+  const prior = await L.recallShared(dedupeKey, now);
   if (prior) return reply.success({ ...prior, duplicate: true });
-  const limited = L.take(L.checksFor('file', K.hashClient(H.clientIp(req)), { ref, index }), now);
+  const limited = await L.takeShared(L.checksFor('file', K.hashClient(H.clientIp(req)), { ref, index }), now);
   if (!limited.ok) {
     return reply.error(429, 'rate_limited', { 'Retry-After': String(limited.retryAfter) }, { retryAfter: limited.retryAfter });
   }
@@ -330,6 +338,8 @@ async function handleFile(body, req, reply, ctx) {
     sha256Actual: crypto.createHash('sha256').update(bytes).digest('hex'),
   });
   const date = new Date(now);
+  const sha256Actual = crypto.createHash('sha256').update(bytes).digest('hex');
+  await B.saveFileMeta({ ref, date, index, total, file, savedAs, sha256Actual });
   try {
     await M.send(
       { ...email, attachments: [{ filename: savedAs, content: bytes, contentType: file.type }] },
@@ -339,7 +349,7 @@ async function handleFile(body, req, reply, ctx) {
     return mailErrorReply(reply, error);
   }
   const response = { ok: true, ref, index, sent: true, mode: M.mailMode() };
-  L.remember(dedupeKey, response, now);
+  await L.rememberShared(dedupeKey, response, now);
   return reply.success(response);
 }
 

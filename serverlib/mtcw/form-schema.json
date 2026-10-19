@@ -37,7 +37,7 @@
     },
     "_bodyBytesRationale": "Each cap is at least the worst case allowed by the field limits below (every field full of 4-byte characters; x12 for percent-encoding), checked by tests/unit/form-schema.test.ts. fileJson = 3,000,000 bytes as base64 (4,000,000) plus the text fields, and stays under Vercel's 4.5 MB request limit.",
     "rateLimit": {
-      "_scope": "Per warm function instance, in memory, keyed by an HMAC of the client IP (never stored or logged raw). NOT sufficient on its own on a distributed host (FORMS-DECISIONS section 6).",
+      "_scope": "Shared across instances in a private bucket of SC's existing Supabase (object names are HMAC hashes only), keyed by an HMAC of the client IP (never stored or logged raw). Fails open to per-instance memory if storage is unavailable (FORMS-CONTRACT section 15). emailsPerInstance is then a shared cap.",
       "windowSeconds": 600,
       "contactPerClient": 5,
       "briefPerClient": 3,
@@ -46,7 +46,7 @@
       "emailsPerInstance": 100
     },
     "dedupe": {
-      "_scope": "Per warm instance, in memory. Only successful responses are remembered. A repeat of the same attemptId (contact/brief) or the same ref+index+attemptId (file) returns the remembered response with duplicate:true and sends nothing.",
+      "_scope": "Shared across instances (memory first, then the private bucket; fails open to memory). Only successful responses are remembered. A repeat of the same attemptId (contact/brief) or the same ref+index+attemptId (file) returns the remembered response with duplicate:true and sends nothing.",
       "ttlSeconds": 900,
       "maxEntries": 500
     },

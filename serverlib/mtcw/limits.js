@@ -1,9 +1,7 @@
-'use strict';
-
-// Per-instance, in-memory rate limiting and de-duplication (shared/form-schema.json limits.rateLimit / limits.dedupe).
-// HONEST LIMITATION: this only sees one warm instance. On a distributed host a determined sender can exceed these
-// limits, and a repeat that reaches another instance can send twice (the subject's #tag lets Matt spot it). Real
-// limits would need shared storage, which the owner has not chosen (FORMS-DECISIONS section 6).
+// Rate limiting and de-duplication (shared/form-schema.json limits.rateLimit / limits.dedupe).
+// In memory per warm instance (below), plus the SHARED versions at the end of this file, which keep the same limits
+// in SC's existing Supabase (store.js) so every instance sees them. If storage is unavailable the shared versions
+// fall back to memory for that request (fail open) and health reports sharedLimits: 'memory-fallback'.
 
 const { schema } = require('./schema');
 const { state } = require('./state');
@@ -95,4 +93,113 @@ function remember(key, response, now) {
   }
 }
 
-module.exports = { take, checksFor, recall, remember, sweep };
+/* ------------------------------------------------------------------ shared (across instances) */
+// When SC's Supabase is available (store.js), the same limits and the de-duplication memory are kept in the private
+// bucket so every instance sees them. Object names carry only HMAC hashes and window numbers: no IP, no attempt id,
+// no answers. Fixed windows: rl/<window>/<hash>-<slot> (slot claimed with create-if-absent, so two instances cannot
+// both take the last slot); dd/<bucket>/<hash>.json holds the remembered response (the same name-free note kept in
+// memory). FAILS OPEN: any storage problem falls back to the in-memory functions above for that request.
+
+const store = require('./store');
+
+const DEDUPE_MS = DEDUPE.ttlSeconds * 1000;
+const SWEEP_CHANCE = 0.05;
+let lastShared = { mode: 'memory', at: 0 };
+
+function noteShared(mode, now) {
+  lastShared = { mode, at: now };
+}
+
+/** 'shared' | 'memory-fallback' | 'memory' (storage not configured) for health. */
+function sharedStatus() {
+  if (!store.enabled()) return 'memory';
+  return lastShared.mode === 'memory-fallback' ? 'memory-fallback' : 'shared';
+}
+
+async function sweepShared(now) {
+  const current = Math.floor(now / WINDOW_MS);
+  const currentDd = Math.floor(now / DEDUPE_MS);
+  for (const [root, keep] of [
+    ['rl', current],
+    ['dd', currentDd - 1],
+  ]) {
+    const folders = await store.list(root, 100);
+    for (const name of folders) {
+      if (!/^\d+$/.test(name) || Number(name) >= keep) continue;
+      const items = await store.list(`${root}/${name}`, 1000);
+      await store.remove(items.map((i) => `${root}/${name}/${i}`));
+    }
+  }
+}
+
+/** Like take(), across instances. Falls back to take() if storage fails. */
+async function takeShared(checks, now) {
+  if (!store.enabled()) return take(checks, now);
+  try {
+    const w = Math.floor(now / WINDOW_MS);
+    const folder = `rl/${w}`;
+    const retryAfter = Math.max(1, Math.ceil(((w + 1) * WINDOW_MS - now) / 1000));
+    const named = checks.map((c) => ({ ...c, h: store.hashName(`rl|${c.key}`) }));
+    for (const c of named) {
+      const used = (await store.list(folder, c.limit + 1, `${c.h}-`)).length;
+      if (used >= c.limit) {
+        noteShared('shared', now);
+        return { ok: false, retryAfter };
+      }
+    }
+    for (const c of named) {
+      let claimed = false;
+      for (let slot = 1; slot <= c.limit && !claimed; slot += 1) {
+        claimed = (await store.put(`${folder}/${c.h}-${String(slot).padStart(4, '0')}`, '{}')) === 'ok';
+      }
+      if (!claimed) {
+        noteShared('shared', now);
+        return { ok: false, retryAfter };
+      }
+    }
+    noteShared('shared', now);
+    if (Math.random() < SWEEP_CHANCE) await sweepShared(now).catch(() => {});
+    return { ok: true };
+  } catch {
+    noteShared('memory-fallback', now);
+    return take(checks, now);
+  }
+}
+
+/** Like recall(), across instances (memory first). */
+async function recallShared(key, now) {
+  const local = recall(key, now);
+  if (local || !store.enabled()) return local;
+  try {
+    const h = store.hashName(`dd|${key}`);
+    const b = Math.floor(now / DEDUPE_MS);
+    for (const bucket of [b, b - 1]) {
+      const entry = await store.get(`dd/${bucket}/${h}.json`);
+      if (entry && typeof entry.expires === 'number' && entry.expires > now && entry.response) {
+        noteShared('shared', now);
+        return entry.response;
+      }
+    }
+    noteShared('shared', now);
+    return null;
+  } catch {
+    noteShared('memory-fallback', now);
+    return null;
+  }
+}
+
+/** Like remember(), in memory AND (when available) across instances. */
+async function rememberShared(key, response, now) {
+  remember(key, response, now);
+  if (!store.enabled()) return;
+  try {
+    const h = store.hashName(`dd|${key}`);
+    const b = Math.floor(now / DEDUPE_MS);
+    await store.put(`dd/${b}/${h}.json`, { expires: now + DEDUPE_MS, response }, { upsert: true });
+    noteShared('shared', now);
+  } catch {
+    noteShared('memory-fallback', now);
+  }
+}
+
+module.exports = { take, checksFor, recall, remember, sweep, takeShared, recallShared, rememberShared, sharedStatus };
