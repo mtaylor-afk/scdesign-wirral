@@ -31,11 +31,14 @@ export type Service = {
   sections?: { heading: string; body: string[] }[]; // extra prose sections
   relatedServices?: string[]; // service slugs
   relatedGuides?: string[]; // guide/other paths
+  /** Short Service JSON-LD serviceType for this page (SEO audit 4.5). Never "architect". */
+  serviceType?: string;
 };
 
 export const services: Service[] = [
   {
     slug: "house-extensions",
+    serviceType: "House extension design",
     title: "House Extensions Design & Planning",
     short: "Extensions",
     category: "design",
@@ -142,10 +145,12 @@ export const services: Service[] = [
       "/guides/rear-side-wraparound-extension-planning-rules",
       "/guides/how-to-brief-architectural-designer-extension",
       "/guides/after-planning-permission-next-steps",
+      "/guides/how-much-does-architectural-design-cost",
     ],
   },
   {
     slug: "loft-conversions",
+    serviceType: "Loft conversion design",
     title: "Loft Conversion Design & Planning",
     short: "Loft Conversions",
     category: "design",
@@ -244,10 +249,12 @@ export const services: Service[] = [
       "/guides/loft-conversion-building-regulations",
       "/guides/loft-conversion-stairs-head-height-fire-safety",
       "/guides/do-i-need-planning-permission-for-an-extension",
+      "/guides/how-much-does-architectural-design-cost",
     ],
   },
   {
     slug: "residential-design",
+    serviceType: "Residential design service",
     title: "Full Architectural Design Services (Concept to Approval)",
     short: "Full Design Service",
     category: "design",
@@ -332,19 +339,25 @@ export const services: Service[] = [
       },
     ],
     relatedServices: ["house-extensions", "loft-conversions"],
-    relatedGuides: ["/guides/how-much-does-architectural-design-cost", "/guides/architect-vs-architectural-designer"],
+    relatedGuides: [
+      "/guides/how-much-does-architectural-design-cost",
+      "/guides/architect-vs-architectural-designer",
+      "/guides/conservation-area-extensions-wirral",
+      "/guides/check-wirral-conservation-area-map",
+    ],
   },
 
   /* ---------------- New dedicated planning/approval pages ---------------- */
   {
     slug: "planning-drawings-wirral",
+    serviceType: "Planning drawings",
     title: "Planning Permission Drawings & Consultancy",
     short: "Planning Drawings",
     category: "planning",
     h1: "Planning Drawings in Wirral & Surrounding Areas",
     metaTitle: "Planning Drawings Wirral | Householder Planning Support",
     metaDescription:
-      "Planning drawings for Wirral home extensions, loft conversions and alterations — existing and proposed plans, elevations and site plans, plus listed building consent and lawful development certificates.",
+      "Planning drawings for Wirral extensions, lofts and alterations — existing and proposed plans, elevations and site plans, plus lawful development certificates.",
     blurb:
       "Clear, policy-aware drawings with expert guidance to give your planning application the best chance of approval.",
     intro:
@@ -422,10 +435,16 @@ export const services: Service[] = [
       "/guides/wirral-householder-planning-application-drawings-checklist",
       "/guides/invalid-planning-application-drawings-wirral",
       "/guides/planning-permission-vs-lawful-development-certificate",
+      "/guides/permitted-development-rights-wirral",
+      "/guides/lawful-development-certificate-explained",
+      "/guides/how-long-does-planning-permission-take-wirral",
+      "/guides/change-extension-design-after-planning-permission",
+      "/guides/wirral-pre-application-advice-home-extension",
     ],
   },
   {
     slug: "building-regulations-drawings-wirral",
+    serviceType: "Building regulations drawings",
     title: "Building Regulations Drawings & Technical Packages",
     short: "Building Regs Drawings",
     category: "planning",
@@ -476,7 +495,7 @@ export const services: Service[] = [
         heading: "Why building-regs drawings matter even without planning",
         body: [
           "A project can be permitted development for planning purposes and still need building-regulations approval. Skipping this stage causes problems on site and at sale, when a buyer's solicitor asks for the completion certificate.",
-          "Approval is obtained through local authority building control or an approved inspector, with inspections at key stages. We prepare the drawings that support a full plans application.",
+          "Approval is obtained through local authority building control or a registered building control approver (formerly called an approved inspector), with inspections at key stages. We prepare the drawings that support a full plans application.",
         ],
       },
     ],
@@ -506,10 +525,14 @@ export const services: Service[] = [
       "/guides/full-plans-vs-building-notice-wirral",
       "/guides/after-planning-permission-next-steps",
       "/guides/structural-calculations-vs-architectural-drawings",
+      "/guides/what-drawings-do-builders-need",
+      "/guides/builder-quote-drawing-pack-checklist",
+      "/guides/buying-house-extension-loft-conversion-certificates",
     ],
   },
   {
     slug: "garage-conversion-drawings-wirral",
+    serviceType: "Garage conversion drawings",
     title: "Garage Conversion Drawings",
     short: "Garage Conversions",
     category: "design",
@@ -591,6 +614,7 @@ export const services: Service[] = [
   },
   {
     "slug": "front-porch-extension-design",
+    "serviceType": "Porch extension design",
     "title": "Front Porch Extension Design",
     "short": "Front Porches",
     "category": "design",
@@ -698,6 +722,7 @@ export const services: Service[] = [
   },
   {
     "slug": "bespoke-garden-room-design",
+    "serviceType": "Garden room design",
     "title": "Bespoke Garden Room Design",
     "short": "Garden Rooms",
     "category": "design",
@@ -806,6 +831,7 @@ export const services: Service[] = [
   },
   {
     "slug": "change-of-use-applications",
+    "serviceType": "Change of use application",
     "title": "Change of Use Applications",
     "short": "Change of Use",
     "category": "planning",
@@ -915,6 +941,7 @@ export const services: Service[] = [
   },
   {
     "slug": "measured-building-surveys",
+    "serviceType": "Measured building survey",
     "title": "Measured Building Surveys & Existing Drawings",
     "short": "Measured Surveys",
     "category": "design",
@@ -1035,6 +1062,7 @@ export const services: Service[] = [
   },
   {
     "slug": "concept-design-feasibility",
+    "serviceType": "Concept design and feasibility study",
     "title": "Concept Design & Feasibility Studies",
     "short": "Concept & Feasibility",
     "category": "design",

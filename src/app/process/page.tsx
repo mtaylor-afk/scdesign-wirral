@@ -79,7 +79,7 @@ const stages: { title: string; you: string; us: string; output: string }[] = [
 const notIncluded = [
   "Structural engineer calculations may be a separate, specialist cost.",
   "Local authority planning application fees are paid to the council.",
-  "Building-control fees are paid to building control or an approved inspector.",
+  "Building-control fees are paid to building control or a registered building control approver (formerly called an approved inspector).",
   "Party wall matters may need a party wall surveyor.",
   "The construction work itself — we are design-only and don't carry out the build.",
 ];

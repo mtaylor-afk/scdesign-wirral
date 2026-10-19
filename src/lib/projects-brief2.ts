@@ -153,7 +153,7 @@ export const brief2Projects: Project[] = [
     relatedAreas: ["wallasey"],
     reviewed: REVIEWED,
     metaDescription:
-      "Wallasey Village side extension case study — a garage and bin store replaced with a flat-roof extension housing a kitchen, utility, WC and home office. Design, planning and Building Regulations drawings by SC Design Wirral.",
+      "Wallasey Village side extension case study — a garage and bin store replaced with a flat-roof extension housing a kitchen, utility, WC and home office.",
   },
 
   /* ---------------- 2 ---------------- */
@@ -422,7 +422,7 @@ export const brief2Projects: Project[] = [
     relatedAreas: ["wallasey"],
     reviewed: REVIEWED,
     metaDescription:
-      "Liscard side extension case study — an outdated garage and shed replaced with an integrated extension providing a rear living room, home office and storage. Planning and Building Regulations drawings by SC Design Wirral.",
+      "Liscard side extension case study — an outdated garage and shed replaced with an integrated extension providing a rear living room, home office and storage.",
   },
 
   /* ---------------- 8 ---------------- */

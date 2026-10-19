@@ -6,7 +6,7 @@ import { site } from "@/lib/site";
 import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 
 export const metadata = pageMeta({
-  title: "Follow SC Design Wirral — Facebook & Instagram",
+  title: "Follow Us on Facebook & Instagram",
   description:
     "Follow SC Design Wirral on Facebook and Instagram for new extension, loft and garage conversion designs, drawings in progress and photos from site across Wirral, Cheshire and Merseyside.",
   path: "/socials",

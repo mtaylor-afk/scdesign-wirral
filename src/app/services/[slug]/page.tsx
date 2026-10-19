@@ -98,7 +98,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
             { name: "Services", path: "/services" },
             { name: service.title, path: `/services/${slug}` },
           ]),
-          serviceJsonLd(service.title, service.blurb, `/services/${slug}`),
+          serviceJsonLd(service.title, service.blurb, `/services/${slug}`, service.serviceType),
           faqJsonLd(service.faqs),
         ]}
       />

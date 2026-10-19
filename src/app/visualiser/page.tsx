@@ -8,7 +8,7 @@ import { withBase } from "@/lib/base";
 import { cta } from "@/lib/site";
 
 export const metadata = pageMeta({
-  title: "See your idea come to life",
+  title: "Extension Concept Visualiser — Wirral",
   description:
     "Upload a photo of your home and create an AI concept visualisation to explore possibilities before speaking to Sean. Concept only — not an architectural drawing or planning advice.",
   path: "/visualiser",

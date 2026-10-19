@@ -215,20 +215,30 @@ export function articleJsonLd(opts: {
     url,
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
     // Sean is the named author/reviewer — safe Person ref (no ARB/RIBA claims).
-    author: { "@type": "Person", "@id": `${siteUrl}/about#sean-corser`, name: site.contactName },
+    author: {
+      "@type": "Person",
+      "@id": `${siteUrl}/about#sean-corser`,
+      name: site.contactName,
+      url: absUrl("/about"),
+    },
     publisher: { "@id": `${siteUrl}/#business` },
     // dateModified only when the stated review month parses — never fabricated.
     ...(iso ? { dateModified: iso } : {}),
   };
 }
 
-export function serviceJsonLd(name: string, description: string, path: string) {
+export function serviceJsonLd(
+  name: string,
+  description: string,
+  path: string,
+  serviceType = "Architectural design"
+) {
   return {
     "@context": "https://schema.org",
     "@type": "Service",
     name,
     description,
-    serviceType: "Architectural design",
+    serviceType,
     areaServed: site.serviceArea,
     provider: { "@type": "ProfessionalService", "@id": `${siteUrl}/#business`, name: site.name },
     url: absUrl(path),

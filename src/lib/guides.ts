@@ -93,6 +93,7 @@ export const guides: Guide[] = [
       "/services/planning-drawings-wirral",
       "/guides/permitted-development-rights-wirral",
       "/guides/do-i-need-building-regulations-approval",
+      "/guides/rear-side-wraparound-extension-planning-rules",
     ],
     reviewed: "June 2026",
   },
@@ -132,7 +133,7 @@ export const guides: Guide[] = [
       {
         heading: "How approval works",
         body: [
-          "Approval is obtained either through your local authority building control or an approved inspector, and the work is inspected at key stages.",
+          "Approval is obtained either through your local authority building control or a registered building control approver (formerly called an approved inspector), and the work is inspected at key stages.",
           "We help you understand the process and what each stage involves, so it feels far less daunting. Keep the completion certificate safe — a buyer's solicitor will ask for it.",
         ],
       },
@@ -151,6 +152,8 @@ export const guides: Guide[] = [
       "/services/building-regulations-drawings-wirral",
       "/services/loft-conversions",
       "/guides/planning-drawings-vs-building-regulations-drawings",
+      "/guides/full-plans-vs-building-notice-wirral",
+      "/guides/buying-house-extension-loft-conversion-certificates",
     ],
     reviewed: "June 2026",
   },
@@ -369,8 +372,9 @@ export const guides: Guide[] = [
     ],
     related: [
       "/services/planning-drawings-wirral",
-      "/services/planning-drawings-wirral",
       "/guides/lawful-development-certificate-explained",
+      "/guides/do-i-need-planning-permission-for-an-extension",
+      "/guides/rear-side-wraparound-extension-planning-rules",
     ],
     reviewed: "June 2026",
   },
@@ -420,8 +424,8 @@ export const guides: Guide[] = [
     ],
     related: [
       "/services/planning-drawings-wirral",
-      "/services/planning-drawings-wirral",
       "/guides/permitted-development-rights-wirral",
+      "/guides/planning-permission-vs-lawful-development-certificate",
     ],
     reviewed: "June 2026",
   },
@@ -473,6 +477,7 @@ export const guides: Guide[] = [
       "/services/building-regulations-drawings-wirral",
       "/services/house-extensions",
       "/process",
+      "/guides/builder-quote-drawing-pack-checklist",
     ],
     reviewed: "June 2026",
   },
@@ -575,6 +580,7 @@ export const guides: Guide[] = [
       "/services/residential-design",
       "/areas/oxton",
       "/areas/port-sunlight",
+      "/guides/check-wirral-conservation-area-map",
     ],
     reviewed: "June 2026",
   },
@@ -613,7 +619,7 @@ export const guides: Guide[] = [
       {
         heading: "How approval works",
         body: [
-          "We prepare the building-regulations drawings; the application goes to local authority building control or an approved inspector, with inspections at key stages. Keep the completion certificate — a future buyer will want it.",
+          "We prepare the building-regulations drawings; the application goes to local authority building control or a registered building control approver (formerly called an approved inspector), with inspections at key stages. Keep the completion certificate — a future buyer will want it.",
         ],
       },
     ],
@@ -631,6 +637,7 @@ export const guides: Guide[] = [
       "/services/loft-conversions",
       "/services/building-regulations-drawings-wirral",
       "/guides/do-i-need-building-regulations-approval",
+      "/guides/loft-conversion-stairs-head-height-fire-safety",
     ],
     reviewed: "June 2026",
   },
@@ -730,7 +737,6 @@ export const guides: Guide[] = [
     ],
     related: [
       "/services/building-regulations-drawings-wirral",
-      "/services/building-regulations-drawings-wirral",
       "/guides/do-i-need-building-regulations-approval",
       "/guides/after-planning-permission-next-steps",
       "/contact",
@@ -814,10 +820,10 @@ export const guides: Guide[] = [
     ],
     related: [
       "/services/building-regulations-drawings-wirral",
-      "/services/building-regulations-drawings-wirral",
       "/guides/full-plans-vs-building-notice-wirral",
       "/guides/structural-calculations-vs-architectural-drawings",
       "/guides/builder-quote-drawing-pack-checklist",
+      "/guides/change-extension-design-after-planning-permission",
       "/contact",
     ],
     reviewed: "June 2026",
@@ -1075,6 +1081,7 @@ export const guides: Guide[] = [
       "/services/loft-conversions",
       "/guides/do-i-need-planning-permission-for-an-extension",
       "/guides/how-long-does-planning-permission-take-wirral",
+      "/guides/invalid-planning-application-drawings-wirral",
       "/contact",
     ],
     reviewed: "June 2026",
@@ -1233,8 +1240,6 @@ export const guides: Guide[] = [
       { label: "Planning Portal", href: "https://www.planningportal.co.uk/" },
     ],
     related: [
-      "/services/planning-drawings-wirral",
-      "/services/planning-drawings-wirral",
       "/services/planning-drawings-wirral",
       "/guides/lawful-development-certificate-explained",
       "/guides/permitted-development-rights-wirral",
@@ -1490,7 +1495,6 @@ export const guides: Guide[] = [
     ],
     related: [
       "/services/house-extensions",
-      "/services/planning-drawings-wirral",
       "/services/planning-drawings-wirral",
       "/guides/do-i-need-planning-permission-for-an-extension",
       "/guides/permitted-development-rights-wirral",
@@ -1945,7 +1949,6 @@ export const guides: Guide[] = [
     related: [
       "/services/building-regulations-drawings-wirral",
       "/services/planning-drawings-wirral",
-      "/services/building-regulations-drawings-wirral",
       "/guides/planning-permission-vs-lawful-development-certificate",
       "/guides/do-i-need-building-regulations-approval",
       "/contact",

@@ -31,7 +31,7 @@ export const metadata = pageMeta({
   title:
     "Architectural Designer Wirral | Extensions, Lofts & Planning Drawings | SC Design & Construction",
   description:
-    "Wirral architectural designer helping homeowners across Wirral, Liverpool, Cheshire, Warrington and North Wales with house extension drawings, loft conversion design, planning and building-regulations drawings. Led by a Chartered Architectural Technologist (MCIAT).",
+    "Wirral architectural designer led by Sean Corser MCIAT: house extension, loft conversion, planning and building-regulations drawings for Wirral homes.",
   path: "/",
 });
 
@@ -363,7 +363,7 @@ export default function HomePage() {
             ))}
           </div>
           <p className="mt-8 text-center text-sm">
-            <Link href="/reviews" className="font-medium text-accent-strong underline">
+            <Link href="/reviews" className="inline-flex min-h-11 items-center px-3 font-medium text-accent-strong underline">
               See all reviews
             </Link>
           </p>
@@ -473,7 +473,7 @@ export default function HomePage() {
           />
           <ReviewsCarousel className="mt-10" />
           <p className="mt-8 text-center text-sm text-muted">
-            <Link href="/reviews" className="font-medium text-accent-strong underline">
+            <Link href="/reviews" className="inline-flex min-h-11 items-center px-3 font-medium text-accent-strong underline">
               See all reviews
             </Link>
           </p>
@@ -560,7 +560,7 @@ export default function HomePage() {
             <FAQList faqs={homeFaqs} />
           </div>
           <p className="mt-8 text-center text-sm text-muted">
-            <Link href="/faqs" className="font-medium text-accent-strong underline">
+            <Link href="/faqs" className="inline-flex min-h-11 items-center px-3 font-medium text-accent-strong underline">
               See all FAQs
             </Link>
           </p>

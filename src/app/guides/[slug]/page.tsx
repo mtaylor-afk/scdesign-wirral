@@ -176,6 +176,15 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
               <LinkButton href={cta.whatsapp.href} variant="ghost" external>
                 {cta.whatsapp.label}
               </LinkButton>
+              {ctaService && (
+                <Link
+                  href={`/services/${ctaService.slug}`}
+                  data-conversion="service-cta"
+                  className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-accent-strong underline"
+                >
+                  See the {ctaService.short} service
+                </Link>
+              )}
             </div>
           </div>
 

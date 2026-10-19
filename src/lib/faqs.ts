@@ -12,7 +12,16 @@ export type FaqCategory =
   | "areas"
   | "scope";
 
-export type Faq = { q: string; a: string; category: FaqCategory };
+export type Faq = {
+  q: string;
+  a: string;
+  category: FaqCategory;
+  /** Optional follow-on guide link shown under the answer. Not in FAQ JSON-LD. */
+  read?: { href: string; label: string };
+};
+
+const READ_COST = { href: "/guides/how-much-does-architectural-design-cost", label: "how much architectural design costs" };
+const READ_ARCH = { href: "/guides/architect-vs-architectural-designer", label: "architect vs architectural designer" };
 
 export const generalFaqs: Faq[] = [
   /* Starting a project */
@@ -99,11 +108,13 @@ export const generalFaqs: Faq[] = [
   /* Costs & fees */
   {
     category: "costs",
+    read: READ_COST,
     q: "How much does an architect cost?",
     a: "Registered architects commonly charge a percentage of the build cost, which on a home extension can run into several thousand pounds. We work differently: SC Design Wirral is an architectural design practice led by a Chartered Architectural Technologist, and we quote a fixed fee for an agreed scope of drawings, so you know the cost before anything starts. Tell us about the project and we'll put a figure to it.",
   },
   {
     category: "costs",
+    read: READ_COST,
     q: "How much does architectural design cost?",
     a: "It varies with the size and complexity of the project and which drawings you need. Once we understand your property and goals, we set out a clear scope and fixed fee up front. Our guide on design costs explains what drives the price.",
   },
@@ -137,16 +148,19 @@ export const generalFaqs: Faq[] = [
   /* What SC does / does not do */
   {
     category: "scope",
+    read: READ_ARCH,
     q: "Do I need an architect for an extension?",
     a: "For a typical house extension, no — there is no legal requirement to use a registered architect. What you do need is someone who can design the scheme properly and produce accurate planning and building-regulations drawings. That work is carried out by Sean Corser MCIAT, a Chartered Architectural Technologist: qualified in the technical design and detailing of buildings, and a member of CIAT. We are not registered architects, because 'architect' is a title protected by UK law and reserved for those on the ARB register.",
   },
   {
     category: "scope",
+    read: READ_ARCH,
     q: "Are you architects?",
     a: "We provide architectural design and drawing services. In the UK, the title 'architect' is protected by law and reserved for those registered with the ARB. We describe ourselves as an architectural design studio. We are not registered architects; Sean is a Chartered Architectural Technologist (MCIAT).",
   },
   {
     category: "scope",
+    read: READ_ARCH,
     q: "What's the difference between an architect and an architectural designer?",
     a: "'Architect' is a protected UK title for ARB-registered professionals; 'architectural designer' is not protected in the same way. For most home extensions and lofts, the design and drawings can be provided by either — what matters is the quality of the work and the experience behind it.",
   },

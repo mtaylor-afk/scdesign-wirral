@@ -519,7 +519,23 @@ export function relatedCaseStudies(project: Project, limit = 3): Project[] {
   const sameType = others.filter(
     (p) => p.projectType === project.projectType && !sameService.includes(p)
   );
-  return [...sameService, ...sameType].slice(0, limit);
+  const pool = [...sameService, ...sameType];
+  if (pool.length <= limit) return pool;
+  // Rotate the start point deterministically by slug so every relevant case
+  // study gets a fair share of "More projects like this" links (SEO audit 8.6),
+  // instead of every page pointing at the same first three.
+  const start = slugHash(project.slug) % pool.length;
+  return [...pool.slice(start), ...pool.slice(0, start)].slice(0, limit);
+}
+
+/** Small stable string hash (FNV-1a) — deterministic across builds. */
+export function slugHash(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
 }
 
 // The "coming soon" placeholder cards and the /projects empty state they fed

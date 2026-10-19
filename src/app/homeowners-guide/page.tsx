@@ -141,7 +141,7 @@ export default function HomeownersGuidePage() {
             <FAQList faqs={guideFaqs} />
           </div>
           <p className="mt-8 text-center text-sm text-muted">
-            <Link href="/faqs" className="font-medium text-accent-strong underline">
+            <Link href="/faqs" className="inline-flex min-h-11 items-center px-3 font-medium text-accent-strong underline">
               See all FAQs
             </Link>
           </p>

@@ -1,8 +1,12 @@
 "use client";
 
 import { useId, useState } from "react";
+import Link from "next/link";
 
-export function FAQItem({ q, a }: { q: string; a: string }) {
+/** Optional "Read: ..." follow-on link under an answer (not part of FAQ JSON-LD). */
+export type FaqRead = { href: string; label: string };
+
+export function FAQItem({ q, a, read }: { q: string; a: string; read?: FaqRead }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   return (
@@ -27,16 +31,24 @@ export function FAQItem({ q, a }: { q: string; a: string }) {
       </h3>
       <div id={id} hidden={!open} className="pb-5 text-pretty text-muted">
         {a}
+        {read && (
+          <p className="mt-3 text-sm">
+            Read:{" "}
+            <Link href={read.href} className="font-medium text-accent-strong underline">
+              {read.label}
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
-export function FAQList({ faqs }: { faqs: { q: string; a: string }[] }) {
+export function FAQList({ faqs }: { faqs: { q: string; a: string; read?: FaqRead }[] }) {
   return (
     <div className="divide-y divide-line border-t border-line">
       {faqs.map((f) => (
-        <FAQItem key={f.q} q={f.q} a={f.a} />
+        <FAQItem key={f.q} q={f.q} a={f.a} read={f.read} />
       ))}
     </div>
   );

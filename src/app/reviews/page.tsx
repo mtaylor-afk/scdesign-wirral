@@ -8,7 +8,7 @@ import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 import { reviewSummary } from "@/lib/reviews";
 
 export const metadata = pageMeta({
-  title: "Reviews for SC Design & Construction — Architectural Design Wirral",
+  title: "Reviews — Architectural Design Wirral",
   description:
     "Rated 5.0 from 30 genuine Google reviews. Read what Wirral homeowners and builders say about SC Design & Construction — extensions, loft conversions and planning drawings.",
   path: "/reviews",

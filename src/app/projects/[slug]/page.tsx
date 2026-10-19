@@ -16,6 +16,34 @@ import {
 } from "@/lib/projects";
 import type { WorkImage } from "@/lib/media";
 import { pageMeta, breadcrumbJsonLd, articleJsonLd } from "@/lib/seo";
+import { getService } from "@/lib/services";
+import { locations } from "@/lib/locations";
+import { slugHash } from "@/lib/projects";
+
+// Area pages held for the data review (SEO audit 7.4 / 8.6) — never linked
+// from case studies until that review decides their future.
+const NO_AREA_LINK = new Set(["liverpool", "chester", "crosby"]);
+
+/**
+ * The area page for a case study — only when the project's own town names
+ * that area (e.g. "Liscard, Wallasey" → Wallasey). Never a nearby town.
+ */
+function areaFor(p: Project) {
+  for (const slug of p.relatedAreas ?? []) {
+    if (NO_AREA_LINK.has(slug)) continue;
+    const loc = locations.find((l) => l.slug === slug);
+    if (loc && p.town.toLowerCase().includes(loc.name.toLowerCase())) return loc;
+  }
+  return undefined;
+}
+
+// Varied, plain wording so the same sentence is not repeated on every page.
+const areaLines: ((name: string) => [string, string, string])[] = [
+  (n) => ["", `More about designing in ${n}`, ""],
+  (n) => ["Planning something in ", n, "? See our local page."],
+  (n) => ["Read about our work and local planning in ", n, "."],
+  (n) => ["See more of our work around ", n, "."],
+];
 
 // Only the known (real) projects are built; no on-demand fallback.
 export const dynamicParams = false;
@@ -77,6 +105,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   const ba = project.beforeAfter;
   const showSlider = Boolean(ba?.aligned && ba.before);
   const note = imageNote(project);
+  const services = (project.relatedServices ?? [])
+    .map((s) => getService(s))
+    .filter((s): s is NonNullable<typeof s> => Boolean(s))
+    .slice(0, 3);
+  const area = areaFor(project);
+  const areaLine = area ? areaLines[slugHash(project.slug) % areaLines.length](area.name) : null;
 
   return (
     <>
@@ -125,6 +159,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
               beforeAlt={ba.before.alt}
               afterAlt={ba.after.alt}
               caption={`Before → ${ba.after.kind === "render" ? "design visualisation" : "after"}. Drag to compare.`}
+              priority
             />
           </Container>
         </Section>
@@ -181,6 +216,32 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           )}
 
           {note && <p className="text-xs text-muted">{note}</p>}
+          {services.length > 0 && (
+            <div>
+              <h2 className="text-xl">Related services</h2>
+              <ul className="mt-3 flex flex-wrap gap-2.5">
+                {services.map((s) => (
+                  <li key={s.slug}>
+                    <Link
+                      href={`/services/${s.slug}`}
+                      className="inline-flex rounded-full border border-line bg-paper-card px-4 py-2 text-sm text-ink-soft hover:border-accent hover:text-accent-strong"
+                    >
+                      {s.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {area && areaLine && (
+            <p className="text-pretty text-muted">
+              {areaLine[0]}
+              <Link href={`/areas/${area.slug}`} className="font-medium text-accent-strong underline">
+                {areaLine[1]}
+              </Link>
+              {areaLine[2]}
+            </p>
+          )}
           <p className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
             <Link href="/projects" className="font-medium text-accent-strong underline">
               All projects &amp; portfolio

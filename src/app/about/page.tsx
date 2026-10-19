@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Container, Section, StatCard, Card } from "@/components/ui";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { CTASection } from "@/components/ui/CTASection";
@@ -9,7 +10,8 @@ import { pageMeta, breadcrumbJsonLd, personJsonLd, profilePageJsonLd } from "@/l
 
 export const metadata = pageMeta({
   title: "About — Sean Corser MCIAT, Architectural Designer",
-  description: `SC Design Wirral is led by Sean Corser MCIAT, a Chartered Architectural Technologist (${site.credentials.degree}) with 15+ years designing homes for families across ${site.serviceArea}. Design only — we prepare drawings so you can approach builders for like-for-like quotations.`,
+  description:
+    "Sean Corser MCIAT, Chartered Architectural Technologist with 15+ years designing Wirral homes. Design only: clear drawings builders can price like for like.",
   path: "/about",
 });
 
@@ -138,7 +140,14 @@ export default function AboutPage() {
           <p className="text-base">
             Sean is a Chartered Architectural Technologist (MCIAT) and a member of CIAT. We are{" "}
             <strong className="text-ink">not registered architects</strong> — &ldquo;architect&rdquo;
-            is a title protected by law in the UK — and we design only: your project is built by
+            is a title protected by law in the UK (see{" "}
+            <Link
+              href="/guides/architect-vs-architectural-designer"
+              className="font-medium text-accent-strong underline"
+            >
+              architect vs architectural designer
+            </Link>
+            ) — and we design only: your project is built by
             builders you appoint, who price and construct from our drawings.
           </p>
           <p>

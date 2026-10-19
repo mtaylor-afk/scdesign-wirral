@@ -9,7 +9,7 @@ import { pageMeta, breadcrumbJsonLd } from "@/lib/seo";
 export const metadata = pageMeta({
   title: "Projects & Portfolio — Architectural Design Wirral",
   description:
-    "Architectural design projects across Wirral and Merseyside — house extensions, loft and garage conversions, garden rooms and feasibility studies. Each case study shows the brief, the design response and the drawings prepared.",
+    "Architectural design case studies across Wirral and Merseyside: extensions, loft and garage conversions and garden rooms, with the brief, design and drawings.",
   path: "/projects",
 });
 

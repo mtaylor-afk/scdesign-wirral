@@ -8,8 +8,10 @@ import { publishedProjects as projects } from "@/lib/projects";
 
 export const dynamic = "force-static";
 
+// URLs only: no lastModified (it was the build time on every page, so search
+// engines learn to ignore it), and no priority / changeFrequency (ignored by
+// Google and Bing). SEO audit 2.6. Never "fall back to the build date".
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
   const staticPaths = [
     "/",
     "/services",
@@ -32,51 +34,33 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const entries: MetadataRoute.Sitemap = staticPaths.map((p) => ({
     url: absUrl(p),
-    lastModified: now,
-    changeFrequency: "monthly",
-    priority: p === "/" ? 1 : 0.7,
   }));
 
   for (const s of services) {
     entries.push({
       url: absUrl(`/services/${s.slug}`),
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
     });
   }
   for (const g of guides) {
     if (g.draft) continue; // incomplete guides stay out of the sitemap (and are noindex)
     entries.push({
       url: absUrl(`/guides/${g.slug}`),
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
     });
   }
   for (const l of locations) {
     if (l.noindex) continue; // owner-flagged areas stay out of the sitemap
     entries.push({
       url: absUrl(`/areas/${l.slug}`),
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.6,
     });
   }
   for (const p of projects) {
     entries.push({
       url: absUrl(`/projects/${p.slug}`),
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.6,
     });
   }
   // Static AI-readable summary page (a real .html file, not a trailing-slash route).
   entries.push({
     url: `${siteUrl}/llms`,
-    lastModified: now,
-    changeFrequency: "yearly",
-    priority: 0.3,
   });
   return entries;
 }
