@@ -89,13 +89,14 @@ function mac(key, data) {
 
 /**
  * Sign a token. `nowMs` defaults to Date.now(). Throws when no key exists (callers check tokenKey() first).
- * Returns { token, expiresAt: Date }.
+ * `expiresAtSec` re-signs a token with the expiry it was first given (a repeated brief, see api/mtcw.js), so the
+ * repeat can never extend it. Returns { token, expiresAt: Date }.
  */
-function signFileToken({ ref, expectedFiles, businessLabel, descriptors, nowMs }, keyOverride) {
+function signFileToken({ ref, expectedFiles, businessLabel, descriptors, nowMs, expiresAtSec }, keyOverride) {
   const key = keyOverride || tokenKey().key;
   if (!key) throw new Error('mtcw token: no key');
   const now = nowMs === undefined ? Date.now() : nowMs;
-  const e = Math.floor(now / 1000) + TOKEN_TTL_SECONDS;
+  const e = Number.isInteger(expiresAtSec) ? expiresAtSec : Math.floor(now / 1000) + TOKEN_TTL_SECONDS;
   const payload = { v: 1, r: ref, n: expectedFiles, e, b: businessLabel, f: descriptors };
   const first = b64url(Buffer.from(JSON.stringify(payload), 'utf8'));
   return { token: `${first}.${b64url(mac(key, first))}`, expiresAt: new Date(e * 1000) };
@@ -114,6 +115,9 @@ function verifyFileToken(token, { ref, total, nowMs }, keyOverride) {
   const [first, sig] = parts;
   const given = fromB64url(sig);
   if (!given || fromB64url(first) === null) return { ok: false, reason: 'malformed' };
+  // Only the one canonical spelling of the signature: base64url's last character carries two unused bits, so a
+  // changed last character can decode to the same bytes. Every token this function issues is canonical.
+  if (b64url(given) !== sig) return { ok: false, reason: 'malformed' };
   const expected = mac(key, first);
   if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return { ok: false, reason: 'mac' };
   let payload;

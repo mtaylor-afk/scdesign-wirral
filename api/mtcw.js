@@ -25,7 +25,7 @@ const F = require('../serverlib/mtcw/format');
 const K = require('../serverlib/mtcw/token');
 const L = require('../serverlib/mtcw/limits');
 const M = require('../serverlib/mtcw/mailer');
-const { buildBriefModel } = require('../serverlib/mtcw/brief-model');
+const { buildBriefModel, businessLabelOf } = require('../serverlib/mtcw/brief-model');
 const { buildPack } = require('../serverlib/mtcw/pack');
 
 const ACTIONS = S.schema.endpoint.actions;
@@ -74,6 +74,31 @@ function mailErrorReply(reply, error) {
     return reply.error(502, 'mail_failed');
   }
   throw error;
+}
+
+/*
+ * The de-duplication note (serverlib/mtcw/limits.js) remembers a sent form's response for up to 15 minutes so a
+ * repeat is not emailed twice. A brief's file token carries the business name (for the photo emails' subject
+ * lines), and the Privacy page says the service keeps none of your answers after sending. So the note keeps the
+ * token WITHOUT that name: the reference, file count, expiry and file descriptors (hashes) only. A repeat of the
+ * same attempt re-signs the same token from the note and the repeated request's own (validated) business name.
+ */
+function rememberable(response, tokenParts) {
+  if (!tokenParts) return response;
+  return { ...response, fileToken: null, tokenParts };
+}
+
+function fromRemembered(prior, values) {
+  if (!prior.tokenParts) return prior;
+  const { tokenParts, ...rest } = prior;
+  const signed = K.signFileToken({
+    ref: rest.ref,
+    expectedFiles: tokenParts.n,
+    businessLabel: businessLabelOf(values),
+    descriptors: tokenParts.f,
+    expiresAtSec: tokenParts.e,
+  });
+  return { ...rest, fileToken: signed.token };
 }
 
 function honeypotFilled(value) {
@@ -157,7 +182,10 @@ async function handleForm(action, kind, body, req, reply, ctx) {
   const dedupeKey = envelope.attemptId ? `${action}|${envelope.attemptId}` : null;
   if (dedupeKey) {
     const prior = L.recall(dedupeKey, now);
-    if (prior) return reply.success({ ...prior, duplicate: true });
+    if (prior) {
+      if (prior.tokenParts && !K.tokenKey().key) return reply.error(503, 'mail_unavailable');
+      return reply.success({ ...fromRemembered(prior, result.values), duplicate: true });
+    }
   }
   const limited = L.take(L.checksFor(action, K.hashClient(H.clientIp(req))), now);
   if (!limited.ok) {
@@ -169,6 +197,7 @@ async function handleForm(action, kind, body, req, reply, ctx) {
   ctx.log.ref = ref;
   const mode = M.mailMode();
   let response;
+  let tokenParts = null;
 
   if (action === 'contact') {
     const email = R.contactEmail({
@@ -212,15 +241,17 @@ async function handleForm(action, kind, body, req, reply, ctx) {
     let fileToken = null;
     let tokenExpiresAt = null;
     if (files.length > 0) {
+      const descriptors = files.map((file) => K.fileDescriptor(file));
       const signed = K.signFileToken({
         ref,
         expectedFiles: files.length,
         businessLabel: model.businessLabel,
-        descriptors: files.map((file) => K.fileDescriptor(file)),
+        descriptors,
         nowMs: now,
       });
       fileToken = signed.token;
       tokenExpiresAt = F.isoSeconds(signed.expiresAt);
+      tokenParts = { n: files.length, e: Math.floor(signed.expiresAt.getTime() / 1000), f: descriptors };
     }
     const email = R.briefEmail(model, pack.missingLines, attachments.map((a) => a.filename));
     try {
@@ -231,7 +262,7 @@ async function handleForm(action, kind, body, req, reply, ctx) {
     response = { ok: true, ref, sent: true, mode, fileToken, expectedFiles: files.length, tokenExpiresAt };
   }
 
-  if (dedupeKey) L.remember(dedupeKey, response, now);
+  if (dedupeKey) L.remember(dedupeKey, rememberable(response, tokenParts), now);
   return reply.success(response);
 }
 

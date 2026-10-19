@@ -9,6 +9,11 @@ const F = require('./format');
 
 const BUSINESS_LABEL_MAX = S.schema.limits.fileToken.businessLabelMaxLength;
 
+/** The business name as the file token and the photo emails' subject lines carry it. */
+function businessLabelOf(values) {
+  return T.cut(values.businessName, BUSINESS_LABEL_MAX);
+}
+
 /**
  * @param {{ref:string, date:Date, values:object, files:object[], conflicts:object[], attribution:object,
  *          attemptId:string|null, mode:'smtp'|'sink'}} input
@@ -16,7 +21,7 @@ const BUSINESS_LABEL_MAX = S.schema.limits.fileToken.businessLabelMaxLength;
 function buildBriefModel(input) {
   const { ref, date, values, conflicts, attribution, attemptId, mode } = input;
   const total = input.files.length;
-  const businessLabel = T.cut(values.businessName, BUSINESS_LABEL_MAX);
+  const businessLabel = businessLabelOf(values);
   const files = input.files.map((file) => {
     const typeDef = S.fileTypeByMime(file.type);
     return {
@@ -47,4 +52,4 @@ function buildBriefModel(input) {
   };
 }
 
-module.exports = { buildBriefModel };
+module.exports = { buildBriefModel, businessLabelOf };

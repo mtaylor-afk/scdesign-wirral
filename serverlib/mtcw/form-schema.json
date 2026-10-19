@@ -136,11 +136,11 @@
       "empty": "This file is empty.",
       "name": "This file needs a name.",
       "nameTooLong": "This file's name must be {max} characters or fewer.",
-      "captionTooLong": "What this file is and how to use it must be {max} characters or fewer.",
+      "captionTooLong": "The description of this file must be {max} characters or fewer.",
       "extraContextTooLong": "The extra detail must be {max} characters or fewer.",
       "role": "Choose one of the listed uses, or leave it blank.",
       "sequence": "The list of files has changed. Please check your files and send again.",
-      "token": "This file can no longer be sent from this page. Reply to Matt's email and attach it instead."
+      "token": "This file can no longer be sent from this page. When Matt gets in touch by email, you can attach it to your reply."
     }
   },
 
@@ -541,7 +541,7 @@
         "placement": "main",
         "queryParam": "interest",
         "errors": {
-          "invalid": "Choose one of the listed options, or leave it as Not sure yet."
+          "invalid": "Choose one of the listed options, or leave it as \"Not sure yet\"."
         }
       },
       {
@@ -684,7 +684,7 @@
         "required": false,
         "default": null,
         "errors": {
-          "invalid": "Choose Email, Phone or Either is fine."
+          "invalid": "Choose \"Email\", \"Phone\" or \"Either is fine\"."
         }
       },
       {
@@ -812,7 +812,7 @@
         "maxLength": 300,
         "errors": {
           "required": "Tell us where you serve your customers.",
-          "tooLong": "Where you serve customers must be {max} characters or fewer."
+          "tooLong": "Your answer about where you serve customers must be {max} characters or fewer."
         }
       },
       {
@@ -827,7 +827,7 @@
         "required": false,
         "maxLength": 1000,
         "errors": {
-          "tooLong": "Who usually buys from you must be {max} characters or fewer."
+          "tooLong": "Your answer about who usually buys from you must be {max} characters or fewer."
         }
       },
       {
@@ -842,7 +842,7 @@
         "required": false,
         "maxLength": 2000,
         "errors": {
-          "tooLong": "What customers should know must be {max} characters or fewer."
+          "tooLong": "Your answer about what customers should know must be {max} characters or fewer."
         }
       },
       {
@@ -857,7 +857,7 @@
         "required": false,
         "maxLength": 1500,
         "errors": {
-          "tooLong": "Why customers choose you must be {max} characters or fewer."
+          "tooLong": "Your answer about why customers choose you must be {max} characters or fewer."
         }
       },
       {
@@ -873,7 +873,7 @@
         "required": true,
         "default": null,
         "errors": {
-          "required": "Choose the main thing you want visitors to do. Help me choose is fine.",
+          "required": "Choose the main thing you want visitors to do. \"Help me choose\" is fine.",
           "invalid": "Choose one of the listed options."
         }
       },
@@ -889,7 +889,7 @@
         "required": false,
         "maxLength": 1000,
         "errors": {
-          "tooLong": "What happens after someone contacts you must be {max} characters or fewer."
+          "tooLong": "Your answer about what happens after someone contacts you must be {max} characters or fewer."
         }
       },
       {
@@ -932,7 +932,7 @@
         "maxLength": 254,
         "autocomplete": "off",
         "errors": {
-          "required": "Enter the email address to show on the website, or untick Use my reply email address on the website.",
+          "required": "Enter the email address to show on the website, or untick \"Use my reply email address on the website\".",
           "invalid": "Enter the email address to show in the correct format, like name@example.co.uk, or leave it blank.",
           "tooLong": "The email address to show must be {max} characters or fewer."
         }
@@ -966,7 +966,7 @@
         "maxLength": 32,
         "autocomplete": "off",
         "errors": {
-          "required": "Enter the phone number to show on the website, or untick Use my phone number on the website.",
+          "required": "Enter the phone number to show on the website, or untick \"Use my phone number on the website\".",
           "invalid": "Enter the phone number to show using digits, spaces, brackets or +, or leave it blank.",
           "tooLong": "The phone number to show must be {max} characters or fewer."
         }
@@ -1017,7 +1017,7 @@
         "required": false,
         "default": null,
         "errors": {
-          "invalid": "Choose Yes, No or Not sure."
+          "invalid": "Choose \"Yes\", \"No\" or \"Not sure\"."
         }
       },
       {
@@ -1082,7 +1082,7 @@
         "required": false,
         "default": null,
         "errors": {
-          "invalid": "Choose Yes, Not yet or I am not sure."
+          "invalid": "Choose \"Yes\", \"Not yet\" or \"I am not sure\"."
         }
       },
       {
@@ -1199,7 +1199,7 @@
         "default": [],
         "errors": {
           "invalid": "Choose from the listed options.",
-          "exclusive": "Choose No, a straightforward website is enough, or I am not sure, on its own."
+          "exclusive": "Choose \"No, a straightforward website is enough\" or \"I am not sure\" on its own, without other options."
         }
       },
       {
@@ -1342,7 +1342,7 @@
         "required": false,
         "maxLength": 1500,
         "errors": {
-          "tooLong": "What you like must be {max} characters or fewer."
+          "tooLong": "Your answer about what you like must be {max} characters or fewer."
         }
       },
       {
@@ -1401,10 +1401,10 @@
         "label": "Anything else Matt should know?",
         "labelSource": "brief",
         "bullets": [
-          "Services or products to highlight or leave out.",
-          "Prices, offers or questions customers often ask.",
-          "Qualifications, reviews or examples of your work.",
-          "Anything to include or avoid, and important dates."
+          "Services or products to highlight or leave out",
+          "Prices, offers or questions customers often ask",
+          "Qualifications, reviews or examples of your work",
+          "Anything to include or avoid, and important dates"
         ],
         "help": "Short notes are fine. Please do not include passwords, payment details or private information about your customers.",
         "type": "textarea",
